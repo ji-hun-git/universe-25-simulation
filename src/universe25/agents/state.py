@@ -62,6 +62,7 @@ class AgentSoA:
     boredom: np.ndarray
     last_action: np.ndarray
     in_playground: np.ndarray
+    competence: np.ndarray  # social development 0..1; shaped while young, frozen at maturity
     # bookkeeping
     n_alive: int = 0
 
@@ -93,6 +94,7 @@ class AgentSoA:
             boredom=z(np.float32, 0.1),
             last_action=z(np.int8, ACT_REST),
             in_playground=z(np.bool_, False),
+            competence=z(np.float32, 1.0),
             n_alive=0,
         )
 

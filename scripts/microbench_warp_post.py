@@ -35,7 +35,7 @@ def numpy_post(a, world, cfg, dt, rng, steps):
         cap = world.capacity_design / max(1, world.n_cells)
         local = cc[a.cell_id[idx]] / max(cap, 1e-9)
         gain = d.stress_density_gain * local
-        a.stress[idx] = np.clip(a.stress[idx] + gain * dt - d.stress_decay * dt, 0, 1.5)
+        a.stress[idx] = np.clip(a.stress[idx] + (gain - d.stress_decay * a.stress[idx]) * dt, 0, 1.5)
         p = np.full(idx.size, bio.base_mortality_per_day * dt)
         p = p + bio.stress_mortality_scale * (a.stress[idx] ** 2) * dt
         p = p + bio.density_mortality_scale * (dens ** 2) * dt

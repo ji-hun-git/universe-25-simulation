@@ -58,6 +58,7 @@ class WarpTickEngine:
             "cell_id": wp.zeros(n, dtype=wp.int32, device=self.device),
             "nest_id": wp.zeros(n, dtype=wp.int32, device=self.device),
             "in_playground": wp.zeros(n, dtype=wp.int32, device=self.device),
+            "competence": wp.zeros(n, dtype=wp.float32, device=self.device),
             "rng_states": wp.zeros(n, dtype=wp.uint32, device=self.device),
             "cell_counts": wp.zeros(self.world.n_cells, dtype=wp.int32, device=self.device),
             "nest_occ": wp.zeros(self.world.n_nests, dtype=wp.int32, device=self.device),
@@ -96,6 +97,7 @@ class WarpTickEngine:
         b["cell_id"].assign(agents.cell_id.astype(np.int32))
         b["nest_id"].assign(agents.nest_id.astype(np.int32))
         b["in_playground"].assign(agents.in_playground.astype(np.int32))
+        b["competence"].assign(agents.competence)
         # seed rng states once
         if not hasattr(self, "_rng_seeded"):
             seeds = rng.integers(1, 2**31 - 1, size=n, dtype=np.uint32)
@@ -122,6 +124,7 @@ class WarpTickEngine:
         agents.cell_id[:] = np.array(b["cell_id"].numpy(), dtype=np.int16)
         agents.nest_id[:] = np.array(b["nest_id"].numpy(), dtype=np.int16)
         agents.in_playground[:] = np.array(b["in_playground"].numpy(), dtype=bool)
+        agents.competence[:] = b["competence"].numpy()
         agents.n_alive = int(agents.alive.sum())
 
     def _host_cell_nest_counts(self, agents: AgentSoA) -> None:
@@ -168,10 +171,12 @@ class WarpTickEngine:
                 dim=n,
                 inputs=[
                     b["alive"], b["cell_id"], b["nest_id"], b["rank"], b["stress"], b["social_drive"],
-                    b["cell_counts"], b["nest_occ"], b["nest_cap"],
+                    b["cell_counts"], b["nest_occ"], b["nest_cap"], b["age_days"], b["competence"],
                     float(dt), float(d.stress_density_gain), float(d.stress_decay),
                     float(bio.nest_overcrowd_stress), capacity_per_cell, b["dens_frac"],
                     float(bio.menopause_density_threshold), float(bio.social_breakdown_stress_boost),
+                    float(bio.maturity_days), float(bio.imprint_rate),
+                    float(bio.imprint_density_threshold),
                 ],
                 device=self.device,
             )

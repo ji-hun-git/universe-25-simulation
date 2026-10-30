@@ -52,6 +52,7 @@ class BiologyConfig(BaseModel):
     max_age_days: float = 800.0
     base_mortality_per_day: float = 0.0005
     stress_mortality_scale: float = 0.01
+    wound_heal_per_day: float = 0.1  # wounds recover; mortality ~ wounds^2 while open
     first_conception_min_day: float = 95.0
     menopause_density_threshold: float = 0.55
     maternal_neglect_stress: float = 0.7
@@ -68,6 +69,13 @@ class BiologyConfig(BaseModel):
     density_mortality_scale: float = 0.0  # extra death rate ~ dens^2
     social_breakdown_stress_boost: float = 0.0  # added stress gain when dens high
     beautiful_one_aggression_max: float = 0.15
+    # Developmental imprinting (Calhoun 1973: young raised under crowding never acquire
+    # normal maternal / courtship / territorial behaviour; the deficit is irreversible).
+    # `competence` is a generic social-development trait, not a play term (H2).
+    imprint_rate: float = 0.05  # competence loss per day per unit exposure, young only
+    imprint_density_threshold: float = 0.15  # local cell density frac where exposure starts
+    withdrawn_competence_threshold: float = 0.3  # adults below this withdraw ("beautiful ones")
+    female_fertile_max_age_days: float = 420.0  # reproductive senescence (lab mouse ~12-15 mo)
 
 
 class DriveConfig(BaseModel):

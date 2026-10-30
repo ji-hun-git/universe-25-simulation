@@ -85,6 +85,8 @@ class Universe25Sim:
         self._births = 0
         self._deaths = 0
         self._last_young_day = 0.0
+        self._last_surviving_young_day = 0.0  # birth day of the latest pup that reached weaning
+        self._last_conception_day = 0.0
         self._peak_n = 0
         self._peak_day = 0.0
         self._nan_count = 0
@@ -150,6 +152,7 @@ class Universe25Sim:
         a.boredom[slot] = 0.1
         a.last_action[slot] = ACT_REST
         a.in_playground[slot] = self.world.in_playground(a.x[slot], a.y[slot])
+        a.competence[slot] = 1.0  # shaped during development (see _density_stress)
 
     # ------------------------------------------------------------------ step
     def step(self) -> None:
@@ -193,6 +196,12 @@ class Universe25Sim:
         if a.n_alive > self._peak_n:
             self._peak_n = a.n_alive
             self._peak_day = self.day
+        # Calhoun's landmark is the last *surviving* birth: latest birth day among weaned young.
+        weaned = alive & (a.age_days >= self.cfg.biology.weaning_days)
+        if weaned.any():
+            born = self.day - float(a.age_days[weaned].min())
+            if born > self._last_surviving_young_day:
+                self._last_surviving_young_day = born
 
         self.tick += 1
         self.day = self.tick * self.dt_days
@@ -230,6 +239,7 @@ class Universe25Sim:
         a.social_drive[idx] = np.clip(a.social_drive[idx] + d.social_drive_gain * dt, 0, 1.5)
         # energy homeostasis: decays with activity proxied by fatigue
         a.energy[idx] = np.clip(a.energy[idx] - 0.15 * dt - 0.1 * a.fatigue[idx] * dt, 0, 1)
+        a.wounds[idx] = np.maximum(0.0, a.wounds[idx] - self.cfg.biology.wound_heal_per_day * dt)
         a.age_days[idx] += dt
         if a.gestating[idx].any():
             gest = idx & (a.gestating > 0)
@@ -254,6 +264,9 @@ class Universe25Sim:
             & (a.social_drive[idx] < bio.withdrawn_social_threshold)
             & (a.aggression[idx] < bio.beautiful_one_aggression_max)
         )
+        # "Beautiful ones": adults whose development under crowding left them socially
+        # incompetent withdraw permanently (competence is frozen at maturity).
+        withdrawn |= (~pup) & (~juv) & (a.competence[idx] < bio.withdrawn_competence_threshold)
         female = a.sex[idx] == SEX_F
         nursing = female & ((a.maternal[idx] > 0.5) & ((a.gestating[idx] > 0) | (a.role[idx] == ROLE_NURSING)))
         male = ~female
@@ -277,6 +290,7 @@ class Universe25Sim:
         if idx.size == 0:
             return actions
         d = self.cfg.drives
+        bio = self.cfg.biology
         scarce = self.cfg.resources.mode == "scarce"
         m = idx.size
         U = np.zeros((m, N_ACTIONS), dtype=np.float64)
@@ -302,28 +316,36 @@ class Universe25Sim:
         if self.world.playground_enabled:
             gate = np.where((en > 0.5) & (st < 0.4), 1.2, 0.3)
             U[:, ACT_MANIPULATE] = (cur * 0.7 + bor * 0.8) * gate
-        else:
-            U[:, ACT_MANIPULATE] = -1.0
         U[:, ACT_AGGRESS] = agg * st * (1.5 if scarce else 0.6)
-        U[:, ACT_MATE] = (
-            0.9
-            * (age >= self.cfg.biology.maturity_days)
-            * (st < 0.75)
-            * (role != ROLE_WITHDRAWN)
-            * (en > 0.4)
-        )
-        U[:, ACT_NURSE] = mat * 1.4 * (sex == SEX_F)
+        U[:, ACT_MATE] = 0.9
+        U[:, ACT_NURSE] = mat * 1.4
         U[:, ACT_WITHDRAW] = st * 1.2 * (1.0 - soc)
+
+        # Eligibility mask: ineligible actions get exactly zero probability. (Previously a
+        # zero utility still carried softmax weight, so pups foraged, fought and conceived.)
+        pup = age < bio.weaning_days
+        adult = age >= bio.maturity_days
+        allowed = np.ones((m, N_ACTIONS), dtype=bool)
+        # Pre-weaning pups are milk-dependent and stay at the nest.
+        allowed[pup, :] = False
+        allowed[pup, ACT_REST] = True
+        allowed[pup, ACT_NEST] = True
+        allowed[:, ACT_MATE] &= adult & (st < 0.75) & (role != ROLE_WITHDRAWN) & (en > 0.4)
+        allowed[:, ACT_NURSE] &= (sex == SEX_F) & (mat > 0.0)
+        if not self.world.playground_enabled:
+            allowed[:, ACT_MANIPULATE] = False
+
         U -= U.max(axis=1, keepdims=True)
-        P = np.exp(np.clip(U, -20, 20))
-        P /= P.sum(axis=1, keepdims=True)
+        P = np.exp(np.clip(U, -20, 20)) * allowed
+        P /= P.sum(axis=1, keepdims=True)  # REST is always allowed, so sums are > 0
         # Independent categorical samples
         cdf = np.cumsum(P, axis=1)
         r = self.rng.random(m)
         chosen = (r[:, None] <= cdf).argmax(axis=1).astype(np.int8)
-        # Critical physiological needs override Softmax (dt-invariant need drive)
-        chosen = np.where(th > 0.85, ACT_DRINK, chosen)
-        chosen = np.where(hung > 0.85, ACT_FORAGE, chosen)
+        # Critical physiological needs override Softmax (dt-invariant need drive); pups
+        # cannot use hoppers, their hunger/thirst are relieved only by nursing.
+        chosen = np.where((th > 0.85) & ~pup, ACT_DRINK, chosen)
+        chosen = np.where((hung > 0.85) & ~pup, ACT_FORAGE, chosen)
         chosen = np.where((fat > 1.2) & (hung < 0.7) & (th < 0.7), ACT_REST, chosen)
         actions[idx] = chosen
         return actions
@@ -450,7 +472,14 @@ class Universe25Sim:
 
         m_nurse = act == ACT_NURSE
         if m_nurse.any():
-            for i in idx[m_nurse]:
+            # Mothers return to their nest to nurse (pups stay at the nest until weaning).
+            ii = idx[m_nurse]
+            nids = a.nest_id[ii].astype(int)
+            txx = np.zeros(idx.size); tyy = np.zeros(idx.size)
+            txx[m_nurse] = [self.world.nests[n].x if n >= 0 else a.x[i] for i, n in zip(ii, nids)]
+            tyy[m_nurse] = [self.world.nests[n].y if n >= 0 else a.y[i] for i, n in zip(ii, nids)]
+            move_mask(m_nurse, txx, tyy, 6.0)
+            for i in ii:
                 if a.stress[i] > self.cfg.biology.maternal_neglect_stress:
                     a.maternal[i] = max(0.0, a.maternal[i] - 0.05)
                 else:
@@ -525,16 +554,19 @@ class Universe25Sim:
         bio = self.cfg.biology
         if self.day < bio.first_conception_min_day:
             return
+        # Initiator must be a mature, non-withdrawn adult (fixes pup/juvenile conceptions).
+        if a.age_days[i] < bio.maturity_days or a.role[i] == ROLE_WITHDRAWN:
+            return
         dens = a.n_alive / max(1, self.world.capacity_design)
         if dens > bio.menopause_density_threshold and a.sex[i] == SEX_F:
             # reproductive collapse under crowding
-            return
-        if a.role[i] == ROLE_WITHDRAWN:
             return
         partner_sex = SEX_M if a.sex[i] == SEX_F else SEX_F
         cand = a.alive & (a.sex == partner_sex) & (a.age_days >= bio.maturity_days)
         cand &= a.role != ROLE_WITHDRAWN
         cand &= a.gestating == 0
+        if partner_sex == SEX_F:
+            cand &= a.age_days <= bio.female_fertile_max_age_days
         if not cand.any():
             return
         d2 = (a.x - a.x[i]) ** 2 + (a.y - a.y[i]) ** 2
@@ -543,12 +575,17 @@ class Universe25Sim:
             return
         j = int(near[np.argmin(d2[near])])
         female = i if a.sex[i] == SEX_F else j
-        if a.gestating[female] > 0:
+        male = j if female == i else i
+        if a.gestating[female] > 0 or a.age_days[female] > bio.female_fertile_max_age_days:
             return
-        if self.rng.random() < 0.55 * (1.0 - 0.8 * a.stress[female]):
+        # Conception scales with both partners' social competence (courtship / receptivity).
+        p = 0.55 * (1.0 - 0.8 * a.stress[female]) * a.competence[female] * a.competence[male]
+        if self.rng.random() < p:
             a.gestating[female] = bio.gestation_days
             a.role[female] = ROLE_NURSING
+            a.maternal[female] = max(float(a.maternal[female]), 0.85 * float(a.competence[female]))
             self._conceptions += 1
+            self._last_conception_day = self.day
 
     def _density_stress(self, alive: np.ndarray) -> None:
         a = self.agents
@@ -565,7 +602,10 @@ class Universe25Sim:
         # nest occupancy
         nest_occ = np.bincount(a.nest_id[alive].astype(int), minlength=self.world.n_nests)
         cap = np.array([n.capacity for n in self.world.nests], dtype=np.float64)
-        over = (nids >= 0) & (nest_occ[np.clip(nids, 0, self.world.n_nests - 1)] > cap[np.clip(nids, 0, self.world.n_nests - 1)])
+        nclip = np.clip(nids, 0, self.world.n_nests - 1)
+        over = (nids >= 0) & (nest_occ[nclip] > cap[nclip])
+        # graded overfullness (occupants beyond capacity, relative) for developmental exposure
+        over_frac = np.where(nids >= 0, np.maximum(0.0, nest_occ[nclip] / cap[nclip] - 1.0), 0.0)
         gain = gain + float(self.cfg.biology.nest_overcrowd_stress) * over
         dens_frac = a.n_alive / max(1, self.world.capacity_design)
         if dens_frac > self.cfg.biology.menopause_density_threshold:
@@ -574,9 +614,25 @@ class Universe25Sim:
         kick = over & (a.rank[idx] < 0.4) & (self.rng.random(idx.size) < 0.1)
         if kick.any():
             a.nest_id[idx[kick]] = self.rng.integers(0, self.world.n_nests, size=int(kick.sum()))
-        a.stress[idx] = np.clip(a.stress[idx] + gain * dt - d.stress_decay * dt, 0, 1.5)
+        # Relaxation toward gain/decay: equilibrium stress is smooth in local density
+        # (a constant decay gave a hard density cliff with runaway stress above it).
+        a.stress[idx] = np.clip(a.stress[idx] + (gain - d.stress_decay * a.stress[idx]) * dt, 0, 1.5)
         with_mask = (a.stress[idx] > 0.9) & (a.social_drive[idx] > 0)
         a.social_drive[idx[with_mask]] = np.maximum(0.0, a.social_drive[idx[with_mask]] - 0.05)
+        # Developmental imprinting (Calhoun): young exposed to crowded cells / overfull nests
+        # lose social competence; the trait is frozen once mature. Mirrors Warp kernel.
+        bio = self.cfg.biology
+        young = a.age_days[idx] < bio.maturity_days
+        if young.any():
+            exposure = np.maximum(0.0, local - bio.imprint_density_threshold) + over_frac
+            yi = idx[young]
+            a.competence[yi] = np.clip(
+                a.competence[yi] - bio.imprint_rate * exposure[young] * dt, 0.0, 1.0
+            )
+            # Nulliparous maternal investment develops with competence (set at conception/birth
+            # later); otherwise incompetent daughters would still seek out and nurse pups.
+            yf = yi[a.sex[yi] == SEX_F]
+            a.maternal[yf] = 0.8 * a.competence[yf]
 
 
 
@@ -612,6 +668,7 @@ class Universe25Sim:
             alive
             & (a.sex == SEX_F)
             & (a.age_days >= bio.maturity_days)
+            & (a.age_days <= bio.female_fertile_max_age_days)
             & (a.gestating == 0)
             & (a.role != ROLE_WITHDRAWN)
             & (a.stress < 0.8)
@@ -626,18 +683,24 @@ class Universe25Sim:
         )
         if females.size == 0 or males.size == 0:
             return
+        # Per-cell mean male competence (courtship capability of the local males).
         male_cells: dict[int, list[int]] = {}
         for m in males:
             male_cells.setdefault(int(a.cell_id[m]), []).append(int(m))
+        male_comp = {c: float(np.mean(a.competence[ms])) for c, ms in male_cells.items()}
         for f in females:
             cands = male_cells.get(int(a.cell_id[f]), [])
             if not cands:
                 continue
-            if self.rng.random() < p_base * (1.0 - float(bio.breeding_stress_coef) * float(a.stress[f])):
+            c_f = float(a.competence[f])
+            p = p_base * (1.0 - float(bio.breeding_stress_coef) * float(a.stress[f]))
+            p *= c_f * male_comp[int(a.cell_id[f])]
+            if self.rng.random() < p:
                 a.gestating[f] = bio.gestation_days
                 a.role[f] = ROLE_NURSING
-                a.maternal[f] = max(float(a.maternal[f]), 0.85)
+                a.maternal[f] = max(float(a.maternal[f]), 0.85 * c_f)
                 self._conceptions += 1
+                self._last_conception_day = self.day
 
     def _reproduce(self, alive: np.ndarray) -> None:
         a = self.agents
@@ -653,6 +716,13 @@ class Universe25Sim:
                 slots = a.free_slots(litter)
             except RuntimeError:
                 break
+            # Birth happens in the mother's nest; she returns there and pups stay until weaning.
+            nid = int(a.nest_id[i])
+            if nid >= 0:
+                nest = self.world.nests[nid]
+                a.x[i] = float(np.clip(nest.x, 0.5, self.world.width - 0.5))
+                a.y[i] = float(np.clip(nest.y, 0.5, self.world.height - 0.5))
+                a.cell_id[i] = nest.cell_id
             for s in slots:
                 sex = int(self.rng.integers(0, 2))
                 self._spawn(
@@ -661,14 +731,15 @@ class Universe25Sim:
                     age=0.0,
                     x=a.x[i] + float(self.rng.normal(0, 0.3)),
                     y=a.y[i] + float(self.rng.normal(0, 0.3)),
-                    nest_id=int(a.nest_id[i]),
+                    nest_id=nid,
                     cell_id=int(a.cell_id[i]),
                     role=ROLE_PUP,
                 )
                 self._births += 1
                 self._last_young_day = self.day
             a.role[i] = ROLE_NURSING
-            a.maternal[i] = 0.9
+            # Maternal investment reflects the mother's own social development.
+            a.maternal[i] = 0.9 * float(a.competence[i])
         a.n_alive = int(a.alive.sum())
 
     def _age_and_die(self, alive: np.ndarray) -> None:
@@ -736,10 +807,12 @@ class Universe25Sim:
                 dim=n,
                 inputs=[
                     b["alive"], b["cell_id"], b["nest_id"], b["rank"], b["stress"], b["social_drive"],
-                    b["cell_counts"], b["nest_occ"], b["nest_cap"],
+                    b["cell_counts"], b["nest_occ"], b["nest_cap"], b["age_days"], b["competence"],
                     dt, float(d.stress_density_gain), float(d.stress_decay),
                     float(bio.nest_overcrowd_stress), capacity_per_cell, b["dens_frac"],
                     float(bio.menopause_density_threshold), float(bio.social_breakdown_stress_boost),
+                    float(bio.maturity_days), float(bio.imprint_rate),
+                    float(bio.imprint_density_threshold),
                 ],
                 device=eng.device,
             )
@@ -794,6 +867,7 @@ class Universe25Sim:
         a.social_drive[:] = b["social_drive"].numpy()
         a.cell_id[:] = np.array(b["cell_id"].numpy(), dtype=np.int16)
         a.in_playground[:] = np.array(b["in_playground"].numpy(), dtype=bool)
+        a.competence[:] = b["competence"].numpy()
         a.n_alive = int(a.alive.sum())
         if a.n_alive < prev_alive:
             self._deaths += prev_alive - a.n_alive
@@ -827,6 +901,12 @@ class Universe25Sim:
             "births_cum": self._births,
             "deaths_cum": self._deaths,
             "last_young_day": self._last_young_day,
+            "last_surviving_young_day": self._last_surviving_young_day,
+            "last_conception_day": self._last_conception_day,
+            "n_adult": int(np.sum(alive & (a.age_days >= self.cfg.biology.maturity_days))),
+            "mean_competence_adult": float(
+                a.competence[alive & (a.age_days >= self.cfg.biology.maturity_days)].mean()
+            ) if np.any(alive & (a.age_days >= self.cfg.biology.maturity_days)) else 1.0,
             "playground_occupancy": pg_occ,
             "playground_frac": pg_occ / max(1, n),
             "free_choice_V": v,
@@ -879,6 +959,8 @@ class Universe25Sim:
             "deaths": self._deaths,
             "conceptions": self._conceptions,
             "last_young_day": self._last_young_day,
+            "last_surviving_young_day": self._last_surviving_young_day,
+            "last_conception_day": self._last_conception_day,
             "nan_count": self._nan_count,
             "playground_enabled": self.world.playground_enabled,
             "n_nests": self.world.n_nests,

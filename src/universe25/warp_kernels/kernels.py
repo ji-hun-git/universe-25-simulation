@@ -53,6 +53,8 @@ def density_stress_kernel(
     cell_counts: wp.array(dtype=wp.int32),
     nest_occ: wp.array(dtype=wp.int32),
     nest_cap: wp.array(dtype=wp.int32),
+    age_days: wp.array(dtype=wp.float32),
+    competence: wp.array(dtype=wp.float32),
     dt: float,
     stress_density_gain: float,
     stress_decay: float,
@@ -61,6 +63,9 @@ def density_stress_kernel(
     dens_frac_arr: wp.array(dtype=wp.float32),
     menopause_thr: float,
     social_breakdown_boost: float,
+    maturity_days: float,
+    imprint_rate: float,
+    imprint_thr: float,
 ):
     i = wp.tid()
     if alive[i] == 0:
@@ -69,15 +74,22 @@ def density_stress_kernel(
     c = cell_id[i]
     local = float(cell_counts[c]) / capacity_per_cell
     gain = stress_density_gain * local
+    over = float(0.0)
     nid = nest_id[i]
     if nid >= 0:
         if nest_occ[nid] > nest_cap[nid]:
             gain = gain + nest_overcrowd_stress
+            over = float(nest_occ[nid]) / float(nest_cap[nid]) - 1.0
     if dens_frac > menopause_thr:
         gain = gain + social_breakdown_boost
-    stress[i] = wp.clamp(stress[i] + gain * dt - stress_decay * dt, 0.0, 1.5)
+    # Relaxation toward gain/decay (smooth in density; mirrors sim._density_stress).
+    stress[i] = wp.clamp(stress[i] + (gain - stress_decay * stress[i]) * dt, 0.0, 1.5)
     if stress[i] > 0.9 and social_drive[i] > 0.0:
         social_drive[i] = wp.max(0.0, social_drive[i] - 0.05)
+    # Developmental imprinting: young lose social competence under crowding; frozen at maturity.
+    if age_days[i] < maturity_days:
+        exposure = wp.max(0.0, local - imprint_thr) + over
+        competence[i] = wp.clamp(competence[i] - imprint_rate * exposure * dt, 0.0, 1.0)
 
 
 @wp.kernel
