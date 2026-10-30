@@ -40,7 +40,7 @@ python scripts\calibrate.py --metrics _output\smoke\metrics.parquet --out _outpu
 | First litters | ~day 104 | first day with a birth |
 | N at day 315 | ~620 | |
 | Peak | ~2200 at ~day 560 | `peak_day` = first day at ≥ 97 % of max N (plateau-robust) |
-| Last surviving young | ~day 600 | latest birth day among pups that reached weaning |
+| Last surviving young | ~day 600 | cessation of surviving births: last birth day on which the 30-day rate of births that reach weaning is still ≥ 5 % of its maximum (the strict latest-weaned-pup day is also reported; it is set by single lucky survivors) |
 | Decline | thereafter | slow: N = 2056 at day 736, 122 at day ~1444 |
 
 Also reported (not in the canonical mean error): N@736 = 2056, 150 adults (+470 immatures) at
@@ -48,15 +48,19 @@ day 315, last conception ≈ day 920.
 
 Collapse is **emergent**: density → stress → neglect / litter abandonment / breeding suppression,
 plus a developmental `competence` trait that young lose under crowding and keep for life
-(Calhoun's "beautiful ones"; Marsden 1972 showed the deficit persisted after transfer). Conception
-is a once-per-day process and nursing is per nest box, so results do not depend on the tick
-resolution. No parameter names a collapse day.
+(Calhoun's "beautiful ones"; Marsden 1972 showed the deficit persisted after transfer), and an
+irreversible post-weaning loss of maternal capacity under sustained stress (Calhoun's phase C/D
+mothers that attacked and expelled their young while conceptions went on). A social-breakdown
+stress boost switches on above a weaned-population density (the behavioural sink), nursing is a
+relaxation toward satiety per nest box, and starvation is lethal within days. Conception is a
+once-per-day process and agents hold each decision for 1/6 day, so results do not depend on the
+tick resolution. No parameter names a collapse day.
 `calibration.json` reports honest error; see `NOTES.md` for the current fit and its misses.
 
 Calibration (CMA-ES) runs from the repo-local `.venv` (has optuna; the shared lab venv does not):
 
 ```powershell
-.venv\Scripts\python.exe scripts\calibrate_optuna.py --seed 7000 --trials 112 --popsize 14 --workers 14 --days 1200 --x0 configs\calibrated_calhoun.yaml --out _output\calib_cma
+.venv\Scripts\python.exe scripts\calibrate_optuna.py --seed 7000 --trials 224 --popsize 14 --workers 14 --sigma0 0.1 --days 1200 --x0 configs\calibrated_calhoun.yaml --out _output\calib_cma
 ```
 
 ## Metrics (per log window)

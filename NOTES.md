@@ -1,5 +1,207 @@
 # Universe25 Play — NOTES
 
+## Phase 2e — maternal breakdown, relaxation nursing, held decisions, lethal starvation (2026-10-30)
+
+Motivation (from Phase 2d's open gaps): (a) the last *surviving* birth landed at 762 and coincided
+with the last conception (755), whereas Calhoun's conceptions ran to ≈920 with no survivors after
+600; (b) early growth was still ≈20–25 % faster per day at 24 than at 6 ticks/day. Both turned out
+to have causes other than the ones guessed in 2d, so this pass went through several diagnoses.
+
+### Changes (NumPy reference path; Warp kernels mirrored where they touch the same state)
+
+1. **Relaxation-form nursing** (`_feed_by_nest`). While a lactating mother of a pup's own nest
+   box is within reach, the pup's hunger/thirst deficit decays as `exp(-nurse_rate_per_day · w · dt)`
+   with `w` = Σ (maternal investment × milk share) over the mothers in contact (share = 1 up to
+   `nurse_max_pups`, then divided). Relief is proportional to the remaining deficit and composes
+   exactly over sub-steps, so what a pup receives per day depends on contact time only. Only
+   parous/gestating females (`ROLE_NURSING`) nurse; the "any female with maternal > 0.4" rule of 2d
+   is gone.
+2. **Decisions are held for the reference interval; events happen on the decision tick.**
+   Agents choose an action every `ticks_per_decision = ticks_per_day / ticks_per_day_ref` ticks
+   and continue it in between (`_select_actions`). Per-decision events — the meal or drink (eat
+   until satiated), the move to the target (`reach` 4 in per unit speed), a fight, drive relief,
+   the random-walk step, the object nudge — happen in full on the decision tick, exactly as at
+   the reference resolution; the held ticks integrate only continuous physics with dt (drive
+   growth, fatigue, nursing contact, stress, mortality). A first version spread each event over
+   the held ticks (×k per tick); that interleaves e.g. eating with hunger growth, so the next
+   decision saw hunger 0.05 instead of 0.20, the forage/drink cycle and the fatigue-driven REST
+   at the hopper shifted, and a lactating mother's nest contact was 20 % instead of 15 % — which
+   lethal starvation (5) turned into +60 % early growth at 24 ticks/day. The micro-simulation
+   that found it (one mother, one litter, 40 seeds) now gives the same contact (15.1 vs 15.2 %)
+   and action mix at 6 and 24. At 6 ticks/day every tick is a decision tick, so the reference
+   trajectory is unchanged by construction (hash-verified after every mechanics change).
+3. **Post-weaning maternal breakdown** (`maternal_cap`, `_daily_maternal_erosion`). A new SoA
+   trait, 1.0 at birth, eroded irreversibly once per day for every weaned female whose stress
+   exceeds `maternal_erosion_stress`, by `maternal_erosion_rate × excess`; maternal investment at
+   conception/birth and the ACT_NURSE recovery are capped by it, and a mother's investment is
+   clipped to it. Below 0.5 she is no longer `ROLE_NURSING` and nurses nothing.
+4. **Social-breakdown switch decoupled from the conception ramp** and driven by the social arena.
+   `breakdown_density_threshold` (was tied to `menopause_density_threshold`) gates the
+   `social_breakdown_stress_boost`; it counts *weaned* animals (`breakdown_density_counts`), because
+   pups sit in nest boxes and, more importantly, because weaned numbers only fall through adult
+   mortality: a switch on total N behaved as a thermostat (pups die within days of the switch,
+   N drops back under the threshold before adult stress has built, nursing resumes — diagnosed on
+   seed 7000, where it capped the peak at exactly the threshold and births went on to 833).
+5. **Starvation is lethal** (`starvation_hazard_per_day`, 1.0; was a hard-coded 0.1/day). With the
+   old hazard about one never-nursed pup in ten reached weaning; those pups — not any nursing — were
+   the "surviving" late litters (diagnosed: every surviving litter after day 600 had a mother with
+   `maternal_cap` = 0 and maternal = 0). The old leak also propped up early growth under poor
+   nursing, so the 2b/2d calibrations partly depended on it.
+6. **Exact per-tick death probability** `1 − exp(−h·dt)` from the per-day hazard `h` (NumPy and
+   Warp `mortality_kernel`), so daily survival is `exp(−h)` at any resolution.
+
+New tunables in `calib/priors.py`: `nurse_rate_per_day` [2, 12], `maternal_erosion_rate`
+[0.002, 1] (log), `maternal_erosion_stress` [0.3, 0.9], `breakdown_density_threshold` [0.35, 0.8].
+`last_conception_day` weight raised 0.5 → 1.0 now that the mechanism can separate it from the last
+surviving birth.
+
+### Diagnoses along the way (seed 7000, 6 ticks/day, 2d parameters unless stated)
+
+- Relaxation nursing alone made the resolution gap *worse* (N@400 920 vs 1371 at 6 vs 24 tpd,
+  6 seeds): with feeding strictly proportional to contact time, the real cause showed — meals,
+  drinks and travel were single-tick events, so mothers at 24 tpd spent a quarter of the time away
+  from the nest. Holding decisions (effects spread ×k over the held ticks) brought 24 tpd to
+  1084 ± 210 (6 tpd 920 ± 223) at the 2d parameters, but at the 2e parameters (lethal
+  starvation) the same scheme gave N@400 1065 ± 102 / 1370 ± 87 / 1725 ± 93 at 6 / 12 / 24 tpd
+  (12 seeds) — the interleaving bias described under (2).
+- Study 1 (168 trials, old switch, adult-only erosion): loss 0.212, but erosion inactive at the
+  optimum (stress gain 0.26 / decay 0.53 keeps adult stress below the 0.64 threshold) and "last
+  conception" 736 = fertility horizon of the pre-collapse cohort (born ≤ 284 + 452 d). The
+  optimiser parked the breakdown boost above the peak because its threshold also set the
+  conception ramp.
+- Day-by-day diagnostic with the weaned switch (threshold 0.43): switch on at day 500, adult-female
+  stress 0.42 → 0.87, 98 % of adult females below cap 0.5 within 50 days, nursing females 0,
+  surviving births per 25 d 121 → 103 → 25 → 2; switch off at 575, conceptions resume at 20–40 per
+  25 d to day 858 — but 1–5 "survivors" per 25 d persisted to 792: the unfed-pup leak (5).
+
+### Recalibration results (CMA-ES, 14 workers, 1200 d, 6 ticks/day)
+
+Three studies were needed. Study 1 (168 trials, old switch) reached 0.212 with the erosion
+inactive; study 2 (decoupled switch, adult-only erosion) was stopped after the diagnoses above;
+study 3 (224 trials, `--sigma0 0.1`, start = hand-probed point with nursing rate 12, softer
+imprinting) reached **0.159** at trial 160 in 47 min. Two optimiser facts learnt on the way, now
+documented in `calib/optimize.py`: Optuna's CMA-ES returns independent random samples until a
+trial has completed, so an asked-ahead first generation is random and `x0`/`sigma0` act from the
+second generation on (the start point is now enqueued as trial 0); and the default initial step
+(min range / 6 ≈ 0.33) is a third of the range for the unit-range parameters, which made the
+first generations of study 3 worse than its start point until `--sigma0 0.1`.
+
+Landmarks of the best parameters (`configs/calibrated_calhoun.yaml`, `configs/default.yaml`,
+`configs/calibration_study_p2e.json`) at the training seed and three held-out seeds, 1200 d:
+
+| Landmark | Calhoun | **7000** (train) | 8000 | 8001 | 8002 |
+|---|---:|---:|---:|---:|---:|
+| First litters (day) | 104 | **104** | 104 | 104 | 104 |
+| N @ day 315 | 620 | 542 | 567 | 346 | 630 |
+| Adults @ day 315 | 150 | 182 | 188 | 143 | 276 |
+| Peak N / day (first ≥97 %) | 2200 / 560 | **2320 / 486** | 2231 / 473 | 2344 / 555 | 2312 / 511 |
+| Surviving births cease (day) | 600 | **556** | 551 | 656 | 549 |
+| strict latest weaned pup (day) | (600) | 564 | 1111 | 1017 | 606 |
+| N @ day 736 | 2056 | **2077** | 2049 | 2146 | 2082 |
+| Last conception (day) | ≈920 | 1113 | 1194 | 1170 | 1161 |
+| N @ 1200 | | 1699 | 1655 | 1737 | 1701 |
+| loss | | 0.162 | 0.214 | 0.491 | 0.802 |
+| mean rel. error (canonical 5) | | **0.074** | 0.082 | 0.16 | 0.050 |
+
+The held-out losses are carried by the early phase (N@315 346 at 8001, adults@315 276 at 8002:
+with 8 founders the exponential phase is seed-sensitive) and by the late last conception; the
+five canonical landmarks are met at every seed. Phase 2d for comparison: canonical error 0.117 at
+7000, held-out 0.32 / 0.40 / 1.08. The strict latest-weaned-pup day (1111 / 1017 at 8000 / 8001)
+is why the rate-based cessation landmark was introduced: two pups out of ~10⁵ births.
+
+1600-day validation, seed 7000, 6 ticks/day (`_output/run1600_p2e_tpd6`, 249 s, 0 NaN; phases
+adjustment → growth → stagnation → decline (733) → collapse (<50 % at 1345); Calhoun: 2056 at
+736, 122 at ~1444, 27 at 1588):
+
+| day | N | adults | withdrawn | mean adult competence | births in prior 100 d |
+|---:|---:|---:|---:|---:|---:|
+| 200 | 62 | 15 | 0 | 1.00 | 145 |
+| 300 | 477 | 137 | 70 | 0.46 | 713 |
+| 400 | 1522 | 626 | 383 | 0.30 | 2247 |
+| 500 | 2259 | 1710 | 1373 | 0.14 | 3185 |
+| 600 | 2178 | 2123 | 1805 | 0.11 | 1428 |
+| 700 | 2100 | 2063 | 1753 | 0.11 | 1912 |
+| 800 | 2051 | 1982 | 1685 | 0.11 | 2344 |
+| 900 | 1967 | 1912 | 1626 | 0.11 | 2159 |
+| 1000 | 1856 | 1843 | 1568 | 0.11 | 1081 |
+| 1100 | 1788 | 1788 | 1520 | 0.11 | 37 |
+| 1200 | 1699 | 1699 | 1466 | 0.09 | 8 |
+| 1300 | 1423 | 1423 | 1282 | 0.06 | 0 |
+| 1400 | 729 | 729 | 717 | 0.01 | 0 |
+| 1500 | 77 | 77 | 75 | 0.02 | 0 |
+| 1600 | 2 | 2 | 2 | 0.00 | 0 |
+
+Births continue at ≈2000 per 100 d through day 900 with no survivors (15 259 pups born, 2 111
+conceptions, every pup born after ≈560 starved); the plateau is held by adult survival alone,
+then the big cohorts born 400–600 die of age (`max_age_days` 983) between 1300 and 1550 —
+steeper and ≈100 d later than Calhoun's 122 at 1444.
+
+### Resolution check at the new parameters
+
+1600 d, seed 7000, same parameters (`_output/run1600_p2e_tpd6`, `_output/run1600_p2e_tpd24`):
+
+| | 6 tpd | 24 tpd |
+|---|---:|---:|
+| First litters | 104 | 104 |
+| N @ 315 | 542 | 346 |
+| Peak N / day | 2320 / 486 | 2296 / 536 |
+| Surviving births cease (strict latest pup) | 553 (564) | 582 (846) |
+| N @ 736 | 2077 | 2128 |
+| Last conception | 1113 | 1263 |
+| Decline onset / collapse onset | 733 / 1345 | 792 / 1386 |
+| N @ 1200 / 1400 / 1600 | 1699 / 729 / 2 | 1752 / 1047 / 20 |
+| births / conceptions | 15 259 / 2 111 | 14 668 / 2 016 |
+| wall | 249 s | 509 s |
+
+From the peak on the arc agrees within ≈5 % (peak −1 %, N@736 +2 %, cessation +29 d, collapse
+onset +41 d); this seed's early phase happened to run *slower* at 24 tpd. Twelve seeds
+(7000–7011), 400 d, N and births (mean ± se):
+
+| | 6 tpd | 12 tpd | 24 tpd |
+|---|---:|---:|---:|
+| N @ 200 | 57 ± 6 | 65 ± 4 | 67 ± 8 |
+| N @ 315 | 403 ± 36 | 436 ± 34 | 490 ± 59 |
+| N @ 400 | 1065 ± 102 | 1248 ± 100 | 1331 ± 116 |
+| births by day 400 | 2160 ± 194 | 2589 ± 184 | 2769 ± 252 |
+
+So a **residual early-growth excess of ≈ +17 % (12 tpd) / +25 % (24 tpd) at day 400 remains**
+(1.3–1.7 standard errors each, but monotone in resolution across all four rows). The
+per-decision mechanics are now equivalent by construction (verified on the lone-mother
+micro-simulation), so what is left are the continuous processes' discretisations: the Euler
+stress relaxation (`s += (gain − decay·s)·dt`, a 1 % per-step over-relaxation at dt = 1/6 that
+tightens stress around its equilibrium and so changes how often the neglect / erosion /
+conception thresholds are crossed), the per-tick Bernoulli nest kick (`0.1·k` per tick: 4 %
+fewer kicks per decision at 24 tpd) and the one-tick timing of births. Making the relaxation
+exact (`eq + (s − eq)·exp(−decay·dt)`) changes the 6-tpd reference and needs a recalibration,
+so it is left for a later pass. Before this pass the same comparison gave +20–25 % (2d) and,
+with relaxation nursing but single-tick meals, +49 %.
+
+**Honest misses / open gaps**
+- *Last conception 1113 (held-out 1161–1194) vs ≈920.* After the breakdown, conceptions continue
+  among the competent cohort born before ≈300 until it passes `female_fertile_max_age_days`
+  (604); Calhoun's conceptions stopped ≈200 days earlier. The optimiser prefers the long fertile
+  window because `peak_day` and `N@736` reward late growth; shortening it costs those. A male-side
+  or oestrus-suppression mechanism under the breakdown regime (Calhoun: males stopped courting)
+  would separate the two; not attempted here.
+- *Peak ≈70 days early* (486 vs 560; held-out 473–555) and *N@315 ≈13 % low* at the training seed
+  (542; held-out 346–630): growth is fast once it starts and the breakdown switch caps it. The
+  early exponential phase is strongly seed-dependent with 8 founders (N@315 346–630, adults@315
+  143–276 across four seeds), so these are within the seed band rather than a mechanism gap.
+- *Late collapse too steep and ≈100 d late*: 1699 at 1200 and 729 at 1400 vs Calhoun's 122 at
+  ≈1444; the cohorts born 400–600 die of `max_age_days` (983) almost together. A wider lifespan
+  distribution (per-individual max age) would spread it; not in the model.
+- *Pup survival in the uncrowded phase is low* (≈30–40 % of pups reach weaning before day 250, a
+  lone mother weans <1 of 8 in the micro-simulation) because mothers spend ≈50 % of their time
+  foraging/drinking and the nest contact needed under lethal starvation is high. The calibration
+  compensates with litter size 7.9 and conception p 0.74. Calhoun's phase-B infant mortality was
+  far lower; a more faithful time budget (nest-bound lactating females, hoppers near boxes) is
+  a candidate for a later pass.
+- *Early-phase resolution*: ≈ +17 % / +25 % faster growth per day at 12 / 24 ticks/day by day 400 (12 seeds); the arc from the peak on agrees within ≈5 %. See the resolution table above.
+- *Warp*: `density_stress_kernel` parity holds (4.7e-10); the mortality kernel mirrors the new
+  hazard form but is still untested at hazard level; the breakdown switch value is computed on
+  the host and passed in.
+- *≈75–85 % of adults withdrawn from day 500*: unchanged in kind from 2b/2d.
+
 ## Phase 2d — daily-only conception, nest-box nursing, litter abandonment (2026-10-30)
 
 Motivation: (a) the residual resolution dependence of early growth (Phase 2c) came from the

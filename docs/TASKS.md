@@ -11,9 +11,10 @@ Legend: **P0** blocking · **P1** high · **P2** medium · **P3** polish
 
 > **Status 2026-10-30:** pup-mill bug fixed, developmental-imprinting collapse
 > mechanism added (2b), daily-only conception + nest-box nursing + litter abandonment (2d),
-> recalibrated: canonical mean rel. error **0.117**, peak day 553, N@736 1924, 8 mice at 1600.
-> See `NOTES.md` "Phase 2d". Still off: last surviving birth 762 vs 600 — needs adult-stage
-> maternal breakdown under sustained crowding (conceptions continue, no young survive).
+> post-weaning maternal breakdown + weaned-density breakdown switch + relaxation nursing + lethal
+> starvation (2e), recalibrated: canonical mean rel. error **0.074** (seed 7000), surviving births
+> cease at 549–656 across four seeds, peak 2231–2344, N@736 2049–2146. See `NOTES.md` "Phase 2e".
+> Still off: last conception 1110–1190 vs ≈920; adults@315 and N@315 vary ±40 % by seed.
 
 **Goal:** Reduce mean relative landmark error from ~1.08; get first litters nearer day 104, N@315 nearer 620, peak nearer day 560, and either a collapse or an honest negative with mechanism notes.
 
@@ -70,14 +71,14 @@ Read HANDOFF.md and docs/NVIDIA_STACK.md. Add/extend Warp kernel parity tests vs
 
 ## P0-4 — dt-invariance: action persistence + per-day event effects
 
-> **Status 2026-10-30: DONE for the arc** — per-decision effects × ref/tpd,
-> √-scaled random walks, resolution-free movement reach (`SimConfig.ticks_per_day_ref = 6`).
-> Peak 2261 / 2345 / 2314 and collapse onset 1228 / 1225 / 1203 at 6 / 12 / 24 tpd; 6-tpd
-> trajectory bit-identical to the calibration. Phase 2d removed the per-tick ACT_MATE conception
-> channel; the arc from the peak on agrees within ~7 % at 6/24 tpd, but a residual early-growth
-> excess of ≈ +20–25 % at finer ticks remains (6 seeds, see `NOTES.md` "Phase 2d"), attributed to
-> clipping of per-contact nursing amounts. Remaining work: relaxation-form feeding (relief ∝
-> remaining deficit, composable over sub-steps) + recalibration.
+> **Status 2026-10-30: DONE** — decisions are held for the reference interval
+> (1/6 day); per-decision events (meal, drink, move, fight, relief, walk step) happen in full on
+> the decision tick and only continuous physics integrates on the held ticks; relaxation-form
+> nursing; exact 1−exp(−h·dt) death draws (phase 2e). The 2d residual (+20–25 % early growth at
+> 24 tpd) was not nursing clipping but single-tick meals and travel (mothers away from the nest
+> ¼ of the time at 24 tpd); spreading events over held ticks (×k) left an interleaving bias that
+> lethal starvation amplified to +60 %. 6-tpd trajectory bit-identical through all mechanics
+> changes (hash-checked); see `NOTES.md` "Phase 2e" for the 12-seed × 6/12/24 tpd table.
 
 **Goal:** The calibrated biology must give the same trajectory at 6 and 24 ticks/day. Before 2c the
 same parameters gave peak 2261 (6 tpd) vs 1088 (24 tpd) — see `NOTES.md` Phase 2b/2c.

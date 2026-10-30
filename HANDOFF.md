@@ -86,7 +86,7 @@ If a PR / commit introduces a play reward, reject it.
 
 ---
 
-## 4. Current status (as of HEAD near `9cd9f0a`, 2026-10-30)
+## 4. Current status (as of phase 2e, 2026-10-30)
 
 ### Phase 1 — done
 
@@ -190,6 +190,48 @@ few % faster per day at finer ticks (N@315 753 / 928) — see NOTES "Phase 2c".
 Full tables and the open gaps in `NOTES.md` → "Phase 2b". The worker that owned phase 2
 reported it finished; `src/` is no longer dual-edited, but still pull/rebase before pushing.
 
+### Phase 2e — maternal breakdown, held decisions, lethal starvation, recalibration (2026-10-30)
+
+- **Post-weaning maternal breakdown**: SoA `maternal_cap` eroded irreversibly (daily) for weaned
+  females above `maternal_erosion_stress`; caps maternal investment at conception/birth, so
+  conceptions continue while no litter is nursed (Calhoun phase C/D).
+- **Social-breakdown switch** decoupled from the conception ramp (`breakdown_density_threshold`)
+  and counting weaned animals (`breakdown_density_counts: weaned`) — on total N it was a
+  thermostat.
+- **Relaxation-form nursing** per nest box (`nurse_rate_per_day`, `nurse_max_pups`), lactating
+  (ROLE_NURSING) females only.
+- **Lethal starvation** (`starvation_hazard_per_day` 1.0; was a hard-coded 0.1 that let one unfed
+  pup in ten reach weaning) and exact `1 − exp(−h·dt)` death draws (NumPy + Warp).
+- **Held decisions**: agents decide every 1/6 day; per-decision events happen in full on the
+  decision tick, held ticks integrate continuous physics only. 6-tpd trajectory bit-identical.
+- **Landmark**: `last_young_day` is now the rate-based cessation of surviving births (30-day
+  rate < 5 % of its max for good); the strict latest-weaned-pup day is reported alongside (it is
+  single-survivor noise: 1111 / 1017 at held-out seeds 8000 / 8001).
+- Recalibrated (three CMA-ES studies, final 224 trials with `--sigma0 0.1`): loss 0.159.
+
+**Calibrated run (seed 7000, `configs/default.yaml`, 6 ticks/day, 1600 d, 249 s wall):**
+
+| Landmark | Calhoun | Phase 2b | Phase 2d | **Phase 2e** | held-out 8000–8002 |
+|----------|--------:|---------:|---------:|-------------:|---:|
+| First litters | 104 | 111 | 106 | **104** | 104 |
+| N @ 315 | 620 | 672 | 494 | 542 | 346–630 |
+| Peak N | 2200 | 2261 | 2023 | **2320** | 2231–2344 |
+| Peak day (first ≥97 %) | 560 | 467 | 553 | 486 | 473–555 |
+| Surviving births cease | 600 | 813 | 762 | **553** | 549–656 |
+| N @ 736 | 2056 | 2106 | 1924 | **2077** | 2049–2146 |
+| Adults @ 315 | 150 | 217 | 163 | 182 | 143–276 |
+| Last conception | ≈920 | 793 | 755 | 1113 (miss) | 1161–1194 |
+| N @ 1200 / 1600 | declining; 27 @1588 | 1316 / 93 | 853 / 8 | **1699 / 2** | 1655–1737 @1200 |
+| mean rel. error (5) | | 0.14 | 0.117 | **0.078** | 0.05–0.16 |
+
+Phases: adjustment → growth → stagnation → decline (733) → collapse (1345). Births go on at
+≈2000 per 100 d to day 900 with no survivors; the plateau is adult survival; the 400–600 cohorts
+die of age between 1300 and 1550.
+**Resolution:** same parameters at 24 ticks/day give the same arc (peak 2296 / 536, cessation 582, N@736 2128, collapse onset 1386 vs 1345) but early growth is still ≈ +17 % / +25 % faster per day at 12 / 24 tpd by day 400 (12 seeds, 1.3–1.7 se, monotone) — continuous-process discretisation, see NOTES.
+Full tables, the diagnoses (thermostat switch, unfed-pup leak, interleaving bias) and the open
+gaps (last conception ≈200 d late, early peak, steep late collapse, low uncrowded pup survival)
+are in `NOTES.md` → "Phase 2e".
+
 ---
 
 ## 5. Architecture map
@@ -288,10 +330,12 @@ Set-Location $proj
 & $py -X utf8 "$proj\main.py" --seed 7000 --out "$proj\_output\warp_smoke" --backend warp --device cuda --days 5 --max-agents 4096
 
 # Calibration (CMA-ES). optuna lives ONLY in the repo-local .venv (same Python/numpy as omnilab,
-# no warp/torch). 16-core box: 14 workers, popsize 14, 1200 d, 6 ticks/day ≈ 25 min / 8 gens.
+# no warp/torch). 16-core box: 14 workers, popsize 14, 1200 d, 6 ticks/day ≈ 3 min / generation
+# (224 trials = 16 generations ≈ 47 min). --sigma0 0.1: the default initial step (min range / 6)
+# is a third of the range for the unit-range parameters. The start point itself is trial 0.
 $pyc = "$proj\.venv\Scripts\python.exe"
-& $pyc -X utf8 -u "$proj\scripts\calibrate_optuna.py" --seed 7000 --trials 112 --popsize 14 --workers 14 `
-  --days 1200 --ticks-per-day 6 --x0 "$proj\configs\calibrated_calhoun.yaml" --out "$proj\_output\calib_cma"
+& $pyc -X utf8 -u "$proj\scripts\calibrate_optuna.py" --seed 7000 --trials 224 --popsize 14 --workers 14 `
+  --sigma0 0.1 --days 1200 --ticks-per-day 6 --x0 "$proj\configs\calibrated_calhoun.yaml" --out "$proj\_output\calib_cma"
 ```
 
 **Git (pathspec discipline — never `git add .` on a shared tree):**
@@ -320,17 +364,20 @@ Seeds: build/training `7000–7009`; unit tests `7100`; eval worlds later `8000�
 
 ### Phase 2 — Calibrate + GPU (calibration DONE 2026-10-30; GPU parity partial)
 **Accept when:**
-- [x] Mean relative landmark error **≪ 1.0** → **0.14** (peak day 467 = within 17 % of 560; N@315 672; first litters 111)
-- [x] Collapse phase appears by ~day 1200 under abundant arm → N(1200) = 58 % of peak, 93 left at 1600; the one documented miss is surviving births lasting to day 813 (Calhoun 600) — mechanism gap, see NOTES
+- [x] Mean relative landmark error **≪ 1.0** → **0.078** (phase 2e: first litters 104, peak 2320 @ 486, surviving births cease 553, N@736 2077; 2b was 0.14)
+- [x] Collapse phase appears under abundant arm → decline from 733, N(1200) = 73 % of peak, 2 left at 1600 (Calhoun 27 at 1588); surviving births cease at 553 with conceptions continuing (2e); documented misses: last conception 1113 vs ≈920, late collapse ≈100 d late and steep — see NOTES
 - [~] Warp tick path correct vs NumPy reference: density-stress + imprinting kernel parity test added (3e-8); mortality (hazard-level) and cells parity still open; CUDA Graph speedup documented in NSIGHT
 - [x] No NaNs (0 across calibration, held-out and 1600-d runs); `docs/NSIGHT.md` benches unchanged (no kernel perf work this round)
 
 Phase 2c (done): dt-invariance of the tick loop. Phase 2d (done): daily-only conception,
-nest-box nursing, litter abandonment, recalibrated (mean landmark error 0.117). Remaining
-candidates (priority order): adult-stage erosion of maternal behaviour under sustained crowding
-(so conceptions continue to ~920 while no young survive after ~600 — the one landmark still
-off); vectorize `_passive_nurse` / per-agent loops (`docs/TASKS.md` P1-3); Warp parity for
-mortality/cells.
+nest-box nursing, litter abandonment. Phase 2e (done): post-weaning maternal breakdown, weaned-
+density breakdown switch, relaxation nursing, lethal starvation, held decisions, recalibrated
+(canonical mean landmark error 0.078; surviving births cease 549–656 across four seeds while
+conceptions continue). Remaining candidates (priority order): end conceptions ≈200 d earlier
+under the breakdown regime (last conception 1113 vs ≈920; a male-side / oestrus mechanism);
+exact stress relaxation + recalibration to remove the ≈ +17–25 % early-growth excess at finer
+ticks; a lifespan distribution (late collapse too steep); vectorize `_passive_nurse` /
+per-agent loops (`docs/TASKS.md` P1-3); Warp mortality-kernel parity at hazard level.
 
 ### Phase 3 — Visuals + dashboard
 **Accept when:**

@@ -9,6 +9,13 @@
   additions since phase 1: SoA `competence`, biology `imprint_*`, `withdrawn_competence_threshold`,
   `female_fertile_max_age_days`, `wound_heal_per_day`; metrics `last_surviving_young_day`,
   `last_conception_day`, `n_adult`, `mean_competence_adult`. Environment is NOT yet frozen.
+- Status note 2026-10-30 (phase 2e): timing now met on the cessation of surviving
+  births (549–656 across four seeds vs 600) with conceptions continuing afterwards (to ≈1110–1190,
+  Calhoun ≈920 — the remaining miss); peak 2231–2344 at 473–555, N@736 2049–2146, first litters
+  104. Schema additions: SoA `maternal_cap`; biology `nurse_rate_per_day`, `nurse_max_pups`,
+  `maternal_erosion_*`, `breakdown_density_threshold`, `breakdown_density_counts`,
+  `starvation_hazard_per_day`; metrics `surv_births_cum`, `mean_maternal_cap_adult_f`; run.json
+  `surviving_birth_cessation_day`. The tick loop holds decisions for 1/6 day at finer resolutions.
 - Work package: WP-G12-adjacent / Track E toy world (Universe 25 + playground); not L3 ecology
 - Track: **E** (emergent, exploratory)
 - Owner: Jason
