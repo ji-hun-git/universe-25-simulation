@@ -163,6 +163,7 @@ def test_warp_density_stress_parity() -> None:
     eng.upload(a, sim.rng)
     b = eng._bufs
     b["dens_social"].assign(np.array([sim._breakdown_density(a.alive)], dtype=np.float32))
+    b["event_scale"].assign(np.array([1.0], dtype=np.float32))  # a decision tick
     cap_cell = float(sim.world.capacity_design / max(1, sim.world.n_cells))
     wp.launch(
         density_stress_kernel,
@@ -174,7 +175,7 @@ def test_warp_density_stress_parity() -> None:
             float(bio.nest_overcrowd_stress), cap_cell, b["dens_social"],
             float(bio.breakdown_threshold()), float(bio.social_breakdown_stress_boost),
             float(bio.maturity_days), float(bio.imprint_rate), float(bio.imprint_density_threshold),
-            float(sim.k_ev),
+            b["event_scale"],
         ],
         device=eng.device,
     )

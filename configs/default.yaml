@@ -1,6 +1,6 @@
-# Universe 25 abundant arm. Biology/drives = phase-2e CMA-ES calibration to Calhoun landmarks
-# (2026-10-30, seed 7000, 1200 d, 6 ticks/day, 224 trials; see NOTES.md 'Phase 2e' and
-# configs/calibrated_calhoun.yaml). Decisions are held for 1/6 day at finer ticks_per_day.
+# Universe 25 abundant arm. Biology/drives = phase-2f CMA-ES calibration to Calhoun landmarks
+# (2026-10-30, seed 7000, 1200 d, 6 ticks/day, 168 trials from the 2e optimum; see NOTES.md
+# 'Phase 2f' and configs/calibrated_calhoun.yaml). Decisions are held for 1/6 day at finer ticks_per_day.
 seed: 7000
 ticks_per_day: 6  # reference resolution (ticks_per_day_ref); loop is dt-invariant, 12/24 give the same arc
 max_agents: 4096
@@ -35,38 +35,38 @@ resources:
   food_refill_per_tick: 1.0e9
   water_refill_per_tick: 1.0e9
 biology:
-  gestation_days: 19.497379480389142
-  litter_mean: 7.869276379796845
+  gestation_days: 19.479738849243606
+  litter_mean: 7.249606572929899
   litter_sd: 1.5
   weaning_days: 21.0
-  maturity_days: 61.69347770344148
-  max_age_days: 983.1124866820361
-  base_mortality_per_day: 0.00015601062528444008
-  stress_mortality_scale: 0.00038333654159275894
-  first_conception_min_day: 83.83067542918124
-  menopause_density_threshold: 0.6295765988251942
-  maternal_neglect_stress: 0.8633657035508493
-  breeding_p_base: 0.7401128089963298
-  breeding_stress_coef: 0.476608611501804
-  nest_overcrowd_stress: 0.12984708129961753
+  maturity_days: 63.902303850671544
+  max_age_days: 938.1928704710334
+  base_mortality_per_day: 9.524360486307535e-05
+  stress_mortality_scale: 0.0006534730645402809
+  first_conception_min_day: 81.23565828830122
+  menopause_density_threshold: 0.6804868116669993
+  maternal_neglect_stress: 0.7887827117100081
+  breeding_p_base: 0.7868998551590284
+  breeding_stress_coef: 0.4662788930820273
+  nest_overcrowd_stress: 0.13319196739540898
   withdrawn_stress_threshold: 0.85
   withdrawn_social_threshold: 0.2
   pup_hunger_scale: 0.35
-  young_mortality_scale: 0.5614479132700883
+  young_mortality_scale: 0.44966255557347645
   mate_radius_in: 20.0
-  stillbirth_neglect_p: 0.4762881681612478
+  stillbirth_neglect_p: 0.3867616954385288
   density_mortality_scale: 0.0
-  social_breakdown_stress_boost: 0.36440273127913375
+  social_breakdown_stress_boost: 0.24829430244099573
   beautiful_one_aggression_max: 0.15
-  imprint_rate: 0.03957093176014779
-  imprint_density_threshold: 0.16080230089960584
-  withdrawn_competence_threshold: 0.26171121293694355
-  female_fertile_max_age_days: 604.394302026476
-  litter_abandon_p: 0.09322362490316101
-  breakdown_density_threshold: 0.5626378459615149
-  nurse_rate_per_day: 8.699748578331485
-  maternal_erosion_rate: 0.1718433587447977
-  maternal_erosion_stress: 0.590238231348472
+  imprint_rate: 0.02562789738225021
+  imprint_density_threshold: 0.14530942474545908
+  withdrawn_competence_threshold: 0.4460698250714801
+  female_fertile_max_age_days: 583.0754563398896
+  litter_abandon_p: 0.07998822448751196
+  breakdown_density_threshold: 0.5797082389182636
+  nurse_rate_per_day: 8.175439980634657
+  maternal_erosion_rate: 0.1686670613068217
+  maternal_erosion_stress: 0.5076751020956933
   nurse_max_pups: 6
   breakdown_density_counts: weaned
   starvation_hazard_per_day: 1.0
@@ -75,8 +75,8 @@ drives:
   thirst_gain_per_day: 1.5
   fatigue_gain_active: 0.4
   fatigue_recovery_rest: 0.8
-  stress_density_gain: 0.5036477702255636
-  stress_decay: 0.871981697735567
+  stress_density_gain: 0.39542607896501314
+  stress_decay: 0.9135074926585873
   social_drive_gain: 0.2
   curiosity_gain: 0.12
   curiosity_decay_on_novel: 0.35

@@ -69,6 +69,8 @@ class WarpTickEngine:
             ),
             "dens_frac": wp.zeros(1, dtype=wp.float32, device=self.device),
             "dens_social": wp.zeros(1, dtype=wp.float32, device=self.device),
+            "event_scale": wp.array(np.ones(1, dtype=np.float32), dtype=wp.float32,
+                                    device=self.device),
         }
         self._graph = None
         self._graph_ready = False
@@ -186,8 +188,7 @@ class WarpTickEngine:
                     float(bio.nest_overcrowd_stress), capacity_per_cell, b["dens_social"],
                     float(bio.breakdown_threshold()), float(bio.social_breakdown_stress_boost),
                     float(bio.maturity_days), float(bio.imprint_rate),
-                    float(bio.imprint_density_threshold),
-                    float(self.cfg.ticks_per_day_ref / self.cfg.ticks_per_day),
+                    float(bio.imprint_density_threshold), b["event_scale"],
                 ],
                 device=self.device,
             )
@@ -220,10 +221,16 @@ class WarpTickEngine:
             )
         self.n_launches += 1
 
-    def device_physics_step(self, agents: AgentSoA, dt: float, rng: np.random.Generator) -> None:
-        """Upload → Warp kernels (or graph replay) → download. Host still owns actions/births."""
+    def device_physics_step(
+        self, agents: AgentSoA, dt: float, rng: np.random.Generator, event_scale: float = 1.0
+    ) -> None:
+        """Upload → Warp kernels (or graph replay) → download. Host still owns actions/births.
+
+        `event_scale` is 1 on decision ticks and 0 on held ticks (per-decision events).
+        """
         self._host_cell_nest_counts(agents)
         self.upload(agents, rng)
+        self._bufs["event_scale"].assign(np.array([event_scale], dtype=np.float32))
         wp = self._wp
 
         if self.use_graph and str(self.device).startswith("cuda"):

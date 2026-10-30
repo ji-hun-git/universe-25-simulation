@@ -66,12 +66,13 @@ def density_stress_kernel(
     maturity_days: float,
     imprint_rate: float,
     imprint_thr: float,
-    event_scale: float,
+    event_scale_arr: wp.array(dtype=wp.float32),
 ):
     i = wp.tid()
     if alive[i] == 0:
         return
     dens_frac = dens_frac_arr[0]
+    event_scale = event_scale_arr[0]  # 1 on decision ticks, 0 on held ticks
     c = cell_id[i]
     local = float(cell_counts[c]) / capacity_per_cell
     gain = stress_density_gain * local
@@ -83,8 +84,10 @@ def density_stress_kernel(
             over = float(nest_occ[nid]) / float(nest_cap[nid]) - 1.0
     if dens_frac > menopause_thr:
         gain = gain + social_breakdown_boost
-    # Relaxation toward gain/decay (smooth in density; mirrors sim._density_stress).
-    stress[i] = wp.clamp(stress[i] + (gain - stress_decay * stress[i]) * dt, 0.0, 1.5)
+    # Exact relaxation toward gain/decay over dt (mirrors sim._density_stress): the daily
+    # trajectory does not depend on the tick resolution.
+    relax = 1.0 - wp.exp(-stress_decay * dt)
+    stress[i] = wp.clamp(stress[i] + (gain / stress_decay - stress[i]) * relax, 0.0, 1.5)
     if stress[i] > 0.9 and social_drive[i] > 0.0:
         social_drive[i] = wp.max(0.0, social_drive[i] - 0.05 * event_scale)
     # Developmental imprinting: young lose social competence under crowding; frozen at maturity.

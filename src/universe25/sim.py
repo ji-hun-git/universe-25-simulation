@@ -67,8 +67,8 @@ class Universe25Sim:
         # ticks in between. Per-decision events (a meal, a drink, the move to a target, a
         # fight, drive relief, a random-walk step) happen in full on the decision tick, exactly
         # as at the reference resolution; the held ticks integrate only continuous physics
-        # (drive growth, fatigue, nursing contact, stress, mortality) with dt. k_ev scales the
-        # few per-tick rates written per decision (nest kick, social decrement, Warp kernel).
+        # (drive growth, fatigue, nursing contact, stress, mortality) with dt, the stress
+        # relaxation in exact form. k_ev = ref/tpd is kept for diagnostics only.
         self.k_ev = cfg.ticks_per_day_ref / cfg.ticks_per_day
         self.ticks_per_decision = max(1, cfg.ticks_per_day // cfg.ticks_per_day_ref)
         self.dt_ref = 1.0 / cfg.ticks_per_day_ref  # length of a decision, days
@@ -700,17 +700,27 @@ class Universe25Sim:
         gain = gain + float(self.cfg.biology.nest_overcrowd_stress) * over
         if self._breakdown_density(alive) > self.cfg.biology.breakdown_threshold():
             gain = gain + float(self.cfg.biology.social_breakdown_stress_boost)
-        # random nest kick for low rank overcrowded (per-decision chance, resolution-scaled)
-        kick = over & (a.rank[idx] < 0.4) & (self.rng.random(idx.size) < 0.1 * self.k_ev)
-        if kick.any():
-            a.nest_id[idx[kick]] = self.rng.integers(0, self.world.n_nests, size=int(kick.sum()))
-        # Relaxation toward gain/decay: equilibrium stress is smooth in local density
-        # (a constant decay gave a hard density cliff with runaway stress above it).
-        a.stress[idx] = np.clip(a.stress[idx] + (gain - d.stress_decay * a.stress[idx]) * dt, 0, 1.5)
-        with_mask = (a.stress[idx] > 0.9) & (a.social_drive[idx] > 0)
-        a.social_drive[idx[with_mask]] = np.maximum(
-            0.0, a.social_drive[idx[with_mask]] - 0.05 * self.k_ev
+        decision = self._decision_tick()
+        # random nest kick for low-rank overcrowded agents: one 10 % chance per decision
+        if decision:
+            kick = over & (a.rank[idx] < 0.4) & (self.rng.random(idx.size) < 0.1)
+            if kick.any():
+                a.nest_id[idx[kick]] = self.rng.integers(
+                    0, self.world.n_nests, size=int(kick.sum())
+                )
+        # Exact relaxation toward gain/decay over dt: equilibrium stress is smooth in local
+        # density (a constant decay gave a hard density cliff) and the daily trajectory does
+        # not depend on the tick resolution (the Euler step over-relaxed by ~1 % per tick at
+        # 6 ticks/day). Mirrors warp density_stress_kernel.
+        relax = -math.expm1(-d.stress_decay * dt)
+        a.stress[idx] = np.clip(
+            a.stress[idx] + (gain / d.stress_decay - a.stress[idx]) * relax, 0, 1.5
         )
+        if decision:  # social withdrawal under high stress: a per-decision step
+            with_mask = (a.stress[idx] > 0.9) & (a.social_drive[idx] > 0)
+            a.social_drive[idx[with_mask]] = np.maximum(
+                0.0, a.social_drive[idx[with_mask]] - 0.05
+            )
         # Developmental imprinting (Calhoun): young exposed to crowded cells / overfull nests
         # lose social competence; the trait is frozen once mature. Mirrors Warp kernel.
         bio = self.cfg.biology
@@ -972,6 +982,9 @@ class Universe25Sim:
         pg = self.world.playground_bounds
         b["dens_frac"].assign(np.array([dens_frac], dtype=np.float32))
         b["dens_social"].assign(np.array([self._breakdown_density(a.alive)], dtype=np.float32))
+        b["event_scale"].assign(
+            np.array([1.0 if self._decision_tick() else 0.0], dtype=np.float32)
+        )
 
         def launches():
             wp.launch(
@@ -984,7 +997,7 @@ class Universe25Sim:
                     float(bio.nest_overcrowd_stress), capacity_per_cell, b["dens_social"],
                     float(bio.breakdown_threshold()), float(bio.social_breakdown_stress_boost),
                     float(bio.maturity_days), float(bio.imprint_rate),
-                    float(bio.imprint_density_threshold), float(self.k_ev),
+                    float(bio.imprint_density_threshold), b["event_scale"],
                 ],
                 device=eng.device,
             )
