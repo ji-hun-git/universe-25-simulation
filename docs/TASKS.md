@@ -12,9 +12,10 @@ Legend: **P0** blocking · **P1** high · **P2** medium · **P3** polish
 > **Status 2026-10-30:** pup-mill bug fixed, developmental-imprinting collapse
 > mechanism added (2b), daily-only conception + nest-box nursing + litter abandonment (2d),
 > post-weaning maternal breakdown + weaned-density breakdown switch + relaxation nursing + lethal
-> starvation (2e), recalibrated: canonical mean rel. error **0.074** (seed 7000), surviving births
-> cease at 549–656 across four seeds, peak 2231–2344, N@736 2049–2146. See `NOTES.md` "Phase 2e".
-> Still off: last conception 1110–1190 vs ≈920; adults@315 and N@315 vary ±40 % by seed.
+> starvation (2e), exact stress relaxation (2f), recalibrated: canonical mean rel. error **0.103**
+> (seed 7000; 0.11–0.17 held-out), surviving births cease at 467–654 across four seeds, peak
+> 2457–2602, N@736 2181–2257. See `NOTES.md` "Phase 2f" / "Phase 2e". Still off: last conception
+> 1063–1196 vs ≈920; peak 12–18 % high; adults@315 and N@315 vary ±40 % by seed.
 
 **Goal:** Reduce mean relative landmark error from ~1.08; get first litters nearer day 104, N@315 nearer 620, peak nearer day 560, and either a collapse or an honest negative with mechanism notes.
 
@@ -77,8 +78,10 @@ Read HANDOFF.md and docs/NVIDIA_STACK.md. Add/extend Warp kernel parity tests vs
 > nursing; exact 1−exp(−h·dt) death draws (phase 2e). The 2d residual (+20–25 % early growth at
 > 24 tpd) was not nursing clipping but single-tick meals and travel (mothers away from the nest
 > ¼ of the time at 24 tpd); spreading events over held ticks (×k) left an interleaving bias that
-> lethal starvation amplified to +60 %. 6-tpd trajectory bit-identical through all mechanics
-> changes (hash-checked); see `NOTES.md` "Phase 2e" for the 12-seed × 6/12/24 tpd table.
+> lethal starvation amplified to +60 %. Phase 2f made the stress relaxation exact and the nest
+> kick / social withdrawal per-decision events: 6 vs 24 ticks/day now agree within 5 % on N and
+> births by day 400 (12 seeds) and over the whole 1600-d arc at seed 7000. See `NOTES.md`
+> "Phase 2f" for the tables.
 
 **Goal:** The calibrated biology must give the same trajectory at 6 and 24 ticks/day. Before 2c the
 same parameters gave peak 2261 (6 tpd) vs 1088 (24 tpd) — see `NOTES.md` Phase 2b/2c.

@@ -1,5 +1,113 @@
 # Universe25 Play — NOTES
 
+## Phase 2f — exact stress relaxation, per-decision kick/withdrawal, recalibration (2026-10-30)
+
+Motivation: Phase 2e left a monotone early-growth excess at finer ticks (N@400 1065 / 1248 / 1331
+at 6 / 12 / 24 ticks/day, 12 seeds) after the per-decision mechanics had been made equivalent by
+construction. The remaining resolution-dependent pieces were the continuous processes.
+
+### Changes (NumPy path and Warp `density_stress_kernel`, parity 9e-10)
+
+1. **Exact stress relaxation.** `s += (gain/decay − s)·(1 − exp(−decay·dt))` replaces the Euler
+   step `s += (gain − decay·s)·dt`. The Euler factor at dt = 1/6 with decay 0.87 was 0.855 per
+   tick against the exact 0.865, i.e. ~1 % extra relaxation per tick at the reference and ~0.3 %
+   at 24 tpd; stress hugged its equilibrium more tightly at coarse ticks, which changed how
+   often the neglect / erosion / conception thresholds were crossed.
+2. **Nest kick and stress-driven social withdrawal are per-decision events** (10 % chance and
+   −0.05 on the decision tick) instead of per-tick rates ×k (Bernoulli per tick gave 4 % fewer
+   kicks per decision at 24 tpd). The Warp kernel receives the event scale through a device
+   buffer (1 on decision ticks, 0 on held ticks), so CUDA-graph replay stays valid.
+
+Both change the 6-tpd reference trajectory (hash `02e9e2e5…` for `configs/default.yaml`,
+300 d), so the biology was recalibrated.
+
+### Resolution check before recalibration (phase-2e parameters, 12 seeds, 400 d, mean ± se)
+
+| | 6 tpd | 12 tpd | 24 tpd |
+|---|---:|---:|---:|
+| N @ 200 | 58 ± 5 | 57 ± 6 | 74 ± 9 |
+| N @ 315 | 417 ± 39 | 366 ± 45 | 443 ± 59 |
+| N @ 400 | 1122 ± 96 | 1021 ± 103 | 1215 ± 126 |
+| births by day 400 | 2234 ± 198 | 2205 ± 214 | 2616 ± 283 |
+
+The monotone trend of phase 2e (+17 % / +25 % at day 400) is gone; the remaining differences
+are within about one standard error and change sign between resolutions.
+
+### Recalibration results (CMA-ES 168 trials, `--sigma0 0.1`, start = phase-2e optimum, 39 min)
+
+The start point scores 0.216 under the exact relaxation (was 0.159); the study reached **0.151**
+at trial 136. Artifacts: `configs/calibrated_calhoun.yaml`, `configs/default.yaml`,
+`configs/calibration_study_p2f.json`. Landmarks at 1200 d:
+
+| Landmark | Calhoun | **7000** (train) | 8000 | 8001 | 8002 |
+|---|---:|---:|---:|---:|---:|
+| First litters (day) | 104 | **102** | 102 | 105 | 102 |
+| N @ day 315 | 620 | 531 | 487 | 564 | 286 |
+| Adults @ day 315 | 150 | 163 | 217 | 177 | 88 |
+| Peak N / day (first ≥97 %) | 2200 / 560 | 2502 / 502 | 2515 / 504 | 2602 / 429 | 2457 / 604 |
+| Surviving births cease (day) | 600 | **533** | 554 | 467 | 654 |
+| strict latest weaned pup (day) | (600) | 550 | 554 | 520 | 676 |
+| N @ day 736 | 2056 | **2181** | 2223 | 2257 | 2251 |
+| Last conception (day) | ≈920 | 1063 | 1076 | 1082 | 1196 |
+| N @ 1200 | | 1756 | 1779 | 1804 | 1857 |
+| loss | | 0.151 | 0.396 | 0.317 | 0.904 |
+| mean rel. error (canonical 5) | | 0.103 | 0.111 | 0.148 | 0.169 |
+
+Against phase 2e (train canonical 0.074; held-out 0.08 / 0.16 / 0.05) the training fit is a
+little worse — the peak now overshoots by 12–18 % (2457–2602) — while the held-out spread is
+tighter; the strict latest-weaned-pup day no longer drifts into the 1000s at any seed (lethal
+starvation + exact relaxation). The 8002 loss is the early-phase seed fluctuation (N@315 286,
+adults 88). The one systematic miss is unchanged: last conception 1063–1196 vs ≈920.
+
+### Resolution check at the new parameters
+
+1600 d, seed 7000 (`_output/run1600_p2f_tpd6`, `_output/run1600_p2f_tpd24`):
+
+| | 6 tpd | 24 tpd |
+|---|---:|---:|
+| First litters | 102 | 103 |
+| N @ 315 | 531 | 513 |
+| Peak N / day | 2502 / 502 | 2580 / 477 |
+| Surviving births cease (strict latest pup) | 533 (550) | 513 (537) |
+| N @ 736 | 2181 | 2235 |
+| Last conception | 1063 | 1087 |
+| Decline onset / collapse onset | 614 / 1310 | 558 / 1309 |
+| N @ 1200 / 1400 / 1600 | 1756 / 370 / 1 | 1775 / 305 / 1 |
+| births / conceptions | 14 271 / 2 156 | 16 686 / 2 518 |
+| wall | 173 s | 324 s |
+
+Twelve seeds (7000–7011), 400 d, mean ± se:
+
+| | 6 tpd | 12 tpd | 24 tpd |
+|---|---:|---:|---:|
+| N @ 200 | 80 ± 8 | 66 ± 7 | 71 ± 6 |
+| N @ 315 | 479 ± 49 | 383 ± 41 | 471 ± 46 |
+| N @ 400 | 1316 ± 115 | 1166 ± 126 | 1384 ± 107 |
+| births by day 400 | 2525 ± 228 | 2182 ± 220 | 2520 ± 201 |
+
+6 and 24 ticks/day agree within 5 % on every row; 12 ticks/day sits ~10 % lower (0.9 se), with
+no ordering in resolution. Against the pre-2f tables (+20–25 % in 2d, +17 / +25 % monotone in
+2e) the tick resolution is now a resolution knob within seed noise. The whole-arc single-seed
+agreement (peak +3 %, N@736 +2 %, collapse onset −1 d) is the best of any phase.
+
+**Honest misses / open gaps**
+- *Last conception 1063 (held-out 1076–1196) vs ≈920*: unchanged in kind from 2e — the competent
+  cohort born before ≈300 conceives until it passes `female_fertile_max_age_days` (583);
+  Calhoun's males stopped courting ≈200 days earlier. A male-side / oestrus mechanism under the
+  breakdown regime is the next modelling candidate.
+- *Peak 12–18 % high* (2502; held-out 2457–2602) and *≈60 days early* (502; 429–604): the
+  optimiser accepted the overshoot to hold N@736 (2181 vs 2056) and the cessation (533); the
+  weaned-density switch (0.58) caps the plateau rather than the peak.
+- *N@315 14 % low at the training seed* (531; held-out 286–564) — the 8-founder exponential phase
+  is seed-dominated (adults@315 88–217).
+- *Late collapse steep*: 1756 at 1200, 370 at 1400, 1 at 1600 vs Calhoun 122 at ≈1444 and 27 at
+  1588 — closer than 2e (729 at 1400) but still a cohort dying of `max_age_days` (938) together.
+- *Pup survival in the uncrowded phase is low* (≈30–40 % to weaning) because mothers spend ≈50 %
+  of their time at the hoppers; the fit compensates with litter 7.2 and conception p 0.79.
+- *Early-phase resolution*: 6 vs 24 ticks/day agree within 5 % on N and births through day 400 (12 seeds); 12 tpd sits ~10 % low (0.9 se) with no ordering in resolution — seed noise, not a trend.
+- *Warp*: `density_stress_kernel` parity 9e-10 with the exact relaxation and the event buffer;
+  mortality kernel mirrors the hazard form, untested at hazard level; the nest kick is host-only.
+
 ## Phase 2e — maternal breakdown, relaxation nursing, held decisions, lethal starvation (2026-10-30)
 
 Motivation (from Phase 2d's open gaps): (a) the last *surviving* birth landed at 762 and coincided

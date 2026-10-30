@@ -16,6 +16,10 @@
   `maternal_erosion_*`, `breakdown_density_threshold`, `breakdown_density_counts`,
   `starvation_hazard_per_day`; metrics `surv_births_cum`, `mean_maternal_cap_adult_f`; run.json
   `surviving_birth_cessation_day`. The tick loop holds decisions for 1/6 day at finer resolutions.
+- Status note 2026-10-30 (phase 2f): stress relaxation exact, nest kick / social
+  withdrawal per-decision; recalibrated — canonical error 0.103 (seed 7000), 0.11–0.17 held-out;
+  6 vs 24 ticks/day agree within 5 % (12 seeds, 400 d) and over the full 1600-d arc. Misses:
+  last conception 1063–1196 vs ≈920, peak 2457–2602 vs 2200.
 - Work package: WP-G12-adjacent / Track E toy world (Universe 25 + playground); not L3 ecology
 - Track: **E** (emergent, exploratory)
 - Owner: Jason
