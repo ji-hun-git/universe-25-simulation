@@ -1,0 +1,17 @@
+biology:
+  first_conception_min_day: 91.39175011107714
+  gestation_days: 18.605982588932424
+  litter_mean: 8.616585166271681
+  maturity_days: 50.786421965638
+  breeding_p_base: 0.6430464483621323
+  menopause_density_threshold: 0.5680379007197067
+  stress_mortality_scale: 0.04683684586042289
+  density_mortality_scale: 1.809296781199124e-05
+  base_mortality_per_day: 0.0007884744922517223
+  maternal_neglect_stress: 0.6429490815070001
+  stillbirth_neglect_p: 0.5513641200119225
+  social_breakdown_stress_boost: 0.337032530432635
+  young_mortality_scale: 0.4541031613799914
+drives:
+  stress_density_gain: 0.9502304466670164
+  stress_decay: 0.23119709972281732

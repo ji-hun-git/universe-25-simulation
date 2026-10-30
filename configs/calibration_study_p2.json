@@ -1,0 +1,278 @@
+{
+  "method": "optuna.CmaEsSampler",
+  "n_trials": 40,
+  "train_seed": 7000,
+  "heldout_seeds": [
+    8000,
+    8001,
+    8002
+  ],
+  "days": 700.0,
+  "ticks_per_day": 6,
+  "wall_seconds": 1367.3286332999123,
+  "best_loss_train_optuna": 0.9241687183509388,
+  "best_params": {
+    "first_conception_min_day": 91.39175011107714,
+    "gestation_days": 18.605982588932424,
+    "litter_mean": 8.616585166271681,
+    "maturity_days": 50.786421965638,
+    "breeding_p_base": 0.6430464483621323,
+    "menopause_density_threshold": 0.5680379007197067,
+    "stress_mortality_scale": 0.04683684586042289,
+    "density_mortality_scale": 1.809296781199124e-05,
+    "base_mortality_per_day": 0.0007884744922517223,
+    "maternal_neglect_stress": 0.6429490815070001,
+    "stillbirth_neglect_p": 0.5513641200119225,
+    "stress_density_gain": 0.9502304466670164,
+    "stress_decay": 0.23119709972281732,
+    "social_breakdown_stress_boost": 0.337032530432635,
+    "young_mortality_scale": 0.4541031613799914
+  },
+  "priors": {
+    "first_conception_min_day": {
+      "low": 70.0,
+      "high": 100.0,
+      "log": false,
+      "prior": "Uniform; Calhoun first litters 104 minus gestation ~20"
+    },
+    "gestation_days": {
+      "low": 18.0,
+      "high": 22.0,
+      "log": false,
+      "prior": "Uniform around laboratory mouse gestation"
+    },
+    "litter_mean": {
+      "low": 5.0,
+      "high": 9.0,
+      "log": false,
+      "prior": "Uniform around typical litter size 6\u20138"
+    },
+    "maturity_days": {
+      "low": 35.0,
+      "high": 55.0,
+      "log": false,
+      "prior": "Uniform; earlier maturity \u2192 faster early growth"
+    },
+    "breeding_p_base": {
+      "low": 0.25,
+      "high": 0.95,
+      "log": false,
+      "prior": "Uniform; daily conception attempt rate at low density"
+    },
+    "menopause_density_threshold": {
+      "low": 0.25,
+      "high": 0.7,
+      "log": false,
+      "prior": "Uniform; dens/capacity where breeding collapses (peak~2200/3840\u22480.57)"
+    },
+    "stress_mortality_scale": {
+      "low": 0.002,
+      "high": 0.08,
+      "log": true,
+      "prior": "LogUniform; stress\u00b2 mortality drives late die-off"
+    },
+    "density_mortality_scale": {
+      "low": 1e-05,
+      "high": 0.02,
+      "log": true,
+      "prior": "LogUniform; extra mortality \u221d dens\u00b2 (crowding)"
+    },
+    "base_mortality_per_day": {
+      "low": 0.0001,
+      "high": 0.002,
+      "log": true,
+      "prior": "LogUniform; background adult mortality"
+    },
+    "maternal_neglect_stress": {
+      "low": 0.45,
+      "high": 0.9,
+      "log": false,
+      "prior": "Uniform; stress above which mothers neglect / stillbirth"
+    },
+    "stillbirth_neglect_p": {
+      "low": 0.2,
+      "high": 0.9,
+      "log": false,
+      "prior": "Uniform; P(lose litter | neglect)"
+    },
+    "stress_density_gain": {
+      "low": 0.15,
+      "high": 1.2,
+      "log": false,
+      "prior": "Uniform; how fast local density raises stress"
+    },
+    "stress_decay": {
+      "low": 0.05,
+      "high": 0.4,
+      "log": false,
+      "prior": "Uniform; stress recovery rate"
+    },
+    "social_breakdown_stress_boost": {
+      "low": 0.0,
+      "high": 0.8,
+      "log": false,
+      "prior": "Uniform; extra stress gain when dens > menopause threshold"
+    },
+    "young_mortality_scale": {
+      "low": 0.1,
+      "high": 0.6,
+      "log": false,
+      "prior": "Uniform; pup/juv mortality relative to adult baseline"
+    }
+  },
+  "landmarks_target": {
+    "first_litters_day": 104.0,
+    "n_at_day_315": 620.0,
+    "peak_n": 2200.0,
+    "peak_day": 560.0,
+    "last_young_day": 600.0
+  },
+  "train_eval": {
+    "observed": {
+      "first_litters_day": 115.0,
+      "n_at_day_315": 594.0,
+      "peak_n": 831.0,
+      "peak_day": 585.0,
+      "last_young_day": 699.5,
+      "final_n": 587.0
+    },
+    "loss": 0.9241687183509388,
+    "errors": {
+      "first_litters_day": 0.10576923076923077,
+      "n_at_day_315": 0.041935483870967745,
+      "peak_n": 0.6222727272727273,
+      "peak_day": 0.044642857142857144,
+      "last_young_day": 0.16583333333333333
+    },
+    "seed": 7000,
+    "params": {
+      "first_conception_min_day": 91.39175011107714,
+      "gestation_days": 18.605982588932424,
+      "litter_mean": 8.616585166271681,
+      "maturity_days": 50.786421965638,
+      "breeding_p_base": 0.6430464483621323,
+      "menopause_density_threshold": 0.5680379007197067,
+      "stress_mortality_scale": 0.04683684586042289,
+      "density_mortality_scale": 1.809296781199124e-05,
+      "base_mortality_per_day": 0.0007884744922517223,
+      "maternal_neglect_stress": 0.6429490815070001,
+      "stillbirth_neglect_p": 0.5513641200119225,
+      "stress_density_gain": 0.9502304466670164,
+      "stress_decay": 0.23119709972281732,
+      "social_breakdown_stress_boost": 0.337032530432635,
+      "young_mortality_scale": 0.4541031613799914
+    }
+  },
+  "heldout_evals": [
+    {
+      "observed": {
+        "first_litters_day": 111.0,
+        "n_at_day_315": 561.0,
+        "peak_n": 764.0,
+        "peak_day": 370.0,
+        "last_young_day": 699.8333333333333,
+        "final_n": 592.0
+      },
+      "loss": 1.2423187582442536,
+      "errors": {
+        "first_litters_day": 0.0673076923076923,
+        "n_at_day_315": 0.09516129032258064,
+        "peak_n": 0.6527272727272727,
+        "peak_day": 0.3392857142857143,
+        "last_young_day": 0.16638888888888875
+      },
+      "seed": 8000,
+      "params": {
+        "first_conception_min_day": 91.39175011107714,
+        "gestation_days": 18.605982588932424,
+        "litter_mean": 8.616585166271681,
+        "maturity_days": 50.786421965638,
+        "breeding_p_base": 0.6430464483621323,
+        "menopause_density_threshold": 0.5680379007197067,
+        "stress_mortality_scale": 0.04683684586042289,
+        "density_mortality_scale": 1.809296781199124e-05,
+        "base_mortality_per_day": 0.0007884744922517223,
+        "maternal_neglect_stress": 0.6429490815070001,
+        "stillbirth_neglect_p": 0.5513641200119225,
+        "stress_density_gain": 0.9502304466670164,
+        "stress_decay": 0.23119709972281732,
+        "social_breakdown_stress_boost": 0.337032530432635,
+        "young_mortality_scale": 0.4541031613799914
+      }
+    },
+    {
+      "observed": {
+        "first_litters_day": 112.0,
+        "n_at_day_315": 694.0,
+        "peak_n": 799.0,
+        "peak_day": 571.0,
+        "last_young_day": 699.6666666666666,
+        "final_n": 625.0
+      },
+      "loss": 1.0497148476354181,
+      "errors": {
+        "first_litters_day": 0.07692307692307693,
+        "n_at_day_315": 0.11935483870967742,
+        "peak_n": 0.6368181818181818,
+        "peak_day": 0.019642857142857142,
+        "last_young_day": 0.16611111111111104
+      },
+      "seed": 8001,
+      "params": {
+        "first_conception_min_day": 91.39175011107714,
+        "gestation_days": 18.605982588932424,
+        "litter_mean": 8.616585166271681,
+        "maturity_days": 50.786421965638,
+        "breeding_p_base": 0.6430464483621323,
+        "menopause_density_threshold": 0.5680379007197067,
+        "stress_mortality_scale": 0.04683684586042289,
+        "density_mortality_scale": 1.809296781199124e-05,
+        "base_mortality_per_day": 0.0007884744922517223,
+        "maternal_neglect_stress": 0.6429490815070001,
+        "stillbirth_neglect_p": 0.5513641200119225,
+        "stress_density_gain": 0.9502304466670164,
+        "stress_decay": 0.23119709972281732,
+        "social_breakdown_stress_boost": 0.337032530432635,
+        "young_mortality_scale": 0.4541031613799914
+      }
+    },
+    {
+      "observed": {
+        "first_litters_day": 112.0,
+        "n_at_day_315": 653.0,
+        "peak_n": 788.0,
+        "peak_day": 497.0,
+        "last_young_day": 699.5,
+        "final_n": 721.0
+      },
+      "loss": 1.2430461555899452,
+      "errors": {
+        "first_litters_day": 0.07692307692307693,
+        "n_at_day_315": 0.0532258064516129,
+        "peak_n": 0.6418181818181818,
+        "peak_day": 0.1125,
+        "last_young_day": 0.16583333333333333
+      },
+      "seed": 8002,
+      "params": {
+        "first_conception_min_day": 91.39175011107714,
+        "gestation_days": 18.605982588932424,
+        "litter_mean": 8.616585166271681,
+        "maturity_days": 50.786421965638,
+        "breeding_p_base": 0.6430464483621323,
+        "menopause_density_threshold": 0.5680379007197067,
+        "stress_mortality_scale": 0.04683684586042289,
+        "density_mortality_scale": 1.809296781199124e-05,
+        "base_mortality_per_day": 0.0007884744922517223,
+        "maternal_neglect_stress": 0.6429490815070001,
+        "stillbirth_neglect_p": 0.5513641200119225,
+        "stress_density_gain": 0.9502304466670164,
+        "stress_decay": 0.23119709972281732,
+        "social_breakdown_stress_boost": 0.337032530432635,
+        "young_mortality_scale": 0.4541031613799914
+      }
+    }
+  ],
+  "heldout_mean_loss": 1.1783599204898723,
+  "note": "Collapse must emerge from density/social params; no collapse_day in search space."
+}
