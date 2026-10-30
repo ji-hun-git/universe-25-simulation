@@ -79,3 +79,17 @@ NOTES.md          dated results
 ## License
 
 MIT. Not affiliated with Calhoun’s estate or NIMH.
+
+
+## NVIDIA stack
+
+Warp is the core. See [docs/NVIDIA_STACK.md](docs/NVIDIA_STACK.md).
+
+```powershell
+python scripts\probe_nvidia.py
+# Nsight (when using --backend warp --device cuda):
+# nsys profile -o _output/nsys/u25 python main.py --seed 7000 --out _output\nsys_run --backend warp --device cuda --days 5
+```
+
+Integrated: Warp, PyTorch CUDA NVTX hooks, CUDA Graph scaffolding, Newton stub, USD (`pxr`) pen export.  
+Planned: Warp tick kernels + CUDA Graph capture, Newton rigid playground, Isaac Lab / Gymnasium vec env, Omniverse live session.

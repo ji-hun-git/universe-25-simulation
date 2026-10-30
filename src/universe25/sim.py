@@ -41,6 +41,8 @@ from universe25.metrics.playscore import PlayScoreAccumulator
 from universe25.io.snapshots import SnapshotWriter
 from universe25.rng import make_rng
 from universe25.world.geometry import World, build_world
+from universe25.nvidia.nvtx_ranges import nvtx_range
+from universe25.nvidia.cuda_graphs import CudaGraphTick
 
 
 class Universe25Sim:
@@ -60,6 +62,7 @@ class Universe25Sim:
         self.logger = MetricsLogger(self.out_dir / "metrics.parquet")
         self.playscore = PlayScoreAccumulator()
         self.snapshots = SnapshotWriter(self.out_dir / "snapshots")
+        self.cuda_graph = CudaGraphTick(enabled=False, backend=self.backend, device=self.device)
         self._action_hist = np.zeros(N_ACTIONS, dtype=np.int64)
         self._conceptions = 0
         self._births = 0
@@ -140,17 +143,23 @@ class Universe25Sim:
             self.day = self.tick * self.dt_days
             return
 
-        self._refill_resources()
-        self._update_drives(alive)
-        self._assign_roles(alive)
-        actions = self._select_actions(alive)
-        self._execute_actions(alive, actions)
-        self._density_stress(alive)
-        self._passive_nurse(alive)
-        self._daily_breeding_pass(alive)
-        self._reproduce(alive)
-        self._age_and_die(alive)
-        self._check_nan()
+        with nvtx_range("Universe25_step"):
+            self._refill_resources()
+            with nvtx_range("drives"):
+                self._update_drives(alive)
+            with nvtx_range("roles"):
+                self._assign_roles(alive)
+            with nvtx_range("actions"):
+                actions = self._select_actions(alive)
+                self._execute_actions(alive, actions)
+            with nvtx_range("density_stress"):
+                self._density_stress(alive)
+            with nvtx_range("life"):
+                self._passive_nurse(alive)
+                self._daily_breeding_pass(alive)
+                self._reproduce(alive)
+                self._age_and_die(alive)
+            self._check_nan()
 
         a.n_alive = int(a.alive.sum())
         if a.n_alive > self._peak_n:
@@ -740,6 +749,7 @@ class Universe25Sim:
             "playground_enabled": self.world.playground_enabled,
             "n_nests": self.world.n_nests,
             "n_play_objects": len(self.world.play_objects),
+            "cuda_graph": self.cuda_graph.status(),
         }
         (self.out_dir / "run.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
         return summary

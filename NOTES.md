@@ -17,3 +17,10 @@
 - Vectorized SoA host path; Warp device mirror stubbed for phase-2 kernels
 - Calibration no longer imports pandas
 
+
+## 2026-10-30 — NVIDIA stack hooks
+
+- Added `src/universe25/nvidia/`: NVTX ranges (torch.cuda.nvtx), CudaGraphTick scaffolding, Newton playground stub, USD pen export, RL vec-env spec, stack probe.
+- Lab venv has warp 1.18, torch 2.11+cu128, newton 1.7.0, pxr; no gymnasium/isaaclab/omni/nvtx package.
+- Docs: docs/NVIDIA_STACK.md
+
