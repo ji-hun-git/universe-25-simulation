@@ -20,6 +20,10 @@
   withdrawal per-decision; recalibrated — canonical error 0.103 (seed 7000), 0.11–0.17 held-out;
   6 vs 24 ticks/day agree within 5 % (12 seeds, 400 d) and over the full 1600-d arc. Misses:
   last conception 1063–1196 vs ≈920, peak 2457–2602 vs 2200.
+- Status note 2026-10-31 (phase 2g): male courtship breakdown (`courtship_cap`,
+  `courtship_erosion_*`) ends conceptions at 930 (held-out 885–1059) vs ≈920; the
+  conception landmark is rate-based like surviving births. Canonical error 0.100. Remaining:
+  peak 2482 vs 2200, steep late collapse.
 - Work package: WP-G12-adjacent / Track E toy world (Universe 25 + playground); not L3 ecology
 - Track: **E** (emergent, exploratory)
 - Owner: Jason

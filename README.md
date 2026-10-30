@@ -44,13 +44,15 @@ python scripts\calibrate.py --metrics _output\smoke\metrics.parquet --out _outpu
 | Decline | thereafter | slow: N = 2056 at day 736, 122 at day ~1444 |
 
 Also reported (not in the canonical mean error): N@736 = 2056, 150 adults (+470 immatures) at
-day 315, last conception ≈ day 920.
+day 315, last conception ≈ day 920 (measured as the rate-based cessation of conceptions, like
+surviving births; the strict last-conception day is reported alongside).
 
 Collapse is **emergent**: density → stress → neglect / litter abandonment / breeding suppression,
 plus a developmental `competence` trait that young lose under crowding and keep for life
-(Calhoun's "beautiful ones"; Marsden 1972 showed the deficit persisted after transfer), and an
+(Calhoun's "beautiful ones"; Marsden 1972 showed the deficit persisted after transfer), an
 irreversible post-weaning loss of maternal capacity under sustained stress (Calhoun's phase C/D
-mothers that attacked and expelled their young while conceptions went on). A social-breakdown
+mothers that attacked and expelled their young while conceptions went on) and its male
+counterpart, a loss of courtship capacity that ends conceptions (phase D). A social-breakdown
 stress boost switches on above a weaned-population density (the behavioural sink), nursing is a
 relaxation toward satiety per nest box, and starvation is lethal within days. Conception is a
 once-per-day process and agents hold each decision for 1/6 day, so results do not depend on the

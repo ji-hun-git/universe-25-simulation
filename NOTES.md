@@ -1,5 +1,132 @@
 # Universe25 Play — NOTES
 
+## Phase 2g — male courtship breakdown, recalibration (2026-10-31)
+
+Motivation: after the maternal breakdown (2e/2f) conceptions continued to 1063–1196 (Calhoun
+≈920) because the competent cohort born before ≈300 kept conceiving until it passed
+`female_fertile_max_age_days`. Calhoun's phase-D males had stopped courting and defending
+territory; the model had no male-side breakdown.
+
+### Change (NumPy path; daily host pass, no kernel change)
+
+**Male courtship capacity** (`courtship_cap`, SoA, 1.0 at birth): once per day every weaned male
+above `courtship_erosion_stress` loses `courtship_erosion_rate × excess`, irreversibly (mirror of
+`maternal_cap`, `_daily_courtship_erosion`). The daily breeding pass uses, per cell, the mean of
+`competence × courtship_cap` over the resident eligible males (was `competence` alone), so the
+conception probability of every female in the cell decays with the males' accumulated exposure.
+Off by default (rate 0); with it off the 6-tpd trajectory is bit-identical to phase 2f (hash
+`d8661863…` for `configs/default.yaml`, 300 d). Logged as `mean_courtship_cap_adult_m`.
+
+**Landmark made rate-based.** The first scan of the new parameter was non-monotone (strict
+last-conception day 1148 / 1004 / 1026 / 1130 for rates 0.015 / 0.02 / 0.025 / 0.03 at threshold
+0.5) and a CMA-ES study on it sat flat at 0.167 for seven generations: the strict "day of the
+last conception" is one event among ~2 000 and swings by ±100 days with any parameter nudge
+(each nudge is a new random realisation). `last_conception_day` is now the rate-based
+cessation (`rate_cessation_day`: last day on which the 30-day conception count is still ≥ 5 % of
+its maximum), the same statistic as for surviving births; the strict day is reported alongside
+(`last_conception_strict_day`). Calhoun's "≈920" is itself a single event, so the comparison is
+approximate either way.
+
+Scan at the 2f parameters, seed 7000, 1200 d, threshold 0.5 (conception cessation / loss):
+
+| rate | 0 (2f) | 0.015 | 0.02 | 0.025 | 0.03 | 0.04 | 0.05 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| conception cessation (day) | 1003 | 970 | 984 | 959 | **930** | 921 | 650 |
+| loss | 0.135 | 0.142 | 0.134 | 0.134 | **0.120** | 0.145 | 0.215 |
+
+(Under the rate-based measure the 2f gap was +9 % — 1003 vs 920 — not the +15–30 % the strict
+day suggested; the strict 2f values 1063–1196 are in the 2f section.)
+
+Smooth and monotone in the plateau 0.015–0.04, with a cliff at 0.05 where the courtship
+capacity is destroyed during the peak excursion and conceptions end with the peak. The other
+landmarks are untouched (peak 2447–2494 at 473–495, cessation of surviving births 510–547,
+N@736 2150–2193). Threshold 0.6 is a weak lever (strict day 1069–1105 for 0.015–0.03).
+
+### Recalibration results (CMA-ES 84 trials, `--sigma0 0.1`, start = 2f optimum + rate 0.03 / 0.5)
+
+No trial beat the start point in six generations (13.5 min), so the phase-2g parameters are the
+2f optimum plus `courtship_erosion_rate` 0.03 / `courtship_erosion_stress` 0.5. Artifacts:
+`configs/calibrated_calhoun.yaml`, `configs/default.yaml`, `configs/calibration_study_p2g.json`.
+Landmarks at 1200 d (rate-based cessation days; strict single-event days in parentheses):
+
+| Landmark | Calhoun | **7000** (train) | 8000 | 8001 | 8002 |
+|---|---:|---:|---:|---:|---:|
+| First litters (day) | 104 | **102** | 102 | 105 | 102 |
+| N @ day 315 | 620 | 531 | 487 | 564 | 286 |
+| Adults @ day 315 | 150 | 163 | 217 | 177 | 88 |
+| Peak N / day (first ≥97 %) | 2200 / 560 | 2482 / 493 | 2453 / 492 | 2608 / 434 | 2458 / 603 |
+| Surviving births cease (strict) | 600 | **547** (700) | 550 (811) | 467 (502) | 666 (849) |
+| N @ day 736 | 2056 | **2173** | 2182 | 2158 | 2285 |
+| Conception cessation (strict) | ≈920 | **930** (1130) | 968 (1177) | 885 (994) | 1059 (1177) |
+| N @ 1200 | | 1779 | 1767 | 1769 | 1919 |
+| loss | | 0.120 | 0.359 | 0.272 | 0.848 |
+| mean rel. error (canonical 5) | | 0.100 | 0.111 | 0.146 | 0.172 |
+
+Conception cessation moved from 1003 / 1076–1196 (2f, rate-based / strict) to 930 / 885–1059,
+the last of the eight Calhoun numbers to come within ~10 % at the training seed. Everything else
+is the 2f fit (the courtship term only acts after the peak). Held-out mean loss 0.49 (2f 0.54).
+
+### Validation
+
+1600 d, seed 7000, 6 ticks/day (`_output/run1600_p2g_tpd6`, 138 s, 0 NaN; phases decline
+622 → collapse 1312) and 24 ticks/day (`_output/run1600_p2g_tpd24`, 268 s):
+
+| | 6 tpd | 24 tpd |
+|---|---:|---:|
+| First litters | 102 | 103 |
+| N @ 315 | 531 | 513 |
+| Peak N / day | 2482 / 493 | 2530 / 469 |
+| Surviving births cease (strict latest pup) | 547 (700) | 502 (542) |
+| N @ 736 | 2173 | 2185 |
+| Conception cessation | 930 | 847 |
+| Decline onset / collapse onset | 622 / 1312 | 619 / 1315 |
+| N @ 1200 / 1400 / 1600 | 1779 / 391 / 6 | 1796 / 336 / 1 |
+| births / conceptions | 10,575 / 1,593 | 8,198 / 1,251 |
+| mean rel. error (canonical 5) | 0.100 | 0.132 |
+
+| day | N | adults | withdrawn | mean adult competence | births in prior 100 d |
+|---:|---:|---:|---:|---:|---:|
+| 200 | 73 | 20 | 0 | 0.99 | 140 |
+| 300 | 503 | 157 | 66 | 0.53 | 631 |
+| 400 | 1441 | 605 | 368 | 0.32 | 1806 |
+| 500 | 2341 | 1819 | 1523 | 0.15 | 2911 |
+| 600 | 2291 | 2218 | 1948 | 0.13 | 1322 |
+| 700 | 2189 | 2170 | 1896 | 0.13 | 1341 |
+| 800 | 2129 | 2109 | 1838 | 0.13 | 1284 |
+| 900 | 2052 | 2044 | 1787 | 0.13 | 788 |
+| 1000 | 1991 | 1991 | 1739 | 0.13 | 261 |
+| 1100 | 1925 | 1925 | 1693 | 0.12 | 65 |
+| 1200 | 1779 | 1779 | 1603 | 0.11 | 26 |
+| 1300 | 1320 | 1320 | 1263 | 0.07 | 0 |
+| 1400 | 391 | 391 | 384 | 0.07 | 0 |
+| 1500 | 26 | 26 | 24 | 0.16 | 0 |
+| 1600 | 6 | 6 | 6 | 0.20 | 0 |
+
+Twelve seeds (7000–7011), 400 d, mean ± se:
+
+| | 6 tpd | 24 tpd |
+|---|---:|---:|
+| N @ 200 | 80 ± 8 | 71 ± 6 |
+| N @ 315 | 479 ± 49 | 471 ± 46 |
+| N @ 400 | 1314 ± 115 | 1391 ± 111 |
+| births by day 400 | 2524 ± 227 | 2522 ± 203 |
+
+**Honest misses / open gaps**
+- *Peak 12–18 % high* (2482; held-out 2453–2608) and *≈60 days early* (493; 434–603): unchanged
+  from 2f — the optimiser trades the peak for N@736 and the cessation; the weaned-density switch
+  caps the plateau, not the peak. Candidate: a density-dependent term in infant survival before
+  the switch (Calhoun's phase-C infant mortality rose gradually).
+- *Early phase seed-dominated*: N@315 286–564 and adults@315 88–217 across four seeds with 8
+  founders; the training seed sits 14 % low on N@315.
+- *Late collapse steep*: 1779 at 1200, 391 at 1400, 6 at 1600 vs Calhoun 122 at ≈1444, 27 at 1588; the 400–600 cohorts die
+  of `max_age_days` (938) together. A per-individual lifespan distribution would spread it.
+- *Pup survival in the uncrowded phase is low* (≈30–40 % to weaning): mothers spend ≈50 % of their
+  time at the hoppers; litter 7.2 and conception p 0.79 compensate.
+- *Single-event landmarks*: the strict last-conception and latest-weaned-pup days (1130 / 700 at
+  the training seed) remain noisy by construction and are reported, not fitted.
+- *Warp*: `density_stress_kernel` parity 9e-10; mortality kernel mirrors the hazard form,
+  untested at hazard level; nest kick, erosion passes and breeding pass are host-only.
+
 ## Phase 2f — exact stress relaxation, per-decision kick/withdrawal, recalibration (2026-10-30)
 
 Motivation: Phase 2e left a monotone early-growth excess at finer ticks (N@400 1065 / 1248 / 1331
