@@ -1,5 +1,117 @@
 # Universe25 Play — NOTES
 
+## Phase 2d — daily-only conception, nest-box nursing, litter abandonment (2026-10-30)
+
+Motivation: (a) the residual resolution dependence of early growth (Phase 2c) came from the
+per-tick ACT_MATE conception channel; (b) the last *surviving* birth landed at ~813 vs Calhoun's
+600 because communal nursing within 8 in rescued late litters whose own mothers had failed.
+
+Changes (NumPy path; no kernel change — nursing/breeding are host-side):
+1. **Conception is purely daily.** `ACT_MATE` is courtship only (`_approach_mate`: move toward
+   the nearest eligible partner, no RNG draw). All conceptions happen in `_daily_breeding_pass`,
+   so the conception rate cannot depend on how often the per-tick action softmax is sampled.
+   `breeding_p_base` is now the only conception rate (prior widened to 0.1–0.9).
+2. **Nursing is per nest box.** Passive and active nursing feed only pups whose `nest_id` equals
+   the mother's (and are within reach). A litter whose mothers are dead, displaced by a nest kick,
+   incompetent (maternal < 0.4) or above the neglect stress threshold is not rescued by other
+   boxes — Calhoun: abandoned litters died.
+3. **Litter abandonment** (`litter_abandon_p`, daily): a nursing mother above
+   `maternal_neglect_stress` abandons her box's litter with this probability; those pups get
+   `nest_id = -1`, are never nursed again and starve within ~1–2 weeks. Weaned survivors without
+   a box adopt the nearest one. Emergent from stress, no scheduled day (Calhoun phase C:
+   "litters abandoned, young expelled pre-weaning"; Gwizdałła & Duś use an abandonment
+   probability above a critical density). Logged as `abandoned_cum` / `abandoned_pups`.
+Nest occupancy counts ignore box-less pups (NumPy + Warp host counts).
+
+Start point (phase-2b params, `breeding_p_base` 0.35, `litter_abandon_p` 0.2), untuned, seed 7000,
+1200 d: loss 0.75 — first litters 110, N@315 700, peak 2024 @ 494, N@736 2000, last surviving
+birth 806, N(1200) 1169.
+
+### Recalibration results (CMA-ES 112 trials, 14 workers, 1200 d, 6 ticks/day)
+Wall 21.4 min. Best trial 54, loss **0.236**; held-out 8000 / 8001 / 8002: 0.32 / 0.40 / 1.08
+(mean 0.60; the 8002 miss is N@315 = 242 and a late peak at 641 — with 8 founders the early
+exponential phase is strongly seed-dependent). Artifacts: `configs/calibrated_calhoun.yaml`,
+`configs/default.yaml`, `configs/calibration_study_p2d.json`.
+
+| Landmark | Calhoun | Phase 2b | **Phase 2d** seed 7000 | held-out 8000–8002 |
+|---|---:|---:|---:|---:|
+| First litters (day) | 104 | 111 | **106** | 106–110 |
+| N @ day 315 | 620 | 672 | 494 | 242–571 |
+| Peak N | 2200 | 2261 | **2023** | 1846–1991 |
+| Peak day (first ≥97 %) | 560 | 467 | **553** | 576–641 |
+| Last surviving birth (day) | 600 | 813 | **762** | 764–838 |
+| N @ day 736 | 2056 | 2106 | **1924** | 1781–1919 |
+| Adults @ day 315 | 150 | 217 | **163** | 124–205 |
+| Last conception (day) | ≈920 | 793 | 755 | 745–819 |
+| N @ 1200 | | 1316 | 853 (42 % of peak) | 727–1035 |
+| mean rel. error (canonical 5) | | 0.140 | **0.117** | |
+
+1600-day validation (`_output/run1600_p2d_tpd6`, wall 56 s, 0 NaN; phases: growth → stagnation →
+decline (791) → collapse (<50 % peak at 1167)); Calhoun for comparison: 2056 at 736, 122 at
+~1444, 27 at 1588:
+
+| day | N | adults | withdrawn | mean adult competence | births in prior 100 d |
+|---:|---:|---:|---:|---:|---:|
+| 200 | 82 | 26 | 0 | 0.85 | 85 |
+| 300 | 421 | 121 | 41 | 0.57 | 476 |
+| 400 | 1383 | 591 | 394 | 0.29 | 1485 |
+| 500 | 1806 | 1416 | 1242 | 0.11 | 1364 |
+| 600 | 1999 | 1737 | 1604 | 0.08 | 809 |
+| 700 | 1982 | 1800 | 1680 | 0.07 | 479 |
+| 800 | 1799 | 1768 | 1659 | 0.06 | 167 |
+| 900 | 1619 | 1619 | 1517 | 0.06 | 0 |
+| 1200 | 853 | 853 | 853 | 0.00 | 0 |
+| 1400 | 215 | 215 | 215 | 0.00 | 0 |
+| 1600 | 8 | 8 | 8 | 0.00 | 0 |
+
+Resolution check (same params, seed 7000, 1600 d, `_output/run1600_p2d_tpd24`, 285 s):
+
+| | 6 tpd | 24 tpd |
+|---|---:|---:|
+| First litters | 106 | 110 |
+| N @ 315 | 494 | 285 |
+| Peak N / day | 2023 / 553 | 2095 / 608 |
+| Last surviving birth | 762 | 805 |
+| N @ 736 | 1924 | 2052 |
+| Last conception | 755 | 786 |
+| Decline onset / collapse onset | 791 / 1167 | 854 / 1210 |
+| N @ 1200 / 1600 | 853 / 8 | 1086 / 29 |
+| births total | 4865 | 4495 |
+
+The arc agrees (peak +4 %, N@736 +7 %, collapse onset +4 %). The early phase differs at this
+single seed (N@315 285 vs 494), but a single seed is not informative here. Six seeds
+(7000–7005), 400 d, same params:
+
+| | 6 tpd mean ± sd | 24 tpd mean ± sd |
+|---|---:|---:|
+| N @ 200 | 69 ± 13 | 91 ± 25 |
+| N @ 315 | 416 ± 109 | 510 ± 183 |
+| N @ 400 | 1124 ± 269 | 1435 ± 304 |
+| births by day 400 | 1655 ± 456 | 2010 ± 437 |
+
+So a **residual early-growth excess of ≈ +20–25 % at finer ticks remains** (≈1–2 standard
+errors with 6 seeds), same sign as in 2c but smaller; seed 7000 alone happened to go the other
+way. Conception is daily now, so the remaining channel is infant survival: per-contact nursing
+amounts are clipped (hunger floor 0, energy cap 1), and four quarter-size contacts waste less
+than one full-size contact, so pups are fed slightly better at finer ticks and more daughters
+reach breeding age. Fix for a later pass: relaxation-form feeding (relief proportional to the
+remaining deficit, composed over sub-steps) — changes the 6-tpd reference, so it needs another
+recalibration. Everything from the peak onward agrees within ~7 % across resolutions.
+
+**Honest misses / open gaps**
+- *Last surviving birth 762 vs 600* (held-out 764–838; across trials min 675 at a 1180 peak,
+  median 818). Still a mechanism limit, but of a different kind than in 2b: now the last
+  conception (755) and the last surviving birth (762) nearly coincide, i.e. the late litters of
+  the remaining competent, fertile females *survive*, whereas Calhoun's conceptions continued to
+  ≈920 with no survivors after 600. What is missing is the breakdown of maternal behaviour in
+  *already-adult* females under prolonged crowding (Calhoun: nursing females turned aggressive,
+  wounded and expelled their own young). Candidate for a phase 2e: an adult-stage erosion of
+  `maternal` under sustained stress (irreversible, like competence), which would keep
+  conceptions going while infant survival goes to zero.
+- *Early phase slightly small* (N@315 494, peak 2023): the optimiser traded it for peak timing
+  (553) and the cessation landmark; both within the seed-to-seed band.
+- *≈85–90 % of adults withdrawn from day 500*: unchanged from 2b; Calhoun does not quantify it.
+
 ## Phase 2c — dt-invariance of the tick loop (2026-10-30; TASKS P0-4)
 
 Problem (found at the end of 2b): the calibrated parameters gave peak 2261 at 6 ticks/day but

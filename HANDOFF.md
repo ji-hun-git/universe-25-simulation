@@ -4,7 +4,7 @@
 > **Repo (private):** https://github.com/ji-hun-git/universe25-play  
 > **Local path (lab PC):** `C:\Users\user\Projects\universe25-play`  
 > **Owner:** Jason (ji-hun-git) · **Research partner:** gan  
-> **Date:** 2026-10-30 (Asia/Seoul) · **Phase:** 1 complete; **phase 2 calibration done (2b: mean landmark error 0.14, emergent collapse; 2c: tick loop dt-invariant)**; Warp parity partial; phase 3 (visuals) and phase 4 (play module) not started
+> **Date:** 2026-10-30 (Asia/Seoul) · **Phase:** 1 complete; **phase 2 calibration done (2b/2d: mean landmark error 0.117, emergent collapse; 2c: tick loop dt-invariant)**; Warp parity partial; phase 3 (visuals) and phase 4 (play module) not started
 
 Read this file first. Then read `PLAN.md`, `NOTES.md`, `docs/NVIDIA_STACK.md`, `docs/TASKS.md`. Follow `CONTRIBUTING.md` for day-to-day rules.
 
@@ -157,21 +157,31 @@ stress at ~80 d. Full diagnosis in `NOTES.md` ("Phase 2b").
 - Parallel CMA-ES (`--workers/--popsize`, process pool) from the repo-local `.venv` (has optuna).
 - New tests: `tests/test_biology_guards.py` (incl. Warp↔NumPy stress/competence parity).
 
-**Calibrated run (seed 7000, `configs/default.yaml`, 6 ticks/day, 1600 d, 45 s wall):**
+### Phase 2d — daily-only conception, nest-box nursing, litter abandonment (2026-10-30)
 
-| Landmark | Calhoun | Phase 1 | Phase 2b |
-|----------|--------:|--------:|---------:|
-| First litters | 104 | 221 | **111** |
-| N @ 315 | 620 | 48 | **672** |
-| Peak N | 2200 | 1715 | **2261** |
-| Peak day (first ≥97 %) | 560 | ~1395 | 467 |
-| Last surviving birth | 600 | ≥1600 | 813 (mechanism gap, see NOTES) |
-| N @ 736 | 2056 | — | **2106** |
-| N @ 1200 / 1600 | declining | 1339 @1600, still growing | **1316 / 93** |
-| mean rel. error (5) | | 1.08 | **0.14** |
+- `ACT_MATE` is courtship only; all conception happens in the daily breeding pass (removes the
+  per-tick conception channel that made early growth resolution-dependent).
+- Nursing feeds only pups of the mother's own nest box; stressed nursing mothers abandon their
+  box's litter with daily probability `litter_abandon_p` (pups lose the box and starve).
+- Recalibrated (CMA-ES 112 trials, 21 min): loss 0.236.
 
-Phases detected: adjustment → growth → stagnation → decline (832) → collapse (1228). Held-out
-seeds 8000–8002 keep the shape (peak 2238–2305, N@736 2116–2171); N@315 varies 404–827.
+**Calibrated run (seed 7000, `configs/default.yaml`, 6 ticks/day, 1600 d, 56 s wall):**
+
+| Landmark | Calhoun | Phase 1 | Phase 2b | **Phase 2d** |
+|----------|--------:|--------:|---------:|-------------:|
+| First litters | 104 | 221 | 111 | **106** |
+| N @ 315 | 620 | 48 | 672 | 494 |
+| Peak N | 2200 | 1715 | 2261 | **2023** |
+| Peak day (first ≥97 %) | 560 | ~1395 | 467 | **553** |
+| Last surviving birth | 600 | ≥1600 | 813 | 762 (mechanism gap, see NOTES) |
+| N @ 736 | 2056 | — | 2106 | **1924** |
+| Adults @ 315 | 150 | — | 217 | **163** |
+| N @ 1200 / 1600 | declining; 27 @1588 | 1339 @1600, growing | 1316 / 93 | **853 / 8** |
+| mean rel. error (5) | | 1.08 | 0.14 | **0.117** |
+
+Phases detected: adjustment → growth → stagnation → decline (791) → collapse (1167). Held-out
+seeds 8000–8002: peak 1846–1991, N@736 1781–1919; N@315 varies 242–571 (8 founders ⇒ the
+exponential phase is seed-sensitive).
 **Resolution:** calibrated at the reference 6 ticks/day (`SimConfig.ticks_per_day_ref`); since
 phase 2c the tick loop is dt-invariant (per-decision effects × ref/tpd, random walks √-scaled,
 movement reaches its target within one decision), so 12 or 24 ticks/day give the same arc
@@ -270,8 +280,8 @@ Set-Location $proj
 # Calibrate a run
 & $py -X utf8 "$proj\scripts\calibrate.py" --metrics "$proj\_output\smoke\metrics.parquet" --out "$proj\_output\smoke\calibration.json" --run-json "$proj\_output\smoke\run.json"
 
-# Long abundant+playground, calibrated (default.yaml = phase-2b params, 6 ticks/day; ~50 s on CPU)
-# → peak 2262, N@736 2106, 93 left at 1600, calibration_mean_rel_error 0.140
+# Long abundant+playground, calibrated (default.yaml = phase-2d params, 6 ticks/day; ~55 s on CPU)
+# → peak 2028, N@736 1924, 8 left at 1600, calibration_mean_rel_error 0.117
 & $py -X utf8 "$proj\main.py" --seed 7000 --out "$proj\_output\run1600_p2b" --days 1600 --backend numpy --device cpu --max-agents 4096 --playground on
 
 # Warp path (when kernels ready)
@@ -315,11 +325,12 @@ Seeds: build/training `7000–7009`; unit tests `7100`; eval worlds later `8000�
 - [~] Warp tick path correct vs NumPy reference: density-stress + imprinting kernel parity test added (3e-8); mortality (hazard-level) and cells parity still open; CUDA Graph speedup documented in NSIGHT
 - [x] No NaNs (0 across calibration, held-out and 1600-d runs); `docs/NSIGHT.md` benches unchanged (no kernel perf work this round)
 
-Phase 2c (done 2026-10-30): dt-invariance of the tick loop — arc identical at 6/12/24 ticks/day,
-6-tpd trajectory bit-identical to the calibration. Remaining candidates (priority order):
-stress-dependent litter abandonment to close the day-600 cessation gap; purely-daily conception
-(drop the per-tick ACT_MATE conception channel) to remove the residual early-growth resolution
-dependence, then re-calibrate; vectorize `_passive_nurse` / per-agent loops (`docs/TASKS.md` P1-3).
+Phase 2c (done): dt-invariance of the tick loop. Phase 2d (done): daily-only conception,
+nest-box nursing, litter abandonment, recalibrated (mean landmark error 0.117). Remaining
+candidates (priority order): adult-stage erosion of maternal behaviour under sustained crowding
+(so conceptions continue to ~920 while no young survive after ~600 — the one landmark still
+off); vectorize `_passive_nurse` / per-agent loops (`docs/TASKS.md` P1-3); Warp parity for
+mortality/cells.
 
 ### Phase 3 — Visuals + dashboard
 **Accept when:**

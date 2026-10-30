@@ -10,8 +10,10 @@ Legend: **P0** blocking · **P1** high · **P2** medium · **P3** polish
 ## P0-1 — Biology calibration toward Calhoun landmarks
 
 > **Status 2026-10-30:** pup-mill bug fixed, developmental-imprinting collapse
-> mechanism added, recalibrated — see `NOTES.md` "Phase 2b" for the before/after table. Remaining
-> work on this card = whatever landmark is still off in that table.
+> mechanism added (2b), daily-only conception + nest-box nursing + litter abandonment (2d),
+> recalibrated: canonical mean rel. error **0.117**, peak day 553, N@736 1924, 8 mice at 1600.
+> See `NOTES.md` "Phase 2d". Still off: last surviving birth 762 vs 600 — needs adult-stage
+> maternal breakdown under sustained crowding (conceptions continue, no young survive).
 
 **Goal:** Reduce mean relative landmark error from ~1.08; get first litters nearer day 104, N@315 nearer 620, peak nearer day 560, and either a collapse or an honest negative with mechanism notes.
 
@@ -71,10 +73,11 @@ Read HANDOFF.md and docs/NVIDIA_STACK.md. Add/extend Warp kernel parity tests vs
 > **Status 2026-10-30: DONE for the arc** — per-decision effects × ref/tpd,
 > √-scaled random walks, resolution-free movement reach (`SimConfig.ticks_per_day_ref = 6`).
 > Peak 2261 / 2345 / 2314 and collapse onset 1228 / 1225 / 1203 at 6 / 12 / 24 tpd; 6-tpd
-> trajectory bit-identical to the calibration. **Open residual:** early growth a few % faster per
-> day at finer ticks (N@315 672 / 753 / 928) because per-tick MATE probability depends on the
-> drive sawtooth amplitude. Follow-up: make conception purely daily (remove the per-tick ACT_MATE
-> conception side effect), then re-calibrate. See `NOTES.md` "Phase 2c".
+> trajectory bit-identical to the calibration. Phase 2d removed the per-tick ACT_MATE conception
+> channel; the arc from the peak on agrees within ~7 % at 6/24 tpd, but a residual early-growth
+> excess of ≈ +20–25 % at finer ticks remains (6 seeds, see `NOTES.md` "Phase 2d"), attributed to
+> clipping of per-contact nursing amounts. Remaining work: relaxation-form feeding (relief ∝
+> remaining deficit, composable over sub-steps) + recalibration.
 
 **Goal:** The calibrated biology must give the same trajectory at 6 and 24 ticks/day. Before 2c the
 same parameters gave peak 2261 (6 tpd) vs 1088 (24 tpd) — see `NOTES.md` Phase 2b/2c.

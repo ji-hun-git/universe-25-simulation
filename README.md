@@ -46,9 +46,11 @@ python scripts\calibrate.py --metrics _output\smoke\metrics.parquet --out _outpu
 Also reported (not in the canonical mean error): N@736 = 2056, 150 adults (+470 immatures) at
 day 315, last conception ≈ day 920.
 
-Collapse is **emergent**: density → stress → neglect / breeding suppression, plus a developmental
-`competence` trait that young lose under crowding and keep for life (Calhoun's "beautiful ones";
-Marsden 1972 showed the deficit persisted after transfer). No parameter names a collapse day.
+Collapse is **emergent**: density → stress → neglect / litter abandonment / breeding suppression,
+plus a developmental `competence` trait that young lose under crowding and keep for life
+(Calhoun's "beautiful ones"; Marsden 1972 showed the deficit persisted after transfer). Conception
+is a once-per-day process and nursing is per nest box, so results do not depend on the tick
+resolution. No parameter names a collapse day.
 `calibration.json` reports honest error; see `NOTES.md` for the current fit and its misses.
 
 Calibration (CMA-ES) runs from the repo-local `.venv` (has optuna; the shared lab venv does not):
