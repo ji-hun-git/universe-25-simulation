@@ -23,3 +23,8 @@
 ### Gaps
 - Peak population still ~831 vs ~2200; need longer CMA budget and/or days≥1200 for collapse.
 - Phase-3: keep SoA resident on device to unlock full-tick speedups.
+
+### 1200d collapse check (best params, seed 7000)
+- peak still 831 @ day 585; final_n 599; last_young ~1200 (breeding continues)
+- loss rose to 3.89 — Calhoun-style cessation of young ~day 600 **not** achieved yet
+- Mechanism gap: density_mortality_scale searched to ~1.8e-5 (too weak); menopause thr ~0.57 but peak dens 831/3840≈0.22 never crosses it
