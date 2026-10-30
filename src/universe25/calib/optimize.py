@@ -1,4 +1,4 @@
-"""Optuna + CMA-ES calibration to Calhoun 1973 landmarks."""
+﻿"""Optuna + CMA-ES calibration to Calhoun 1973 landmarks."""
 from __future__ import annotations
 
 import json
@@ -19,7 +19,7 @@ def run_study(
     n_trials: int = 40,
     seed: int = 7000,
     heldout_seeds: list[int] | None = None,
-    days: float = 1600.0,
+    days: float = 700.0,
     ticks_per_day: int = 6,
     n_jobs: int = 1,
 ) -> dict[str, Any]:
@@ -75,3 +75,4 @@ def run_study(
 
     (out_dir / "best_params.yaml").write_text(yaml.safe_dump(best_cfg, sort_keys=False), encoding="utf-8")
     return report
+

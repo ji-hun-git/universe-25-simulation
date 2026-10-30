@@ -320,6 +320,10 @@ class Universe25Sim:
         cdf = np.cumsum(P, axis=1)
         r = self.rng.random(m)
         chosen = (r[:, None] <= cdf).argmax(axis=1).astype(np.int8)
+        # Critical physiological needs override Softmax (dt-invariant need drive)
+        chosen = np.where(th > 0.85, ACT_DRINK, chosen)
+        chosen = np.where(hung > 0.85, ACT_FORAGE, chosen)
+        chosen = np.where((fat > 1.2) & (hung < 0.7) & (th < 0.7), ACT_REST, chosen)
         actions[idx] = chosen
         return actions
 
@@ -355,13 +359,16 @@ class Universe25Sim:
         m_forage = act == ACT_FORAGE
         if m_forage.any():
             ii = idx[m_forage]
-            # consume food per cell (sequential for conservation)
+            # Meal size is dt-invariant: clear ~2.5x daily hunger gain per successful tick
+            # so ticks_per_day is resolution, not biology. Cap still respects stock.
+            # Abundant / scarce: eat until satiated this tick (stock-limited).
+            # Makes ticks_per_day a resolution knob, not a starvation knob.
             for j, i in enumerate(ii):
                 c = int(a.cell_id[i])
-                take = min(0.35, self.food[c])
+                take = min(float(a.hunger[i]), self.food[c])
                 self.food[c] -= take
                 a.hunger[i] = max(0.0, a.hunger[i] - take)
-                a.energy[i] = min(1.0, a.energy[i] + 0.25 * take)
+                a.energy[i] = min(1.0, a.energy[i] + 0.25 * take + 0.1 * dt)
             move_mask(m_forage, food_xy[:, 0], food_xy[:, 1], 8.0)
             a.fatigue[ii] = np.minimum(1.5, a.fatigue[ii] + d.fatigue_gain_active * dt)
 
@@ -370,7 +377,7 @@ class Universe25Sim:
             ii = idx[m_drink]
             for i in ii:
                 c = int(a.cell_id[i])
-                take = min(0.35, self.water[c])
+                take = min(float(a.thirst[i]), self.water[c])
                 self.water[c] -= take
                 a.thirst[i] = max(0.0, a.thirst[i] - take)
             move_mask(m_drink, water_xy[:, 0], water_xy[:, 1], 8.0)

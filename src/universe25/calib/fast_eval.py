@@ -1,6 +1,7 @@
-"""Fast landmark evaluation for calibration (minimal I/O)."""
+﻿"""Fast landmark evaluation for calibration (minimal I/O)."""
 from __future__ import annotations
 
+import shutil
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -12,7 +13,13 @@ from universe25.config import SimConfig, load_config
 from universe25.sim import Universe25Sim
 
 
-def _extract_landmarks(sim: Universe25Sim, days_hist: list[float], n_hist: list[int], births_hist: list[int], last_young_hist: list[float]) -> dict[str, float]:
+def _extract_landmarks(
+    sim: Universe25Sim,
+    days_hist: list[float],
+    n_hist: list[int],
+    births_hist: list[int],
+    last_young_hist: list[float],
+) -> dict[str, float]:
     days = np.asarray(days_hist, dtype=np.float64)
     ns = np.asarray(n_hist, dtype=np.float64)
     births = np.asarray(births_hist, dtype=np.float64)
@@ -51,18 +58,16 @@ def evaluate_params(
             "max_agents": max_agents,
             "backend": "numpy",
             "device": "cpu",
-            "log_every_ticks": ticks_per_day,  # daily
+            "log_every_ticks": 10**9,
             "snapshot_every_days": 0,
             "arm_label": "TRACK-E-U25-CALIB",
             "playground": {"enabled": playground},
             "use_cuda_graph": False,
         }
     )
-    cfg = load_config(base_config, overrides) if base_config else SimConfig.model_validate(
-        {**SimConfig().model_dump(), **_flatten_top(overrides)}
-    )
-    # load_config path preferred
-    if base_config is None:
+    if base_config is not None:
+        cfg = load_config(base_config, overrides)
+    else:
         cfg = SimConfig(
             seed=seed,
             days=days,
@@ -70,7 +75,7 @@ def evaluate_params(
             max_agents=max_agents,
             backend="numpy",
             device="cpu",
-            log_every_ticks=ticks_per_day,
+            log_every_ticks=10**9,
             snapshot_every_days=0,
             arm_label="TRACK-E-U25-CALIB",
             use_cuda_graph=False,
@@ -81,10 +86,10 @@ def evaluate_params(
             setattr(cfg.drives, k, v)
         cfg.playground.enabled = playground
 
-    with tempfile.TemporaryDirectory(prefix="u25cal_") as td:
-        out = Path(td)
+    td = tempfile.mkdtemp(prefix="u25cal_")
+    out = Path(td)
+    try:
         sim = Universe25Sim(cfg, out)
-        # disable expensive logger flushes: replace log with in-memory
         days_hist: list[float] = []
         n_hist: list[int] = []
         births_hist: list[int] = []
@@ -98,12 +103,18 @@ def evaluate_params(
                 n_hist.append(sim.agents.n_alive)
                 births_hist.append(sim._births)
                 last_young_hist.append(sim._last_young_day)
-            if sim.agents.n_alive == 0 and sim.day > 100:
+            if sim.agents.n_alive == 0 and sim.day > 50:
                 break
+        try:
+            sim.logger.close()
+        except Exception:
+            pass
         obs = _extract_landmarks(sim, days_hist, n_hist, births_hist, last_young_hist)
+        errors: dict[str, float | None] = {}
+        for k, tgt in LANDMARKS.items():
+            o = obs.get(k, float("nan"))
+            errors[k] = None if o != o else abs(o - tgt) / tgt
         loss = landmark_loss(obs, require_collapse=True)
-        return {"observed": obs, "loss": loss, "seed": seed, "params": params}
-
-
-def _flatten_top(overrides: dict[str, Any]) -> dict[str, Any]:
-    return {k: v for k, v in overrides.items() if k not in ("biology", "drives", "playground")}
+        return {"observed": obs, "loss": loss, "errors": errors, "seed": seed, "params": params}
+    finally:
+        shutil.rmtree(td, ignore_errors=True)
