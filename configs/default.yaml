@@ -1,0 +1,58 @@
+seed: 7000
+ticks_per_day: 24
+max_agents: 4096
+initial_pairs: 4
+days: 1600.0
+device: auto
+backend: auto
+log_every_ticks: 24
+snapshot_every_days: 50
+arm_label: TRACK-E-U25-ABUND-PG
+geometry:
+  width_in: 101.0
+  height_in: 101.0
+  n_cells_x: 4
+  n_cells_y: 4
+  nests_per_cell: 16
+  food_per_cell: 1
+  water_per_cell: 1
+  capacity_design: 3840
+playground:
+  enabled: true
+  x0: 35.0
+  y0: 35.0
+  x1: 66.0
+  y1: 66.0
+  n_balls: 8
+  n_tunnels: 4
+  n_ramps: 2
+resources:
+  mode: abundant
+  food_refill_per_tick: 1.0e9
+  water_refill_per_tick: 1.0e9
+biology:
+  gestation_days: 20.0
+  litter_mean: 6.0
+  litter_sd: 1.5
+  weaning_days: 21.0
+  maturity_days: 50.0
+  max_age_days: 800.0
+  base_mortality_per_day: 0.0008
+  stress_mortality_scale: 0.01
+  first_conception_min_day: 90.0
+  menopause_density_threshold: 0.55
+  maternal_neglect_stress: 0.7
+drives:
+  hunger_gain_per_day: 1.2
+  thirst_gain_per_day: 1.5
+  fatigue_gain_active: 0.4
+  fatigue_recovery_rest: 0.8
+  stress_density_gain: 0.35
+  stress_decay: 0.15
+  social_drive_gain: 0.2
+  curiosity_gain: 0.12
+  curiosity_decay_on_novel: 0.35
+  boredom_gain: 0.08
+  boredom_decay_on_vary: 0.25
+  aggression_baseline: 0.1
+  aggression_scarce_boost: 0.5
