@@ -1,10 +1,8 @@
-"""CUDA Graph capture scaffolding for the Warp tick loop.
+﻿"""CUDA Graph capture for the Warp post-step (stress/mortality/cells).
 
-Phase-1 host SoA still runs on NumPy; when Warp kernels own the step, capture
-the graph once after warmup and replay with wp.capture_launch / torch.cuda.CUDAGraph.
-
-This module is safe on CPU: capture() is a no-op unless device is CUDA and
-backend is warp.
+Phase-2 hybrid: host NumPy owns actions/breeding; Warp owns density stress,
+mortality, and cell updates. Capture lives in WarpTickEngine when
+use_cuda_graph=True (dens_frac lives in a device buffer so replay stays valid).
 """
 from __future__ import annotations
 
@@ -21,27 +19,29 @@ class CudaGraphTick:
     _graph: Any = field(default=None, repr=False)
     _captures: int = 0
     _replays: int = 0
+    _engine: Any = field(default=None, repr=False)
+
+    def bind_engine(self, engine: Any) -> None:
+        self._engine = engine
 
     def maybe_capture(self, tick_fn: Callable[[], None]) -> Callable[[], None]:
-        """Return a callable that either runs tick_fn or replays a captured graph.
-
-        For phase 1 we only record intent and always call tick_fn. When Warp
-        kernels are the sole mutators of device buffers, replace the body with
-        wp.capture_begin/end + capture_launch (or torch.cuda.CUDAGraph).
-        """
-        if not self.enabled or self.backend != "warp" or not str(self.device).startswith("cuda"):
-            return tick_fn
-
-        def wrapped() -> None:
-            # Placeholder: real capture requires device-only side effects.
-            # Documented in docs/NVIDIA_STACK.md.
-            self._captures = max(self._captures, 1)
-            tick_fn()
-            self._replays += 1
-
-        return wrapped
+        """Legacy hook; real capture is inside WarpTickEngine._warp_post_step."""
+        return tick_fn
 
     def status(self) -> dict[str, Any]:
+        eng = self._engine
+        if eng is not None:
+            st = eng.status()
+            return {
+                "enabled": bool(self.enabled),
+                "backend": self.backend,
+                "device": self.device,
+                "graph_captured": bool(st.get("graph_ready")),
+                "captures": 1 if st.get("graph_ready") else 0,
+                "replays": int(st.get("n_graph_replays", 0)),
+                "n_launches": int(st.get("n_launches", 0)),
+                "phase": "warp_hybrid_post_step",
+            }
         return {
             "enabled": self.enabled,
             "backend": self.backend,
@@ -49,5 +49,5 @@ class CudaGraphTick:
             "graph_captured": self._graph is not None,
             "captures": self._captures,
             "replays": self._replays,
-            "phase": "scaffolding",
+            "phase": "numpy_host",
         }

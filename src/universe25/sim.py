@@ -79,6 +79,7 @@ class Universe25Sim:
                 device=dev,
                 use_graph=bool(getattr(cfg, "use_cuda_graph", False)) and str(dev).startswith("cuda"),
             )
+            self.cuda_graph.bind_engine(self.warp_engine)
         self._action_hist = np.zeros(N_ACTIONS, dtype=np.int64)
         self._conceptions = 0
         self._births = 0
@@ -786,15 +787,16 @@ class Universe25Sim:
             launches()
         wp.synchronize()
         # download mutated fields
+        prev_alive = int(a.n_alive)
         a.alive[:] = np.array(b["alive"].numpy(), dtype=bool)
         a.role[:] = np.array(b["role"].numpy(), dtype=np.int8)
         a.stress[:] = b["stress"].numpy()
         a.social_drive[:] = b["social_drive"].numpy()
         a.cell_id[:] = np.array(b["cell_id"].numpy(), dtype=np.int16)
         a.in_playground[:] = np.array(b["in_playground"].numpy(), dtype=bool)
-        dead = (~a.alive) & (a.role == 7)
-        # count new deaths roughly
         a.n_alive = int(a.alive.sum())
+        if a.n_alive < prev_alive:
+            self._deaths += prev_alive - a.n_alive
 
     def _log_metrics(self) -> None:
         a = self.agents

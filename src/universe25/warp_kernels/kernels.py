@@ -104,6 +104,9 @@ def mortality_kernel(
         return
     dens_frac = dens_frac_arr[0]
     p = base_mort * dt
+    if role[i] == 0 or role[i] == 1:
+        p = p * young_scale
+    p = p + dens_mort * dens_frac * dens_frac * dt
     p = p + stress_mort * stress[i] * stress[i] * dt
     p = p + 0.02 * wounds[i] * wounds[i] * dt
     if age_days[i] > max_age:
@@ -112,9 +115,6 @@ def mortality_kernel(
         p = p + 0.1 * dt
     if energy[i] < 0.05:
         p = p + 0.2 * dt
-    if role[i] == 0 or role[i] == 1:
-        p = p * young_scale
-    p = p + dens_mort * dens_frac * dens_frac * dt
     # xorshift
     s = rng_states[i]
     s = s ^ (s << wp.uint32(13))
