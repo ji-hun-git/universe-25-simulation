@@ -1,26 +1,28 @@
-# Calhoun-landmark calibration, phase 2b (2026-10-30). CMA-ES 112 trials, seed 7000, 1200 d, 6 ticks/day.
-# Train loss 0.4627; held-out (8000-8002) mean 0.642. See NOTES.md "Phase 2b" and _output/calib_cma_p3.
-# Fragment: merge over configs/default.yaml (the same values are written into default.yaml).
+# Calhoun-landmark calibration, phase 2d (2026-10-30). CMA-ES 112 trials, seed 7000, 1200 d, 6 ticks/day.
+# Train loss 0.236 (canonical mean rel. error 0.117); held-out (8000-8002) mean 0.601.
+# See NOTES.md 'Phase 2d' and configs/calibration_study_p2d.json. Fragment: merge over configs/default.yaml
+# (the same values are written into default.yaml).
 biology:
-  first_conception_min_day: 89.51626769823686
-  gestation_days: 19.853145057614004
-  litter_mean: 5.874337335287915
-  maturity_days: 64.26101329276139
-  breeding_p_base: 0.19984032919273553
-  breeding_stress_coef: 0.7898837753085253
-  menopause_density_threshold: 0.5506234454647465
-  stress_mortality_scale: 0.00038731191937061614
-  base_mortality_per_day: 0.0004785255712142256
-  max_age_days: 876.514164084305
-  young_mortality_scale: 0.38749004585878344
-  maternal_neglect_stress: 0.7133560695742086
-  stillbirth_neglect_p: 0.4383612690364583
-  nest_overcrowd_stress: 0.1988947078157544
-  social_breakdown_stress_boost: 0.41054505886643144
-  imprint_rate: 0.17082633759081545
-  imprint_density_threshold: 0.23087417174908487
-  withdrawn_competence_threshold: 0.42740211948299567
-  female_fertile_max_age_days: 509.6725660971896
+  first_conception_min_day: 84.97932832389841
+  gestation_days: 19.282426266294138
+  litter_mean: 6.010548147517172
+  maturity_days: 66.57603629205428
+  breeding_p_base: 0.3315538762114574
+  litter_abandon_p: 0.2332230410140734
+  breeding_stress_coef: 0.48675752023018304
+  menopause_density_threshold: 0.6717535686069271
+  stress_mortality_scale: 0.0002554447785313216
+  base_mortality_per_day: 0.000978550021458916
+  max_age_days: 825.501537509777
+  young_mortality_scale: 0.6895685083259414
+  maternal_neglect_stress: 0.7364416363027964
+  stillbirth_neglect_p: 0.5565097897015603
+  nest_overcrowd_stress: 0.3021649952856809
+  social_breakdown_stress_boost: 0.5272415568622532
+  imprint_rate: 0.30475133069958793
+  imprint_density_threshold: 0.25722936210152797
+  withdrawn_competence_threshold: 0.42145398988066607
+  female_fertile_max_age_days: 464.46421649603894
 drives:
-  stress_density_gain: 0.7341661879763333
-  stress_decay: 0.8734370052196387
+  stress_density_gain: 0.6944481992796593
+  stress_decay: 0.751808681104142

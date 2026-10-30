@@ -38,8 +38,13 @@ PARAM_PRIORS: dict[str, dict[str, Any]] = {
         "prior": "Uniform; 6–10 weeks to sexual maturity",
     },
     "breeding_p_base": {
-        "low": 0.05, "high": 0.60, "log": False, "group": "biology",
-        "prior": "Uniform; daily conception probability, cohabiting eligible pair, low density",
+        "low": 0.10, "high": 0.90, "log": False, "group": "biology",
+        "prior": "Uniform; daily conception probability, cohabiting eligible pair, low density "
+                 "(the only conception channel since phase 2d)",
+    },
+    "litter_abandon_p": {
+        "low": 0.0, "high": 0.6, "log": False, "group": "biology",
+        "prior": "Uniform; daily P(stressed nursing mother abandons her box's litter)",
     },
     "breeding_stress_coef": {
         "low": 0.2, "high": 1.0, "log": False, "group": "biology",

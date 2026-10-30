@@ -55,6 +55,8 @@ class Universe25Sim:
         self.rng = make_rng(cfg.seed)
         self.backend, self.device = pick_backend(cfg.backend, cfg.device)
         self.world: World = build_world(cfg.geometry, cfg.playground, seed=cfg.seed)
+        self._nest_x = np.array([n.x for n in self.world.nests], dtype=np.float64)
+        self._nest_y = np.array([n.y for n in self.world.nests], dtype=np.float64)
         self.agents = AgentSoA.create(cfg.max_agents)
         self.tick = 0
         self.day = 0.0
@@ -97,6 +99,7 @@ class Universe25Sim:
         self._last_young_day = 0.0
         self._last_surviving_young_day = 0.0  # birth day of the latest pup that reached weaning
         self._last_conception_day = 0.0
+        self._abandoned = 0  # pups expelled from their nest box by a stressed mother
         self._peak_n = 0
         self._peak_day = 0.0
         self._nan_count = 0
@@ -190,6 +193,7 @@ class Universe25Sim:
             with nvtx_range("life"):
                 self._passive_nurse(alive)
                 self._daily_breeding_pass(alive)
+                self._daily_litter_abandonment(alive)
                 self._reproduce(alive)
             if use_warp:
                 with nvtx_range("warp_stress_mortality_cells"):
@@ -487,7 +491,7 @@ class Universe25Sim:
         m_mate = act == ACT_MATE
         if m_mate.any():
             for i in idx[m_mate]:
-                self._try_mate(int(i))
+                self._approach_mate(int(i))
 
         m_nurse = act == ACT_NURSE
         if m_nurse.any():
@@ -560,8 +564,12 @@ class Universe25Sim:
         a.rank[i] = min(1.0, a.rank[i] + 0.02 * k)
 
     def _nurse(self, i: int) -> None:
+        """Active nursing: feed pups of the mother's own nest box that are within reach."""
         a = self.agents
-        pups = a.alive & (a.role == ROLE_PUP)
+        nid = int(a.nest_id[i])
+        if nid < 0:
+            return
+        pups = a.alive & (a.role == ROLE_PUP) & (a.nest_id == nid)
         if not pups.any():
             return
         d2 = (a.x - a.x[i]) ** 2 + (a.y - a.y[i]) ** 2
@@ -571,17 +579,15 @@ class Universe25Sim:
             a.energy[j] = min(1.0, a.energy[j] + 0.15 * k)
             a.hunger[j] = max(0.0, a.hunger[j] - 0.2 * k)
 
-    def _try_mate(self, i: int) -> None:
+    def _approach_mate(self, i: int) -> None:
+        """ACT_MATE is courtship: approach the nearest eligible partner.
+
+        Conception itself happens only in the once-per-day breeding pass, so the conception
+        rate cannot depend on how often the per-tick action softmax is sampled.
+        """
         a = self.agents
         bio = self.cfg.biology
-        if self.day < bio.first_conception_min_day:
-            return
-        # Initiator must be a mature, non-withdrawn adult (fixes pup/juvenile conceptions).
         if a.age_days[i] < bio.maturity_days or a.role[i] == ROLE_WITHDRAWN:
-            return
-        dens = a.n_alive / max(1, self.world.capacity_design)
-        if dens > bio.menopause_density_threshold and a.sex[i] == SEX_F:
-            # reproductive collapse under crowding
             return
         partner_sex = SEX_M if a.sex[i] == SEX_F else SEX_F
         cand = a.alive & (a.sex == partner_sex) & (a.age_days >= bio.maturity_days)
@@ -596,20 +602,7 @@ class Universe25Sim:
         if len(near) == 0:
             return
         j = int(near[np.argmin(d2[near])])
-        female = i if a.sex[i] == SEX_F else j
-        male = j if female == i else i
-        if a.gestating[female] > 0 or a.age_days[female] > bio.female_fertile_max_age_days:
-            return
-        # Conception scales with both partners' social competence (courtship / receptivity);
-        # per-attempt chance is scaled so attempts/day × chance is resolution-independent.
-        p = 0.55 * (1.0 - 0.8 * a.stress[female]) * a.competence[female] * a.competence[male]
-        p *= self.k_ev
-        if self.rng.random() < p:
-            a.gestating[female] = bio.gestation_days
-            a.role[female] = ROLE_NURSING
-            a.maternal[female] = max(float(a.maternal[female]), 0.85 * float(a.competence[female]))
-            self._conceptions += 1
-            self._last_conception_day = self.day
+        self._move_toward(i, float(a.x[j]), float(a.y[j]), 7.0)
 
     def _density_stress(self, alive: np.ndarray) -> None:
         a = self.agents
@@ -622,9 +615,17 @@ class Universe25Sim:
         cells = a.cell_id[idx].astype(int)
         local = cell_counts[cells] / max(1.0, self.world.capacity_design / self.world.n_cells)
         gain = d.stress_density_gain * local
+        # Weaned agents without a nest box (abandoned as pups) adopt the nearest box.
+        homeless = (a.nest_id[idx] < 0) & (a.age_days[idx] >= self.cfg.biology.weaning_days)
+        if homeless.any():
+            hi = idx[homeless]
+            d2n = (a.x[hi, None] - self._nest_x[None, :]) ** 2
+            d2n += (a.y[hi, None] - self._nest_y[None, :]) ** 2
+            a.nest_id[hi] = d2n.argmin(axis=1).astype(np.int16)
         nids = a.nest_id[idx].astype(int)
-        # nest occupancy
-        nest_occ = np.bincount(a.nest_id[alive].astype(int), minlength=self.world.n_nests)
+        # nest occupancy (abandoned pups with nest_id -1 occupy no box)
+        housed = alive & (a.nest_id >= 0)
+        nest_occ = np.bincount(a.nest_id[housed].astype(int), minlength=self.world.n_nests)
         cap = np.array([n.capacity for n in self.world.nests], dtype=np.float64)
         nclip = np.clip(nids, 0, self.world.n_nests - 1)
         over = (nids >= 0) & (nest_occ[nclip] > cap[nclip])
@@ -663,22 +664,66 @@ class Universe25Sim:
 
 
     def _passive_nurse(self, alive: np.ndarray) -> None:
-        """Nursing mothers automatically feed nearby pups (not optional softmax)."""
+        """Maternal females at their nest box feed the pups of that box (not optional softmax).
+
+        Nursing is per nest box: a litter whose mothers are dead, displaced, incompetent or
+        too stressed is not rescued by mothers of other boxes (Calhoun: abandoned litters died).
+        """
         a = self.agents
-        moms = np.flatnonzero(alive & (a.sex == SEX_F) & ((a.role == ROLE_NURSING) | (a.maternal > 0.4)))
-        pups = np.flatnonzero(alive & (a.role == ROLE_PUP))
+        moms = np.flatnonzero(
+            alive
+            & (a.sex == SEX_F)
+            & ((a.role == ROLE_NURSING) | (a.maternal > 0.4))
+            & (a.nest_id >= 0)
+        )
+        pups = np.flatnonzero(alive & (a.role == ROLE_PUP) & (a.nest_id >= 0))
         if moms.size == 0 or pups.size == 0:
             return
         k = self.k_ev  # feeding per contact is per decision; contacts/day scale with ticks
+        pup_nest = a.nest_id[pups]
         for i in moms:
             if a.stress[i] > self.cfg.biology.maternal_neglect_stress:
                 continue
-            d2 = (a.x[pups] - a.x[i]) ** 2 + (a.y[pups] - a.y[i]) ** 2
-            near = pups[d2 < 64.0]
+            same = pups[pup_nest == a.nest_id[i]]
+            if same.size == 0:
+                continue
+            d2 = (a.x[same] - a.x[i]) ** 2 + (a.y[same] - a.y[i]) ** 2
+            near = same[d2 < 64.0]
             for j in near[:6]:
                 a.energy[j] = min(1.0, a.energy[j] + 0.35 * k)
                 a.hunger[j] = max(0.0, a.hunger[j] - 0.45 * k)
                 a.thirst[j] = max(0.0, a.thirst[j] - 0.35 * k)
+
+    def _daily_litter_abandonment(self, alive: np.ndarray) -> None:
+        """Once per day: a nursing mother above the neglect stress threshold abandons her box's
+        litter with probability litter_abandon_p; those pups lose their nest box (nest_id = -1)
+        and are no longer nursed. Emergent from stress; no scheduled day."""
+        if (self.tick % self.cfg.ticks_per_day) != 0:
+            return
+        bio = self.cfg.biology
+        if bio.litter_abandon_p <= 0.0:
+            return
+        a = self.agents
+        moms = np.flatnonzero(
+            alive
+            & (a.sex == SEX_F)
+            & (a.role == ROLE_NURSING)
+            & (a.nest_id >= 0)
+            & (a.stress > bio.maternal_neglect_stress)
+        )
+        if moms.size == 0:
+            return
+        pups_mask = alive & (a.role == ROLE_PUP) & (a.nest_id >= 0)
+        if not pups_mask.any():
+            return
+        draws = self.rng.random(moms.size)
+        nests = np.unique(a.nest_id[moms[draws < bio.litter_abandon_p]])
+        if nests.size == 0:
+            return
+        victims = np.flatnonzero(pups_mask & np.isin(a.nest_id, nests))
+        if victims.size:
+            a.nest_id[victims] = -1
+            self._abandoned += int(victims.size)
 
     def _daily_breeding_pass(self, alive: np.ndarray) -> None:
         """Once per day: conceive eligible females that share a cell with a male."""
@@ -930,6 +975,7 @@ class Universe25Sim:
             "last_young_day": self._last_young_day,
             "last_surviving_young_day": self._last_surviving_young_day,
             "last_conception_day": self._last_conception_day,
+            "abandoned_cum": self._abandoned,
             "n_adult": int(np.sum(alive & (a.age_days >= self.cfg.biology.maturity_days))),
             "mean_competence_adult": float(
                 a.competence[alive & (a.age_days >= self.cfg.biology.maturity_days)].mean()
@@ -988,6 +1034,7 @@ class Universe25Sim:
             "last_young_day": self._last_young_day,
             "last_surviving_young_day": self._last_surviving_young_day,
             "last_conception_day": self._last_conception_day,
+            "abandoned_pups": self._abandoned,
             "nan_count": self._nan_count,
             "playground_enabled": self.world.playground_enabled,
             "n_nests": self.world.n_nests,

@@ -130,7 +130,9 @@ class WarpTickEngine:
     def _host_cell_nest_counts(self, agents: AgentSoA) -> None:
         alive = agents.alive
         cc = np.bincount(agents.cell_id[alive].astype(int), minlength=self.world.n_cells).astype(np.int32)
-        no = np.bincount(agents.nest_id[alive].astype(int), minlength=self.world.n_nests).astype(np.int32)
+        housed = alive & (agents.nest_id >= 0)  # abandoned pups (nest_id -1) occupy no box
+        no = np.bincount(agents.nest_id[housed].astype(int), minlength=self.world.n_nests)
+        no = no.astype(np.int32)
         self._bufs["cell_counts"].assign(cc)
         self._bufs["nest_occ"].assign(no)
 

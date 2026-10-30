@@ -76,6 +76,9 @@ class BiologyConfig(BaseModel):
     imprint_density_threshold: float = 0.15  # local cell density frac where exposure starts
     withdrawn_competence_threshold: float = 0.3  # adults below this withdraw ("beautiful ones")
     female_fertile_max_age_days: float = 420.0  # reproductive senescence (lab mouse ~12-15 mo)
+    # Daily chance that a nursing mother above maternal_neglect_stress abandons her nest box's
+    # litter (Calhoun phase C: litters abandoned, young expelled pre-weaning). 0 = off.
+    litter_abandon_p: float = 0.0
 
 
 class DriveConfig(BaseModel):
