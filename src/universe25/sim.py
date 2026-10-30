@@ -146,6 +146,8 @@ class Universe25Sim:
         actions = self._select_actions(alive)
         self._execute_actions(alive, actions)
         self._density_stress(alive)
+        self._passive_nurse(alive)
+        self._daily_breeding_pass(alive)
         self._reproduce(alive)
         self._age_and_die(alive)
         self._check_nan()
@@ -180,8 +182,11 @@ class Universe25Sim:
         dt = self.dt_days
         a = self.agents
         idx = alive
-        a.hunger[idx] = np.clip(a.hunger[idx] + d.hunger_gain_per_day * dt, 0, 1.5)
-        a.thirst[idx] = np.clip(a.thirst[idx] + d.thirst_gain_per_day * dt, 0, 1.5)
+        pup = a.role[idx] == ROLE_PUP
+        hunger_gain = np.where(pup, d.hunger_gain_per_day * 0.35, d.hunger_gain_per_day)
+        thirst_gain = np.where(pup, d.thirst_gain_per_day * 0.35, d.thirst_gain_per_day)
+        a.hunger[idx] = np.clip(a.hunger[idx] + hunger_gain * dt, 0, 1.5)
+        a.thirst[idx] = np.clip(a.thirst[idx] + thirst_gain * dt, 0, 1.5)
         a.curiosity[idx] = np.clip(a.curiosity[idx] + d.curiosity_gain * dt, 0, 1.5)
         a.boredom[idx] = np.clip(a.boredom[idx] + d.boredom_gain * dt, 0, 1.5)
         a.social_drive[idx] = np.clip(a.social_drive[idx] + d.social_drive_gain * dt, 0, 1.5)
@@ -525,6 +530,66 @@ class Universe25Sim:
         a.social_drive[idx[with_mask]] = np.maximum(0.0, a.social_drive[idx[with_mask]] - 0.05)
 
 
+
+    def _passive_nurse(self, alive: np.ndarray) -> None:
+        """Nursing mothers automatically feed nearby pups (not optional softmax)."""
+        a = self.agents
+        moms = np.flatnonzero(alive & (a.sex == SEX_F) & ((a.role == ROLE_NURSING) | (a.maternal > 0.4)))
+        pups = np.flatnonzero(alive & (a.role == ROLE_PUP))
+        if moms.size == 0 or pups.size == 0:
+            return
+        for i in moms:
+            if a.stress[i] > self.cfg.biology.maternal_neglect_stress:
+                continue
+            d2 = (a.x[pups] - a.x[i]) ** 2 + (a.y[pups] - a.y[i]) ** 2
+            near = pups[d2 < 64.0]
+            for j in near[:6]:
+                a.energy[j] = min(1.0, a.energy[j] + 0.35)
+                a.hunger[j] = max(0.0, a.hunger[j] - 0.45)
+                a.thirst[j] = max(0.0, a.thirst[j] - 0.35)
+
+    def _daily_breeding_pass(self, alive: np.ndarray) -> None:
+        """Once per day: conceive eligible females that share a cell with a male."""
+        if (self.tick % self.cfg.ticks_per_day) != 0:
+            return
+        a = self.agents
+        bio = self.cfg.biology
+        if self.day < bio.first_conception_min_day:
+            return
+        dens = a.n_alive / max(1, self.world.capacity_design)
+        # suppression with density (behavioral-sink precursor)
+        p_base = 0.55 * max(0.02, 1.0 - dens / max(1e-6, bio.menopause_density_threshold))
+        females = np.flatnonzero(
+            alive
+            & (a.sex == SEX_F)
+            & (a.age_days >= bio.maturity_days)
+            & (a.gestating == 0)
+            & (a.role != ROLE_WITHDRAWN)
+            & (a.stress < 0.8)
+            & (a.energy > 0.35)
+        )
+        males = np.flatnonzero(
+            alive
+            & (a.sex == SEX_M)
+            & (a.age_days >= bio.maturity_days)
+            & (a.role != ROLE_WITHDRAWN)
+            & (a.stress < 0.85)
+        )
+        if females.size == 0 or males.size == 0:
+            return
+        male_cells: dict[int, list[int]] = {}
+        for m in males:
+            male_cells.setdefault(int(a.cell_id[m]), []).append(int(m))
+        for f in females:
+            cands = male_cells.get(int(a.cell_id[f]), [])
+            if not cands:
+                continue
+            if self.rng.random() < p_base * (1.0 - 0.7 * float(a.stress[f])):
+                a.gestating[f] = bio.gestation_days
+                a.role[f] = ROLE_NURSING
+                a.maternal[f] = max(float(a.maternal[f]), 0.85)
+                self._conceptions += 1
+
     def _reproduce(self, alive: np.ndarray) -> None:
         a = self.agents
         bio = self.cfg.biology
@@ -565,6 +630,9 @@ class Universe25Sim:
         if idx.size == 0:
             return
         p = np.full(idx.size, bio.base_mortality_per_day * dt, dtype=np.float64)
+        # pups/juveniles: lower baseline, rely on neglect/hunger instead
+        young = (a.role[idx] == ROLE_PUP) | (a.role[idx] == ROLE_JUVENILE)
+        p = np.where(young, p * 0.25, p)
         p += bio.stress_mortality_scale * (a.stress[idx] ** 2) * dt
         p += 0.02 * (a.wounds[idx] ** 2) * dt
         p += np.where(a.age_days[idx] > bio.max_age_days, 0.05 * dt, 0.0)

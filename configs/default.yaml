@@ -32,14 +32,14 @@ resources:
   water_refill_per_tick: 1.0e9
 biology:
   gestation_days: 20.0
-  litter_mean: 6.0
+  litter_mean: 7.0
   litter_sd: 1.5
   weaning_days: 21.0
   maturity_days: 50.0
   max_age_days: 800.0
-  base_mortality_per_day: 0.0008
+  base_mortality_per_day: 0.0005
   stress_mortality_scale: 0.01
-  first_conception_min_day: 90.0
+  first_conception_min_day: 95.0
   menopause_density_threshold: 0.55
   maternal_neglect_stress: 0.7
 drives:
