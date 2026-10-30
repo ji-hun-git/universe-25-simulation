@@ -68,8 +68,16 @@ Read HANDOFF.md and docs/NVIDIA_STACK.md. Add/extend Warp kernel parity tests vs
 
 ## P0-4 — dt-invariance: action persistence + per-day event effects
 
-**Goal:** The calibrated biology must give the same trajectory at 6 and 24 ticks/day. Today the
-same parameters give peak 2261 (6 tpd) vs 1088 (24 tpd) — see `NOTES.md` Phase 2b.
+> **Status 2026-10-30: DONE for the arc** — per-decision effects × ref/tpd,
+> √-scaled random walks, resolution-free movement reach (`SimConfig.ticks_per_day_ref = 6`).
+> Peak 2261 / 2345 / 2314 and collapse onset 1228 / 1225 / 1203 at 6 / 12 / 24 tpd; 6-tpd
+> trajectory bit-identical to the calibration. **Open residual:** early growth a few % faster per
+> day at finer ticks (N@315 672 / 753 / 928) because per-tick MATE probability depends on the
+> drive sawtooth amplitude. Follow-up: make conception purely daily (remove the per-tick ACT_MATE
+> conception side effect), then re-calibrate. See `NOTES.md` "Phase 2c".
+
+**Goal:** The calibrated biology must give the same trajectory at 6 and 24 ticks/day. Before 2c the
+same parameters gave peak 2261 (6 tpd) vs 1088 (24 tpd) — see `NOTES.md` Phase 2b/2c.
 
 **Files:** `src/universe25/sim.py` (`_select_actions`, `_execute_actions`, `_passive_nurse`,
 `_nurse`, `_aggress`, `_density_stress`), `configs/default.yaml`, `NOTES.md`

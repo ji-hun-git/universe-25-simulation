@@ -4,7 +4,7 @@
 > **Repo (private):** https://github.com/ji-hun-git/universe25-play  
 > **Local path (lab PC):** `C:\Users\user\Projects\universe25-play`  
 > **Owner:** Jason (ji-hun-git) · **Research partner:** gan  
-> **Date:** 2026-10-30 (Asia/Seoul) · **Phase:** 1 complete; **phase 2 calibration done (2b: mean landmark error 0.14, emergent collapse)**; Warp parity partial; phase 3 (visuals) and phase 4 (play module) not started
+> **Date:** 2026-10-30 (Asia/Seoul) · **Phase:** 1 complete; **phase 2 calibration done (2b: mean landmark error 0.14, emergent collapse; 2c: tick loop dt-invariant)**; Warp parity partial; phase 3 (visuals) and phase 4 (play module) not started
 
 Read this file first. Then read `PLAN.md`, `NOTES.md`, `docs/NVIDIA_STACK.md`, `docs/TASKS.md`. Follow `CONTRIBUTING.md` for day-to-day rules.
 
@@ -172,9 +172,11 @@ stress at ~80 d. Full diagnosis in `NOTES.md` ("Phase 2b").
 
 Phases detected: adjustment → growth → stagnation → decline (832) → collapse (1228). Held-out
 seeds 8000–8002 keep the shape (peak 2238–2305, N@736 2116–2171); N@315 varies 404–827.
-**Valid at 6 ticks/day only** (default.yaml is pinned to 6): at 24 ticks/day the same parameters
-give peak 1088 because the tick loop is not dt-invariant (movement re-drawn every tick, per-event
-effects not dt-scaled) — `docs/TASKS.md` P0-4.
+**Resolution:** calibrated at the reference 6 ticks/day (`SimConfig.ticks_per_day_ref`); since
+phase 2c the tick loop is dt-invariant (per-decision effects × ref/tpd, random walks √-scaled,
+movement reaches its target within one decision), so 12 or 24 ticks/day give the same arc
+(peak 2345 / 2314, N@736 2167 / 2191, collapse onset 1225 / 1203). Residual: early growth is a
+few % faster per day at finer ticks (N@315 753 / 928) — see NOTES "Phase 2c".
 Full tables and the open gaps in `NOTES.md` → "Phase 2b". The worker that owned phase 2
 reported it finished; `src/` is no longer dual-edited, but still pull/rebase before pushing.
 
@@ -313,10 +315,11 @@ Seeds: build/training `7000–7009`; unit tests `7100`; eval worlds later `8000�
 - [~] Warp tick path correct vs NumPy reference: density-stress + imprinting kernel parity test added (3e-8); mortality (hazard-level) and cells parity still open; CUDA Graph speedup documented in NSIGHT
 - [x] No NaNs (0 across calibration, held-out and 1600-d runs); `docs/NSIGHT.md` benches unchanged (no kernel perf work this round)
 
-Phase-2c candidates (in priority order): **dt-invariance** (P0-4: action persistence, per-day
-event scaling — the calibration is currently tied to 6 ticks/day); stress-dependent litter
-abandonment to close the day-600 cessation gap; vectorize `_passive_nurse` / per-agent loops
-(profile in `docs/TASKS.md` P1-3).
+Phase 2c (done 2026-10-30): dt-invariance of the tick loop — arc identical at 6/12/24 ticks/day,
+6-tpd trajectory bit-identical to the calibration. Remaining candidates (priority order):
+stress-dependent litter abandonment to close the day-600 cessation gap; purely-daily conception
+(drop the per-tick ACT_MATE conception channel) to remove the residual early-growth resolution
+dependence, then re-calibrate; vectorize `_passive_nurse` / per-agent loops (`docs/TASKS.md` P1-3).
 
 ### Phase 3 — Visuals + dashboard
 **Accept when:**

@@ -1,5 +1,55 @@
 # Universe25 Play — NOTES
 
+## Phase 2c — dt-invariance of the tick loop (2026-10-30; TASKS P0-4)
+
+Problem (found at the end of 2b): the calibrated parameters gave peak 2261 at 6 ticks/day but
+1088 at 24 ticks/day. Causes: movement was `speed·dt` per tick while the action was re-drawn
+every tick (at 24 tpd a mother moved ~6 in toward her nest, then re-rolled, rarely reaching her
+pups), and every per-event effect (nursing amounts, drive relief, wounds, nest-stress relief,
+conception chance per ACT_MATE attempt, nest-kick chance, random-walk steps) was per tick.
+
+Fix (`SimConfig.ticks_per_day_ref = 6`, `sim.k_ev / sd_k / sqrt_k / reach`):
+- per-decision effects × `k = ref/tpd` (so tpd × k is constant → daily totals fixed);
+- random walks written as `c·dt·10` × `sqrt(tpd/ref)` (daily variance fixed); per-decision
+  nudges without `dt` (object jiggle) × `sqrt(k)`;
+- movement reach per decision = `speed · 24/ref` inches, independent of dt (an agent reaches its
+  target within one decision at any resolution);
+- Warp `density_stress_kernel` takes the same `event_scale` for its social-drive decrement.
+At 6 tpd every factor is exactly 1.0, so the calibrated trajectory is **bit-identical** (400-day
+SHA-256 of per-tick state unchanged: `32c08242…`). Tests: `test_resolution_scaling` + parity.
+
+Same calibrated params, seed 7000, 1600 d (`_output/run1600_p2b_tpd6`, `run1600_p2c_tpd12`,
+`run1600_p2c_tpd24`):
+
+| Landmark | Calhoun | 6 tpd | 12 tpd | 24 tpd | 24 tpd before fix |
+|---|---:|---:|---:|---:|---:|
+| First litters | 104 | 111 | 110 | 110 | 110 |
+| N @ 315 | 620 | 672 | 753 | 928 | 138 |
+| Peak N | 2200 | 2261 | 2345 | 2314 | 1088 |
+| Peak day (≥97 %) | 560 | 467 | 447 | 439 | 590 |
+| Last surviving birth | 600 | 813 | 819 | 797 | 1573 |
+| N @ 736 | 2056 | 2106 | 2167 | 2191 | 998 |
+| Last conception | ≈920 | 793 | 799 | 777 | 1597 |
+| N @ 1200 / 1600 | | 1316 / 93 | 1333 / 127 | 1182 / 85 | 409 / 111 |
+| Collapse onset (<50 % peak) | | 1228 | 1225 | 1203 | 1097 |
+| mean rel. error (5) | | 0.140 | 0.181 | 0.230 | 0.603 |
+| wall (s) | | 50 | 106 | 235 | 173 |
+
+The arc is now resolution-independent (peak ±4 %, N@736 ±4 %, last surviving birth ±3 %,
+collapse onset ±2 %, ≈4 800–5 000 births in all three). **Residual:** early exponential growth
+is slightly faster at finer ticks (N@315 672 → 753 → 928). Diagnosed with the 320-day
+diagnostic at 6 vs 24 tpd: infant mortality is the same (deaths/births 0.23 vs 0.26), but
+conceptions are higher (340 vs 245 by day 320; 130 vs 83 births by day 200). Cause: per-tick
+action probabilities depend on the drive sawtooth — hunger rises 0.20 per tick at 6 tpd but 0.05
+at 24 tpd, so mean hunger/thirst utilities are higher at coarse ticks and the MATE share per tick
+is lower; a ~5–8 % conception-rate gap compounds through the 55-day-doubling phase into +38 % at
+day 315 (within the seed-to-seed band 404–827, but systematic). Clean fix for later: make
+conception purely daily (drop the per-tick ACT_MATE conception side effect; keep the action as
+approach/courtship) and re-calibrate — not done here because it changes the 6-tpd reference.
+
+`configs/default.yaml` stays at `ticks_per_day: 6` as the calibrated reference resolution (also
+4× cheaper); 12 or 24 are now usable for finer output with the same biology.
+
 ## Phase 2b — pup-mill bug, developmental-imprinting collapse, recalibration (2026-10-30)
 
 ### What was wrong with the phase-2 calibration (diagnosed, seed 7000, 900 d, 6 ticks/day)
@@ -121,7 +171,7 @@ out at ~880 d. Nothing schedules it.
   definition is not ours.
 - *≈90 % of adults withdrawn from day 500.* Calhoun does not quantify this; it may be too
   extreme and is a side effect of competence collapsing to ≈0.06.
-- **Not dt-invariant — calibration valid at 6 ticks/day only.** Same parameters at 24 ticks/day
+- **Not dt-invariant at the time of 2b — fixed in Phase 2c above** (kept for the record). Same parameters at 24 ticks/day
   (`_output/run1600_p2b_tpd24`, 173 s): first litters 110, N@315 **138**, peak **1088** @ 590,
   N@736 998, breeding never ceases (last surviving birth 1573), mean rel. error 0.60. Cause is
   the agent loop, not biology: movement is `speed·dt` per tick but the action is re-drawn every
