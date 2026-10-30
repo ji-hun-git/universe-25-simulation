@@ -487,14 +487,14 @@ class Universe25Sim:
         if not cand.any():
             return
         d2 = (a.x - a.x[i]) ** 2 + (a.y - a.y[i]) ** 2
-        near = np.flatnonzero(cand & (d2 < 64.0))
+        near = np.flatnonzero(cand & (d2 < 400.0))
         if len(near) == 0:
             return
         j = int(near[np.argmin(d2[near])])
         female = i if a.sex[i] == SEX_F else j
         if a.gestating[female] > 0:
             return
-        if self.rng.random() < 0.25 * (1.0 - a.stress[female]):
+        if self.rng.random() < 0.55 * (1.0 - 0.8 * a.stress[female]):
             a.gestating[female] = bio.gestation_days
             a.role[female] = ROLE_NURSING
             self._conceptions += 1

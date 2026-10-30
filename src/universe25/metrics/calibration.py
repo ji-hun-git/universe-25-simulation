@@ -20,7 +20,6 @@ LANDMARKS = {
 
 def calibrate(metrics_path: Path, run_summary: dict[str, Any] | None = None) -> dict[str, Any]:
     table = pq.read_table(metrics_path)
-    df = table.to_pandas() if hasattr(table, "to_pandas") else None
     days = table.column("day").to_numpy()
     ns = table.column("n_alive").to_numpy()
     births = table.column("births_cum").to_numpy()

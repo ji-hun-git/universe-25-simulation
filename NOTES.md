@@ -8,3 +8,12 @@
 - PlayScore F,V,D,S,G logged as **unvalidated** (gan formalization).
 - Pending: smoke run, ~1600-day abundant run, calibration errors.
 
+
+## 2026-10-30 — tests + smoke
+
+- Private repo: https://github.com/ji-hun-git/universe25-play
+- Tests: geometry, determinism (traj hash), conservation — all OK
+- Smoke seed 7000, 30 days, numpy/cpu: wall ~0.36 s, N peak 8 (pre-conception window), births 0, nan 0
+- Vectorized SoA host path; Warp device mirror stubbed for phase-2 kernels
+- Calibration no longer imports pandas
+
