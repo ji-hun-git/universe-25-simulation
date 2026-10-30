@@ -1,7 +1,7 @@
 # Universe 25 abundant arm. Biology/drives = phase-2b CMA-ES calibration to Calhoun landmarks
 # (2026-10-30, seed 7000, 1200 d, 6 ticks/day; see NOTES.md and configs/calibrated_calhoun.yaml).
 seed: 7000
-ticks_per_day: 6  # calibration is valid at 6 ticks/day only (see NOTES.md dt-invariance gap)
+ticks_per_day: 6  # reference resolution (ticks_per_day_ref); loop is dt-invariant, 12/24 give the same arc
 max_agents: 4096
 initial_pairs: 4
 days: 1600.0

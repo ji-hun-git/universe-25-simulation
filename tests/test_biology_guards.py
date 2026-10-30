@@ -91,6 +91,29 @@ def test_last_surviving_young_tracks_weaned_cohorts() -> None:
     assert sim._last_surviving_young_day > 0.0
 
 
+def test_resolution_scaling() -> None:
+    """Per-decision scale is exactly 1 at the reference resolution and movement reach is fixed."""
+    s6 = _make_sim(days=1.0, out="test_bio_res6")
+    cfg24 = SimConfig(seed=7100, days=1.0, ticks_per_day=24, backend="numpy", device="cpu",
+                      max_agents=64, log_every_ticks=10**9, snapshot_every_days=0,
+                      arm_label="TRACK-E-U25-TEST")
+    s24 = Universe25Sim(cfg24, ROOT / "_output" / "test_bio_res24")
+    assert s6.k_ev == 1.0 and s6.sqrt_k == 1.0 and s6.sd_k == 1.0
+    assert abs(s24.k_ev - 0.25) < 1e-12 and abs(s24.sqrt_k - 0.5) < 1e-12
+    assert abs(s24.sd_k - 2.0) < 1e-12
+    assert s6.reach == s24.reach == 4.0
+    # per-day random-walk variance is resolution independent: tpd * (c*dt*10*sd_k)^2
+    v6 = 6 * (3.0 * s6.dt_days * 10 * s6.sd_k) ** 2
+    v24 = 24 * (3.0 * s24.dt_days * 10 * s24.sd_k) ** 2
+    assert abs(v6 - v24) < 1e-9, (v6, v24)
+    # per-day variance of a per-decision nudge written without dt: tpd * (c*sqrt_k)^2
+    j6 = 6 * (0.4 * s6.sqrt_k) ** 2
+    j24 = 24 * (0.4 * s24.sqrt_k) ** 2
+    assert abs(j6 - j24) < 1e-9, (j6, j24)
+    # per-decision effects: tpd * k is constant → daily totals resolution independent
+    assert abs(6 * s6.k_ev - 24 * s24.k_ev) < 1e-12
+
+
 def test_warp_density_stress_parity() -> None:
     """Warp density_stress_kernel == NumPy _density_stress on identical state (stress, competence)."""
     try:
@@ -145,6 +168,7 @@ def test_warp_density_stress_parity() -> None:
             float(bio.nest_overcrowd_stress), cap_cell, b["dens_frac"],
             float(bio.menopause_density_threshold), float(bio.social_breakdown_stress_boost),
             float(bio.maturity_days), float(bio.imprint_rate), float(bio.imprint_density_threshold),
+            float(sim.k_ev),
         ],
         device=eng.device,
     )
@@ -166,5 +190,6 @@ def test_warp_density_stress_parity() -> None:
 if __name__ == "__main__":
     test_no_immature_conception_and_pup_actions()
     test_last_surviving_young_tracks_weaned_cohorts()
+    test_resolution_scaling()
     test_warp_density_stress_parity()
     print("test_biology_guards: OK")

@@ -177,6 +177,7 @@ class WarpTickEngine:
                     float(bio.menopause_density_threshold), float(bio.social_breakdown_stress_boost),
                     float(bio.maturity_days), float(bio.imprint_rate),
                     float(bio.imprint_density_threshold),
+                    float(self.cfg.ticks_per_day_ref / self.cfg.ticks_per_day),
                 ],
                 device=self.device,
             )

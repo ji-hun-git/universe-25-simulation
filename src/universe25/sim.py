@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import math
 import time
 from dataclasses import asdict
 from pathlib import Path
@@ -58,6 +59,15 @@ class Universe25Sim:
         self.tick = 0
         self.day = 0.0
         self.dt_days = 1.0 / cfg.ticks_per_day
+        # Resolution scaling (see SimConfig.ticks_per_day_ref): k_ev multiplies per-decision
+        # effects, sqrt_k random-walk step sizes; reach is inches per decision per unit speed
+        # (an agent reaches its target within one decision regardless of ticks_per_day).
+        self.k_ev = cfg.ticks_per_day_ref / cfg.ticks_per_day
+        self.sqrt_k = math.sqrt(self.k_ev)  # for per-decision random offsets written without dt
+        # Random walks written as sd = c*dt*10 per tick have per-day variance
+        # tpd*(c*dt*10)^2 ∝ 1/tpd, so multiply the step by sqrt(tpd/ref) to keep it fixed.
+        self.sd_k = math.sqrt(cfg.ticks_per_day / cfg.ticks_per_day_ref)
+        self.reach = 24.0 / cfg.ticks_per_day_ref
         self.food = np.full(self.world.n_cells, cfg.resources.food_refill_per_tick, dtype=np.float64)
         self.water = np.full(self.world.n_cells, cfg.resources.water_refill_per_tick, dtype=np.float64)
         self.logger = MetricsLogger(self.out_dir / "metrics.parquet")
@@ -360,8 +370,12 @@ class Universe25Sim:
             return
         act = actions[idx].astype(np.int16)
         a.last_action[idx] = act.astype(np.int8)
-        for k in range(N_ACTIONS):
-            self._action_hist[k] += int(np.sum(act == k))
+        for code in range(N_ACTIONS):
+            self._action_hist[code] += int(np.sum(act == code))
+        k = self.k_ev  # per-decision effect scale (1.0 at ticks_per_day_ref)
+        sk = self.sd_k  # random-walk step scale for the c*dt*10 walks below
+        xmax = self.world.width - 0.5
+        ymax = self.world.height - 0.5
 
         # Movement helpers via masks
         cells = a.cell_id[idx].astype(int)
@@ -375,7 +389,7 @@ class Universe25Sim:
             dx = tx[mask] - a.x[ii]
             dy = ty[mask] - a.y[ii]
             dist = np.hypot(dx, dy) + 1e-6
-            step = np.minimum(speed * dt * 24.0, dist)
+            step = np.minimum(speed * self.reach, dist)
             a.x[ii] = np.clip(a.x[ii] + dx / dist * step, 0.5, self.world.width - 0.5)
             a.y[ii] = np.clip(a.y[ii] + dy / dist * step, 0.5, self.world.height - 0.5)
 
@@ -421,23 +435,25 @@ class Universe25Sim:
             txx = np.zeros(idx.size); tyy = np.zeros(idx.size)
             txx[m_nest] = tx; tyy[m_nest] = ty
             move_mask(m_nest, txx, tyy, 6.0)
-            a.stress[ii] = np.maximum(0.0, a.stress[ii] - 0.05)
+            a.stress[ii] = np.maximum(0.0, a.stress[ii] - 0.05 * k)
 
         m_social = act == ACT_SOCIAL
         if m_social.any():
             ii = idx[m_social]
-            a.social_drive[ii] = np.maximum(0.0, a.social_drive[ii] - 0.3)
-            a.boredom[ii] = np.maximum(0.0, a.boredom[ii] - d.boredom_decay_on_vary)
-            a.x[ii] = np.clip(a.x[ii] + self.rng.normal(0, 3.0 * dt * 10, ii.size), 0.5, self.world.width - 0.5)
-            a.y[ii] = np.clip(a.y[ii] + self.rng.normal(0, 3.0 * dt * 10, ii.size), 0.5, self.world.height - 0.5)
+            a.social_drive[ii] = np.maximum(0.0, a.social_drive[ii] - 0.3 * k)
+            a.boredom[ii] = np.maximum(0.0, a.boredom[ii] - d.boredom_decay_on_vary * k)
+            sd = 3.0 * dt * 10 * sk
+            a.x[ii] = np.clip(a.x[ii] + self.rng.normal(0, sd, ii.size), 0.5, xmax)
+            a.y[ii] = np.clip(a.y[ii] + self.rng.normal(0, sd, ii.size), 0.5, ymax)
 
         m_explore = act == ACT_EXPLORE
         if m_explore.any():
             ii = idx[m_explore]
-            a.curiosity[ii] = np.maximum(0.0, a.curiosity[ii] - d.curiosity_decay_on_novel)
-            a.boredom[ii] = np.maximum(0.0, a.boredom[ii] - d.boredom_decay_on_vary * 0.5)
-            a.x[ii] = np.clip(a.x[ii] + self.rng.normal(0, 10.0 * dt * 10, ii.size), 0.5, self.world.width - 0.5)
-            a.y[ii] = np.clip(a.y[ii] + self.rng.normal(0, 10.0 * dt * 10, ii.size), 0.5, self.world.height - 0.5)
+            a.curiosity[ii] = np.maximum(0.0, a.curiosity[ii] - d.curiosity_decay_on_novel * k)
+            a.boredom[ii] = np.maximum(0.0, a.boredom[ii] - d.boredom_decay_on_vary * 0.5 * k)
+            sd = 10.0 * dt * 10 * sk
+            a.x[ii] = np.clip(a.x[ii] + self.rng.normal(0, sd, ii.size), 0.5, xmax)
+            a.y[ii] = np.clip(a.y[ii] + self.rng.normal(0, sd, ii.size), 0.5, ymax)
 
         m_manip = act == ACT_MANIPULATE
         if m_manip.any() and self.world.play_objects:
@@ -450,20 +466,23 @@ class Universe25Sim:
                 j = int(np.argmin(d2))
                 self._move_toward(int(i), float(ox[j]), float(oy[j]), 7.0)
                 obj = self.world.play_objects[j]
-                obj.x = float(np.clip(obj.x + self.rng.normal(0, 0.4), self.world.playground_bounds[0], self.world.playground_bounds[2]))
-                obj.y = float(np.clip(obj.y + self.rng.normal(0, 0.4), self.world.playground_bounds[1], self.world.playground_bounds[3]))
-            a.curiosity[ii] = np.maximum(0.0, a.curiosity[ii] - d.curiosity_decay_on_novel)
-            a.boredom[ii] = np.maximum(0.0, a.boredom[ii] - d.boredom_decay_on_vary)
+                pgb = self.world.playground_bounds
+                jig = 0.4 * self.sqrt_k  # per-decision nudge; daily variance resolution-free
+                obj.x = float(np.clip(obj.x + self.rng.normal(0, jig), pgb[0], pgb[2]))
+                obj.y = float(np.clip(obj.y + self.rng.normal(0, jig), pgb[1], pgb[3]))
+            a.curiosity[ii] = np.maximum(0.0, a.curiosity[ii] - d.curiosity_decay_on_novel * k)
+            a.boredom[ii] = np.maximum(0.0, a.boredom[ii] - d.boredom_decay_on_vary * k)
             a.fatigue[ii] = np.minimum(1.5, a.fatigue[ii] + 0.5 * d.fatigue_gain_active * dt)
 
         m_agg = act == ACT_AGGRESS
         if m_agg.any():
             ii = idx[m_agg]
-            a.aggression[ii] = np.minimum(1.5, a.aggression[ii] + 0.05)
+            a.aggression[ii] = np.minimum(1.5, a.aggression[ii] + 0.05 * k)
             for i in ii:
                 self._aggress(int(i))
-            a.x[ii] = np.clip(a.x[ii] + self.rng.normal(0, 4.0 * dt * 10, ii.size), 0.5, self.world.width - 0.5)
-            a.y[ii] = np.clip(a.y[ii] + self.rng.normal(0, 4.0 * dt * 10, ii.size), 0.5, self.world.height - 0.5)
+            sd = 4.0 * dt * 10 * sk
+            a.x[ii] = np.clip(a.x[ii] + self.rng.normal(0, sd, ii.size), 0.5, xmax)
+            a.y[ii] = np.clip(a.y[ii] + self.rng.normal(0, sd, ii.size), 0.5, ymax)
 
         m_mate = act == ACT_MATE
         if m_mate.any():
@@ -481,18 +500,19 @@ class Universe25Sim:
             move_mask(m_nurse, txx, tyy, 6.0)
             for i in ii:
                 if a.stress[i] > self.cfg.biology.maternal_neglect_stress:
-                    a.maternal[i] = max(0.0, a.maternal[i] - 0.05)
+                    a.maternal[i] = max(0.0, a.maternal[i] - 0.05 * k)
                 else:
-                    a.maternal[i] = min(1.0, a.maternal[i] + 0.02)
+                    a.maternal[i] = min(1.0, a.maternal[i] + 0.02 * k)
                     self._nurse(int(i))
 
         m_with = act == ACT_WITHDRAW
         if m_with.any():
             ii = idx[m_with]
-            a.social_drive[ii] = np.maximum(0.0, a.social_drive[ii] - 0.1)
-            a.aggression[ii] = np.maximum(0.0, a.aggression[ii] - 0.05)
-            a.x[ii] = np.clip(a.x[ii] * 0.95 + 1.0, 0.5, self.world.width - 0.5)
-            a.y[ii] = np.clip(a.y[ii] * 0.95 + 1.0, 0.5, self.world.height - 0.5)
+            a.social_drive[ii] = np.maximum(0.0, a.social_drive[ii] - 0.1 * k)
+            a.aggression[ii] = np.maximum(0.0, a.aggression[ii] - 0.05 * k)
+            # drift toward (20, 20) at 5 % per decision (x*0.95 + 1.0 at the reference resolution)
+            a.x[ii] = np.clip(a.x[ii] * (1.0 - 0.05 * k) + 20.0 * 0.05 * k, 0.5, xmax)
+            a.y[ii] = np.clip(a.y[ii] * (1.0 - 0.05 * k) + 20.0 * 0.05 * k, 0.5, ymax)
 
         # update cell + playground flags (vectorized)
         nx, ny = self.cfg.geometry.n_cells_x, self.cfg.geometry.n_cells_y
@@ -514,7 +534,7 @@ class Universe25Sim:
         a = self.agents
         dx, dy = tx - a.x[i], ty - a.y[i]
         dist = float(np.hypot(dx, dy)) + 1e-6
-        step = min(speed * self.dt_days * 24.0, dist)  # speed inches/day-ish scaled
+        step = min(speed * self.reach, dist)  # reach per decision, resolution-independent
         a.x[i] = float(np.clip(a.x[i] + dx / dist * step, 0.5, self.world.width - 0.5))
         a.y[i] = float(np.clip(a.y[i] + dy / dist * step, 0.5, self.world.height - 0.5))
 
@@ -533,10 +553,11 @@ class Universe25Sim:
         if len(near) == 0:
             return
         j = int(self.rng.choice(near))
-        a.wounds[j] = min(1.5, a.wounds[j] + 0.15)
-        a.stress[j] = min(1.5, a.stress[j] + 0.1)
-        a.rank[j] = max(0.0, a.rank[j] - 0.05)
-        a.rank[i] = min(1.0, a.rank[i] + 0.02)
+        k = self.k_ev
+        a.wounds[j] = min(1.5, a.wounds[j] + 0.15 * k)
+        a.stress[j] = min(1.5, a.stress[j] + 0.1 * k)
+        a.rank[j] = max(0.0, a.rank[j] - 0.05 * k)
+        a.rank[i] = min(1.0, a.rank[i] + 0.02 * k)
 
     def _nurse(self, i: int) -> None:
         a = self.agents
@@ -545,9 +566,10 @@ class Universe25Sim:
             return
         d2 = (a.x - a.x[i]) ** 2 + (a.y - a.y[i]) ** 2
         near = np.flatnonzero(pups & (d2 < 25.0))
+        k = self.k_ev
         for j in near[:4]:
-            a.energy[j] = min(1.0, a.energy[j] + 0.15)
-            a.hunger[j] = max(0.0, a.hunger[j] - 0.2)
+            a.energy[j] = min(1.0, a.energy[j] + 0.15 * k)
+            a.hunger[j] = max(0.0, a.hunger[j] - 0.2 * k)
 
     def _try_mate(self, i: int) -> None:
         a = self.agents
@@ -578,8 +600,10 @@ class Universe25Sim:
         male = j if female == i else i
         if a.gestating[female] > 0 or a.age_days[female] > bio.female_fertile_max_age_days:
             return
-        # Conception scales with both partners' social competence (courtship / receptivity).
+        # Conception scales with both partners' social competence (courtship / receptivity);
+        # per-attempt chance is scaled so attempts/day × chance is resolution-independent.
         p = 0.55 * (1.0 - 0.8 * a.stress[female]) * a.competence[female] * a.competence[male]
+        p *= self.k_ev
         if self.rng.random() < p:
             a.gestating[female] = bio.gestation_days
             a.role[female] = ROLE_NURSING
@@ -610,15 +634,17 @@ class Universe25Sim:
         dens_frac = a.n_alive / max(1, self.world.capacity_design)
         if dens_frac > self.cfg.biology.menopause_density_threshold:
             gain = gain + float(self.cfg.biology.social_breakdown_stress_boost)
-        # random nest kick for low rank overcrowded
-        kick = over & (a.rank[idx] < 0.4) & (self.rng.random(idx.size) < 0.1)
+        # random nest kick for low rank overcrowded (per-decision chance, resolution-scaled)
+        kick = over & (a.rank[idx] < 0.4) & (self.rng.random(idx.size) < 0.1 * self.k_ev)
         if kick.any():
             a.nest_id[idx[kick]] = self.rng.integers(0, self.world.n_nests, size=int(kick.sum()))
         # Relaxation toward gain/decay: equilibrium stress is smooth in local density
         # (a constant decay gave a hard density cliff with runaway stress above it).
         a.stress[idx] = np.clip(a.stress[idx] + (gain - d.stress_decay * a.stress[idx]) * dt, 0, 1.5)
         with_mask = (a.stress[idx] > 0.9) & (a.social_drive[idx] > 0)
-        a.social_drive[idx[with_mask]] = np.maximum(0.0, a.social_drive[idx[with_mask]] - 0.05)
+        a.social_drive[idx[with_mask]] = np.maximum(
+            0.0, a.social_drive[idx[with_mask]] - 0.05 * self.k_ev
+        )
         # Developmental imprinting (Calhoun): young exposed to crowded cells / overfull nests
         # lose social competence; the trait is frozen once mature. Mirrors Warp kernel.
         bio = self.cfg.biology
@@ -643,15 +669,16 @@ class Universe25Sim:
         pups = np.flatnonzero(alive & (a.role == ROLE_PUP))
         if moms.size == 0 or pups.size == 0:
             return
+        k = self.k_ev  # feeding per contact is per decision; contacts/day scale with ticks
         for i in moms:
             if a.stress[i] > self.cfg.biology.maternal_neglect_stress:
                 continue
             d2 = (a.x[pups] - a.x[i]) ** 2 + (a.y[pups] - a.y[i]) ** 2
             near = pups[d2 < 64.0]
             for j in near[:6]:
-                a.energy[j] = min(1.0, a.energy[j] + 0.35)
-                a.hunger[j] = max(0.0, a.hunger[j] - 0.45)
-                a.thirst[j] = max(0.0, a.thirst[j] - 0.35)
+                a.energy[j] = min(1.0, a.energy[j] + 0.35 * k)
+                a.hunger[j] = max(0.0, a.hunger[j] - 0.45 * k)
+                a.thirst[j] = max(0.0, a.thirst[j] - 0.35 * k)
 
     def _daily_breeding_pass(self, alive: np.ndarray) -> None:
         """Once per day: conceive eligible females that share a cell with a male."""
@@ -812,7 +839,7 @@ class Universe25Sim:
                     float(bio.nest_overcrowd_stress), capacity_per_cell, b["dens_frac"],
                     float(bio.menopause_density_threshold), float(bio.social_breakdown_stress_boost),
                     float(bio.maturity_days), float(bio.imprint_rate),
-                    float(bio.imprint_density_threshold),
+                    float(bio.imprint_density_threshold), float(self.k_ev),
                 ],
                 device=eng.device,
             )

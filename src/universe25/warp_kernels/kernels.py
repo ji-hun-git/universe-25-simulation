@@ -66,6 +66,7 @@ def density_stress_kernel(
     maturity_days: float,
     imprint_rate: float,
     imprint_thr: float,
+    event_scale: float,
 ):
     i = wp.tid()
     if alive[i] == 0:
@@ -85,7 +86,7 @@ def density_stress_kernel(
     # Relaxation toward gain/decay (smooth in density; mirrors sim._density_stress).
     stress[i] = wp.clamp(stress[i] + (gain - stress_decay * stress[i]) * dt, 0.0, 1.5)
     if stress[i] > 0.9 and social_drive[i] > 0.0:
-        social_drive[i] = wp.max(0.0, social_drive[i] - 0.05)
+        social_drive[i] = wp.max(0.0, social_drive[i] - 0.05 * event_scale)
     # Developmental imprinting: young lose social competence under crowding; frozen at maturity.
     if age_days[i] < maturity_days:
         exposure = wp.max(0.0, local - imprint_thr) + over

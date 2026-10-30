@@ -99,6 +99,11 @@ class DriveConfig(BaseModel):
 class SimConfig(BaseModel):
     seed: int = 7000
     ticks_per_day: int = 24
+    # Per-decision effect magnitudes (nursing amounts, drive relief, wounds, conception chance
+    # per attempt, random-walk steps) are specified at this resolution; the tick loop rescales
+    # them by ticks_per_day_ref / ticks_per_day (√ of that for random walks) so daily totals do
+    # not depend on ticks_per_day. Movement reaches its target within one decision at any dt.
+    ticks_per_day_ref: int = 6
     max_agents: int = 4096
     initial_pairs: int = 4
     days: float = 1600.0
