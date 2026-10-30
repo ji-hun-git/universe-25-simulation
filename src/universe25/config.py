@@ -108,6 +108,12 @@ class BiologyConfig(BaseModel):
     # every weaned female (juveniles exposed to the breakdown never acquire the capacity).
     maternal_erosion_rate: float = 0.0  # 0 = off
     maternal_erosion_stress: float = 0.6
+    # Male counterpart (Calhoun phase D: males stopped courting and defending territory, so
+    # conceptions ended ~Day 920 although fertile females remained). Irreversible loss of
+    # courtship capacity per day per unit stress above the threshold, weaned males; the
+    # cell's male competence in the daily breeding pass is competence x courtship capacity.
+    courtship_erosion_rate: float = 0.0  # 0 = off
+    courtship_erosion_stress: float = 0.6
 
 
 class DriveConfig(BaseModel):

@@ -122,6 +122,15 @@ PARAM_PRIORS: dict[str, dict[str, Any]] = {
         "low": 0.3, "high": 0.9, "log": False, "group": "biology",
         "prior": "Uniform; stress above which adult maternal capacity erodes",
     },
+    "courtship_erosion_rate": {
+        "low": 0.002, "high": 1.0, "log": True, "group": "biology",
+        "prior": "LogUniform; irreversible male courtship-capacity loss per day per unit stress "
+                 "above threshold (Calhoun D: males ceased courting; last conception ~920)",
+    },
+    "courtship_erosion_stress": {
+        "low": 0.3, "high": 0.9, "log": False, "group": "biology",
+        "prior": "Uniform; stress above which male courtship capacity erodes",
+    },
     "stress_density_gain": {
         "low": 0.1, "high": 1.5, "log": False, "group": "drives",
         "prior": "Uniform; how fast local density raises stress",

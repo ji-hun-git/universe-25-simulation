@@ -93,6 +93,8 @@ def test_last_surviving_young_tracks_weaned_cohorts() -> None:
     assert sim._surv_births_cum == int(sim._surv_births_by_day.sum()) > 0
     cess = summary["surviving_birth_cessation_day"]
     assert 0.0 < cess <= sim._last_surviving_young_day + 1e-6, (cess, sim._last_surviving_young_day)
+    assert int(sim._conc_by_day.sum()) == sim._conceptions > 0
+    assert 0.0 < summary["conception_cessation_day"] <= sim._last_conception_day + 1e-6
     # synthetic: a steady rate then a single late straggler -> cessation ignores the straggler
     hist = np.zeros(400, dtype=np.int64)
     hist[100:300] = 20
@@ -315,6 +317,37 @@ def test_maternal_erosion_is_weaned_only_and_irreversible() -> None:
     assert float(a.maternal[adult_f]) <= 0.9 * cap_before + 1e-6
 
 
+def test_courtship_erosion_is_weaned_males_only_and_irreversible() -> None:
+    from universe25.agents.state import SEX_M
+
+    sim = _make_sim(days=1.0, out="test_bio_court")
+    a = sim.agents
+    bio = sim.cfg.biology
+    bio.courtship_erosion_rate = 0.2
+    bio.courtship_erosion_stress = 0.5
+    alive = np.flatnonzero(a.alive)
+    male, pup_m, calm_m, female = alive[0], alive[1], alive[2], alive[3]
+    a.sex[[male, pup_m, calm_m]] = SEX_M
+    a.sex[female] = SEX_F
+    a.age_days[[male, calm_m, female]] = 300.0
+    a.age_days[pup_m] = bio.weaning_days - 5.0
+    a.stress[[male, pup_m, female]] = 0.9
+    a.stress[calm_m] = 0.3
+    a.courtship_cap[:] = 1.0
+    sim.tick = sim.cfg.ticks_per_day
+    sim._daily_courtship_erosion(a.alive)
+    assert abs(float(a.courtship_cap[male]) - (1.0 - 0.2 * 0.4)) < 1e-6
+    assert a.courtship_cap[pup_m] == 1.0 and a.courtship_cap[calm_m] == 1.0
+    assert a.courtship_cap[female] == 1.0, "females keep courtship_cap untouched"
+    sim.tick += 1
+    sim._daily_courtship_erosion(a.alive)
+    assert abs(float(a.courtship_cap[male]) - (1.0 - 0.2 * 0.4)) < 1e-6, "not a day boundary"
+    sim.tick = 2 * sim.cfg.ticks_per_day
+    a.stress[male] = 0.1
+    sim._daily_courtship_erosion(a.alive)
+    assert abs(float(a.courtship_cap[male]) - (1.0 - 0.2 * 0.4)) < 1e-6, "must not recover"
+
+
 if __name__ == "__main__":
     test_no_immature_conception_and_pup_actions()
     test_last_surviving_young_tracks_weaned_cohorts()
@@ -322,5 +355,6 @@ if __name__ == "__main__":
     test_decisions_are_held_between_decision_ticks()
     test_relaxation_feeding_composes_over_substeps()
     test_maternal_erosion_is_weaned_only_and_irreversible()
+    test_courtship_erosion_is_weaned_males_only_and_irreversible()
     test_warp_density_stress_parity()
     print("test_biology_guards: OK")

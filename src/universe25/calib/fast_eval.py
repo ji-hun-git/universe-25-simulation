@@ -99,6 +99,7 @@ def evaluate_params(
             n_adult=np.asarray(n_adult_hist, dtype=np.float64),
             last_conception=np.asarray(last_conc_hist, dtype=np.float64),
             surv_births_by_day=sim._surv_births_by_day,
+            conceptions_by_day=sim._conc_by_day,
         )
         obs["last_birth_any_day"] = float(sim._last_young_day)
         obs["nan_count"] = int(sim._nan_count)

@@ -37,7 +37,7 @@ from universe25.agents.state import (
     pick_backend,
 )
 from universe25.config import SimConfig
-from universe25.metrics.calibration import surviving_birth_cessation_day
+from universe25.metrics.calibration import rate_cessation_day, surviving_birth_cessation_day
 from universe25.metrics.logger import MetricsLogger
 from universe25.metrics.playscore import PlayScoreAccumulator
 from universe25.io.snapshots import SnapshotWriter
@@ -104,6 +104,7 @@ class Universe25Sim:
         # pups that reached weaning, by birth day (for the rate-based cessation landmark)
         self._surv_births_by_day = np.zeros(int(math.ceil(cfg.days)) + 2, dtype=np.int64)
         self._surv_births_cum = 0
+        self._conc_by_day = np.zeros(int(math.ceil(cfg.days)) + 2, dtype=np.int64)
         self._last_conception_day = 0.0
         self._abandoned = 0  # pups expelled from their nest box by a stressed mother
         self._peak_n = 0
@@ -173,6 +174,7 @@ class Universe25Sim:
         a.in_playground[slot] = self.world.in_playground(a.x[slot], a.y[slot])
         a.competence[slot] = 1.0  # shaped during development (see _density_stress)
         a.maternal_cap[slot] = 1.0  # eroded in adulthood (see _daily_maternal_erosion)
+        a.courtship_cap[slot] = 1.0  # males; eroded in adulthood (see _daily_maternal_erosion)
 
     # ------------------------------------------------------------------ step
     def step(self) -> None:
@@ -201,6 +203,7 @@ class Universe25Sim:
                 self._passive_nurse(alive)
                 self._daily_breeding_pass(alive)
                 self._daily_maternal_erosion(alive)
+                self._daily_courtship_erosion(alive)
                 self._daily_litter_abandonment(alive)
                 self._reproduce(alive)
             if use_warp:
@@ -796,6 +799,29 @@ class Universe25Sim:
         )
         a.maternal[af] = np.minimum(a.maternal[af], a.maternal_cap[af])
 
+    def _daily_courtship_erosion(self, alive: np.ndarray) -> None:
+        """Once per day: weaned males above courtship_erosion_stress lose courtship capacity
+        irreversibly (rate x excess stress per day). Calhoun phase D: males ceased courting and
+        territorial defence, so conceptions ended (~Day 920) while fertile females remained."""
+        if (self.tick % self.cfg.ticks_per_day) != 0:
+            return
+        bio = self.cfg.biology
+        if bio.courtship_erosion_rate <= 0.0:
+            return
+        a = self.agents
+        am = np.flatnonzero(
+            alive
+            & (a.sex == SEX_M)
+            & (a.age_days >= bio.weaning_days)
+            & (a.stress > bio.courtship_erosion_stress)
+        )
+        if am.size == 0:
+            return
+        excess = a.stress[am].astype(np.float64) - float(bio.courtship_erosion_stress)
+        a.courtship_cap[am] = np.maximum(
+            0.0, a.courtship_cap[am] - float(bio.courtship_erosion_rate) * excess
+        )
+
     def _daily_litter_abandonment(self, alive: np.ndarray) -> None:
         """Once per day: a nursing mother above the neglect stress threshold abandons her box's
         litter with probability litter_abandon_p; those pups lose their nest box (nest_id = -1)
@@ -857,11 +883,15 @@ class Universe25Sim:
         )
         if females.size == 0 or males.size == 0:
             return
-        # Per-cell mean male competence (courtship capability of the local males).
+        # Per-cell mean male courtship capability: developmental competence x what adult-stage
+        # stress has left of the courtship capacity.
         male_cells: dict[int, list[int]] = {}
         for m in males:
             male_cells.setdefault(int(a.cell_id[m]), []).append(int(m))
-        male_comp = {c: float(np.mean(a.competence[ms])) for c, ms in male_cells.items()}
+        male_comp = {
+            c: float(np.mean(a.competence[ms] * a.courtship_cap[ms]))
+            for c, ms in male_cells.items()
+        }
         for f in females:
             cands = male_cells.get(int(a.cell_id[f]), [])
             if not cands:
@@ -877,6 +907,7 @@ class Universe25Sim:
                 )
                 self._conceptions += 1
                 self._last_conception_day = self.day
+                self._conc_by_day[min(int(self.day), self._conc_by_day.size - 1)] += 1
 
     def _reproduce(self, alive: np.ndarray) -> None:
         a = self.agents
@@ -1079,6 +1110,7 @@ class Universe25Sim:
             entropy = 0.0
         ps = self.playscore.components(v=v, g=g, action_entropy=entropy)
         adult_f = alive & (a.sex == SEX_F) & (a.age_days >= self.cfg.biology.maturity_days)
+        adult_m = alive & (a.sex == SEX_M) & (a.age_days >= self.cfg.biology.maturity_days)
         row = {
             "tick": self.tick,
             "day": self.day,
@@ -1098,6 +1130,9 @@ class Universe25Sim:
             ) if np.any(alive & (a.age_days >= self.cfg.biology.maturity_days)) else 1.0,
             "mean_maternal_cap_adult_f": (
                 float(a.maternal_cap[adult_f].mean()) if adult_f.any() else 1.0
+            ),
+            "mean_courtship_cap_adult_m": (
+                float(a.courtship_cap[adult_m].mean()) if adult_m.any() else 1.0
             ),
             "playground_occupancy": pg_occ,
             "playground_frac": pg_occ / max(1, n),
@@ -1157,6 +1192,7 @@ class Universe25Sim:
             ),
             "surviving_births": self._surv_births_cum,
             "last_conception_day": self._last_conception_day,
+            "conception_cessation_day": rate_cessation_day(self._conc_by_day),
             "abandoned_pups": self._abandoned,
             "nan_count": self._nan_count,
             "playground_enabled": self.world.playground_enabled,

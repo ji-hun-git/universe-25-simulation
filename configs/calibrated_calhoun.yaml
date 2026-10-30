@@ -1,7 +1,8 @@
-# Calhoun-landmark calibration, phase 2f (2026-10-30). CMA-ES 168 trials (sigma0 0.1) from the phase-2e
-# optimum, seed 7000, 1200 d, 6 ticks/day, exact stress relaxation. Train loss 0.151 (canonical mean rel. error
-# 0.103); held-out 8000/8001/8002 canonical 0.11/0.15/0.17 (loss 0.40/0.32/0.90). See NOTES.md 'Phase 2f' and
-# configs/calibration_study_p2f.json. Fragment: merge over configs/default.yaml (same values are in it).
+# Calhoun-landmark calibration, phase 2g (2026-10-31). Phase-2f CMA-ES optimum + male courtship erosion
+# (rate 0.03 / stress 0.5, chosen by a 1-D scan and confirmed as the best of an 84-trial CMA-ES study, sigma0
+# 0.1). Seed 7000, 1200 d, 6 ticks/day: loss 0.120 (canonical mean rel. error 0.100); held-out 8000/8001/8002
+# canonical 0.11/0.15/0.17. Conception cessation 930 (held-out 885-1059) vs Calhoun ~920. See NOTES.md 'Phase 2g'
+# and configs/calibration_study_p2g.json. Fragment: merge over configs/default.yaml (same values are in it).
 biology:
   first_conception_min_day: 81.23565828830122
   gestation_days: 19.479738849243606
@@ -27,6 +28,8 @@ biology:
   nurse_rate_per_day: 8.175439980634657
   maternal_erosion_rate: 0.1686670613068217
   maternal_erosion_stress: 0.5076751020956933
+  courtship_erosion_rate: 0.03
+  courtship_erosion_stress: 0.5
   nurse_max_pups: 6
   breakdown_density_counts: weaned
   starvation_hazard_per_day: 1.0
