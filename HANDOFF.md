@@ -4,7 +4,7 @@
 > **Repo (private):** https://github.com/ji-hun-git/universe25-play  
 > **Local path (lab PC):** `C:\Users\user\Projects\universe25-play`  
 > **Owner:** Jason (ji-hun-git) · **Research partner:** gan  
-> **Date:** 2026-10-30 (Asia/Seoul) · **Phase:** 1 complete (honest negative on timing); **phase 2 in progress** (calibration + Warp kernels — another worker may be editing `src/` / `tests/`)
+> **Date:** 2026-10-30 (Asia/Seoul) · **Phase:** 1 complete; **phase 2 calibration done (2b: mean landmark error 0.14, emergent collapse)**; Warp parity partial; phase 3 (visuals) and phase 4 (play module) not started
 
 Read this file first. Then read `PLAN.md`, `NOTES.md`, `docs/NVIDIA_STACK.md`, `docs/TASKS.md`. Follow `CONTRIBUTING.md` for day-to-day rules.
 
@@ -138,13 +138,45 @@ Label: **exploratory / negative on timing calibration**; peak magnitude within ~
 
 See `docs/NVIDIA_STACK.md`, `docs/NSIGHT.md`.
 
-### Phase 2 — IN PROGRESS (do not stomp)
+### Phase 2 — calibration (2026-10-30) — SUPERSEDED
 
-Another worker is actively editing **sim / Warp / calibration** under `src/` and possibly `tests/`.  
-**If you are only writing docs:** touch docs only.  
-**If you are coding phase 2:** pull first, keep commits focused, rebase before push, avoid rewriting unrelated modules.
+The phase-2 CMA-ES fit (first litters 115, N@315 594, peak 831 @ 585, no collapse) was an
+artifact of a **pup-mill bug**: a zero softmax utility still carried probability, so pre-weaning
+pups foraged, fought and *conceived* (median gestating age 15 d), while adults died of runaway
+stress at ~80 d. Full diagnosis in `NOTES.md` ("Phase 2b").
 
-Phase-2 goals: biology calibration toward Calhoun landmarks; Warp kernels + CUDA Graph path; honest benches.
+### Phase 2b — bug fix + emergent collapse mechanism + recalibration (2026-10-30)
+
+- Eligibility mask in action selection (pups REST/NEST only; MATE needs maturity); age gate in `_try_mate`.
+- Births in the nest box; mothers nurse at the nest; wounds heal; stress relaxes toward gain/decay.
+- **Developmental imprinting**: SoA trait `competence` lost while young under crowding, frozen at
+  maturity; scales conception, maternal investment, withdrawal ("beautiful ones"). Irreversible by
+  construction, matching Calhoun/Marsden. Plus female reproductive senescence (~560 d of age).
+- Landmarks: `last_young_day` = last *surviving* birth; `peak_day` = first day ≥ 97 % of max;
+  extra Calhoun facts (N@736 = 2056, adults@315 = 150, last conception ≈ 920) reported.
+- Parallel CMA-ES (`--workers/--popsize`, process pool) from the repo-local `.venv` (has optuna).
+- New tests: `tests/test_biology_guards.py` (incl. Warp↔NumPy stress/competence parity).
+
+**Calibrated run (seed 7000, `configs/default.yaml`, 6 ticks/day, 1600 d, 45 s wall):**
+
+| Landmark | Calhoun | Phase 1 | Phase 2b |
+|----------|--------:|--------:|---------:|
+| First litters | 104 | 221 | **111** |
+| N @ 315 | 620 | 48 | **672** |
+| Peak N | 2200 | 1715 | **2261** |
+| Peak day (first ≥97 %) | 560 | ~1395 | 467 |
+| Last surviving birth | 600 | ≥1600 | 813 (mechanism gap, see NOTES) |
+| N @ 736 | 2056 | — | **2106** |
+| N @ 1200 / 1600 | declining | 1339 @1600, still growing | **1316 / 93** |
+| mean rel. error (5) | | 1.08 | **0.14** |
+
+Phases detected: adjustment → growth → stagnation → decline (832) → collapse (1228). Held-out
+seeds 8000–8002 keep the shape (peak 2238–2305, N@736 2116–2171); N@315 varies 404–827.
+**Valid at 6 ticks/day only** (default.yaml is pinned to 6): at 24 ticks/day the same parameters
+give peak 1088 because the tick loop is not dt-invariant (movement re-drawn every tick, per-event
+effects not dt-scaled) — `docs/TASKS.md` P0-4.
+Full tables and the open gaps in `NOTES.md` → "Phase 2b". The worker that owned phase 2
+reported it finished; `src/` is no longer dual-edited, but still pull/rebase before pushing.
 
 ---
 
@@ -203,7 +235,9 @@ universe25-play/
 │   ├── test_geometry.py
 │   ├── test_determinism.py
 │   ├── test_conservation.py
+│   ├── test_biology_guards.py  ← no immature conception, pups nest-bound, competence, Warp parity
 │   └── test_warp_smoke.py
+├── .venv/                  ← gitignored; repo-local Python with optuna/cmaes for calibration
 └── _output/                ← gitignored runs
 ```
 
@@ -234,11 +268,18 @@ Set-Location $proj
 # Calibrate a run
 & $py -X utf8 "$proj\scripts\calibrate.py" --metrics "$proj\_output\smoke\metrics.parquet" --out "$proj\_output\smoke\calibration.json" --run-json "$proj\_output\smoke\run.json"
 
-# Long abundant+playground (numpy host — baseline)
-& $py -X utf8 "$proj\main.py" --seed 7000 --out "$proj\_output\run1600_abund_pg" --days 1600 --backend numpy --device cpu --max-agents 4096 --playground on
+# Long abundant+playground, calibrated (default.yaml = phase-2b params, 6 ticks/day; ~50 s on CPU)
+# → peak 2262, N@736 2106, 93 left at 1600, calibration_mean_rel_error 0.140
+& $py -X utf8 "$proj\main.py" --seed 7000 --out "$proj\_output\run1600_p2b" --days 1600 --backend numpy --device cpu --max-agents 4096 --playground on
 
 # Warp path (when kernels ready)
 & $py -X utf8 "$proj\main.py" --seed 7000 --out "$proj\_output\warp_smoke" --backend warp --device cuda --days 5 --max-agents 4096
+
+# Calibration (CMA-ES). optuna lives ONLY in the repo-local .venv (same Python/numpy as omnilab,
+# no warp/torch). 16-core box: 14 workers, popsize 14, 1200 d, 6 ticks/day ≈ 25 min / 8 gens.
+$pyc = "$proj\.venv\Scripts\python.exe"
+& $pyc -X utf8 -u "$proj\scripts\calibrate_optuna.py" --seed 7000 --trials 112 --popsize 14 --workers 14 `
+  --days 1200 --ticks-per-day 6 --x0 "$proj\configs\calibrated_calhoun.yaml" --out "$proj\_output\calib_cma"
 ```
 
 **Git (pathspec discipline — never `git add .` on a shared tree):**
@@ -265,12 +306,17 @@ Seeds: build/training `7000–7009`; unit tests `7100`; eval worlds later `8000�
 - [x] Determinism / geometry / conservation tests  
 - [x] 1600-day run + honest calibration in NOTES  
 
-### Phase 2 — Calibrate + GPU (IN PROGRESS)
+### Phase 2 — Calibrate + GPU (calibration DONE 2026-10-30; GPU parity partial)
 **Accept when:**
-- [ ] Mean relative landmark error **≪ 1.0** (target: peak day within ~30% of 560; N@315 order-of-magnitude correct; first litters nearer 104)
-- [ ] Collapse phase appears by ~day 1200 under abundant arm **or** documented why not (negative OK if honest)
-- [ ] Warp tick path correct vs NumPy reference (parity tests); CUDA Graph optional speedup documented
-- [ ] `docs/NSIGHT.md` benches updated; no NaNs
+- [x] Mean relative landmark error **≪ 1.0** → **0.14** (peak day 467 = within 17 % of 560; N@315 672; first litters 111)
+- [x] Collapse phase appears by ~day 1200 under abundant arm → N(1200) = 58 % of peak, 93 left at 1600; the one documented miss is surviving births lasting to day 813 (Calhoun 600) — mechanism gap, see NOTES
+- [~] Warp tick path correct vs NumPy reference: density-stress + imprinting kernel parity test added (3e-8); mortality (hazard-level) and cells parity still open; CUDA Graph speedup documented in NSIGHT
+- [x] No NaNs (0 across calibration, held-out and 1600-d runs); `docs/NSIGHT.md` benches unchanged (no kernel perf work this round)
+
+Phase-2c candidates (in priority order): **dt-invariance** (P0-4: action persistence, per-day
+event scaling — the calibration is currently tied to 6 ticks/day); stress-dependent litter
+abandonment to close the day-600 cessation gap; vectorize `_passive_nurse` / per-agent loops
+(profile in `docs/TASKS.md` P1-3).
 
 ### Phase 3 — Visuals + dashboard
 **Accept when:**

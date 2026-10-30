@@ -35,15 +35,27 @@ python scripts\calibrate.py --metrics _output\smoke\metrics.parquet --out _outpu
 
 ## Calibration targets (Calhoun 1973, Death Squared)
 
-| Landmark | Target |
-|---|---|
-| First litters | ~day 104 |
-| N at day 315 | ~620 |
-| Peak | ~2200 at ~day 560 |
-| Last surviving young | ~day 600 |
-| Collapse | thereafter |
+| Landmark | Target | Definition used |
+|---|---|---|
+| First litters | ~day 104 | first day with a birth |
+| N at day 315 | ~620 | |
+| Peak | ~2200 at ~day 560 | `peak_day` = first day at ≥ 97 % of max N (plateau-robust) |
+| Last surviving young | ~day 600 | latest birth day among pups that reached weaning |
+| Decline | thereafter | slow: N = 2056 at day 736, 122 at day ~1444 |
 
-Phase-1 need-driven parameters are **not** fully tuned; `calibration.json` reports honest error.
+Also reported (not in the canonical mean error): N@736 = 2056, 150 adults (+470 immatures) at
+day 315, last conception ≈ day 920.
+
+Collapse is **emergent**: density → stress → neglect / breeding suppression, plus a developmental
+`competence` trait that young lose under crowding and keep for life (Calhoun's "beautiful ones";
+Marsden 1972 showed the deficit persisted after transfer). No parameter names a collapse day.
+`calibration.json` reports honest error; see `NOTES.md` for the current fit and its misses.
+
+Calibration (CMA-ES) runs from the repo-local `.venv` (has optuna; the shared lab venv does not):
+
+```powershell
+.venv\Scripts\python.exe scripts\calibrate_optuna.py --seed 7000 --trials 112 --popsize 14 --workers 14 --days 1200 --x0 configs\calibrated_calhoun.yaml --out _output\calib_cma
+```
 
 ## Metrics (per log window)
 
@@ -56,8 +68,8 @@ PlayScore (gan formalization, **not validated**): `G · (1−|F|) · V · D · S
 ```
 configs/          default.yaml, smoke.yaml
 src/universe25/   sim, world, agents, metrics, io
-tests/            geometry, determinism, conservation (__main__ runner)
-scripts/          calibrate.py
+tests/            geometry, determinism, conservation, biology guards + Warp parity (__main__ runner)
+scripts/          calibrate.py, calibrate_optuna.py, benchmark_backends.py
 _output/          runs (gitignored)
 PLAN.md           mini-prereg
 NOTES.md          dated results

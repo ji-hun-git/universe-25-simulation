@@ -2,6 +2,13 @@
 
 - version: 2026-10-30
 - Status: draft (phase-1 environment; freeze before learning-agent runs)
+- Status note 2026-10-30 (phase 2b): H-a prediction met on magnitude (peak 2261,
+  N@736 2106, decline to 58 % of peak by day 1200, 93 mice at 1600) with no scheduled collapse;
+  timing partially met (peak day 467 vs 560; last *surviving* birth 813 vs 600 — mechanism gap
+  recorded in NOTES.md). The phase-2 calibration before this was invalid (pup-mill bug). Schema
+  additions since phase 1: SoA `competence`, biology `imprint_*`, `withdrawn_competence_threshold`,
+  `female_fertile_max_age_days`, `wound_heal_per_day`; metrics `last_surviving_young_day`,
+  `last_conception_day`, `n_adult`, `mean_competence_adult`. Environment is NOT yet frozen.
 - Work package: WP-G12-adjacent / Track E toy world (Universe 25 + playground); not L3 ecology
 - Track: **E** (emergent, exploratory)
 - Owner: Jason

@@ -9,6 +9,10 @@ Legend: **P0** blocking · **P1** high · **P2** medium · **P3** polish
 
 ## P0-1 — Biology calibration toward Calhoun landmarks
 
+> **Status 2026-10-30:** pup-mill bug fixed, developmental-imprinting collapse
+> mechanism added, recalibrated — see `NOTES.md` "Phase 2b" for the before/after table. Remaining
+> work on this card = whatever landmark is still off in that table.
+
 **Goal:** Reduce mean relative landmark error from ~1.08; get first litters nearer day 104, N@315 nearer 620, peak nearer day 560, and either a collapse or an honest negative with mechanism notes.
 
 **Files:** `configs/default.yaml`, `src/universe25/sim.py`, `src/universe25/config.py`, `src/universe25/calib/*`, `scripts/calibrate_optuna.py`, `NOTES.md`
@@ -35,6 +39,10 @@ Read HANDOFF.md + NOTES.md. Phase-1 1600d abundant run peaked at N≈1715 on day
 
 ## P0-2 — Warp ↔ NumPy parity for tick kernels
 
+> **Status 2026-10-30:** `tests/test_biology_guards.py::test_warp_density_stress_parity` covers the
+> density-stress + imprinting kernel (max |Δ| ≈ 3e-8). Still open: mortality (different RNG streams —
+> compare hazards, not draws) and `update_cells`.
+
 **Goal:** Device Warp path matches NumPy reference on a fixed seed for stress/mortality/cells (and any kernels you own), within agreed float tolerance.
 
 **Files:** `src/universe25/warp_kernels/*`, `src/universe25/sim.py`, `tests/test_warp_smoke.py` (add parity test), `docs/NSIGHT.md`
@@ -54,6 +62,33 @@ python main.py --seed 7000 --out _output\warp_parity --backend warp --device cud
 **Task:**
 ```
 Read HANDOFF.md and docs/NVIDIA_STACK.md. Add/extend Warp kernel parity tests vs NumPy host for the post-step (and any tick pieces already on device). RTX 5080 sm_120. Fail loud on mismatch. Update NOTES with parity method. No play reward. Pathspec commits.
+```
+
+---
+
+## P0-4 — dt-invariance: action persistence + per-day event effects
+
+**Goal:** The calibrated biology must give the same trajectory at 6 and 24 ticks/day. Today the
+same parameters give peak 2261 (6 tpd) vs 1088 (24 tpd) — see `NOTES.md` Phase 2b.
+
+**Files:** `src/universe25/sim.py` (`_select_actions`, `_execute_actions`, `_passive_nurse`,
+`_nurse`, `_aggress`, `_density_stress`), `configs/default.yaml`, `NOTES.md`
+
+**Acceptance criteria:**
+- Agents commit to a movement target (nest / hopper / object) until arrival instead of re-drawing
+  every tick, or movement completes within one decision regardless of `ticks_per_day`
+- Per-event effects (nurse amounts, wound +0.15, ACT_NEST −0.05 stress, social −0.05) scaled so
+  daily totals do not depend on `ticks_per_day`
+- 1600-d seed-7000 landmarks at 24 tpd within ~10 % of the 6-tpd run (re-calibrate if needed with
+  `scripts/calibrate_optuna.py --workers 14`)
+- Determinism test still green; H2 clean
+
+**Task:**
+```
+Read HANDOFF.md + NOTES.md "Phase 2b" (dt-invariance gap). Make the Universe25 tick dt-invariant:
+action/target persistence and per-day scaling of per-event effects. Compare 6 vs 24 ticks/day on
+seed 7000 for 1600 d, table in NOTES. Re-run CMA-ES from configs/calibrated_calhoun.yaml if the
+landmarks move. No play reward. Pathspec commits.
 ```
 
 ---
@@ -114,6 +149,12 @@ Run abundant playground OFF (seed 7001) vs existing ON (7000) at a comparable da
 ---
 
 ## P1-3 — Device-resident action select (perf)
+
+> **Profile 2026-10-30 (NumPy, 6 ticks/day, N 340→2140, days 250–400):** 16.4 ms/tick.
+> `_passive_nurse` 38 % (Python loop over mothers × pups), `_execute_actions` 50 % (per-agent
+> forage/drink loops, `_aggress` O(capacity) per attacker, per-tick `np.array` of food/water xy),
+> `_select_actions` 4 %. The host Python loops, not the vectorized math, are the bottleneck —
+> vectorize those first (keep the NumPy trajectory hash identical, or re-calibrate), then Warp.
 
 **Goal:** Move utility action selection onto Warp to escape hybrid sync tax; keep NumPy parity.
 
