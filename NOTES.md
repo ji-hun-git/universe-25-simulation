@@ -24,3 +24,34 @@
 - Lab venv has warp 1.18, torch 2.11+cu128, newton 1.7.0, pxr; no gymnasium/isaaclab/omni/nvtx package.
 - Docs: docs/NVIDIA_STACK.md
 
+
+## 2026-10-30 — 1600-day abundant+playground run (seed 7000)
+
+Command: `python main.py --seed 7000 --out _output/run1600_abund_pg --days 1600 --backend numpy --device cpu --max-agents 4096 --playground on`
+
+| Metric | Value |
+|---|---|
+| Wall | 296.6 s (~4.9 min) |
+| Ticks | 38400 |
+| Peak N | 1715 at day ~1395 |
+| Final N | 1339 |
+| Births / deaths / conceptions | 62637 / 61306 / 32122 |
+| NaNs | 0 |
+| Backend | numpy/cpu (Warp available; kernels not yet driving tick) |
+
+### Calibration vs Calhoun 1973 (honest)
+
+| Landmark | Target | Observed | Rel error |
+|---|---|---|---|
+| First litters | 104 | 221 | 1.13 |
+| N @ day 315 | 620 | 48 | 0.92 |
+| Peak N | 2200 | ~1708 | 0.22 |
+| Peak day | 560 | 1392 | 1.49 |
+| Last young | 600 | 1599.75 | 1.67 |
+| mean_rel_error | | | **1.08** |
+
+Phases detected: adjustment, growth, stagnation. **No collapse** by day 1600 (last_young still near end; density suppression too weak / mortality too low for Death Squared crash).
+
+Label: **exploratory / negative on timing calibration**; peak magnitude within ~22% is the only near-hit.
+
+Outputs: `_output/run1600_abund_pg/{run,calibration,metrics.parquet,snapshots/}`
