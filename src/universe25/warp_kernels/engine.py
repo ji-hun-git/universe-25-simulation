@@ -68,6 +68,7 @@ class WarpTickEngine:
                 device=self.device,
             ),
             "dens_frac": wp.zeros(1, dtype=wp.float32, device=self.device),
+            "dens_social": wp.zeros(1, dtype=wp.float32, device=self.device),
         }
         self._graph = None
         self._graph_ready = False
@@ -151,6 +152,13 @@ class WarpTickEngine:
         d = self.cfg.drives
         dens_frac = float(agents.n_alive / max(1, self.world.capacity_design))
         b["dens_frac"].assign(np.array([dens_frac], dtype=np.float32))
+        if bio.breakdown_density_counts == "weaned":
+            n_soc = int(np.count_nonzero(agents.alive & (agents.age_days >= bio.weaning_days)))
+        else:
+            n_soc = int(agents.n_alive)
+        b["dens_social"].assign(
+            np.array([n_soc / max(1, self.world.capacity_design)], dtype=np.float32)
+        )
         capacity_per_cell = float(self.world.capacity_design / max(1, self.world.n_cells))
         pg = self.world.playground_bounds
 
@@ -175,8 +183,8 @@ class WarpTickEngine:
                     b["alive"], b["cell_id"], b["nest_id"], b["rank"], b["stress"], b["social_drive"],
                     b["cell_counts"], b["nest_occ"], b["nest_cap"], b["age_days"], b["competence"],
                     float(dt), float(d.stress_density_gain), float(d.stress_decay),
-                    float(bio.nest_overcrowd_stress), capacity_per_cell, b["dens_frac"],
-                    float(bio.menopause_density_threshold), float(bio.social_breakdown_stress_boost),
+                    float(bio.nest_overcrowd_stress), capacity_per_cell, b["dens_social"],
+                    float(bio.breakdown_threshold()), float(bio.social_breakdown_stress_boost),
                     float(bio.maturity_days), float(bio.imprint_rate),
                     float(bio.imprint_density_threshold),
                     float(self.cfg.ticks_per_day_ref / self.cfg.ticks_per_day),
@@ -193,6 +201,7 @@ class WarpTickEngine:
                     float(dt), float(bio.base_mortality_per_day), float(bio.stress_mortality_scale),
                     float(bio.max_age_days), float(bio.young_mortality_scale),
                     float(bio.density_mortality_scale), b["dens_frac"],
+                    float(bio.starvation_hazard_per_day),
                 ],
                 device=self.device,
             )

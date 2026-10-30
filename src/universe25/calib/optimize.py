@@ -69,6 +69,11 @@ def run_study(
     optuna.logging.set_verbosity(optuna.logging.WARNING)
     sampler = CmaEsSampler(seed=seed, popsize=popsize, x0=x0, sigma0=sigma0)
     study = optuna.create_study(direction="minimize", sampler=sampler, study_name="u25_calhoun")
+    if x0 is not None:
+        # Optuna's CMA-ES samples independently (at random) until a trial has completed, so a
+        # whole asked-ahead first generation is random; evaluate the start point itself in it.
+        # x0 / sigma0 shape the CMA distribution from the second generation on.
+        study.enqueue_trial(dict(x0))
     eval_kw = dict(seed=seed, days=days, ticks_per_day=ticks_per_day)
     trials_log: list[dict[str, Any]] = []
 

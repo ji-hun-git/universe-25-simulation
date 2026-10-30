@@ -53,6 +53,10 @@ class BiologyConfig(BaseModel):
     base_mortality_per_day: float = 0.0005
     stress_mortality_scale: float = 0.01
     wound_heal_per_day: float = 0.1  # wounds recover; mortality ~ wounds^2 while open
+    # Death hazard (per day) while hunger or thirst exceeds 1.2. Unfed newborn mice die within
+    # days; at the previous 0.1/day about one never-nursed pup in ten reached weaning, which
+    # put a floor under the last-surviving-birth landmark.
+    starvation_hazard_per_day: float = 1.0
     first_conception_min_day: float = 95.0
     menopause_density_threshold: float = 0.55
     maternal_neglect_stress: float = 0.7
@@ -68,6 +72,14 @@ class BiologyConfig(BaseModel):
     stillbirth_neglect_p: float = 0.5
     density_mortality_scale: float = 0.0  # extra death rate ~ dens^2
     social_breakdown_stress_boost: float = 0.0  # added stress gain when dens high
+    # Density fraction above which the breakdown stress boost applies (Calhoun's behavioural
+    # sink: pathological crowding sets in at a density, not a day). None = use
+    # menopause_density_threshold (the conception ramp), as before phase 2e.
+    breakdown_density_threshold: float | None = None
+    # Which animals the breakdown switch counts: "all" (as before) or "weaned" (the social
+    # arena; unweaned pups sit in nest boxes). Weaned numbers fall only through adult mortality,
+    # so once the switch is on it stays on long enough for maternal breakdown to be lasting.
+    breakdown_density_counts: Literal["all", "weaned"] = "weaned"
     beautiful_one_aggression_max: float = 0.15
     # Developmental imprinting (Calhoun 1973: young raised under crowding never acquire
     # normal maternal / courtship / territorial behaviour; the deficit is irreversible).
@@ -79,6 +91,23 @@ class BiologyConfig(BaseModel):
     # Daily chance that a nursing mother above maternal_neglect_stress abandons her nest box's
     # litter (Calhoun phase C: litters abandoned, young expelled pre-weaning). 0 = off.
     litter_abandon_p: float = 0.0
+
+    def breakdown_threshold(self) -> float:
+        if self.breakdown_density_threshold is not None:
+            return float(self.breakdown_density_threshold)
+        return float(self.menopause_density_threshold)
+
+    # Nursing is relaxation toward satiety: while a lactating mother of its box is in contact,
+    # a pup's hunger/thirst deficit decays at nurse_rate_per_day x her maternal investment
+    # (composable over sub-steps, so tick resolution cannot change daily milk; no clipping).
+    nurse_rate_per_day: float = 6.0
+    nurse_max_pups: int = 6  # a mother's milk is shared when more pups than this are in contact
+    # Post-weaning maternal breakdown (Calhoun phase C/D: established mothers attacked and
+    # expelled their young, stopped nest building, while conceptions continued to ~Day 920).
+    # Irreversible loss of maternal capacity per day per unit stress above the threshold, for
+    # every weaned female (juveniles exposed to the breakdown never acquire the capacity).
+    maternal_erosion_rate: float = 0.0  # 0 = off
+    maternal_erosion_stress: float = 0.6
 
 
 class DriveConfig(BaseModel):

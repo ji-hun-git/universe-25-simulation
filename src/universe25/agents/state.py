@@ -63,6 +63,7 @@ class AgentSoA:
     last_action: np.ndarray
     in_playground: np.ndarray
     competence: np.ndarray  # social development 0..1; shaped while young, frozen at maturity
+    maternal_cap: np.ndarray  # adult maternal capacity 0..1; eroded irreversibly under stress
     # bookkeeping
     n_alive: int = 0
 
@@ -95,6 +96,7 @@ class AgentSoA:
             last_action=z(np.int8, ACT_REST),
             in_playground=z(np.bool_, False),
             competence=z(np.float32, 1.0),
+            maternal_cap=z(np.float32, 1.0),
             n_alive=0,
         )
 

@@ -17,7 +17,9 @@ sys.path.insert(0, str(ROOT / "src"))
 from universe25.agents.state import (  # noqa: E402
     ACT_NEST,
     ACT_REST,
+    ROLE_NURSING,
     ROLE_PUP,
+    SEX_F,
 )
 from universe25.config import SimConfig  # noqa: E402
 from universe25.sim import Universe25Sim  # noqa: E402
@@ -82,9 +84,21 @@ def test_no_immature_conception_and_pup_actions() -> None:
 
 
 def test_last_surviving_young_tracks_weaned_cohorts() -> None:
+    from universe25.metrics.calibration import surviving_birth_cessation_day
+
     sim = _make_sim(days=150.0, out="test_bio_ly")
-    sim.run()
+    summary = sim.run()
     bio = sim.cfg.biology
+    # rate-based cessation: never after the strict latest weaned pup, counts every weaning
+    assert sim._surv_births_cum == int(sim._surv_births_by_day.sum()) > 0
+    cess = summary["surviving_birth_cessation_day"]
+    assert 0.0 < cess <= sim._last_surviving_young_day + 1e-6, (cess, sim._last_surviving_young_day)
+    # synthetic: a steady rate then a single late straggler -> cessation ignores the straggler
+    hist = np.zeros(400, dtype=np.int64)
+    hist[100:300] = 20
+    hist[390] = 1
+    assert surviving_birth_cessation_day(hist) == 299.0
+    assert surviving_birth_cessation_day(np.zeros(10)) == 0.0
     # a surviving birth is at most (day - weaning) and never after the last birth of any kind
     assert sim._last_surviving_young_day <= sim.day - bio.weaning_days + 1e-6
     assert sim._last_surviving_young_day <= sim._last_young_day + 1e-6
@@ -98,19 +112,12 @@ def test_resolution_scaling() -> None:
                       max_agents=64, log_every_ticks=10**9, snapshot_every_days=0,
                       arm_label="TRACK-E-U25-TEST")
     s24 = Universe25Sim(cfg24, ROOT / "_output" / "test_bio_res24")
-    assert s6.k_ev == 1.0 and s6.sqrt_k == 1.0 and s6.sd_k == 1.0
-    assert abs(s24.k_ev - 0.25) < 1e-12 and abs(s24.sqrt_k - 0.5) < 1e-12
-    assert abs(s24.sd_k - 2.0) < 1e-12
+    assert s6.k_ev == 1.0 and abs(s24.k_ev - 0.25) < 1e-12
+    # a decision lasts 1/6 day at both resolutions; per-decision reach is the same
+    assert s6.ticks_per_decision == 1 and s24.ticks_per_decision == 4
+    assert s6.dt_ref == s24.dt_ref == 1.0 / 6.0
     assert s6.reach == s24.reach == 4.0
-    # per-day random-walk variance is resolution independent: tpd * (c*dt*10*sd_k)^2
-    v6 = 6 * (3.0 * s6.dt_days * 10 * s6.sd_k) ** 2
-    v24 = 24 * (3.0 * s24.dt_days * 10 * s24.sd_k) ** 2
-    assert abs(v6 - v24) < 1e-9, (v6, v24)
-    # per-day variance of a per-decision nudge written without dt: tpd * (c*sqrt_k)^2
-    j6 = 6 * (0.4 * s6.sqrt_k) ** 2
-    j24 = 24 * (0.4 * s24.sqrt_k) ** 2
-    assert abs(j6 - j24) < 1e-9, (j6, j24)
-    # per-decision effects: tpd * k is constant → daily totals resolution independent
+    # per-tick rates written per decision (nest kick, social decrement): tpd * k constant
     assert abs(6 * s6.k_ev - 24 * s24.k_ev) < 1e-12
 
 
@@ -155,8 +162,7 @@ def test_warp_density_stress_parity() -> None:
     eng._host_cell_nest_counts(a)
     eng.upload(a, sim.rng)
     b = eng._bufs
-    dens_frac = float(a.n_alive / max(1, sim.world.capacity_design))
-    b["dens_frac"].assign(np.array([dens_frac], dtype=np.float32))
+    b["dens_social"].assign(np.array([sim._breakdown_density(a.alive)], dtype=np.float32))
     cap_cell = float(sim.world.capacity_design / max(1, sim.world.n_cells))
     wp.launch(
         density_stress_kernel,
@@ -165,8 +171,8 @@ def test_warp_density_stress_parity() -> None:
             b["alive"], b["cell_id"], b["nest_id"], b["rank"], b["stress"], b["social_drive"],
             b["cell_counts"], b["nest_occ"], b["nest_cap"], b["age_days"], b["competence"],
             float(sim.dt_days), float(d.stress_density_gain), float(d.stress_decay),
-            float(bio.nest_overcrowd_stress), cap_cell, b["dens_frac"],
-            float(bio.menopause_density_threshold), float(bio.social_breakdown_stress_boost),
+            float(bio.nest_overcrowd_stress), cap_cell, b["dens_social"],
+            float(bio.breakdown_threshold()), float(bio.social_breakdown_stress_boost),
             float(bio.maturity_days), float(bio.imprint_rate), float(bio.imprint_density_threshold),
             float(sim.k_ev),
         ],
@@ -187,9 +193,133 @@ def test_warp_density_stress_parity() -> None:
     print(f"warp parity max|dstress|={ds:.2e} max|dcomp|={dc:.2e} n={int(alive.sum())}")
 
 
+def test_decisions_are_held_between_decision_ticks() -> None:
+    """At 24 ticks/day an agent re-decides every 4 ticks and keeps its action in between."""
+    cfg = SimConfig(seed=7100, days=30.0, ticks_per_day=24, backend="numpy", device="cpu",
+                    max_agents=512, log_every_ticks=10**9, snapshot_every_days=0,
+                    arm_label="TRACK-E-U25-TEST")
+    cfg.biology.first_conception_min_day = 10.0
+    sim = Universe25Sim(cfg, ROOT / "_output" / "test_bio_hold")
+    a = sim.agents
+    changes_between = 0
+    changes_at = 0
+    prev = None
+    for _ in range(int(30 * 24)):
+        decision_tick = (sim.tick % sim.ticks_per_decision) == 0
+        sim.step()
+        cur = (a.last_action.copy(), a.alive.copy())
+        if prev is not None:
+            both = prev[1] & cur[1]
+            diff = int(np.sum(cur[0][both] != prev[0][both]))
+            if decision_tick:
+                changes_at += diff
+            else:
+                changes_between += diff
+        prev = cur
+    assert changes_between == 0, changes_between
+    assert changes_at > 0
+
+
+def test_relaxation_feeding_composes_over_substeps() -> None:
+    """Nursing relief is exp(-rate*w*dt): four 1/24-day contacts equal one 1/6-day contact."""
+    sim = _make_sim(days=1.0, out="test_bio_feed")
+    a = sim.agents
+    bio = sim.cfg.biology
+    nest = sim.world.nests[0]
+    slots = np.asarray(a.free_slots(9), dtype=int)
+    for s_ in slots:
+        sim._spawn(int(s_), sex=SEX_F, age=200.0, x=nest.x, y=nest.y, nest_id=0,
+                   cell_id=nest.cell_id, role=ROLE_NURSING)
+    mom = slots[:2]
+    pups = slots[2:9]  # 6 pups of box 0 (= nurse_max_pups, full share) + 1 pup of box 1
+    a.sex[mom] = SEX_F
+    a.role[mom] = ROLE_NURSING
+    a.age_days[mom] = 200.0
+    a.nest_id[mom] = 0
+    a.maternal[mom] = [0.9, 0.6]
+    a.x[mom] = nest.x
+    a.y[mom] = nest.y
+    a.role[pups] = ROLE_PUP
+    a.age_days[pups] = 5.0
+    a.nest_id[pups] = 0
+    a.x[pups] = nest.x + 1.0
+    a.y[pups] = nest.y
+    a.hunger[pups] = 0.9
+    a.thirst[pups] = 0.8
+    a.energy[pups] = 0.3
+    # one pup belongs to another box: untouched
+    a.nest_id[pups[-1]] = 1
+    snap = {k: getattr(a, k).copy() for k in ("hunger", "thirst", "energy")}
+
+    sim._feed_by_nest(mom, pups, radius2=64.0, dt=1.0 / 6.0)
+    once = {k: getattr(a, k).copy() for k in snap}
+    for k, v in snap.items():
+        getattr(a, k)[:] = v
+    for _ in range(4):
+        sim._feed_by_nest(mom, pups, radius2=64.0, dt=1.0 / 24.0)
+    for k in snap:
+        assert np.allclose(getattr(a, k)[pups], once[k][pups], atol=1e-6), k
+    fed = pups[:-1]
+    share = 6.0 / 6.0  # 6 pups of box 0 in contact -> full share
+    w = (0.9 + 0.6) * share
+    f = np.exp(-bio.nurse_rate_per_day * w / 6.0)
+    assert np.allclose(once["hunger"][fed], 0.9 * f, atol=1e-6)
+    assert np.allclose(once["thirst"][fed], 0.8 * f, atol=1e-6)
+    assert np.allclose(once["energy"][fed], 1.0 - 0.7 * f, atol=1e-6)
+    assert once["hunger"][pups[-1]] == np.float32(0.9), "pup of another box was fed"
+    assert np.all(once["hunger"][fed] > 0.0), "relief must not clip to zero"
+
+
+def test_maternal_erosion_is_weaned_only_and_irreversible() -> None:
+    sim = _make_sim(days=1.0, out="test_bio_erode")
+    a = sim.agents
+    bio = sim.cfg.biology
+    bio.maternal_erosion_rate = 0.1
+    bio.maternal_erosion_stress = 0.5
+    alive = np.flatnonzero(a.alive)
+    adult_f, young_f, calm_f = alive[0], alive[1], alive[2]
+    a.sex[[adult_f, young_f, calm_f]] = SEX_F
+    a.age_days[adult_f] = 300.0
+    a.age_days[young_f] = bio.weaning_days - 5.0  # unweaned pup: not exposed
+    a.age_days[calm_f] = 300.0
+    a.stress[[adult_f, young_f]] = 0.9
+    a.stress[calm_f] = 0.4
+    a.maternal[[adult_f, young_f, calm_f]] = 0.9
+    a.maternal_cap[:] = 1.0
+    sim.tick = sim.cfg.ticks_per_day  # day boundary
+    sim._daily_maternal_erosion(a.alive)
+    expect = 1.0 - 0.1 * (0.9 - 0.5)
+    assert abs(float(a.maternal_cap[adult_f]) - expect) < 1e-6, a.maternal_cap[adult_f]
+    assert a.maternal_cap[young_f] == 1.0 and a.maternal_cap[calm_f] == 1.0
+    assert abs(float(a.maternal[adult_f]) - 0.9) < 1e-6  # still below the cap
+    # cap binds the investment once it falls below it
+    for _ in range(12):
+        sim._daily_maternal_erosion(a.alive)
+    assert float(a.maternal[adult_f]) <= float(a.maternal_cap[adult_f]) + 1e-7
+    assert float(a.maternal_cap[adult_f]) < 0.6
+    # not at a day boundary: nothing happens; low stress later: no recovery
+    cap_before = float(a.maternal_cap[adult_f])
+    sim.tick += 1
+    sim._daily_maternal_erosion(a.alive)
+    assert float(a.maternal_cap[adult_f]) == cap_before
+    sim.tick = 2 * sim.cfg.ticks_per_day
+    a.stress[adult_f] = 0.1
+    sim._daily_maternal_erosion(a.alive)
+    assert float(a.maternal_cap[adult_f]) == cap_before, "maternal capacity must not recover"
+    # births and conceptions respect the cap
+    a.competence[adult_f] = 1.0
+    a.gestating[adult_f] = sim.dt_days / 2
+    a.nest_id[adult_f] = 0
+    sim._reproduce(a.alive)
+    assert float(a.maternal[adult_f]) <= 0.9 * cap_before + 1e-6
+
+
 if __name__ == "__main__":
     test_no_immature_conception_and_pup_actions()
     test_last_surviving_young_tracks_weaned_cohorts()
     test_resolution_scaling()
+    test_decisions_are_held_between_decision_ticks()
+    test_relaxation_feeding_composes_over_substeps()
+    test_maternal_erosion_is_weaned_only_and_irreversible()
     test_warp_density_stress_parity()
     print("test_biology_guards: OK")

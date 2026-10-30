@@ -54,6 +54,11 @@ PARAM_PRIORS: dict[str, dict[str, Any]] = {
         "low": 0.35, "high": 0.80, "log": False, "group": "biology",
         "prior": "Uniform; dens/capacity where conception is fully suppressed (2200/3840≈0.57)",
     },
+    "breakdown_density_threshold": {
+        "low": 0.35, "high": 0.80, "log": False, "group": "biology",
+        "prior": "Uniform; dens/capacity above which the social-breakdown stress boost applies "
+                 "(behavioural sink), decoupled from the conception ramp",
+    },
     "stress_mortality_scale": {
         "low": 2e-4, "high": 0.02, "log": True, "group": "biology",
         "prior": "LogUniform; stress² mortality — weak: Calhoun adults lived out their lifespans",
@@ -102,6 +107,21 @@ PARAM_PRIORS: dict[str, dict[str, Any]] = {
         "low": 450.0, "high": 620.0, "log": False, "group": "biology",
         "prior": "Uniform; Calhoun: female menopause ≈ 560 d of age",
     },
+    "nurse_rate_per_day": {
+        "low": 2.0, "high": 12.0, "log": False, "group": "biology",
+        "prior": "Uniform; relaxation rate of a pup's deficit per day in contact with a "
+                 "lactating mother (x her maternal investment); sets pup starvation risk",
+    },
+    "maternal_erosion_rate": {
+        "low": 0.002, "high": 1.0, "log": True, "group": "biology",
+        "prior": "LogUniform; irreversible adult maternal-capacity loss per day per unit "
+                 "stress above threshold (Calhoun C/D: mothers expelled their young); the "
+                 "upper range lets a brief excursion above the threshold do lasting damage",
+    },
+    "maternal_erosion_stress": {
+        "low": 0.3, "high": 0.9, "log": False, "group": "biology",
+        "prior": "Uniform; stress above which adult maternal capacity erodes",
+    },
     "stress_density_gain": {
         "low": 0.1, "high": 1.5, "log": False, "group": "drives",
         "prior": "Uniform; how fast local density raises stress",
@@ -122,7 +142,7 @@ LOSS_WEIGHTS = {
 EXTRA_LOSS_WEIGHTS = {
     "n_at_day_736": 1.5,
     "adults_at_day_315": 1.0,
-    "last_conception_day": 0.5,
+    "last_conception_day": 1.0,
 }
 # Inferred (not a Calhoun number): between N=2056 at Day 736 and N=122 at Day 1444 the
 # population at Day 1200 should sit well below the peak but not be extinct.

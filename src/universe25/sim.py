@@ -37,6 +37,7 @@ from universe25.agents.state import (
     pick_backend,
 )
 from universe25.config import SimConfig
+from universe25.metrics.calibration import surviving_birth_cessation_day
 from universe25.metrics.logger import MetricsLogger
 from universe25.metrics.playscore import PlayScoreAccumulator
 from universe25.io.snapshots import SnapshotWriter
@@ -61,15 +62,17 @@ class Universe25Sim:
         self.tick = 0
         self.day = 0.0
         self.dt_days = 1.0 / cfg.ticks_per_day
-        # Resolution scaling (see SimConfig.ticks_per_day_ref): k_ev multiplies per-decision
-        # effects, sqrt_k random-walk step sizes; reach is inches per decision per unit speed
-        # (an agent reaches its target within one decision regardless of ticks_per_day).
+        # Resolution scaling (see SimConfig.ticks_per_day_ref). Agents decide once per
+        # reference interval (1/ticks_per_day_ref day) and hold the action over the finer
+        # ticks in between. Per-decision events (a meal, a drink, the move to a target, a
+        # fight, drive relief, a random-walk step) happen in full on the decision tick, exactly
+        # as at the reference resolution; the held ticks integrate only continuous physics
+        # (drive growth, fatigue, nursing contact, stress, mortality) with dt. k_ev scales the
+        # few per-tick rates written per decision (nest kick, social decrement, Warp kernel).
         self.k_ev = cfg.ticks_per_day_ref / cfg.ticks_per_day
-        self.sqrt_k = math.sqrt(self.k_ev)  # for per-decision random offsets written without dt
-        # Random walks written as sd = c*dt*10 per tick have per-day variance
-        # tpd*(c*dt*10)^2 ∝ 1/tpd, so multiply the step by sqrt(tpd/ref) to keep it fixed.
-        self.sd_k = math.sqrt(cfg.ticks_per_day / cfg.ticks_per_day_ref)
-        self.reach = 24.0 / cfg.ticks_per_day_ref
+        self.ticks_per_decision = max(1, cfg.ticks_per_day // cfg.ticks_per_day_ref)
+        self.dt_ref = 1.0 / cfg.ticks_per_day_ref  # length of a decision, days
+        self.reach = 24.0 / cfg.ticks_per_day_ref  # inches per decision per unit speed
         self.food = np.full(self.world.n_cells, cfg.resources.food_refill_per_tick, dtype=np.float64)
         self.water = np.full(self.world.n_cells, cfg.resources.water_refill_per_tick, dtype=np.float64)
         self.logger = MetricsLogger(self.out_dir / "metrics.parquet")
@@ -98,6 +101,9 @@ class Universe25Sim:
         self._deaths = 0
         self._last_young_day = 0.0
         self._last_surviving_young_day = 0.0  # birth day of the latest pup that reached weaning
+        # pups that reached weaning, by birth day (for the rate-based cessation landmark)
+        self._surv_births_by_day = np.zeros(int(math.ceil(cfg.days)) + 2, dtype=np.int64)
+        self._surv_births_cum = 0
         self._last_conception_day = 0.0
         self._abandoned = 0  # pups expelled from their nest box by a stressed mother
         self._peak_n = 0
@@ -166,6 +172,7 @@ class Universe25Sim:
         a.last_action[slot] = ACT_REST
         a.in_playground[slot] = self.world.in_playground(a.x[slot], a.y[slot])
         a.competence[slot] = 1.0  # shaped during development (see _density_stress)
+        a.maternal_cap[slot] = 1.0  # eroded in adulthood (see _daily_maternal_erosion)
 
     # ------------------------------------------------------------------ step
     def step(self) -> None:
@@ -193,6 +200,7 @@ class Universe25Sim:
             with nvtx_range("life"):
                 self._passive_nurse(alive)
                 self._daily_breeding_pass(alive)
+                self._daily_maternal_erosion(alive)
                 self._daily_litter_abandonment(alive)
                 self._reproduce(alive)
             if use_warp:
@@ -211,11 +219,18 @@ class Universe25Sim:
             self._peak_n = a.n_alive
             self._peak_day = self.day
         # Calhoun's landmark is the last *surviving* birth: latest birth day among weaned young.
-        weaned = alive & (a.age_days >= self.cfg.biology.weaning_days)
+        wean = self.cfg.biology.weaning_days
+        weaned = alive & (a.age_days >= wean)
         if weaned.any():
             born = self.day - float(a.age_days[weaned].min())
             if born > self._last_surviving_young_day:
                 self._last_surviving_young_day = born
+            crossed = weaned & (a.age_days - self.dt_days < wean)  # weaned this tick
+            if crossed.any():
+                bd = np.floor(self.day - a.age_days[crossed]).astype(int)
+                bd = np.clip(bd, 0, self._surv_births_by_day.size - 1)
+                np.add.at(self._surv_births_by_day, bd, 1)
+                self._surv_births_cum += int(crossed.sum())
 
         self.tick += 1
         self.day = self.tick * self.dt_days
@@ -296,12 +311,19 @@ class Universe25Sim:
 
 
     def _select_actions(self, alive: np.ndarray) -> np.ndarray:
-        """Vectorized utility-based action selection. No play utility term."""
+        """Vectorized utility-based action selection. No play utility term.
+
+        Decisions are made every ticks_per_decision ticks (once per reference interval);
+        on the ticks in between every agent continues its last action.
+        """
         a = self.agents
         n = a.capacity
         actions = np.full(n, ACT_REST, dtype=np.int8)
         idx = np.flatnonzero(alive)
         if idx.size == 0:
+            return actions
+        if self.ticks_per_decision > 1 and (self.tick % self.ticks_per_decision) != 0:
+            actions[idx] = a.last_action[idx]
             return actions
         d = self.cfg.drives
         bio = self.cfg.biology
@@ -364,8 +386,15 @@ class Universe25Sim:
         actions[idx] = chosen
         return actions
 
+    def _decision_tick(self) -> bool:
+        return (self.tick % self.ticks_per_decision) == 0
+
     def _execute_actions(self, alive: np.ndarray, actions: np.ndarray) -> None:
-        """Batched action effects (still host-side NumPy)."""
+        """Batched action effects (still host-side NumPy).
+
+        `decision` ticks carry the per-decision events (k = 1); on held ticks k = 0 and only
+        the continuous terms written with dt apply.
+        """
         a = self.agents
         d = self.cfg.drives
         dt = self.dt_days
@@ -376,8 +405,9 @@ class Universe25Sim:
         a.last_action[idx] = act.astype(np.int8)
         for code in range(N_ACTIONS):
             self._action_hist[code] += int(np.sum(act == code))
-        k = self.k_ev  # per-decision effect scale (1.0 at ticks_per_day_ref)
-        sk = self.sd_k  # random-walk step scale for the c*dt*10 walks below
+        decision = self._decision_tick()
+        k = 1.0 if decision else 0.0  # per-decision event scale
+        dtr = self.dt_ref  # random-walk steps are per decision: sd = c * dt_ref * 10
         xmax = self.world.width - 0.5
         ymax = self.world.height - 0.5
 
@@ -388,7 +418,7 @@ class Universe25Sim:
 
         def move_mask(mask, tx, ty, speed):
             ii = idx[mask]
-            if ii.size == 0:
+            if ii.size == 0 or not decision:
                 return
             dx = tx[mask] - a.x[ii]
             dy = ty[mask] - a.y[ii]
@@ -400,27 +430,29 @@ class Universe25Sim:
         m_forage = act == ACT_FORAGE
         if m_forage.any():
             ii = idx[m_forage]
-            # Meal size is dt-invariant: clear ~2.5x daily hunger gain per successful tick
-            # so ticks_per_day is resolution, not biology. Cap still respects stock.
-            # Abundant / scarce: eat until satiated this tick (stock-limited).
-            # Makes ticks_per_day a resolution knob, not a starvation knob.
-            for j, i in enumerate(ii):
-                c = int(a.cell_id[i])
-                take = min(float(a.hunger[i]), self.food[c])
-                self.food[c] -= take
-                a.hunger[i] = max(0.0, a.hunger[i] - take)
-                a.energy[i] = min(1.0, a.energy[i] + 0.25 * take + 0.1 * dt)
+            # The meal is a per-decision event (eat until satiated, stock-limited) on the
+            # decision tick; the held ticks are spent at the hopper (fatigue, a little rest).
+            if decision:
+                for i in ii:
+                    c = int(a.cell_id[i])
+                    take = min(float(a.hunger[i]), self.food[c])
+                    self.food[c] -= take
+                    a.hunger[i] = max(0.0, a.hunger[i] - take)
+                    a.energy[i] = min(1.0, a.energy[i] + 0.25 * take + 0.1 * dt)
+            else:
+                a.energy[ii] = np.minimum(1.0, a.energy[ii] + 0.1 * dt)
             move_mask(m_forage, food_xy[:, 0], food_xy[:, 1], 8.0)
             a.fatigue[ii] = np.minimum(1.5, a.fatigue[ii] + d.fatigue_gain_active * dt)
 
         m_drink = act == ACT_DRINK
         if m_drink.any():
             ii = idx[m_drink]
-            for i in ii:
-                c = int(a.cell_id[i])
-                take = min(float(a.thirst[i]), self.water[c])
-                self.water[c] -= take
-                a.thirst[i] = max(0.0, a.thirst[i] - take)
+            if decision:  # a drink is a per-decision event, like a meal
+                for i in ii:
+                    c = int(a.cell_id[i])
+                    take = min(float(a.thirst[i]), self.water[c])
+                    self.water[c] -= take
+                    a.thirst[i] = max(0.0, a.thirst[i] - take)
             move_mask(m_drink, water_xy[:, 0], water_xy[:, 1], 8.0)
 
         m_rest = act == ACT_REST
@@ -446,18 +478,20 @@ class Universe25Sim:
             ii = idx[m_social]
             a.social_drive[ii] = np.maximum(0.0, a.social_drive[ii] - 0.3 * k)
             a.boredom[ii] = np.maximum(0.0, a.boredom[ii] - d.boredom_decay_on_vary * k)
-            sd = 3.0 * dt * 10 * sk
-            a.x[ii] = np.clip(a.x[ii] + self.rng.normal(0, sd, ii.size), 0.5, xmax)
-            a.y[ii] = np.clip(a.y[ii] + self.rng.normal(0, sd, ii.size), 0.5, ymax)
+            if decision:
+                sd = 3.0 * dtr * 10
+                a.x[ii] = np.clip(a.x[ii] + self.rng.normal(0, sd, ii.size), 0.5, xmax)
+                a.y[ii] = np.clip(a.y[ii] + self.rng.normal(0, sd, ii.size), 0.5, ymax)
 
         m_explore = act == ACT_EXPLORE
         if m_explore.any():
             ii = idx[m_explore]
             a.curiosity[ii] = np.maximum(0.0, a.curiosity[ii] - d.curiosity_decay_on_novel * k)
             a.boredom[ii] = np.maximum(0.0, a.boredom[ii] - d.boredom_decay_on_vary * 0.5 * k)
-            sd = 10.0 * dt * 10 * sk
-            a.x[ii] = np.clip(a.x[ii] + self.rng.normal(0, sd, ii.size), 0.5, xmax)
-            a.y[ii] = np.clip(a.y[ii] + self.rng.normal(0, sd, ii.size), 0.5, ymax)
+            if decision:
+                sd = 10.0 * dtr * 10
+                a.x[ii] = np.clip(a.x[ii] + self.rng.normal(0, sd, ii.size), 0.5, xmax)
+                a.y[ii] = np.clip(a.y[ii] + self.rng.normal(0, sd, ii.size), 0.5, ymax)
 
         m_manip = act == ACT_MANIPULATE
         if m_manip.any() and self.world.play_objects:
@@ -466,12 +500,14 @@ class Universe25Sim:
             ox = np.array([o.x for o in self.world.play_objects])
             oy = np.array([o.y for o in self.world.play_objects])
             for i in ii:
+                if not decision:
+                    break
                 d2 = (ox - a.x[i]) ** 2 + (oy - a.y[i]) ** 2
                 j = int(np.argmin(d2))
                 self._move_toward(int(i), float(ox[j]), float(oy[j]), 7.0)
                 obj = self.world.play_objects[j]
                 pgb = self.world.playground_bounds
-                jig = 0.4 * self.sqrt_k  # per-decision nudge; daily variance resolution-free
+                jig = 0.4  # per-decision nudge of the object
                 obj.x = float(np.clip(obj.x + self.rng.normal(0, jig), pgb[0], pgb[2]))
                 obj.y = float(np.clip(obj.y + self.rng.normal(0, jig), pgb[1], pgb[3]))
             a.curiosity[ii] = np.maximum(0.0, a.curiosity[ii] - d.curiosity_decay_on_novel * k)
@@ -482,14 +518,15 @@ class Universe25Sim:
         if m_agg.any():
             ii = idx[m_agg]
             a.aggression[ii] = np.minimum(1.5, a.aggression[ii] + 0.05 * k)
-            for i in ii:
-                self._aggress(int(i))
-            sd = 4.0 * dt * 10 * sk
-            a.x[ii] = np.clip(a.x[ii] + self.rng.normal(0, sd, ii.size), 0.5, xmax)
-            a.y[ii] = np.clip(a.y[ii] + self.rng.normal(0, sd, ii.size), 0.5, ymax)
+            if decision:  # one fight per decision
+                for i in ii:
+                    self._aggress(int(i))
+                sd = 4.0 * dtr * 10
+                a.x[ii] = np.clip(a.x[ii] + self.rng.normal(0, sd, ii.size), 0.5, xmax)
+                a.y[ii] = np.clip(a.y[ii] + self.rng.normal(0, sd, ii.size), 0.5, ymax)
 
         m_mate = act == ACT_MATE
-        if m_mate.any():
+        if m_mate.any() and decision:
             for i in idx[m_mate]:
                 self._approach_mate(int(i))
 
@@ -506,7 +543,7 @@ class Universe25Sim:
                 if a.stress[i] > self.cfg.biology.maternal_neglect_stress:
                     a.maternal[i] = max(0.0, a.maternal[i] - 0.05 * k)
                 else:
-                    a.maternal[i] = min(1.0, a.maternal[i] + 0.02 * k)
+                    a.maternal[i] = min(float(a.maternal_cap[i]), a.maternal[i] + 0.02 * k)
                     self._nurse(int(i))
 
         m_with = act == ACT_WITHDRAW
@@ -535,10 +572,11 @@ class Universe25Sim:
 
 
     def _move_toward(self, i: int, tx: float, ty: float, speed: float) -> None:
+        """Per-decision move (callers only move on decision ticks)."""
         a = self.agents
         dx, dy = tx - a.x[i], ty - a.y[i]
         dist = float(np.hypot(dx, dy)) + 1e-6
-        step = min(speed * self.reach, dist)  # reach per decision, resolution-independent
+        step = min(speed * self.reach, dist)  # reach per decision
         a.x[i] = float(np.clip(a.x[i] + dx / dist * step, 0.5, self.world.width - 0.5))
         a.y[i] = float(np.clip(a.y[i] + dy / dist * step, 0.5, self.world.height - 0.5))
 
@@ -548,6 +586,7 @@ class Universe25Sim:
         a.y[i] = float(np.clip(a.y[i] + self.rng.normal(0, scale * self.dt_days * 10), 0.5, self.world.height - 0.5))
 
     def _aggress(self, i: int) -> None:
+        """One fight per AGGRESS decision (called on decision ticks only)."""
         a = self.agents
         alive = a.alive & (np.arange(a.capacity) != i)
         if not alive.any():
@@ -557,27 +596,54 @@ class Universe25Sim:
         if len(near) == 0:
             return
         j = int(self.rng.choice(near))
-        k = self.k_ev
-        a.wounds[j] = min(1.5, a.wounds[j] + 0.15 * k)
-        a.stress[j] = min(1.5, a.stress[j] + 0.1 * k)
-        a.rank[j] = max(0.0, a.rank[j] - 0.05 * k)
-        a.rank[i] = min(1.0, a.rank[i] + 0.02 * k)
+        a.wounds[j] = min(1.5, a.wounds[j] + 0.15)
+        a.stress[j] = min(1.5, a.stress[j] + 0.1)
+        a.rank[j] = max(0.0, a.rank[j] - 0.05)
+        a.rank[i] = min(1.0, a.rank[i] + 0.02)
 
     def _nurse(self, i: int) -> None:
-        """Active nursing: feed pups of the mother's own nest box that are within reach."""
+        """Active nursing: feed pups of the mother's own nest box that are within close reach."""
         a = self.agents
         nid = int(a.nest_id[i])
         if nid < 0:
             return
-        pups = a.alive & (a.role == ROLE_PUP) & (a.nest_id == nid)
-        if not pups.any():
-            return
-        d2 = (a.x - a.x[i]) ** 2 + (a.y - a.y[i]) ** 2
-        near = np.flatnonzero(pups & (d2 < 25.0))
-        k = self.k_ev
-        for j in near[:4]:
-            a.energy[j] = min(1.0, a.energy[j] + 0.15 * k)
-            a.hunger[j] = max(0.0, a.hunger[j] - 0.2 * k)
+        pups = np.flatnonzero(a.alive & (a.role == ROLE_PUP) & (a.nest_id == nid))
+        if pups.size:
+            self._feed_by_nest(np.array([i]), pups, radius2=25.0, dt=self.dt_days)
+
+    def _feed_by_nest(
+        self, moms: np.ndarray, pups: np.ndarray, *, radius2: float, dt: float
+    ) -> None:
+        """Relaxation-form nursing: each pup's deficit decays by exp(-rate * w * dt).
+
+        w sums, over the lactating mothers of the pup's own nest box within sqrt(radius2)
+        inches, maternal investment x milk share (1 up to nurse_max_pups pups in contact,
+        then divided). Relief is proportional to the remaining deficit and composes exactly
+        over sub-steps, so the daily amount a pup receives depends on contact time, not on
+        how many ticks that time is cut into (the clipped per-contact amounts of phase 2d
+        under-fed pups at coarse resolution). Deterministic; no RNG.
+        """
+        a = self.agents
+        bio = self.cfg.biology
+        rate = float(bio.nurse_rate_per_day)
+        cap = float(bio.nurse_max_pups)
+        mom_nest = a.nest_id[moms]
+        pup_nest = a.nest_id[pups]
+        for nid in np.intersect1d(mom_nest, pup_nest):
+            mi = moms[mom_nest == nid]
+            pj = pups[pup_nest == nid]
+            d2 = (a.x[mi][:, None] - a.x[pj][None, :]) ** 2
+            d2 += (a.y[mi][:, None] - a.y[pj][None, :]) ** 2
+            contact = d2 < radius2  # (mothers, pups)
+            n_contact = contact.sum(axis=1)
+            if not n_contact.any():
+                continue
+            share = np.minimum(1.0, cap / np.maximum(1, n_contact))
+            w = (contact * (a.maternal[mi].astype(np.float64) * share)[:, None]).sum(axis=0)
+            f = np.exp(-rate * w * dt)
+            a.hunger[pj] = a.hunger[pj] * f
+            a.thirst[pj] = a.thirst[pj] * f
+            a.energy[pj] = 1.0 - (1.0 - a.energy[pj]) * f
 
     def _approach_mate(self, i: int) -> None:
         """ACT_MATE is courtship: approach the nearest eligible partner.
@@ -632,8 +698,7 @@ class Universe25Sim:
         # graded overfullness (occupants beyond capacity, relative) for developmental exposure
         over_frac = np.where(nids >= 0, np.maximum(0.0, nest_occ[nclip] / cap[nclip] - 1.0), 0.0)
         gain = gain + float(self.cfg.biology.nest_overcrowd_stress) * over
-        dens_frac = a.n_alive / max(1, self.world.capacity_design)
-        if dens_frac > self.cfg.biology.menopause_density_threshold:
+        if self._breakdown_density(alive) > self.cfg.biology.breakdown_threshold():
             gain = gain + float(self.cfg.biology.social_breakdown_stress_boost)
         # random nest kick for low rank overcrowded (per-decision chance, resolution-scaled)
         kick = over & (a.rank[idx] < 0.4) & (self.rng.random(idx.size) < 0.1 * self.k_ev)
@@ -663,36 +728,63 @@ class Universe25Sim:
 
 
 
+    def _breakdown_density(self, alive: np.ndarray) -> float:
+        """Density fraction that drives the social-breakdown stress switch."""
+        bio = self.cfg.biology
+        if bio.breakdown_density_counts == "weaned":
+            n = int(np.count_nonzero(alive & (self.agents.age_days >= bio.weaning_days)))
+        else:
+            n = self.agents.n_alive
+        return n / max(1, self.world.capacity_design)
+
     def _passive_nurse(self, alive: np.ndarray) -> None:
-        """Maternal females at their nest box feed the pups of that box (not optional softmax).
+        """Lactating mothers at their nest box feed the pups of that box (not optional softmax).
 
         Nursing is per nest box: a litter whose mothers are dead, displaced, incompetent or
         too stressed is not rescued by mothers of other boxes (Calhoun: abandoned litters died).
+        Only parous / gestating females (ROLE_NURSING, i.e. maternal investment > 0.5) nurse;
+        a mother above the neglect stress threshold does not.
         """
         a = self.agents
+        bio = self.cfg.biology
         moms = np.flatnonzero(
             alive
             & (a.sex == SEX_F)
-            & ((a.role == ROLE_NURSING) | (a.maternal > 0.4))
+            & (a.role == ROLE_NURSING)
             & (a.nest_id >= 0)
+            & (a.stress <= bio.maternal_neglect_stress)
         )
         pups = np.flatnonzero(alive & (a.role == ROLE_PUP) & (a.nest_id >= 0))
         if moms.size == 0 or pups.size == 0:
             return
-        k = self.k_ev  # feeding per contact is per decision; contacts/day scale with ticks
-        pup_nest = a.nest_id[pups]
-        for i in moms:
-            if a.stress[i] > self.cfg.biology.maternal_neglect_stress:
-                continue
-            same = pups[pup_nest == a.nest_id[i]]
-            if same.size == 0:
-                continue
-            d2 = (a.x[same] - a.x[i]) ** 2 + (a.y[same] - a.y[i]) ** 2
-            near = same[d2 < 64.0]
-            for j in near[:6]:
-                a.energy[j] = min(1.0, a.energy[j] + 0.35 * k)
-                a.hunger[j] = max(0.0, a.hunger[j] - 0.45 * k)
-                a.thirst[j] = max(0.0, a.thirst[j] - 0.35 * k)
+        self._feed_by_nest(moms, pups, radius2=64.0, dt=self.dt_days)
+
+    def _daily_maternal_erosion(self, alive: np.ndarray) -> None:
+        """Once per day: weaned females above maternal_erosion_stress lose maternal capacity
+        irreversibly (rate x excess stress per day) and their current maternal investment is
+        capped by it. Calhoun phase C/D: established mothers attacked and expelled their
+        young and stopped nest building while conceptions went on to ~Day 920; juveniles
+        exposed to the same conditions never acquired the capacity. Stress-driven only, no
+        scheduled day; daily pass, so tick resolution cannot change it."""
+        if (self.tick % self.cfg.ticks_per_day) != 0:
+            return
+        bio = self.cfg.biology
+        if bio.maternal_erosion_rate <= 0.0:
+            return
+        a = self.agents
+        af = np.flatnonzero(
+            alive
+            & (a.sex == SEX_F)
+            & (a.age_days >= bio.weaning_days)
+            & (a.stress > bio.maternal_erosion_stress)
+        )
+        if af.size == 0:
+            return
+        excess = a.stress[af].astype(np.float64) - float(bio.maternal_erosion_stress)
+        a.maternal_cap[af] = np.maximum(
+            0.0, a.maternal_cap[af] - float(bio.maternal_erosion_rate) * excess
+        )
+        a.maternal[af] = np.minimum(a.maternal[af], a.maternal_cap[af])
 
     def _daily_litter_abandonment(self, alive: np.ndarray) -> None:
         """Once per day: a nursing mother above the neglect stress threshold abandons her box's
@@ -770,7 +862,9 @@ class Universe25Sim:
             if self.rng.random() < p:
                 a.gestating[f] = bio.gestation_days
                 a.role[f] = ROLE_NURSING
-                a.maternal[f] = max(float(a.maternal[f]), 0.85 * c_f)
+                a.maternal[f] = max(
+                    float(a.maternal[f]), 0.85 * c_f * float(a.maternal_cap[f])
+                )
                 self._conceptions += 1
                 self._last_conception_day = self.day
 
@@ -810,8 +904,9 @@ class Universe25Sim:
                 self._births += 1
                 self._last_young_day = self.day
             a.role[i] = ROLE_NURSING
-            # Maternal investment reflects the mother's own social development.
-            a.maternal[i] = 0.9 * float(a.competence[i])
+            # Maternal investment reflects the mother's own social development and what
+            # adult-stage stress has left of her maternal capacity.
+            a.maternal[i] = 0.9 * float(a.competence[i]) * float(a.maternal_cap[i])
         a.n_alive = int(a.alive.sum())
 
     def _age_and_die(self, alive: np.ndarray) -> None:
@@ -821,17 +916,21 @@ class Universe25Sim:
         idx = np.flatnonzero(alive)
         if idx.size == 0:
             return
-        p = np.full(idx.size, bio.base_mortality_per_day * dt, dtype=np.float64)
+        # Hazard per day, then the exact per-tick death probability 1 - exp(-h*dt): survival
+        # over a day is exp(-h) at any tick resolution. Mirrors warp mortality_kernel.
+        h = np.full(idx.size, bio.base_mortality_per_day, dtype=np.float64)
         # pups/juveniles: lower baseline, rely on neglect/hunger instead
         young = (a.role[idx] == ROLE_PUP) | (a.role[idx] == ROLE_JUVENILE)
-        p = np.where(young, p * float(bio.young_mortality_scale), p)
+        h = np.where(young, h * float(bio.young_mortality_scale), h)
         dens = a.n_alive / max(1, self.world.capacity_design)
-        p = p + float(bio.density_mortality_scale) * (dens ** 2) * dt
-        p += bio.stress_mortality_scale * (a.stress[idx] ** 2) * dt
-        p += 0.02 * (a.wounds[idx] ** 2) * dt
-        p += np.where(a.age_days[idx] > bio.max_age_days, 0.05 * dt, 0.0)
-        p += np.where((a.hunger[idx] > 1.2) | (a.thirst[idx] > 1.2), 0.1 * dt, 0.0)
-        p += np.where(a.energy[idx] < 0.05, 0.2 * dt, 0.0)
+        h = h + float(bio.density_mortality_scale) * (dens ** 2)
+        h += bio.stress_mortality_scale * (a.stress[idx] ** 2)
+        h += 0.02 * (a.wounds[idx] ** 2)
+        h += np.where(a.age_days[idx] > bio.max_age_days, 0.05, 0.0)
+        starving = (a.hunger[idx] > 1.2) | (a.thirst[idx] > 1.2)
+        h += np.where(starving, float(bio.starvation_hazard_per_day), 0.0)
+        h += np.where(a.energy[idx] < 0.05, 0.2, 0.0)
+        p = -np.expm1(-h * dt)
         dead = self.rng.random(idx.size) < p
         if dead.any():
             di = idx[dead]
@@ -872,6 +971,7 @@ class Universe25Sim:
         capacity_per_cell = float(self.world.capacity_design / max(1, self.world.n_cells))
         pg = self.world.playground_bounds
         b["dens_frac"].assign(np.array([dens_frac], dtype=np.float32))
+        b["dens_social"].assign(np.array([self._breakdown_density(a.alive)], dtype=np.float32))
 
         def launches():
             wp.launch(
@@ -881,8 +981,8 @@ class Universe25Sim:
                     b["alive"], b["cell_id"], b["nest_id"], b["rank"], b["stress"], b["social_drive"],
                     b["cell_counts"], b["nest_occ"], b["nest_cap"], b["age_days"], b["competence"],
                     dt, float(d.stress_density_gain), float(d.stress_decay),
-                    float(bio.nest_overcrowd_stress), capacity_per_cell, b["dens_frac"],
-                    float(bio.menopause_density_threshold), float(bio.social_breakdown_stress_boost),
+                    float(bio.nest_overcrowd_stress), capacity_per_cell, b["dens_social"],
+                    float(bio.breakdown_threshold()), float(bio.social_breakdown_stress_boost),
                     float(bio.maturity_days), float(bio.imprint_rate),
                     float(bio.imprint_density_threshold), float(self.k_ev),
                 ],
@@ -897,6 +997,7 @@ class Universe25Sim:
                     dt, float(bio.base_mortality_per_day), float(bio.stress_mortality_scale),
                     float(bio.max_age_days), float(bio.young_mortality_scale),
                     float(bio.density_mortality_scale), b["dens_frac"],
+                    float(bio.starvation_hazard_per_day),
                 ],
                 device=eng.device,
             )
@@ -964,6 +1065,7 @@ class Universe25Sim:
         else:
             entropy = 0.0
         ps = self.playscore.components(v=v, g=g, action_entropy=entropy)
+        adult_f = alive & (a.sex == SEX_F) & (a.age_days >= self.cfg.biology.maturity_days)
         row = {
             "tick": self.tick,
             "day": self.day,
@@ -974,12 +1076,16 @@ class Universe25Sim:
             "deaths_cum": self._deaths,
             "last_young_day": self._last_young_day,
             "last_surviving_young_day": self._last_surviving_young_day,
+            "surv_births_cum": self._surv_births_cum,
             "last_conception_day": self._last_conception_day,
             "abandoned_cum": self._abandoned,
             "n_adult": int(np.sum(alive & (a.age_days >= self.cfg.biology.maturity_days))),
             "mean_competence_adult": float(
                 a.competence[alive & (a.age_days >= self.cfg.biology.maturity_days)].mean()
             ) if np.any(alive & (a.age_days >= self.cfg.biology.maturity_days)) else 1.0,
+            "mean_maternal_cap_adult_f": (
+                float(a.maternal_cap[adult_f].mean()) if adult_f.any() else 1.0
+            ),
             "playground_occupancy": pg_occ,
             "playground_frac": pg_occ / max(1, n),
             "free_choice_V": v,
@@ -1033,6 +1139,10 @@ class Universe25Sim:
             "conceptions": self._conceptions,
             "last_young_day": self._last_young_day,
             "last_surviving_young_day": self._last_surviving_young_day,
+            "surviving_birth_cessation_day": surviving_birth_cessation_day(
+                self._surv_births_by_day
+            ),
+            "surviving_births": self._surv_births_cum,
             "last_conception_day": self._last_conception_day,
             "abandoned_pups": self._abandoned,
             "nan_count": self._nan_count,

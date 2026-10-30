@@ -14,7 +14,11 @@ LANDMARKS = {
     "n_at_day_315": 620.0,
     "peak_n": 2200.0,
     "peak_day": 560.0,
-    "last_young_day": 600.0,  # last *surviving* birth (Calhoun: Day 600)
+    # Cessation of surviving births (Calhoun: last surviving birth Day 600). Measured as the
+    # last birth day on which the 30-day rate of births that reach weaning is still >= 5 % of
+    # its maximum (the strict "latest weaned pup" is also reported; it is set by single lucky
+    # survivors among ~10^5 births and is seed noise).
+    "last_young_day": 600.0,
 }
 
 # Additional quantitative facts from the same paper (reported, not in the canonical mean):
@@ -26,6 +30,27 @@ EXTRA_LANDMARKS = {
 }
 
 PEAK_FRACTION = 0.97  # "peak_day" = first day N reaches 97% of the maximum (plateau-robust)
+
+
+CESSATION_WINDOW_DAYS = 30
+CESSATION_FRACTION = 0.05
+
+
+def surviving_birth_cessation_day(
+    surv_births_by_day: np.ndarray,
+    window: int = CESSATION_WINDOW_DAYS,
+    frac: float = CESSATION_FRACTION,
+) -> float:
+    """Last birth day whose trailing `window`-day count of births that later reached weaning
+    is still >= frac x the maximum such count. 0 if no pup ever weaned."""
+    hist = np.asarray(surv_births_by_day, dtype=np.float64)
+    if hist.size == 0 or hist.sum() <= 0:
+        return 0.0
+    roll = np.convolve(hist, np.ones(int(window)), mode="full")[: hist.size]
+    # anchor on birth days that had a surviving birth themselves (a trailing window that is
+    # still above threshold after the last such day would otherwise return the array end)
+    above = np.flatnonzero((roll >= frac * roll.max()) & (hist > 0))
+    return float(above[-1]) if above.size else 0.0
 
 
 def _nearest(days: np.ndarray, values: np.ndarray, day: float) -> float:
@@ -40,8 +65,14 @@ def landmarks_from_series(
     *,
     n_adult: np.ndarray | None = None,
     last_conception: np.ndarray | None = None,
+    surv_births_by_day: np.ndarray | None = None,
 ) -> dict[str, float]:
-    """Shared landmark extraction for parquet reports and the fast calibration loop."""
+    """Shared landmark extraction for parquet reports and the fast calibration loop.
+
+    With `surv_births_by_day` (count of pups that reached weaning, by birth day) the
+    `last_young_day` landmark is the rate-based cessation day; otherwise it falls back to the
+    strict latest-weaned-pup birth day in `last_young`.
+    """
     first_birth_idx = np.flatnonzero(births > 0)
     first_litters = float(days[first_birth_idx[0]]) if len(first_birth_idx) else float("nan")
     peak_n = float(ns.max()) if len(ns) else 0.0
@@ -55,6 +86,7 @@ def landmarks_from_series(
         "peak_n": peak_n,
         "peak_day": peak_day,
         "last_young_day": float(np.max(last_young)) if len(last_young) else 0.0,
+        "last_surviving_birth_strict_day": float(np.max(last_young)) if len(last_young) else 0.0,
         "n_at_day_736": (
             _nearest(days, ns, 736.0) if len(days) and days[-1] >= 700 else float("nan")
         ),
@@ -74,6 +106,8 @@ def landmarks_from_series(
         out["n_min_after_peak"] = float(ns[peak_i:].min())
     else:
         out["n_min_after_peak"] = 0.0
+    if surv_births_by_day is not None:
+        out["last_young_day"] = surviving_birth_cessation_day(surv_births_by_day)
     return out
 
 
@@ -100,6 +134,7 @@ def calibrate(metrics_path: Path, run_summary: dict[str, Any] | None = None) -> 
     # Prefer the surviving-birth column (newer runs); fall back to any-birth for old parquet.
     ly_col = "last_surviving_young_day" if "last_surviving_young_day" in cols else "last_young_day"
     last_young = table.column(ly_col).to_numpy()
+    ly_source = ly_col
     n_adult = table.column("n_adult").to_numpy() if "n_adult" in cols else None
     last_conc = (
         table.column("last_conception_day").to_numpy() if "last_conception_day" in cols else None
@@ -108,6 +143,9 @@ def calibrate(metrics_path: Path, run_summary: dict[str, Any] | None = None) -> 
     pred = landmarks_from_series(
         days, ns, births, last_young, n_adult=n_adult, last_conception=last_conc
     )
+    if run_summary and run_summary.get("surviving_birth_cessation_day") is not None:
+        pred["last_young_day"] = float(run_summary["surviving_birth_cessation_day"])
+        ly_source = "surviving_birth_cessation_day (run.json)"
     errors = _rel_errors(pred, LANDMARKS)
     extra_errors = _rel_errors(pred, EXTRA_LANDMARKS)
     phases = _detect_phases(days, ns)
@@ -123,7 +161,7 @@ def calibrate(metrics_path: Path, run_summary: dict[str, Any] | None = None) -> 
         "extra_errors": extra_errors,
         "mean_rel_error": float(np.nanmean([errors[k]["rel_error"] for k in LANDMARKS])),
         "mean_rel_error_extended": float(np.nanmean(all_rel)),
-        "last_young_source": ly_col,
+        "last_young_source": ly_source,
         "peak_day_definition": f"first day N >= {PEAK_FRACTION:.2f} * max N",
         "phases": phases,
         "run_summary": run_summary or {},

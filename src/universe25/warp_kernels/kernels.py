@@ -111,23 +111,26 @@ def mortality_kernel(
     young_scale: float,
     dens_mort: float,
     dens_frac_arr: wp.array(dtype=wp.float32),
+    starvation: float,
 ):
     i = wp.tid()
     if alive[i] == 0:
         return
     dens_frac = dens_frac_arr[0]
-    p = base_mort * dt
+    # hazard per day; death probability this tick = 1 - exp(-h*dt) (mirrors sim._age_and_die)
+    h = base_mort
     if role[i] == 0 or role[i] == 1:
-        p = p * young_scale
-    p = p + dens_mort * dens_frac * dens_frac * dt
-    p = p + stress_mort * stress[i] * stress[i] * dt
-    p = p + 0.02 * wounds[i] * wounds[i] * dt
+        h = h * young_scale
+    h = h + dens_mort * dens_frac * dens_frac
+    h = h + stress_mort * stress[i] * stress[i]
+    h = h + 0.02 * wounds[i] * wounds[i]
     if age_days[i] > max_age:
-        p = p + 0.05 * dt
+        h = h + 0.05
     if hunger[i] > 1.2 or thirst[i] > 1.2:
-        p = p + 0.1 * dt
+        h = h + starvation
     if energy[i] < 0.05:
-        p = p + 0.2 * dt
+        h = h + 0.2
+    p = 1.0 - wp.exp(-h * dt)
     # xorshift
     s = rng_states[i]
     s = s ^ (s << wp.uint32(13))
