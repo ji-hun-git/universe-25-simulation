@@ -2,7 +2,8 @@ seed: 7000
 days: 30.0
 max_agents: 512
 initial_pairs: 4
-log_every_ticks: 24
+ticks_per_day: 6
+log_every_ticks: 6
 snapshot_every_days: 10
 arm_label: TRACK-E-U25-SMOKE
 playground:

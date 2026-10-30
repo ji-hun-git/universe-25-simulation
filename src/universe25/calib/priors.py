@@ -1,11 +1,15 @@
 """Documented priors for Calhoun 1973 calibration (principled, not hand hacks).
 
 Sources / rationale:
-- Mouse gestation ~19–21 d; litter size ~6–8 (lab mouse biology).
+- Mouse gestation ~19–21 d; litter size ~5–8; maturity ~6–8 weeks (lab mouse biology).
 - Calhoun first litters ~day 104 ⇒ first_conception ≈ 104 − gestation.
-- Design capacity 3840; peak ~2200 ⇒ menopause threshold prior around 0.4–0.7 of capacity.
-- Collapse is emergent: density↑ → stress↑ → breeding↓ / neglect↑ / mortality↑ / withdrawal↑.
-  No parameter is a "collapse_day".
+- Design capacity 3840; peak ~2200 ⇒ menopause threshold prior around 0.35–0.8 of capacity.
+- Calhoun: female menopause ≈ 560 d of age; survivors at Day 1588 were > 987 d old and
+  N was still 2056 at Day 736 ⇒ adults live out ~800–1100 d; adult mortality is NOT the
+  collapse driver. Collapse = young raised under crowding never breed (Marsden 1972: the
+  deficit persisted after transfer to uncrowded universes) ⇒ developmental imprinting.
+- No parameter is a "collapse_day". Collapse must emerge from density → stress →
+  neglect / breeding suppression / imprinting.
 
 Search uses Optuna + CMA-ES sampler over these bounds (uniform in transformed space).
 """
@@ -13,124 +17,111 @@ from __future__ import annotations
 
 from typing import Any
 
-import numpy as np
-
-LANDMARKS = {
-    "first_litters_day": 104.0,
-    "n_at_day_315": 620.0,
-    "peak_n": 2200.0,
-    "peak_day": 560.0,
-    "last_young_day": 600.0,
-}
+from universe25.metrics.calibration import EXTRA_LANDMARKS, LANDMARKS  # noqa: F401 (re-export)
 
 # name -> (low, high, log_scale?, path in biology/drives)
 PARAM_PRIORS: dict[str, dict[str, Any]] = {
     "first_conception_min_day": {
-        "low": 70.0,
-        "high": 100.0,
-        "log": False,
-        "group": "biology",
+        "low": 70.0, "high": 100.0, "log": False, "group": "biology",
         "prior": "Uniform; Calhoun first litters 104 minus gestation ~20",
     },
     "gestation_days": {
-        "low": 18.0,
-        "high": 22.0,
-        "log": False,
-        "group": "biology",
+        "low": 19.0, "high": 21.0, "log": False, "group": "biology",
         "prior": "Uniform around laboratory mouse gestation",
     },
     "litter_mean": {
-        "low": 5.0,
-        "high": 9.0,
-        "log": False,
-        "group": "biology",
-        "prior": "Uniform around typical litter size 6–8",
+        "low": 4.5, "high": 9.0, "log": False, "group": "biology",
+        "prior": "Uniform around typical litter size 5–8",
     },
     "maturity_days": {
-        "low": 35.0,
-        "high": 55.0,
-        "log": False,
-        "group": "biology",
-        "prior": "Uniform; earlier maturity → faster early growth",
+        "low": 42.0, "high": 70.0, "log": False, "group": "biology",
+        "prior": "Uniform; 6–10 weeks to sexual maturity",
     },
     "breeding_p_base": {
-        "low": 0.25,
-        "high": 0.95,
-        "log": False,
-        "group": "biology",
-        "prior": "Uniform; daily conception attempt rate at low density",
+        "low": 0.05, "high": 0.60, "log": False, "group": "biology",
+        "prior": "Uniform; daily conception probability, cohabiting eligible pair, low density",
+    },
+    "breeding_stress_coef": {
+        "low": 0.2, "high": 1.0, "log": False, "group": "biology",
+        "prior": "Uniform; conception suppression per unit stress",
     },
     "menopause_density_threshold": {
-        "low": 0.25,
-        "high": 0.70,
-        "log": False,
-        "group": "biology",
-        "prior": "Uniform; dens/capacity where breeding collapses (peak~2200/3840≈0.57)",
+        "low": 0.35, "high": 0.80, "log": False, "group": "biology",
+        "prior": "Uniform; dens/capacity where conception is fully suppressed (2200/3840≈0.57)",
     },
     "stress_mortality_scale": {
-        "low": 0.002,
-        "high": 0.08,
-        "log": True,
-        "group": "biology",
-        "prior": "LogUniform; stress² mortality drives late die-off",
-    },
-    "density_mortality_scale": {
-        "low": 1e-5,
-        "high": 0.02,
-        "log": True,
-        "group": "biology",
-        "prior": "LogUniform; extra mortality ∝ dens² (crowding)",
+        "low": 2e-4, "high": 0.02, "log": True, "group": "biology",
+        "prior": "LogUniform; stress² mortality — weak: Calhoun adults lived out their lifespans",
     },
     "base_mortality_per_day": {
-        "low": 1e-4,
-        "high": 0.002,
-        "log": True,
-        "group": "biology",
+        "low": 5e-5, "high": 1.5e-3, "log": True, "group": "biology",
         "prior": "LogUniform; background adult mortality",
     },
+    "max_age_days": {
+        "low": 750.0, "high": 1100.0, "log": False, "group": "biology",
+        "prior": "Uniform; survivors > 987 d at Day 1588; T_max 1000–1143 d (Gwizdałła & Duś)",
+    },
+    "young_mortality_scale": {
+        "low": 0.1, "high": 1.0, "log": False, "group": "biology",
+        "prior": "Uniform; pup/juvenile baseline mortality relative to adult",
+    },
     "maternal_neglect_stress": {
-        "low": 0.45,
-        "high": 0.90,
-        "log": False,
-        "group": "biology",
-        "prior": "Uniform; stress above which mothers neglect / stillbirth",
+        "low": 0.30, "high": 0.90, "log": False, "group": "biology",
+        "prior": "Uniform; stress above which mothers stop nursing / abandon litters",
     },
     "stillbirth_neglect_p": {
-        "low": 0.2,
-        "high": 0.9,
-        "log": False,
-        "group": "biology",
+        "low": 0.2, "high": 0.9, "log": False, "group": "biology",
         "prior": "Uniform; P(lose litter | neglect)",
     },
+    "nest_overcrowd_stress": {
+        "low": 0.0, "high": 0.6, "log": False, "group": "biology",
+        "prior": "Uniform; extra stress gain in an overfull nest box",
+    },
+    "social_breakdown_stress_boost": {
+        "low": 0.0, "high": 0.8, "log": False, "group": "biology",
+        "prior": "Uniform; extra stress gain when dens > menopause threshold",
+    },
+    "imprint_rate": {
+        "low": 0.01, "high": 0.5, "log": True, "group": "biology",
+        "prior": "LogUniform; competence loss per day per unit exposure while young",
+    },
+    "imprint_density_threshold": {
+        "low": 0.05, "high": 0.40, "log": False, "group": "biology",
+        "prior": "Uniform; local density fraction where developmental exposure begins",
+    },
+    "withdrawn_competence_threshold": {
+        "low": 0.1, "high": 0.7, "log": False, "group": "biology",
+        "prior": "Uniform; adults below this competence withdraw ('beautiful ones')",
+    },
+    "female_fertile_max_age_days": {
+        "low": 450.0, "high": 620.0, "log": False, "group": "biology",
+        "prior": "Uniform; Calhoun: female menopause ≈ 560 d of age",
+    },
     "stress_density_gain": {
-        "low": 0.15,
-        "high": 1.2,
-        "log": False,
-        "group": "drives",
+        "low": 0.1, "high": 1.5, "log": False, "group": "drives",
         "prior": "Uniform; how fast local density raises stress",
     },
     "stress_decay": {
-        "low": 0.05,
-        "high": 0.40,
-        "log": False,
-        "group": "drives",
-        "prior": "Uniform; stress recovery rate",
-    },
-    "social_breakdown_stress_boost": {
-        "low": 0.0,
-        "high": 0.8,
-        "log": False,
-        "group": "biology",
-        "prior": "Uniform; extra stress gain when dens > menopause threshold",
-    },
-    "young_mortality_scale": {
-        "low": 0.1,
-        "high": 0.6,
-        "log": False,
-        "group": "biology",
-        "prior": "Uniform; pup/juv mortality relative to adult baseline",
+        "low": 0.1, "high": 1.5, "log": False, "group": "drives",
+        "prior": "Uniform; stress relaxation rate (equilibrium = gain·local/decay)",
     },
 }
+
+LOSS_WEIGHTS = {
+    "first_litters_day": 1.5,
+    "n_at_day_315": 2.0,
+    "peak_n": 2.0,
+    "peak_day": 1.5,
+    "last_young_day": 1.5,
+}
+EXTRA_LOSS_WEIGHTS = {
+    "n_at_day_736": 1.5,
+    "adults_at_day_315": 1.0,
+    "last_conception_day": 0.5,
+}
+# Inferred (not a Calhoun number): between N=2056 at Day 736 and N=122 at Day 1444 the
+# population at Day 1200 should sit well below the peak but not be extinct.
+DECLINE_BAND_AT_HORIZON = (0.35, 0.85)
 
 
 def suggest_params(trial: Any) -> dict[str, float]:
@@ -155,37 +146,49 @@ def params_to_overrides(params: dict[str, float]) -> dict[str, Any]:
     return {"biology": bio, "drives": drv}
 
 
-def landmark_loss(observed: dict[str, float], require_collapse: bool = True) -> float:
-    """Weighted relative L2 on landmarks + collapse penalty.
+def overrides_to_params(overrides: dict[str, Any]) -> dict[str, float]:
+    """Inverse of params_to_overrides for the keys in PARAM_PRIORS (others ignored)."""
+    out: dict[str, float] = {}
+    for group in ("biology", "drives"):
+        for k, v in (overrides.get(group) or {}).items():
+            if k in PARAM_PRIORS:
+                out[k] = float(v)
+    return out
 
-    Collapse: after peak, N should fall below 0.5 * peak by day 1200, and
-    last_young should be near 600 (not still birthing at 1600).
+
+def landmark_loss(observed: dict[str, float], require_collapse: bool = True) -> float:
+    """Weighted relative L2 on landmarks + emergent-collapse shape penalties.
+
+    Canonical landmarks weigh most; extra Calhoun facts (N@736, adults@315, last conception)
+    add shape information. Collapse terms: no surviving births long after Day 600 and a
+    population at the horizon inside DECLINE_BAND_AT_HORIZON of the peak (only when the
+    horizon is >= 1000 days).
     """
-    w = {
-        "first_litters_day": 1.5,
-        "n_at_day_315": 2.0,
-        "peak_n": 2.0,
-        "peak_day": 1.5,
-        "last_young_day": 1.5,
-    }
     acc = 0.0
-    for k, target in LANDMARKS.items():
+    for k, w in LOSS_WEIGHTS.items():
+        target = LANDMARKS[k]
         obs = observed.get(k, float("nan"))
         if obs != obs:
-            acc += w[k] * 4.0
+            acc += w * 4.0
             continue
         rel = abs(obs - target) / target
-        acc += w[k] * (rel ** 2)
-    # collapse emergent check
+        acc += w * min(rel, 2.0) ** 2
+    for k, w in EXTRA_LOSS_WEIGHTS.items():
+        target = EXTRA_LANDMARKS[k]
+        obs = observed.get(k, float("nan"))
+        if obs != obs:
+            continue  # horizon too short / column absent: no penalty
+        rel = abs(obs - target) / target
+        acc += w * min(rel, 2.0) ** 2
     if require_collapse:
         peak = observed.get("peak_n", 0.0) or 0.0
-        final = observed.get("final_n", peak) or peak
-        peak_day = observed.get("peak_day", 0.0) or 0.0
-        last_y = observed.get("last_young_day", 1600.0) or 1600.0
-        if peak > 0 and final > 0.7 * peak:
-            acc += 2.0 * ((final / peak) - 0.5) ** 2
-        if last_y > 900:
-            acc += 1.5 * ((last_y - 600) / 600) ** 2
-        if peak_day > 900:
-            acc += 0.5 * ((peak_day - 560) / 560) ** 2
+        final = observed.get("final_n", peak) or 0.0
+        horizon = observed.get("final_day", 0.0) or 0.0
+        if peak > 0 and horizon >= 1000.0:
+            frac = final / peak
+            lo, hi = DECLINE_BAND_AT_HORIZON
+            if frac > hi:
+                acc += 1.5 * ((frac - hi) / (1.0 - hi)) ** 2
+            elif frac < lo:
+                acc += 1.5 * ((lo - frac) / lo) ** 2
     return float(acc)

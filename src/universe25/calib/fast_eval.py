@@ -8,41 +8,17 @@ from typing import Any
 
 import numpy as np
 
-from universe25.calib.priors import LANDMARKS, landmark_loss, params_to_overrides
+from universe25.calib.priors import EXTRA_LANDMARKS, LANDMARKS, landmark_loss, params_to_overrides
 from universe25.config import SimConfig, load_config
+from universe25.metrics.calibration import landmarks_from_series
 from universe25.sim import Universe25Sim
-
-
-def _extract_landmarks(
-    sim: Universe25Sim,
-    days_hist: list[float],
-    n_hist: list[int],
-    births_hist: list[int],
-    last_young_hist: list[float],
-) -> dict[str, float]:
-    days = np.asarray(days_hist, dtype=np.float64)
-    ns = np.asarray(n_hist, dtype=np.float64)
-    births = np.asarray(births_hist, dtype=np.float64)
-    last_young = np.asarray(last_young_hist, dtype=np.float64)
-    first_idx = np.flatnonzero(births > 0)
-    first_litters = float(days[first_idx[0]]) if len(first_idx) else float("nan")
-    n_315 = float(ns[np.argmin(np.abs(days - 315.0))]) if len(days) else float("nan")
-    peak_i = int(np.argmax(ns)) if len(ns) else 0
-    return {
-        "first_litters_day": first_litters,
-        "n_at_day_315": n_315,
-        "peak_n": float(ns[peak_i]) if len(ns) else 0.0,
-        "peak_day": float(days[peak_i]) if len(days) else 0.0,
-        "last_young_day": float(np.max(last_young)) if len(last_young) else 0.0,
-        "final_n": float(ns[-1]) if len(ns) else 0.0,
-    }
 
 
 def evaluate_params(
     params: dict[str, float],
     *,
     seed: int = 7000,
-    days: float = 1600.0,
+    days: float = 1200.0,
     ticks_per_day: int = 6,
     max_agents: int = 4096,
     base_config: Path | None = None,
@@ -90,28 +66,43 @@ def evaluate_params(
     out = Path(td)
     try:
         sim = Universe25Sim(cfg, out)
+        bio = cfg.biology
         days_hist: list[float] = []
         n_hist: list[int] = []
         births_hist: list[int] = []
         last_young_hist: list[float] = []
+        n_adult_hist: list[int] = []
+        last_conc_hist: list[float] = []
 
         total = int(days * ticks_per_day)
         for _ in range(total):
             sim.step()
             if sim.tick % ticks_per_day == 0:
+                a = sim.agents
                 days_hist.append(sim.day)
-                n_hist.append(sim.agents.n_alive)
+                n_hist.append(a.n_alive)
                 births_hist.append(sim._births)
-                last_young_hist.append(sim._last_young_day)
+                last_young_hist.append(sim._last_surviving_young_day)
+                n_adult_hist.append(int(np.sum(a.alive & (a.age_days >= bio.maturity_days))))
+                last_conc_hist.append(sim._last_conception_day)
             if sim.agents.n_alive == 0 and sim.day > 50:
                 break
         try:
             sim.logger.close()
         except Exception:
             pass
-        obs = _extract_landmarks(sim, days_hist, n_hist, births_hist, last_young_hist)
+        obs = landmarks_from_series(
+            np.asarray(days_hist, dtype=np.float64),
+            np.asarray(n_hist, dtype=np.float64),
+            np.asarray(births_hist, dtype=np.float64),
+            np.asarray(last_young_hist, dtype=np.float64),
+            n_adult=np.asarray(n_adult_hist, dtype=np.float64),
+            last_conception=np.asarray(last_conc_hist, dtype=np.float64),
+        )
+        obs["last_birth_any_day"] = float(sim._last_young_day)
+        obs["nan_count"] = int(sim._nan_count)
         errors: dict[str, float | None] = {}
-        for k, tgt in LANDMARKS.items():
+        for k, tgt in {**LANDMARKS, **EXTRA_LANDMARKS}.items():
             o = obs.get(k, float("nan"))
             errors[k] = None if o != o else abs(o - tgt) / tgt
         loss = landmark_loss(obs, require_collapse=True)
