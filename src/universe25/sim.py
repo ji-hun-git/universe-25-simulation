@@ -43,6 +43,7 @@ from universe25.rng import make_rng
 from universe25.world.geometry import World, build_world
 from universe25.nvidia.nvtx_ranges import nvtx_range
 from universe25.nvidia.cuda_graphs import CudaGraphTick
+from universe25.warp_kernels.engine import WarpTickEngine
 
 
 class Universe25Sim:
@@ -62,7 +63,22 @@ class Universe25Sim:
         self.logger = MetricsLogger(self.out_dir / "metrics.parquet")
         self.playscore = PlayScoreAccumulator()
         self.snapshots = SnapshotWriter(self.out_dir / "snapshots")
-        self.cuda_graph = CudaGraphTick(enabled=False, backend=self.backend, device=self.device)
+        self.cuda_graph = CudaGraphTick(
+            enabled=bool(getattr(cfg, "use_cuda_graph", False)),
+            backend=self.backend,
+            device=self.device,
+        )
+        self.warp_engine = None
+        if self.backend == "warp":
+            dev = self.device if str(self.device).startswith("cuda") else "cuda:0"
+            if self.device == "cpu":
+                dev = "cpu"
+            self.warp_engine = WarpTickEngine(
+                cfg=cfg,
+                world=self.world,
+                device=dev,
+                use_graph=bool(getattr(cfg, "use_cuda_graph", False)) and str(dev).startswith("cuda"),
+            )
         self._action_hist = np.zeros(N_ACTIONS, dtype=np.int64)
         self._conceptions = 0
         self._births = 0
@@ -145,20 +161,31 @@ class Universe25Sim:
 
         with nvtx_range("Universe25_step"):
             self._refill_resources()
-            with nvtx_range("drives"):
-                self._update_drives(alive)
+            use_warp = self.warp_engine is not None
+            if use_warp:
+                with nvtx_range("drives"):
+                    self._update_drives(alive)  # host drives (bit-stable with numpy path for shared logic)
+            else:
+                with nvtx_range("drives"):
+                    self._update_drives(alive)
             with nvtx_range("roles"):
                 self._assign_roles(alive)
             with nvtx_range("actions"):
                 actions = self._select_actions(alive)
                 self._execute_actions(alive, actions)
-            with nvtx_range("density_stress"):
-                self._density_stress(alive)
             with nvtx_range("life"):
                 self._passive_nurse(alive)
                 self._daily_breeding_pass(alive)
                 self._reproduce(alive)
-                self._age_and_die(alive)
+            if use_warp:
+                with nvtx_range("warp_stress_mortality_cells"):
+                    # Device: density stress + mortality + cell/playground flags (CUDA Graph capable)
+                    self._warp_post_step()
+            else:
+                with nvtx_range("density_stress"):
+                    self._density_stress(alive)
+                with nvtx_range("mortality"):
+                    self._age_and_die(alive)
             self._check_nan()
 
         a.n_alive = int(a.alive.sum())
@@ -192,8 +219,9 @@ class Universe25Sim:
         a = self.agents
         idx = alive
         pup = a.role[idx] == ROLE_PUP
-        hunger_gain = np.where(pup, d.hunger_gain_per_day * 0.35, d.hunger_gain_per_day)
-        thirst_gain = np.where(pup, d.thirst_gain_per_day * 0.35, d.thirst_gain_per_day)
+        phs = float(self.cfg.biology.pup_hunger_scale)
+        hunger_gain = np.where(pup, d.hunger_gain_per_day * phs, d.hunger_gain_per_day)
+        thirst_gain = np.where(pup, d.thirst_gain_per_day * phs, d.thirst_gain_per_day)
         a.hunger[idx] = np.clip(a.hunger[idx] + hunger_gain * dt, 0, 1.5)
         a.thirst[idx] = np.clip(a.thirst[idx] + thirst_gain * dt, 0, 1.5)
         a.curiosity[idx] = np.clip(a.curiosity[idx] + d.curiosity_gain * dt, 0, 1.5)
@@ -217,12 +245,13 @@ class Universe25Sim:
         role[:] = ROLE_BREEDING_FEMALE
         pup = age < bio.weaning_days
         juv = (~pup) & (age < bio.maturity_days)
+        bio = self.cfg.biology
         withdrawn = (
             (~pup)
             & (~juv)
-            & (a.stress[idx] > 0.85)
-            & (a.social_drive[idx] < 0.2)
-            & (a.aggression[idx] < 0.15)
+            & (a.stress[idx] > bio.withdrawn_stress_threshold)
+            & (a.social_drive[idx] < bio.withdrawn_social_threshold)
+            & (a.aggression[idx] < bio.beautiful_one_aggression_max)
         )
         female = a.sex[idx] == SEX_F
         nursing = female & ((a.maternal[idx] > 0.5) & ((a.gestating[idx] > 0) | (a.role[idx] == ROLE_NURSING)))
@@ -501,7 +530,7 @@ class Universe25Sim:
         if not cand.any():
             return
         d2 = (a.x - a.x[i]) ** 2 + (a.y - a.y[i]) ** 2
-        near = np.flatnonzero(cand & (d2 < 400.0))
+        near = np.flatnonzero(cand & (d2 < float(bio.mate_radius_in) ** 2))
         if len(near) == 0:
             return
         j = int(near[np.argmin(d2[near])])
@@ -529,7 +558,10 @@ class Universe25Sim:
         nest_occ = np.bincount(a.nest_id[alive].astype(int), minlength=self.world.n_nests)
         cap = np.array([n.capacity for n in self.world.nests], dtype=np.float64)
         over = (nids >= 0) & (nest_occ[np.clip(nids, 0, self.world.n_nests - 1)] > cap[np.clip(nids, 0, self.world.n_nests - 1)])
-        gain = gain + 0.2 * over
+        gain = gain + float(self.cfg.biology.nest_overcrowd_stress) * over
+        dens_frac = a.n_alive / max(1, self.world.capacity_design)
+        if dens_frac > self.cfg.biology.menopause_density_threshold:
+            gain = gain + float(self.cfg.biology.social_breakdown_stress_boost)
         # random nest kick for low rank overcrowded
         kick = over & (a.rank[idx] < 0.4) & (self.rng.random(idx.size) < 0.1)
         if kick.any():
@@ -566,8 +598,8 @@ class Universe25Sim:
         if self.day < bio.first_conception_min_day:
             return
         dens = a.n_alive / max(1, self.world.capacity_design)
-        # suppression with density (behavioral-sink precursor)
-        p_base = 0.55 * max(0.02, 1.0 - dens / max(1e-6, bio.menopause_density_threshold))
+        # suppression with density (behavioral-sink precursor) — no scheduled collapse day
+        p_base = float(bio.breeding_p_base) * max(0.02, 1.0 - dens / max(1e-6, bio.menopause_density_threshold))
         females = np.flatnonzero(
             alive
             & (a.sex == SEX_F)
@@ -593,7 +625,7 @@ class Universe25Sim:
             cands = male_cells.get(int(a.cell_id[f]), [])
             if not cands:
                 continue
-            if self.rng.random() < p_base * (1.0 - 0.7 * float(a.stress[f])):
+            if self.rng.random() < p_base * (1.0 - float(bio.breeding_stress_coef) * float(a.stress[f])):
                 a.gestating[f] = bio.gestation_days
                 a.role[f] = ROLE_NURSING
                 a.maternal[f] = max(float(a.maternal[f]), 0.85)
@@ -606,7 +638,7 @@ class Universe25Sim:
         for i in births:
             # birth this tick
             a.gestating[i] = 0.0
-            if a.stress[i] > bio.maternal_neglect_stress and self.rng.random() < 0.5:
+            if a.stress[i] > bio.maternal_neglect_stress and self.rng.random() < float(bio.stillbirth_neglect_p):
                 continue  # stillbirth / neglect
             litter = int(np.clip(self.rng.normal(bio.litter_mean, bio.litter_sd), 1, 12))
             try:
@@ -641,7 +673,9 @@ class Universe25Sim:
         p = np.full(idx.size, bio.base_mortality_per_day * dt, dtype=np.float64)
         # pups/juveniles: lower baseline, rely on neglect/hunger instead
         young = (a.role[idx] == ROLE_PUP) | (a.role[idx] == ROLE_JUVENILE)
-        p = np.where(young, p * 0.25, p)
+        p = np.where(young, p * float(bio.young_mortality_scale), p)
+        dens = a.n_alive / max(1, self.world.capacity_design)
+        p = p + float(bio.density_mortality_scale) * (dens ** 2) * dt
         p += bio.stress_mortality_scale * (a.stress[idx] ** 2) * dt
         p += 0.02 * (a.wounds[idx] ** 2) * dt
         p += np.where(a.age_days[idx] > bio.max_age_days, 0.05 * dt, 0.0)
@@ -663,6 +697,97 @@ class Universe25Sim:
             if np.isnan(f[a.alive]).any():
                 self._nan_count += 1
                 np.nan_to_num(f, copy=False, nan=0.0)
+
+
+    def _warp_post_step(self) -> None:
+        """GPU stress + mortality + cell update via Warp (+ optional CUDA Graph)."""
+        assert self.warp_engine is not None
+        eng = self.warp_engine
+        a = self.agents
+        wp = eng._wp
+        from universe25.warp_kernels.kernels import (
+            density_stress_kernel,
+            mortality_kernel,
+            update_cells_kernel,
+        )
+        eng._host_cell_nest_counts(a)
+        eng.upload(a, self.rng)
+        b = eng._bufs
+        n = a.capacity
+        bio = self.cfg.biology
+        d = self.cfg.drives
+        dt = float(self.dt_days)
+        dens_frac = float(a.n_alive / max(1, self.world.capacity_design))
+        capacity_per_cell = float(self.world.capacity_design / max(1, self.world.n_cells))
+        pg = self.world.playground_bounds
+        b["dens_frac"].assign(np.array([dens_frac], dtype=np.float32))
+
+        def launches():
+            wp.launch(
+                density_stress_kernel,
+                dim=n,
+                inputs=[
+                    b["alive"], b["cell_id"], b["nest_id"], b["rank"], b["stress"], b["social_drive"],
+                    b["cell_counts"], b["nest_occ"], b["nest_cap"],
+                    dt, float(d.stress_density_gain), float(d.stress_decay),
+                    float(bio.nest_overcrowd_stress), capacity_per_cell, b["dens_frac"],
+                    float(bio.menopause_density_threshold), float(bio.social_breakdown_stress_boost),
+                ],
+                device=eng.device,
+            )
+            wp.launch(
+                mortality_kernel,
+                dim=n,
+                inputs=[
+                    b["alive"], b["role"], b["stress"], b["wounds"], b["age_days"],
+                    b["hunger"], b["thirst"], b["energy"], b["rng_states"],
+                    dt, float(bio.base_mortality_per_day), float(bio.stress_mortality_scale),
+                    float(bio.max_age_days), float(bio.young_mortality_scale),
+                    float(bio.density_mortality_scale), b["dens_frac"],
+                ],
+                device=eng.device,
+            )
+            wp.launch(
+                update_cells_kernel,
+                dim=n,
+                inputs=[
+                    b["alive"], b["x"], b["y"], b["cell_id"], b["in_playground"],
+                    float(self.world.width), float(self.world.height),
+                    int(self.cfg.geometry.n_cells_x), int(self.cfg.geometry.n_cells_y),
+                    1 if self.world.playground_enabled else 0,
+                    float(pg[0]), float(pg[1]), float(pg[2]), float(pg[3]),
+                ],
+                device=eng.device,
+            )
+            eng.n_launches += 1
+
+        if eng.use_graph and str(eng.device).startswith("cuda"):
+            if not eng._graph_ready:
+                if eng._warmup_left > 0:
+                    launches()
+                    wp.synchronize()
+                    eng._warmup_left -= 1
+                else:
+                    wp.capture_begin(device=eng.device)
+                    launches()
+                    eng._graph = wp.capture_end(device=eng.device)
+                    eng._graph_ready = True
+            else:
+                wp.capture_launch(eng._graph)
+                eng.n_graph_replays += 1
+        else:
+            launches()
+        wp.synchronize()
+        # download mutated fields
+        a.alive[:] = np.array(b["alive"].numpy(), dtype=bool)
+        a.role[:] = np.array(b["role"].numpy(), dtype=np.int8)
+        a.stress[:] = b["stress"].numpy()
+        a.social_drive[:] = b["social_drive"].numpy()
+        a.cell_id[:] = np.array(b["cell_id"].numpy(), dtype=np.int16)
+        a.in_playground[:] = np.array(b["in_playground"].numpy(), dtype=bool)
+        dead = (~a.alive) & (a.role == 7)
+        # count new deaths roughly
+        a.n_alive = int(a.alive.sum())
 
     def _log_metrics(self) -> None:
         a = self.agents
@@ -750,6 +875,7 @@ class Universe25Sim:
             "n_nests": self.world.n_nests,
             "n_play_objects": len(self.world.play_objects),
             "cuda_graph": self.cuda_graph.status(),
+            "warp": None if self.warp_engine is None else self.warp_engine.status(),
         }
         (self.out_dir / "run.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
         return summary

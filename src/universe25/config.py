@@ -15,17 +15,16 @@ class GeometryConfig(BaseModel):
     height_in: float = 101.0
     n_cells_x: int = 4
     n_cells_y: int = 4
-    nests_per_cell: int = 16  # 4*4*16 = 256
+    nests_per_cell: int = 16
     food_per_cell: int = 1
     water_per_cell: int = 1
-    capacity_design: int = 3840  # Calhoun design capacity
+    capacity_design: int = 3840
 
 
 class PlaygroundConfig(BaseModel):
     """Optional playground zone. Geometry only — no play reward."""
 
     enabled: bool = True
-    # Axis-aligned box in inches (center of pen by default).
     x0: float = 35.0
     y0: float = 35.0
     x1: float = 66.0
@@ -37,23 +36,38 @@ class PlaygroundConfig(BaseModel):
 
 class ResourceConfig(BaseModel):
     mode: Literal["abundant", "scarce"] = "abundant"
-    food_refill_per_tick: float = 1e9  # abundant ~ unlimited
+    food_refill_per_tick: float = 1e9
     water_refill_per_tick: float = 1e9
-    scarce_food_per_day: float = 50.0  # used when mode=scarce
+    scarce_food_per_day: float = 50.0
 
 
 class BiologyConfig(BaseModel):
+    """Life-history + density/social mechanisms (no scheduled collapse day)."""
+
     gestation_days: float = 20.0
-    litter_mean: float = 6.0
+    litter_mean: float = 7.0
     litter_sd: float = 1.5
     weaning_days: float = 21.0
     maturity_days: float = 50.0
     max_age_days: float = 800.0
-    base_mortality_per_day: float = 0.0008
+    base_mortality_per_day: float = 0.0005
     stress_mortality_scale: float = 0.01
-    first_conception_min_day: float = 90.0  # Calhoun first litters ~104
-    menopause_density_threshold: float = 0.55  # fraction of design capacity
+    first_conception_min_day: float = 95.0
+    menopause_density_threshold: float = 0.55
     maternal_neglect_stress: float = 0.7
+    # Tunables for principled calibration (priors in calib/priors.py)
+    breeding_p_base: float = 0.55
+    breeding_stress_coef: float = 0.7
+    nest_overcrowd_stress: float = 0.2
+    withdrawn_stress_threshold: float = 0.85
+    withdrawn_social_threshold: float = 0.2
+    pup_hunger_scale: float = 0.35
+    young_mortality_scale: float = 0.25
+    mate_radius_in: float = 20.0
+    stillbirth_neglect_p: float = 0.5
+    density_mortality_scale: float = 0.0  # extra death rate ~ dens^2
+    social_breakdown_stress_boost: float = 0.0  # added stress gain when dens high
+    beautiful_one_aggression_max: float = 0.15
 
 
 class DriveConfig(BaseModel):
@@ -76,15 +90,16 @@ class DriveConfig(BaseModel):
 
 class SimConfig(BaseModel):
     seed: int = 7000
-    ticks_per_day: int = 24  # 1 tick = 1 hour
+    ticks_per_day: int = 24
     max_agents: int = 4096
-    initial_pairs: int = 4  # 4 pairs = Calhoun start
+    initial_pairs: int = 4
     days: float = 1600.0
     device: Literal["cuda", "cpu", "auto"] = "auto"
     backend: Literal["warp", "torch", "numpy", "auto"] = "auto"
-    log_every_ticks: int = 24  # daily
+    log_every_ticks: int = 24
     snapshot_every_days: int = 50
     arm_label: str = "TRACK-E-U25-ABUND-PG"
+    use_cuda_graph: bool = False
     geometry: GeometryConfig = Field(default_factory=GeometryConfig)
     playground: PlaygroundConfig = Field(default_factory=PlaygroundConfig)
     resources: ResourceConfig = Field(default_factory=ResourceConfig)
@@ -94,7 +109,6 @@ class SimConfig(BaseModel):
     @field_validator("seed")
     @classmethod
     def _seed_range(cls, v: int) -> int:
-        # seed ranges; also allow 7100 unit-test band inside 7000-7999
         if v < 7000 or v >= 10000:
             raise ValueError(f"seed {v} outside allowed seed band [7000,10000)")
         if 5000 <= v < 6000:
