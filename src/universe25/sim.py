@@ -196,142 +196,239 @@ class Universe25Sim:
         a = self.agents
         bio = self.cfg.biology
         idx = np.flatnonzero(alive)
-        for i in idx:
-            age = a.age_days[i]
-            if age < bio.weaning_days:
-                a.role[i] = ROLE_PUP
-            elif age < bio.maturity_days:
-                a.role[i] = ROLE_JUVENILE
-            elif a.stress[i] > 0.85 and a.social_drive[i] < 0.2 and a.aggression[i] < 0.15:
-                a.role[i] = ROLE_WITHDRAWN  # beautiful ones
-            elif a.sex[i] == SEX_F:
-                if a.maternal[i] > 0.5 and (a.gestating[i] > 0 or a.role[i] == ROLE_NURSING):
-                    a.role[i] = ROLE_NURSING
-                else:
-                    a.role[i] = ROLE_BREEDING_FEMALE
-            else:
-                # males: top rank in cell -> territorial
-                a.role[i] = ROLE_TERRITORIAL_MALE if a.rank[i] > 0.55 else ROLE_SUBORDINATE_MALE
+        if idx.size == 0:
+            return
+        age = a.age_days[idx]
+        role = np.empty(idx.size, dtype=np.int8)
+        role[:] = ROLE_BREEDING_FEMALE
+        pup = age < bio.weaning_days
+        juv = (~pup) & (age < bio.maturity_days)
+        withdrawn = (
+            (~pup)
+            & (~juv)
+            & (a.stress[idx] > 0.85)
+            & (a.social_drive[idx] < 0.2)
+            & (a.aggression[idx] < 0.15)
+        )
+        female = a.sex[idx] == SEX_F
+        nursing = female & ((a.maternal[idx] > 0.5) & ((a.gestating[idx] > 0) | (a.role[idx] == ROLE_NURSING)))
+        male = ~female
+        terr = male & (a.rank[idx] > 0.55)
+        role[pup] = ROLE_PUP
+        role[juv] = ROLE_JUVENILE
+        role[withdrawn] = ROLE_WITHDRAWN
+        role[(~pup) & (~juv) & (~withdrawn) & nursing] = ROLE_NURSING
+        role[(~pup) & (~juv) & (~withdrawn) & female & (~nursing)] = ROLE_BREEDING_FEMALE
+        role[(~pup) & (~juv) & (~withdrawn) & terr] = ROLE_TERRITORIAL_MALE
+        role[(~pup) & (~juv) & (~withdrawn) & male & (~terr)] = ROLE_SUBORDINATE_MALE
+        a.role[idx] = role
+
 
     def _select_actions(self, alive: np.ndarray) -> np.ndarray:
-        """Utility-based action selection. No play utility term."""
+        """Vectorized utility-based action selection. No play utility term."""
         a = self.agents
         n = a.capacity
         actions = np.full(n, ACT_REST, dtype=np.int8)
+        idx = np.flatnonzero(alive)
+        if idx.size == 0:
+            return actions
         d = self.cfg.drives
         scarce = self.cfg.resources.mode == "scarce"
-        idx = np.flatnonzero(alive)
-        # Precompute utilities for active agents (vectorized where easy)
-        for i in idx:
-            u = np.zeros(N_ACTIONS, dtype=np.float64)
-            u[ACT_FORAGE] = a.hunger[i] * 2.0
-            u[ACT_DRINK] = a.thirst[i] * 2.2
-            u[ACT_REST] = a.fatigue[i] * 1.5 + (1.0 - a.energy[i])
-            u[ACT_NEST] = 0.3 + 0.4 * (a.role[i] == ROLE_NURSING)
-            u[ACT_SOCIAL] = a.social_drive[i] * (1.0 - 0.7 * (a.role[i] == ROLE_WITHDRAWN))
-            u[ACT_EXPLORE] = a.curiosity[i] * 0.9 + a.boredom[i] * 0.5
-            # Manipulate playground objects: curiosity/boredom only — NOT a play reward
-            if self.world.playground_enabled:
-                u[ACT_MANIPULATE] = (a.curiosity[i] * 0.7 + a.boredom[i] * 0.8) * (
-                    1.2 if a.energy[i] > 0.5 and a.stress[i] < 0.4 else 0.3
-                )
-            else:
-                u[ACT_MANIPULATE] = -1.0
-            agg = a.aggression[i] + (d.aggression_scarce_boost if scarce else 0.0)
-            u[ACT_AGGRESS] = agg * a.stress[i] * (1.5 if scarce else 0.6)
-            u[ACT_MATE] = (
-                0.9
-                * (a.age_days[i] >= self.cfg.biology.maturity_days)
-                * (a.stress[i] < 0.75)
-                * (a.role[i] != ROLE_WITHDRAWN)
-                * (a.energy[i] > 0.4)
-            )
-            u[ACT_NURSE] = a.maternal[i] * 1.4 * (a.sex[i] == SEX_F)
-            u[ACT_WITHDRAW] = a.stress[i] * 1.2 * (1.0 - a.social_drive[i])
-            # Softmax sample
-            u = u - u.max()
-            p = np.exp(np.clip(u, -20, 20))
-            p = p / p.sum()
-            actions[i] = int(self.rng.choice(N_ACTIONS, p=p))
+        m = idx.size
+        U = np.zeros((m, N_ACTIONS), dtype=np.float64)
+        hung = a.hunger[idx]
+        th = a.thirst[idx]
+        fat = a.fatigue[idx]
+        en = a.energy[idx]
+        st = a.stress[idx]
+        soc = a.social_drive[idx]
+        cur = a.curiosity[idx]
+        bor = a.boredom[idx]
+        agg = a.aggression[idx] + (d.aggression_scarce_boost if scarce else 0.0)
+        role = a.role[idx]
+        sex = a.sex[idx]
+        age = a.age_days[idx]
+        mat = a.maternal[idx]
+        U[:, ACT_FORAGE] = hung * 2.0
+        U[:, ACT_DRINK] = th * 2.2
+        U[:, ACT_REST] = fat * 1.5 + (1.0 - en)
+        U[:, ACT_NEST] = 0.3 + 0.4 * (role == ROLE_NURSING)
+        U[:, ACT_SOCIAL] = soc * (1.0 - 0.7 * (role == ROLE_WITHDRAWN))
+        U[:, ACT_EXPLORE] = cur * 0.9 + bor * 0.5
+        if self.world.playground_enabled:
+            gate = np.where((en > 0.5) & (st < 0.4), 1.2, 0.3)
+            U[:, ACT_MANIPULATE] = (cur * 0.7 + bor * 0.8) * gate
+        else:
+            U[:, ACT_MANIPULATE] = -1.0
+        U[:, ACT_AGGRESS] = agg * st * (1.5 if scarce else 0.6)
+        U[:, ACT_MATE] = (
+            0.9
+            * (age >= self.cfg.biology.maturity_days)
+            * (st < 0.75)
+            * (role != ROLE_WITHDRAWN)
+            * (en > 0.4)
+        )
+        U[:, ACT_NURSE] = mat * 1.4 * (sex == SEX_F)
+        U[:, ACT_WITHDRAW] = st * 1.2 * (1.0 - soc)
+        U -= U.max(axis=1, keepdims=True)
+        P = np.exp(np.clip(U, -20, 20))
+        P /= P.sum(axis=1, keepdims=True)
+        # Independent categorical samples
+        cdf = np.cumsum(P, axis=1)
+        r = self.rng.random(m)
+        chosen = (r[:, None] <= cdf).argmax(axis=1).astype(np.int8)
+        actions[idx] = chosen
         return actions
 
     def _execute_actions(self, alive: np.ndarray, actions: np.ndarray) -> None:
+        """Batched action effects (still host-side NumPy)."""
         a = self.agents
         d = self.cfg.drives
         dt = self.dt_days
         idx = np.flatnonzero(alive)
-        for i in idx:
-            act = int(actions[i])
-            a.last_action[i] = act
-            self._action_hist[act] += 1
-            cell = int(a.cell_id[i])
-            if act == ACT_FORAGE:
-                take = min(0.35, self.food[cell])
-                self.food[cell] -= take
+        if idx.size == 0:
+            return
+        act = actions[idx].astype(np.int16)
+        a.last_action[idx] = act.astype(np.int8)
+        for k in range(N_ACTIONS):
+            self._action_hist[k] += int(np.sum(act == k))
+
+        # Movement helpers via masks
+        cells = a.cell_id[idx].astype(int)
+        food_xy = np.array([self.world.cells[c].food_xy for c in cells], dtype=np.float64)
+        water_xy = np.array([self.world.cells[c].water_xy for c in cells], dtype=np.float64)
+
+        def move_mask(mask, tx, ty, speed):
+            ii = idx[mask]
+            if ii.size == 0:
+                return
+            dx = tx[mask] - a.x[ii]
+            dy = ty[mask] - a.y[ii]
+            dist = np.hypot(dx, dy) + 1e-6
+            step = np.minimum(speed * dt * 24.0, dist)
+            a.x[ii] = np.clip(a.x[ii] + dx / dist * step, 0.5, self.world.width - 0.5)
+            a.y[ii] = np.clip(a.y[ii] + dy / dist * step, 0.5, self.world.height - 0.5)
+
+        m_forage = act == ACT_FORAGE
+        if m_forage.any():
+            ii = idx[m_forage]
+            # consume food per cell (sequential for conservation)
+            for j, i in enumerate(ii):
+                c = int(a.cell_id[i])
+                take = min(0.35, self.food[c])
+                self.food[c] -= take
                 a.hunger[i] = max(0.0, a.hunger[i] - take)
                 a.energy[i] = min(1.0, a.energy[i] + 0.25 * take)
-                self._move_toward(i, *self.world.cells[cell].food_xy, speed=8.0)
-                a.fatigue[i] = min(1.5, a.fatigue[i] + d.fatigue_gain_active * dt)
-            elif act == ACT_DRINK:
-                take = min(0.35, self.water[cell])
-                self.water[cell] -= take
+            move_mask(m_forage, food_xy[:, 0], food_xy[:, 1], 8.0)
+            a.fatigue[ii] = np.minimum(1.5, a.fatigue[ii] + d.fatigue_gain_active * dt)
+
+        m_drink = act == ACT_DRINK
+        if m_drink.any():
+            ii = idx[m_drink]
+            for i in ii:
+                c = int(a.cell_id[i])
+                take = min(0.35, self.water[c])
+                self.water[c] -= take
                 a.thirst[i] = max(0.0, a.thirst[i] - take)
-                self._move_toward(i, *self.world.cells[cell].water_xy, speed=8.0)
-            elif act == ACT_REST:
-                a.fatigue[i] = max(0.0, a.fatigue[i] - d.fatigue_recovery_rest * dt)
-                a.energy[i] = min(1.0, a.energy[i] + 0.1 * dt)
-            elif act == ACT_NEST:
-                nid = int(a.nest_id[i])
-                if nid >= 0:
-                    nest = self.world.nests[nid]
-                    self._move_toward(i, nest.x, nest.y, speed=6.0)
-                a.stress[i] = max(0.0, a.stress[i] - 0.05)
-            elif act == ACT_SOCIAL:
-                a.social_drive[i] = max(0.0, a.social_drive[i] - 0.3)
-                a.boredom[i] = max(0.0, a.boredom[i] - d.boredom_decay_on_vary)
-                self._jitter(i, 3.0)
-            elif act == ACT_EXPLORE:
-                a.curiosity[i] = max(0.0, a.curiosity[i] - d.curiosity_decay_on_novel)
-                a.boredom[i] = max(0.0, a.boredom[i] - d.boredom_decay_on_vary * 0.5)
-                self._jitter(i, 10.0)
-            elif act == ACT_MANIPULATE:
-                # Approach nearest playground object; satisfy curiosity/boredom only
-                if self.world.play_objects:
-                    obj = min(
-                        self.world.play_objects,
-                        key=lambda o: (o.x - a.x[i]) ** 2 + (o.y - a.y[i]) ** 2,
-                    )
-                    self._move_toward(i, obj.x, obj.y, speed=7.0)
-                    # nudge object slightly (manipulable)
-                    obj.x = float(np.clip(obj.x + self.rng.normal(0, 0.4), self.world.playground_bounds[0], self.world.playground_bounds[2]))
-                    obj.y = float(np.clip(obj.y + self.rng.normal(0, 0.4), self.world.playground_bounds[1], self.world.playground_bounds[3]))
-                a.curiosity[i] = max(0.0, a.curiosity[i] - d.curiosity_decay_on_novel)
-                a.boredom[i] = max(0.0, a.boredom[i] - d.boredom_decay_on_vary)
-                a.fatigue[i] = min(1.5, a.fatigue[i] + 0.5 * d.fatigue_gain_active * dt)
-            elif act == ACT_AGGRESS:
-                a.aggression[i] = min(1.5, a.aggression[i] + 0.05)
-                # wound a nearby lower-rank agent
-                self._aggress(i)
-                self._jitter(i, 4.0)
-            elif act == ACT_MATE:
-                self._try_mate(i)
-            elif act == ACT_NURSE:
+            move_mask(m_drink, water_xy[:, 0], water_xy[:, 1], 8.0)
+
+        m_rest = act == ACT_REST
+        if m_rest.any():
+            ii = idx[m_rest]
+            a.fatigue[ii] = np.maximum(0.0, a.fatigue[ii] - d.fatigue_recovery_rest * dt)
+            a.energy[ii] = np.minimum(1.0, a.energy[ii] + 0.1 * dt)
+
+        m_nest = act == ACT_NEST
+        if m_nest.any():
+            ii = idx[m_nest]
+            nids = a.nest_id[ii].astype(int)
+            tx = np.array([self.world.nests[n].x if n >= 0 else a.x[i] for i, n in zip(ii, nids)])
+            ty = np.array([self.world.nests[n].y if n >= 0 else a.y[i] for i, n in zip(ii, nids)])
+            # build full-length tx/ty aligned to idx mask
+            txx = np.zeros(idx.size); tyy = np.zeros(idx.size)
+            txx[m_nest] = tx; tyy[m_nest] = ty
+            move_mask(m_nest, txx, tyy, 6.0)
+            a.stress[ii] = np.maximum(0.0, a.stress[ii] - 0.05)
+
+        m_social = act == ACT_SOCIAL
+        if m_social.any():
+            ii = idx[m_social]
+            a.social_drive[ii] = np.maximum(0.0, a.social_drive[ii] - 0.3)
+            a.boredom[ii] = np.maximum(0.0, a.boredom[ii] - d.boredom_decay_on_vary)
+            a.x[ii] = np.clip(a.x[ii] + self.rng.normal(0, 3.0 * dt * 10, ii.size), 0.5, self.world.width - 0.5)
+            a.y[ii] = np.clip(a.y[ii] + self.rng.normal(0, 3.0 * dt * 10, ii.size), 0.5, self.world.height - 0.5)
+
+        m_explore = act == ACT_EXPLORE
+        if m_explore.any():
+            ii = idx[m_explore]
+            a.curiosity[ii] = np.maximum(0.0, a.curiosity[ii] - d.curiosity_decay_on_novel)
+            a.boredom[ii] = np.maximum(0.0, a.boredom[ii] - d.boredom_decay_on_vary * 0.5)
+            a.x[ii] = np.clip(a.x[ii] + self.rng.normal(0, 10.0 * dt * 10, ii.size), 0.5, self.world.width - 0.5)
+            a.y[ii] = np.clip(a.y[ii] + self.rng.normal(0, 10.0 * dt * 10, ii.size), 0.5, self.world.height - 0.5)
+
+        m_manip = act == ACT_MANIPULATE
+        if m_manip.any() and self.world.play_objects:
+            ii = idx[m_manip]
+            # nearest object (broadcast)
+            ox = np.array([o.x for o in self.world.play_objects])
+            oy = np.array([o.y for o in self.world.play_objects])
+            for i in ii:
+                d2 = (ox - a.x[i]) ** 2 + (oy - a.y[i]) ** 2
+                j = int(np.argmin(d2))
+                self._move_toward(int(i), float(ox[j]), float(oy[j]), 7.0)
+                obj = self.world.play_objects[j]
+                obj.x = float(np.clip(obj.x + self.rng.normal(0, 0.4), self.world.playground_bounds[0], self.world.playground_bounds[2]))
+                obj.y = float(np.clip(obj.y + self.rng.normal(0, 0.4), self.world.playground_bounds[1], self.world.playground_bounds[3]))
+            a.curiosity[ii] = np.maximum(0.0, a.curiosity[ii] - d.curiosity_decay_on_novel)
+            a.boredom[ii] = np.maximum(0.0, a.boredom[ii] - d.boredom_decay_on_vary)
+            a.fatigue[ii] = np.minimum(1.5, a.fatigue[ii] + 0.5 * d.fatigue_gain_active * dt)
+
+        m_agg = act == ACT_AGGRESS
+        if m_agg.any():
+            ii = idx[m_agg]
+            a.aggression[ii] = np.minimum(1.5, a.aggression[ii] + 0.05)
+            for i in ii:
+                self._aggress(int(i))
+            a.x[ii] = np.clip(a.x[ii] + self.rng.normal(0, 4.0 * dt * 10, ii.size), 0.5, self.world.width - 0.5)
+            a.y[ii] = np.clip(a.y[ii] + self.rng.normal(0, 4.0 * dt * 10, ii.size), 0.5, self.world.height - 0.5)
+
+        m_mate = act == ACT_MATE
+        if m_mate.any():
+            for i in idx[m_mate]:
+                self._try_mate(int(i))
+
+        m_nurse = act == ACT_NURSE
+        if m_nurse.any():
+            for i in idx[m_nurse]:
                 if a.stress[i] > self.cfg.biology.maternal_neglect_stress:
-                    a.maternal[i] = max(0.0, a.maternal[i] - 0.05)  # neglect
+                    a.maternal[i] = max(0.0, a.maternal[i] - 0.05)
                 else:
                     a.maternal[i] = min(1.0, a.maternal[i] + 0.02)
-                    # boost nearby pups' energy
-                    self._nurse(i)
-            elif act == ACT_WITHDRAW:
-                a.social_drive[i] = max(0.0, a.social_drive[i] - 0.1)
-                a.aggression[i] = max(0.0, a.aggression[i] - 0.05)
-                # move to periphery
-                self._move_toward(i, a.x[i] * 0.2 + 2.0, a.y[i] * 0.2 + 2.0, speed=3.0)
+                    self._nurse(int(i))
 
-            a.cell_id[i] = self.world.cell_index(a.x[i], a.y[i])
-            a.in_playground[i] = self.world.in_playground(a.x[i], a.y[i])
+        m_with = act == ACT_WITHDRAW
+        if m_with.any():
+            ii = idx[m_with]
+            a.social_drive[ii] = np.maximum(0.0, a.social_drive[ii] - 0.1)
+            a.aggression[ii] = np.maximum(0.0, a.aggression[ii] - 0.05)
+            a.x[ii] = np.clip(a.x[ii] * 0.95 + 1.0, 0.5, self.world.width - 0.5)
+            a.y[ii] = np.clip(a.y[ii] * 0.95 + 1.0, 0.5, self.world.height - 0.5)
+
+        # update cell + playground flags (vectorized)
+        nx, ny = self.cfg.geometry.n_cells_x, self.cfg.geometry.n_cells_y
+        cw = self.world.width / nx
+        ch = self.world.height / ny
+        ix = np.clip((a.x[idx] / cw).astype(int), 0, nx - 1)
+        iy = np.clip((a.y[idx] / ch).astype(int), 0, ny - 1)
+        a.cell_id[idx] = (iy * nx + ix).astype(np.int16)
+        if self.world.playground_enabled:
+            x0, y0, x1, y1 = self.world.playground_bounds
+            a.in_playground[idx] = (a.x[idx] >= x0) & (a.x[idx] <= x1) & (a.y[idx] >= y0) & (a.y[idx] <= y1)
+        else:
+            a.in_playground[idx] = False
 
         self.playscore.observe_actions(actions[alive])
+
 
     def _move_toward(self, i: int, tx: float, ty: float, speed: float) -> None:
         a = self.agents
@@ -407,25 +504,26 @@ class Universe25Sim:
         d = self.cfg.drives
         dt = self.dt_days
         idx = np.flatnonzero(alive)
-        # Approximate local density via cell occupancy
+        if idx.size == 0:
+            return
         cell_counts = np.bincount(a.cell_id[alive].astype(int), minlength=self.world.n_cells)
-        for i in idx:
-            c = int(a.cell_id[i])
-            local = cell_counts[c] / max(1.0, self.world.capacity_design / self.world.n_cells)
-            gain = d.stress_density_gain * local
-            # nest invasion: overcrowded nests raise stress
-            nid = int(a.nest_id[i])
-            if nid >= 0:
-                nest_occ = int(np.sum(alive & (a.nest_id == nid)))
-                if nest_occ > self.world.nests[nid].capacity:
-                    gain += 0.2
-                    # kick subordinates out
-                    if a.rank[i] < 0.4 and self.rng.random() < 0.1:
-                        a.nest_id[i] = int(self.rng.integers(0, self.world.n_nests))
-            a.stress[i] = np.clip(a.stress[i] + gain * dt - d.stress_decay * dt, 0, 1.5)
-            # withdrawal drift
-            if a.stress[i] > 0.9 and a.social_drive[i] > 0:
-                a.social_drive[i] = max(0.0, a.social_drive[i] - 0.05)
+        cells = a.cell_id[idx].astype(int)
+        local = cell_counts[cells] / max(1.0, self.world.capacity_design / self.world.n_cells)
+        gain = d.stress_density_gain * local
+        nids = a.nest_id[idx].astype(int)
+        # nest occupancy
+        nest_occ = np.bincount(a.nest_id[alive].astype(int), minlength=self.world.n_nests)
+        cap = np.array([n.capacity for n in self.world.nests], dtype=np.float64)
+        over = (nids >= 0) & (nest_occ[np.clip(nids, 0, self.world.n_nests - 1)] > cap[np.clip(nids, 0, self.world.n_nests - 1)])
+        gain = gain + 0.2 * over
+        # random nest kick for low rank overcrowded
+        kick = over & (a.rank[idx] < 0.4) & (self.rng.random(idx.size) < 0.1)
+        if kick.any():
+            a.nest_id[idx[kick]] = self.rng.integers(0, self.world.n_nests, size=int(kick.sum()))
+        a.stress[idx] = np.clip(a.stress[idx] + gain * dt - d.stress_decay * dt, 0, 1.5)
+        with_mask = (a.stress[idx] > 0.9) & (a.social_drive[idx] > 0)
+        a.social_drive[idx[with_mask]] = np.maximum(0.0, a.social_drive[idx[with_mask]] - 0.05)
+
 
     def _reproduce(self, alive: np.ndarray) -> None:
         a = self.agents
@@ -464,21 +562,22 @@ class Universe25Sim:
         bio = self.cfg.biology
         dt = self.dt_days
         idx = np.flatnonzero(alive)
-        for i in idx:
-            p = bio.base_mortality_per_day * dt
-            p += bio.stress_mortality_scale * (a.stress[i] ** 2) * dt
-            p += 0.02 * (a.wounds[i] ** 2) * dt
-            if a.age_days[i] > bio.max_age_days:
-                p += 0.05 * dt
-            if a.hunger[i] > 1.2 or a.thirst[i] > 1.2:
-                p += 0.1 * dt
-            if a.energy[i] < 0.05:
-                p += 0.2 * dt
-            if self.rng.random() < p:
-                a.alive[i] = False
-                a.role[i] = ROLE_DEAD
-                self._deaths += 1
+        if idx.size == 0:
+            return
+        p = np.full(idx.size, bio.base_mortality_per_day * dt, dtype=np.float64)
+        p += bio.stress_mortality_scale * (a.stress[idx] ** 2) * dt
+        p += 0.02 * (a.wounds[idx] ** 2) * dt
+        p += np.where(a.age_days[idx] > bio.max_age_days, 0.05 * dt, 0.0)
+        p += np.where((a.hunger[idx] > 1.2) | (a.thirst[idx] > 1.2), 0.1 * dt, 0.0)
+        p += np.where(a.energy[idx] < 0.05, 0.2 * dt, 0.0)
+        dead = self.rng.random(idx.size) < p
+        if dead.any():
+            di = idx[dead]
+            a.alive[di] = False
+            a.role[di] = ROLE_DEAD
+            self._deaths += int(dead.sum())
         a.n_alive = int(a.alive.sum())
+
 
     def _check_nan(self) -> None:
         a = self.agents

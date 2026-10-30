@@ -81,7 +81,7 @@ class SimConfig(BaseModel):
     initial_pairs: int = 4  # 4 pairs = Calhoun start
     days: float = 1600.0
     device: Literal["cuda", "cpu", "auto"] = "auto"
-    backend: Literal["warp", "torch", "numpy"] = "auto"
+    backend: Literal["warp", "torch", "numpy", "auto"] = "auto"
     log_every_ticks: int = 24  # daily
     snapshot_every_days: int = 50
     arm_label: str = "TRACK-E-U25-ABUND-PG"

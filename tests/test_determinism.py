@@ -1,8 +1,11 @@
-"""Same seed => identical population trajectory (numpy backend)."""
+"""Same seed => identical trajectory hash (numpy backend)."""
 from __future__ import annotations
 
+import hashlib
 import sys
 from pathlib import Path
+
+import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -11,7 +14,7 @@ from universe25.config import SimConfig
 from universe25.sim import Universe25Sim
 
 
-def _curve(seed: int, days: float, out: Path) -> list[int]:
+def _traj_digest(seed: int, days: float, out: Path) -> str:
     cfg = SimConfig(
         seed=seed,
         days=days,
@@ -24,22 +27,33 @@ def _curve(seed: int, days: float, out: Path) -> list[int]:
     )
     cfg.playground.enabled = True
     sim = Universe25Sim(cfg, out)
-    ns = []
+    h = hashlib.sha256()
     total = int(days * cfg.ticks_per_day)
     for _ in range(total):
         sim.step()
-        if sim.tick % cfg.ticks_per_day == 0:
-            ns.append(sim.agents.n_alive)
-    return ns
+        a = sim.agents
+        alive = a.alive
+        payload = np.concatenate(
+            [
+                a.x[alive],
+                a.y[alive],
+                a.hunger[alive],
+                a.stress[alive],
+                a.role[alive].astype(np.float32),
+                np.array([a.n_alive], dtype=np.float32),
+            ]
+        )
+        h.update(payload.tobytes())
+    return h.hexdigest()
 
 
 def test_determinism() -> None:
     out = ROOT / "_output" / "test_det"
-    a = _curve(7100, 5.0, out / "a")
-    b = _curve(7100, 5.0, out / "b")
+    a = _traj_digest(7100, 5.0, out / "a")
+    b = _traj_digest(7100, 5.0, out / "b")
     assert a == b, (a, b)
-    c = _curve(7101, 5.0, out / "c")
-    assert a != c
+    c = _traj_digest(7101, 5.0, out / "c")
+    assert a != c, (a, c)
 
 
 if __name__ == "__main__":
