@@ -1,5 +1,81 @@
 # Universe25 Play — NOTES
 
+## Phase 2j — inverse-seed-variance loss weights, multi-seed recalibration (2026-10-31)
+
+Motivation: in 2i the multi-seed CMA-ES lowered the loss by fitting N@315 at the training seeds
+while the peak went 13 % high and conceptions ended 16 % late, and the N@315 gain did not
+generalise. The hand weights (N@315 2.0, peak 2.0, …) priced a 13 % peak miss at 2 × 0.13² ≈ 0.03
+against N@315 at 415 (2 × 0.33² ≈ 0.22), while N@315 is set by the first litters' luck at 8
+founders.
+
+### Seed spread of the landmarks (phase-2i calibration, 12 seeds 7000–7011, 1200 d, 6 ticks/day)
+
+| landmark | Calhoun | mean | sd | sd / target | weight before | **weight 2j** |
+|---|---:|---:|---:|---:|---:|---:|
+| First litters (day) | 104 | 102.5 | 1.0 | 0.010 | 1.5 | **2.91** |
+| N @ 315 | 620 | 475 | 169 | 0.273 | 2.0 | **0.10** |
+| Peak N | 2200 | 2269 | 39 | 0.018 | 2.0 | **2.68** |
+| Peak day (first ≥97 %) | 560 | 524 | 32 | 0.058 | 1.5 | **1.29** |
+| Surviving births cease | 600 | 602 | 42 | 0.070 | 1.5 | **1.02** |
+| N @ 736 | 2056 | 1991 | 54 | 0.026 | 1.5 | **2.38** |
+| Adults @ 315 | 150 | 172 | 63 | 0.420 | 1.0 | **0.04** |
+| Conception cessation | ≈920 | 923 | 44 | 0.048 | 1.0 | **1.57** |
+
+`calib/priors.py`: w_k ∝ 1 / (rel_sd_k² + 0.05²), normalised to the previous total of 12
+(`LANDMARK_REL_SEED_SD`, `NOISE_FLOOR`, `inverse_variance_weights`). Each loss term is then
+(rel. error / σ_k)² up to a common factor — how many noise sigmas the model is off — with a 5 %
+modelling tolerance in quadrature so the first-litters day (sd 1 %) does not dominate. Under
+these weights a one-sigma miss costs the same on every landmark; a 13 % peak miss costs more than
+three times a one-sd N@315 miss (`tests/test_calib_loss.py`). Loss values of the studies before
+2j (`calibration_study_p2*.json` up to p2i) are on the old scale and not comparable.
+
+### Multi-seed CMA-ES under the new weights (112 trials, popsize 14, train seeds 7000 / 7001 / 7002, `--sigma0 0.1`, 51 min)
+
+No trial beat the start point (the 2i parameters): mean loss 0.0328 (per seed 0.019 / 0.039 /
+0.041). The largest terms are now peak day and N@736 at seed 7000, and N@315 at the two slow
+training seeds, where it sits 35–50 % below the target and still costs 0.012–0.024 at weight 0.1.
+Runner-ups, mean over the training seeds:
+
+| trial | mean loss | peak N / day | surviving births cease | N @ 736 | conception cessation | N @ 315 | first litters | main moves from the start |
+|---|---:|---:|---:|---:|---:|---:|---:|---|
+| **0 (2i, kept)** | **0.033** | 2270 / 527 | 602 | 2008 | 906 | 415 | 103 | — |
+| 78 | 0.042 | 2225 / 548 | 611 | 1985 | 994 | 369 | 98 | erosion 0.73, courtship 0.013, ramp 0.10 |
+| 86 | 0.051 | 2327 / 535 | 652 | 2108 | 893 | 368 | 101 | disturbance onset 0.31, overcrowd 0.20, ramp 0.10 |
+| 57 | 0.058 | 2081 / 539 | 660 | 2003 | 953 | 300 | 103 | erosion 0.70, imprint 0.048, coef 2.4 |
+| 32 | 0.062 | 2194 / 552 | 676 | 1985 | 1009 | 408 | 100 | coef 8.6, courtship 0.065 |
+
+Under the old weights the same search drifted to a +13 % peak bought with N@315 (2i); under the
+new ones every runner-up is a plateau trade-off — a later peak day paid for with a later
+cessation of conceptions or of surviving births, or an early first litter — and N@315 is left
+alone. The weights do what they were meant to; they do not by themselves produce a later phase C.
+**The 2i point stays the calibration.** Held-out losses on the new scale 0.031 / 0.060 / 0.118
+(mean 0.070). Artifact: `configs/calibration_study_p2j.json`.
+
+### Validation
+
+Parameters unchanged from 2i, so the 2i validation applies unchanged (the NumPy path is
+deterministic for a fixed seed): seed 7000, 1600 d, 6 ticks/day — peak 2234 @ 518, surviving
+births cease 583, N@736 1949, conceptions cease 915, canonical error 0.057; 12 seeds, 800 d —
+peak 2269 ± 11 @ 524 ± 9, N@736 1990 ± 15, cessation 602 ± 12, 6 vs 24 ticks/day within noise.
+Test suite green with `tests/test_calib_loss.py` added.
+
+**Honest misses / open gaps**
+- The model gaps are those of 2i (peak day ≈35 d early, N@736 3 % low, early phase
+  seed-dominated, steep late collapse, low uncrowded pup survival): this pass changed the
+  objective, not the model.
+- *The weights are measured under one calibration.* `LANDMARK_REL_SEED_SD` is the 2i spread; a
+  model with a very different plateau variance would need re-measuring (12 seeds × 1200 d ≈ 3 min
+  with `scratchpad/seed_sd.py`-style runs). The 5 % floor is a judgement: without it the
+  first-litters day (sd 1 %) would take ≈60 % of the total weight.
+- *Three training seeds still leave N@315 noisy* (se ≈ 100): the term is small now, but a slow
+  training seed (7002: N@315 315) still contributes the largest single term at that seed. More
+  seeds per trial, or reporting N@315 / adults@315 without fitting them, are the options.
+- *CMA-ES step size*: `--sigma0 0.1` in raw units barely moves the day-valued parameters
+  (`max_age_days`, `female_fertile_max_age_days`, `first_conception_min_day`); a normalised search
+  space is still open.
+- *A later phase C needs a new mechanism*, not a re-weighting: the runner-ups buy peak day 548–552
+  with conceptions ending at 994–1009 or surviving births at 660–676.
+
 ## Phase 2i — nursing-disturbance brake on phase C, fertility floor (negative), multi-seed calibration (2026-10-31)
 
 Motivation: after 2h the 12-seed peak matched Calhoun (2221 vs 2200) but the peak day was ≈85

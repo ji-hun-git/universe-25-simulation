@@ -86,7 +86,7 @@ If a PR / commit introduces a play reward, reject it.
 
 ---
 
-## 4. Current status (as of phase 2i, 2026-10-31)
+## 4. Current status (as of phase 2j, 2026-10-31)
 
 ### Phase 1 — done
 
@@ -364,6 +364,21 @@ Diagnoses, tables and open gaps in `NOTES.md` → "Phase 2h" (and 2g / 2f / 2e).
 Phases: decline (662) → collapse (1300). **Resolution:** 24 ticks/day gives peak 2274 / 486, cessation 581, N@736 1922, conception cessation 905; 12 seeds, 800 d: peak 2269 ± 11 (6 tpd) vs 2281 ± 8 (24 tpd), peak day 524 ± 9 vs 521 ± 9, N@736 1990 ± 15 vs 1992 ± 13.
 Diagnoses, scan tables and open gaps in `NOTES.md` → "Phase 2i" (and 2h / 2g / 2f / 2e).
 
+### Phase 2j — inverse-seed-variance loss weights, multi-seed recalibration (2026-10-31)
+
+- `calib/priors.py`: landmark loss weights are now ∝ 1 / (seed sd² + 0.05²), normalised to the
+  previous total of 12 (`LANDMARK_REL_SEED_SD`, measured over 12 seeds at 1200 d: N@315 sd 27 %,
+  adults@315 42 %, plateau landmarks 2–7 %). Each term is (rel. error / σ)², so a one-sigma miss
+  costs the same on every landmark and the seed-dominated early phase (weights 0.10 / 0.04) can no
+  longer buy the plateau landmarks (peak 2.7, N@736 2.4, conception cessation 1.6, peak day 1.3,
+  cessation 1.0). `tests/test_calib_loss.py`. Loss values of earlier studies are on the old scale.
+- Multi-seed CMA-ES rerun under the new weights (112 trials, train seeds 7000/7001/7002, 51 min):
+  no trial beat the 2i point (mean loss 0.033; runner-up 0.042 trades a later peak day for a later
+  conception cessation); the drift to N@315 of the 2i study is gone. Held-out losses on the new
+  scale 0.031 / 0.060 / 0.118.
+- **Calibrated parameters unchanged from 2i** (`configs/default.yaml`, `calibrated_calhoun.yaml`);
+  the 2i table and validation apply. Study artifact: `configs/calibration_study_p2j.json`.
+
 ---
 
 ## 5. Architecture map
@@ -466,8 +481,12 @@ Set-Location $proj
 # (224 trials = 16 generations ≈ 47 min). --sigma0 0.1: the default initial step (min range / 6)
 # is a third of the range for the unit-range parameters. The start point itself is trial 0.
 $pyc = "$proj\.venv\Scripts\python.exe"
-& $pyc -X utf8 -u "$proj\scripts\calibrate_optuna.py" --seed 7000 --trials 224 --popsize 14 --workers 14 `
-  --sigma0 0.1 --days 1200 --ticks-per-day 6 --x0 "$proj\configs\calibrated_calhoun.yaml" --out "$proj\_output\calib_cma"
+& $pyc -X utf8 -u "$proj\scripts\calibrate_optuna.py" --seed 7000 --train-seeds 7000,7001,7002 --trials 112 `
+  --popsize 14 --workers 14 --sigma0 0.1 --days 1200 --ticks-per-day 6 `
+  --x0 "$proj\configs\calibrated_calhoun.yaml" --out "$proj\_output\calib_cma"
+# --train-seeds: objective = mean loss over the seeds (one sim per seed per trial, 2i); with three
+# seeds a generation of 14 takes ~10 min (112 trials = 8 generations ~ 50 min). Loss weights are
+# inverse seed variance (2j, calib/priors.py); losses of studies before 2j are on another scale.
 ```
 
 **Git (pathspec discipline — never `git add .` on a shared tree):**
@@ -497,7 +516,7 @@ Seeds: build/training `7000–7009`; unit tests `7100`; eval worlds later `8000�
 ### Phase 2 — Calibrate + GPU (calibration DONE 2026-10-30; GPU parity partial)
 **Accept when:**
 - [x] Mean relative landmark error **≪ 1.0** → **0.057** at seed 7000, 0.08–0.17 held-out (phase 2i: first litters 102, peak 2234 @ 518, surviving births cease 583, N@736 1949, conceptions cease 915; 2b was 0.14)
-- [x] Collapse phase appears under abundant arm → decline from 662, N(1200) = 68 % of peak, 480 at 1400, 0 left at 1600 (Calhoun 122 at ~1444, 27 at 1588); surviving births cease at 583, conceptions at 915 (2e–2i); documented misses: peak day ≈35 d early, N@736 3 % low, late collapse steep — see NOTES
+- [x] Collapse phase appears under abundant arm → decline from 662, N(1200) = 68 % of peak, 480 at 1400, 0 left at 1600 (Calhoun 122 at ~1444, 27 at 1588); surviving births cease at 583, conceptions at 915 (2e–2j); documented misses: peak day ≈35 d early, N@736 3 % low, late collapse steep — see NOTES
 - [~] Warp tick path correct vs NumPy reference: density-stress + imprinting kernel parity test added (3e-8); mortality (hazard-level) and cells parity still open; CUDA Graph speedup documented in NSIGHT
 - [x] No NaNs (0 across calibration, held-out and 1600-d runs); `docs/NSIGHT.md` benches unchanged (no kernel perf work this round)
 
@@ -513,10 +532,12 @@ instead of a step) brings the peak to 2115 @ 503 (held-out 2127–2328) with
 N@736 1845 (held-out 1838–1916); canonical error 0.077. Phase 2i (done): nursing-disturbance
 brake on phase C + narrower ramp, multi-seed CMA-ES objective — peak 2234 @ 518
 (12 seeds 2269 ± 11 @ 524 ± 9), surviving births cease 583, N@736 1949
-(12 seeds 1990 ± 15); canonical error 0.057 (held-out 0.08–0.17). Remaining candidates
-(priority order): a later phase C (peak day 524 ± 9 over 12 seeds vs 560: the nursing brake acts on
-pup survival while births run at 1000–1200 per 30 days; a conception-rate brake is untested) and
-inverse-seed-variance loss weights for the multi-seed objective; a lifespan distribution (late collapse too steep); vectorize
+(12 seeds 1990 ± 15); canonical error 0.057 (held-out 0.08–0.17). Phase 2j (done): landmark loss
+weights ∝ inverse seed variance (N@315 / adults@315 no longer buy the plateau); the multi-seed
+CMA-ES rerun under them kept the 2i point (no trial beat it; runner-ups are plateau-faithful
+trade-offs, not N@315 fits). Remaining candidates (priority order): a later phase C (peak day
+524 ± 9 over 12 seeds vs 560: the nursing brake acts on pup survival while births run at 1000–1200
+per 30 days; a conception-rate brake is untested); a lifespan distribution (late collapse too steep); vectorize
 `_passive_nurse` / per-agent loops (`docs/TASKS.md` P1-3); Warp mortality-kernel parity at hazard level.
 
 ### Phase 3 — Visuals + dashboard

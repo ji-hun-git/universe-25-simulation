@@ -34,6 +34,10 @@
   583, N@736 1949, canonical error 0.057 (0.08–0.17 held-out). Fertility tied to
   maternal capacity tested and rejected. Remaining: peak day ≈35 d early, N@736 3 % low, steep late collapse; loss weights for
   the multi-seed objective.
+- Status note 2026-10-31 (phase 2j): landmark loss weights ∝ inverse seed variance
+  (12-seed spread at 1200 d; N@315 / adults@315 get ≈0.1 / 0.04 of 12, plateau landmarks 1.0–2.7);
+  the multi-seed CMA-ES rerun kept the 2i parameters. Remaining: peak day ≈35 d early, N@736 3 %
+  low, steep late collapse (unchanged from 2i).
 - Work package: WP-G12-adjacent / Track E toy world (Universe 25 + playground); not L3 ecology
 - Track: **E** (emergent, exploratory)
 - Owner: Jason
