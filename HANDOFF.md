@@ -86,7 +86,7 @@ If a PR / commit introduces a play reward, reject it.
 
 ---
 
-## 4. Current status (as of phase 2h, 2026-10-31)
+## 4. Current status (as of phase 2i, 2026-10-31)
 
 ### Phase 1 — done
 
@@ -328,6 +328,42 @@ survival, early-phase seed spread) in `NOTES.md` → "Phase 2g" / "Phase 2f" / "
 Phases: decline (671) → collapse (1291). **Resolution:** 24 ticks/day gives peak 2389 / 482, cessation 510, N@736 1948, conception cessation 805, collapse onset 1284; 12 seeds N@400 1316 ± 112 vs 1399 ± 109 (+6%).
 Diagnoses, tables and open gaps in `NOTES.md` → "Phase 2h" (and 2g / 2f / 2e).
 
+### Phase 2i — nursing-disturbance brake, multi-seed calibration (2026-10-31)
+
+- `nurse_disturb_coef` / `nurse_disturb_density`: a mother's effective maternal investment while
+  nursing is scaled by exp(−coef × max(0, local cell density − onset)) — a reversible,
+  density-graded brake on phase-C growth (Calhoun: nursing females disturbed under crowding,
+  infant mortality rose before the breakdown). With it the breakdown ramp narrows back to
+  0.2 (2h: 0.45) and the plateau keeps its level while the timing moves later.
+- `fertility_cap_floor` (conception probability following the female's maternal capacity) is a
+  documented negative result: it lowers N@736 and advances the peak. Off (1.0).
+- `scripts/calibrate_optuna.py --train-seeds 7000,7001,7002`: the objective is the mean loss over
+  the training seeds (one sim per seed per trial); the single-seed objective was noise-limited
+  (2g, 2h). The 112-trial study (51 min) reached a lower mean loss (0.243 vs 0.341) only by fitting
+  the training seeds' early phase: its best trial has the peak 13 % high and conceptions ending 16 %
+  late, held-out mean loss 0.96 vs 0.45 — the hand-chosen start point was kept. Squared relative
+  error under-weights 10–15 % misses on the plateau landmarks against N@315 / adults@315, whose
+  seed sd is ≈35 %; inverse-variance weights are the next method step.
+- Both new terms off → bit-identical to 2h (600-d hash).
+
+**Calibrated run (seed 7000, `configs/default.yaml`, 6 ticks/day, 1600 d):**
+
+| Landmark | Calhoun | Phase 2g | Phase 2h | **Phase 2i** | held-out 8000–8002 |
+|----------|--------:|---------:|---------:|-------------:|---:|
+| First litters | 104 | 102 | 102 | **102** | 102–105 |
+| N @ 315 | 620 | 531 | 531 | **528** | 286–569 |
+| Peak N | 2200 | 2482 | 2115 | **2234** | 2231–2309 |
+| Peak day (first ≥97 %) | 560 | 493 | 503 | **518** | 469–606 |
+| Surviving births cease | 600 | 547 | 551 | **583** | 556–717 |
+| N @ 736 | 2056 | 2173 | 1845 | **1949** | 1953–2046 |
+| Adults @ 315 | 150 | 163 | 163 | **163** | 88–206 |
+| Conception cessation | ≈920 | 930 | 932 | **915** | 867–1054 |
+| N @ 1200 / 1400 / 1600 | 2056@736, 122@1444, 27@1588 | 1779 / 391 / 6 | 1426 / 273 / 0 | **1515 / 480 / 0** | 1514–1649 @1200 |
+| mean rel. error (5) | | 0.100 | 0.077 | **0.057** | 0.08–0.17 |
+
+Phases: decline (662) → collapse (1300). **Resolution:** 24 ticks/day gives peak 2274 / 486, cessation 581, N@736 1922, conception cessation 905; 12 seeds, 800 d: peak 2269 ± 11 (6 tpd) vs 2281 ± 8 (24 tpd), peak day 524 ± 9 vs 521 ± 9, N@736 1990 ± 15 vs 1992 ± 13.
+Diagnoses, scan tables and open gaps in `NOTES.md` → "Phase 2i" (and 2h / 2g / 2f / 2e).
+
 ---
 
 ## 5. Architecture map
@@ -460,8 +496,8 @@ Seeds: build/training `7000–7009`; unit tests `7100`; eval worlds later `8000�
 
 ### Phase 2 — Calibrate + GPU (calibration DONE 2026-10-30; GPU parity partial)
 **Accept when:**
-- [x] Mean relative landmark error **≪ 1.0** → **0.077** at seed 7000, 0.10–0.13 held-out (phase 2h: first litters 102, peak 2115 @ 503, surviving births cease 551, N@736 1845, conceptions cease 932; 2b was 0.14)
-- [x] Collapse phase appears under abundant arm → decline from 671, N(1200) = 67 % of peak, 273 at 1400, 0 left at 1600 (Calhoun 122 at ~1444, 27 at 1588); surviving births cease at 551, conceptions at 932 (2e–2h); documented misses: peak day ≈85 d early, N@736 9 % low, late collapse steep — see NOTES
+- [x] Mean relative landmark error **≪ 1.0** → **0.057** at seed 7000, 0.08–0.17 held-out (phase 2i: first litters 102, peak 2234 @ 518, surviving births cease 583, N@736 1949, conceptions cease 915; 2b was 0.14)
+- [x] Collapse phase appears under abundant arm → decline from 662, N(1200) = 68 % of peak, 480 at 1400, 0 left at 1600 (Calhoun 122 at ~1444, 27 at 1588); surviving births cease at 583, conceptions at 915 (2e–2i); documented misses: peak day ≈35 d early, N@736 3 % low, late collapse steep — see NOTES
 - [~] Warp tick path correct vs NumPy reference: density-stress + imprinting kernel parity test added (3e-8); mortality (hazard-level) and cells parity still open; CUDA Graph speedup documented in NSIGHT
 - [x] No NaNs (0 across calibration, held-out and 1600-d runs); `docs/NSIGHT.md` benches unchanged (no kernel perf work this round)
 
@@ -474,11 +510,13 @@ conceptions continue; 6 vs 24 ticks/day agree within 5 %). Phase 2g (done): male
 breakdown ends conceptions at 930 (held-out 885–1059; Calhoun ≈920), rate-based
 conception landmark. Phase 2h (done): graded breakdown pressure (ramp in weaned density
 instead of a step) brings the peak to 2115 @ 503 (held-out 2127–2328) with
-N@736 1845 (held-out 1838–1916); canonical error 0.077. Remaining candidates
-(priority order): a later, slower phase C (peak day 475 ± 8 across 12 seeds vs 560: a brake on
-growth that does not erode capacity) and the doomed-pup stock at the peak (N@736 9 % low: a
-conception term that declines with the female's own breakdown state); a multi-seed calibration
-objective; a lifespan distribution (late collapse too steep); vectorize
+N@736 1845 (held-out 1838–1916); canonical error 0.077. Phase 2i (done): nursing-disturbance
+brake on phase C + narrower ramp, multi-seed CMA-ES objective — peak 2234 @ 518
+(12 seeds 2269 ± 11 @ 524 ± 9), surviving births cease 583, N@736 1949
+(12 seeds 1990 ± 15); canonical error 0.057 (held-out 0.08–0.17). Remaining candidates
+(priority order): a later phase C (peak day 524 ± 9 over 12 seeds vs 560: the nursing brake acts on
+pup survival while births run at 1000–1200 per 30 days; a conception-rate brake is untested) and
+inverse-seed-variance loss weights for the multi-seed objective; a lifespan distribution (late collapse too steep); vectorize
 `_passive_nurse` / per-agent loops (`docs/TASKS.md` P1-3); Warp mortality-kernel parity at hazard level.
 
 ### Phase 3 — Visuals + dashboard

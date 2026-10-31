@@ -28,6 +28,12 @@
   weaned density (`breakdown_density_ramp`) instead of switching on; recalibrated — peak
   2115 @ 503 (held-out 2127–2328), N@736 1845, canonical error 0.077
   (0.10–0.13 held-out). Remaining: peak day ≈85 d early, N@736 9 % low, steep late collapse.
+- Status note 2026-10-31 (phase 2i): density-graded nursing disturbance brakes
+  phase C (`nurse_disturb_*`), breakdown ramp narrowed, CMA-ES objective is the mean over three
+  training seeds — peak 2234 @ 518 (12 seeds 2269 ± 11 @ 524 ± 9), surviving births cease
+  583, N@736 1949, canonical error 0.057 (0.08–0.17 held-out). Fertility tied to
+  maternal capacity tested and rejected. Remaining: peak day ≈35 d early, N@736 3 % low, steep late collapse; loss weights for
+  the multi-seed objective.
 - Work package: WP-G12-adjacent / Track E toy world (Universe 25 + playground); not L3 ecology
 - Track: **E** (emergent, exploratory)
 - Owner: Jason

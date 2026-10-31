@@ -1,5 +1,191 @@
 # Universe25 Play — NOTES
 
+## Phase 2i — nursing-disturbance brake on phase C, fertility floor (negative), multi-seed calibration (2026-10-31)
+
+Motivation: after 2h the 12-seed peak matched Calhoun (2221 vs 2200) but the peak day was ≈85
+days early (475 ± 8) and N@736 9 % low (1869 ± 11): days 300–420 still grew ≈3× faster than
+Calhoun's phase C, and the count at the peak carried ≈290 pups that would die.
+
+### (A) Fertility tied to the female's breakdown state — negative
+
+`fertility_cap_floor` (1 = off): the daily conception probability is scaled by
+floor + (1 − floor) × `maternal_cap`. Calhoun's phase D: the incidence of pregnancies declined
+rapidly after the peak. Scan at the 2h parameters, seed 7000, 1200 d:
+
+| floor | 1 (2h) | 0.5 | 0.35 | 0.2 |
+|---|---:|---:|---:|---:|
+| peak N / day | 2115 / 503 | 2072 / 472 | 2091 / 460 | 2090 / 464 |
+| surviving births cease | 551 | 573 | 596 | 567 |
+| N @ 736 | 1845 | 1826 | 1792 | 1823 |
+| conception cessation | 932 | 934 | 901 | 823 |
+| loss | 0.094 | 0.115 | 0.127 | 0.133 |
+
+Why it fails: the doomed pups sit in the *peak* count, not in N@736 (1845 = 1810 adults + 35
+pups), so cutting the conceptions of partly-eroded females (capacity 0.3–0.9 during days
+400–500) removes litters that still partly survive — the adult plateau falls more than the pup
+stock, N@736 drops and the peak day moves earlier. Kept in the code and in the search space
+(off at 1.0); the optimiser did not pick it up (the ten best trials of the multi-seed study kept it
+at 0.83–0.99).
+
+### (B) Nursing disturbance — a reversible, density-graded brake on phase C
+
+`nurse_disturb_coef`, `nurse_disturb_density`: a mother's effective maternal investment while
+nursing (passive and active, `_feed_by_nest`) is scaled by exp(−coef × max(0, local cell
+density − onset)). Reversible and graded, unlike the erosion terms — it slows growth without
+ending surviving births. Calhoun's phase C: nursing females in crowded cells were disturbed,
+moved litters and dropped young; infant mortality rose with density before the social
+breakdown. Both new terms off → bit-identical to 2h (hash `0f4ca337…`, 600 d, 6 ticks/day).
+
+Scan at seed 7000, 1200 d (2h parameters unless noted; courtship erosion 0.03):
+
+| coef / onset / ramp | 0 / – / 0.45 (2h) | 1 / 0.15 / 0.45 | 2 / 0.15 / 0.45 | 4 / 0.15 / 0.45 | 2 / 0.25 / 0.45 | 2 / 0.15 / 0.2 | 4 / 0.15 / 0.2 | 4 / 0.15 / 0.3 | **4 / 0.2 / 0.2** | 6 / 0.15 / 0.2 | 6 / 0.2 / 0.3 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| N @ 315 | 531 | 522 | 473 | 514 | 540 | 473 | 514 | 514 | **528** | 445 | 531 |
+| peak N / day | 2115 / 503 | 2248 / 476 | 2133 / 491 | 2032 / 509 | 2140 / 476 | 2309 / 500 | 2265 / 522 | 2215 / 516 | **2209 / 511** | 2122 / 564 | 2129 / 500 |
+| surviving births cease | 551 | 546 | 547 | 629 | 579 | 576 | 593 | 606 | **610** | 916 | 627 |
+| N @ 736 | 1845 | 1886 | 1786 | 1807 | 1839 | 2006 | 1982 | 1961 | **1997** | 2009 | 1907 |
+| conception cessation | 932 | 872 | 984 | 1033 | 962 | 912 | 997 | 984 | **1031** | 1198 | 982 |
+| loss | 0.094 | 0.118 | 0.185 | 0.135 | 0.097 | 0.144 | 0.088 | 0.088 | **0.080** | 0.672 | 0.093 |
+
+Reading: the brake alone (coef 4, ramp 0.45) slows phase C — surviving births cease at 629
+(Calhoun 600) — but lowers the plateau (2032), because the ramp was tuned to end births for a
+faster-growing population. Narrowing the ramp back to 0.2 restores the level while the brake
+keeps the timing: peak 2209 at 511, cessation 610, N@736 1997 (N@736 / peak 0.90; 2h 0.87,
+Calhoun 0.93). Too strong a brake (coef 6 at onset 0.15) keeps births surviving to 916 and cuts
+N@315 (445): mice cluster, so cells pass local density 0.15 already in phase B. Courtship
+erosion then pulls the conception cessation back: 0.04 → 915 (peak 2234 / 518, cessation 583,
+N@736 1949, loss 0.066), 0.05 → 879 (2200 / 511, 599, 1968, 0.068).
+
+Held-out at coef 4 / onset 0.2 / ramp 0.2 (courtship 0.03), 1200 d: seed 8000 peak 2270 / 533,
+cessation 605, N@736 2033, conceptions cease 968; 8001 2298 / 465, 555, 1942, 912; 8002 2207 /
+606, 754, 2109, 1099 (the slow seed: N@315 286, everything ≈50 d later).
+
+### Multi-seed objective (`--train-seeds`)
+
+Each CMA-ES trial now runs one simulation per training seed and is scored by the mean loss
+(`calib/optimize.py::_combine`; per-seed results kept in the study report). In 2g and 2h the
+single-seed optimiser never beat its hand-chosen start point: a parameter nudge is a new random
+realisation and loss differences of ≈0.02 are inside that noise. Three training seeds cost 3×
+per generation (≈10 min at 14 workers for popsize 14).
+
+### Recalibration (multi-seed CMA-ES, 112 trials, popsize 14, `--sigma0 0.1`, 51 min)
+
+Start = 2h optimum + ramp 0.2 + nursing disturbance 4 / 0.2 + courtship 0.04 (fertility floor
+1.0). Mean landmarks over the training seeds 7000 / 7001 / 7002 (1200 d):
+
+| trial | mean loss | mean canonical error | peak N / day | surviving births cease | N @ 736 | conception cessation | N @ 315 | main parameter moves from the start |
+|---|---:|---:|---:|---:|---:|---:|---:|---|
+| **0 (start, kept)** | 0.341 | 0.093 | 2270 / 527 | 602 | 2008 | 906 | 415 | — |
+| 99 (best loss) | 0.243 | 0.083 | 2484 / 521 | 602 | 2193 | 1060 | 509 | erosion 0.49, ramp 0.07, imprint 0.012, boost 0.15, coef 2.4 |
+| 78 | 0.249 | 0.073 | 2418 / 537 | 613 | 2252 | 809 | 523 | erosion 0.34, boost 0.13, courtship 0.059, ramp 0.12 |
+| 47 | 0.250 | 0.098 | 2199 / 484 | 571 | 1974 | 722 | 454 | boost 0.06, coef 1.9, courtship 0.058 |
+| 92 | 0.266 | 0.087 | 2211 / 475 | 583 | 1962 | 745 | 508 | boost 0.09, coef 2.3, base mortality 6.3e-5 |
+
+The multi-seed objective does move (the single-seed one never left its start in 2g / 2h), but
+where it moves is set by the loss weights: trial 99 buys N@315 at the training seeds (415 → 509)
+with the peak (+13 %) and the conception cessation (+16 %), and the N@315 gain does not generalise
+— held-out N@315 180 / 240 / 585, canonical error 0.19 / 0.18 / 0.07, mean held-out loss 0.96
+(start: 0.10 / 0.08 / 0.17, 0.45). Trial 78 is the best by mean canonical error, but over 12 seeds
+(800 d, 6 ticks/day) it sits 9–10 % high on three landmarks: peak 2395 ± 9 at 552 ± 12, N@736
+2258 ± 14, cessation 658 ± 17, against the start's 2269 ± 11 at 524 ± 9, 1991 ± 15, 602 ± 12
+(Calhoun 2200 / 560 / 2056 / 600). **The start point was kept** as the phase-2i calibration.
+
+*Method finding.* Squared relative error makes a 10–15 % miss on a plateau landmark cheap
+(2 × 0.13² ≈ 0.03) next to N@315 at 415 (2 × 0.33² ≈ 0.22), while N@315 has a seed sd of ≈35 % at
+8 founders — so the optimiser spends the peak on noise. Next method step: weight landmarks by
+the inverse of their seed variance (or report N@315 / adults@315 without fitting them).
+Artifacts: `configs/calibrated_calhoun.yaml`, `configs/default.yaml`,
+`configs/calibration_study_p2i.json` (per-seed results in every trial record).
+
+Phase C with the brake (seed 7000, 6 ticks/day, 30-day windows; compare the 2g/2h table above):
+
+| day | N | conceptions | births | reached weaning | weaned / born | mean stress | maternal cap (adult F) | weaned density |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 300 | 657 | 65 | 328 | 147 | 0.45 | 0.14 | 1.00 | 0.12 |
+| 360 | 1263 | 151 | 815 | 231 | 0.28 | 0.22 | 1.00 | 0.23 |
+| 420 | 1799 | 189 | 1196 | 258 | 0.22 | 0.28 | 0.97 | 0.36 |
+| 480 | 2115 | 160 | 1186 | 191 | 0.16 | 0.45 | 0.81 | 0.47 |
+| 540 | 2148 | 136 | 997 | 87 | 0.09 | 0.55 | 0.27 | 0.52 |
+| 600 | 2090 | 127 | 915 | 6 | 0.01 | 0.56 | 0.11 | 0.52 |
+
+The weaned fraction now fades over ≈270 days (0.45 at 300 → 0.01 at 600) instead of collapsing in
+90, and the plateau is reached at 510–550 (raw maximum 2234 at 545 with 288 pups and 242
+juveniles aboard; 31-day mean maximum 2187 at 550). Growth between 300 and 420 is still ×2.7
+(Calhoun ≈×1.7).
+
+### Validation
+
+1600 d, seed 7000, 6 ticks/day (`_output/run1600_p2i_tpd6`, 87 s, 0 NaN; phases decline
+662 → collapse 1300) and 24 ticks/day (`_output/run1600_p2i_tpd24`, 147 s):
+
+| | 6 tpd | 24 tpd |
+|---|---:|---:|
+| First litters | 102 | 103 |
+| N @ 315 | 528 | 514 |
+| Peak N / day | 2234 / 518 | 2274 / 486 |
+| Surviving births cease (strict latest pup) | 583 (618) | 581 (590) |
+| N @ 736 | 1949 | 1922 |
+| Conception cessation | 915 | 905 |
+| Decline onset / collapse onset | 662 / 1300 | 612 / 1300 |
+| N @ 1200 / 1400 / 1600 | 1515 / 480 / 0 | 1560 / 373 / 1 |
+| births / conceptions | 15,145 / 2,295 | 14,299 / 2,161 |
+| mean rel. error (canonical 5 / extended 8) | 0.057 / 0.054 | 0.076 / 0.091 |
+
+| day | N | adults | withdrawn | mean adult competence | births in prior 100 d |
+|---:|---:|---:|---:|---:|---:|
+| 200 | 73 | 20 | 0 | 0.99 | 140 |
+| 300 | 489 | 159 | 67 | 0.52 | 629 |
+| 400 | 1228 | 581 | 336 | 0.35 | 1820 |
+| 500 | 2077 | 1406 | 987 | 0.25 | 4076 |
+| 600 | 2100 | 1940 | 1516 | 0.20 | 3340 |
+| 700 | 1963 | 1931 | 1518 | 0.21 | 2501 |
+| 800 | 1852 | 1843 | 1445 | 0.21 | 1652 |
+| 900 | 1804 | 1782 | 1404 | 0.20 | 773 |
+| 1000 | 1723 | 1723 | 1358 | 0.20 | 201 |
+| 1100 | 1670 | 1670 | 1318 | 0.20 | 13 |
+| 1200 | 1515 | 1515 | 1229 | 0.18 | 0 |
+| 1300 | 1113 | 1113 | 973 | 0.14 | 0 |
+| 1400 | 480 | 480 | 466 | 0.10 | 0 |
+| 1500 | 52 | 52 | 50 | 0.18 | 0 |
+| 1600 | 0 | 0 | 0 | 1.00 | 0 |
+
+Twelve seeds (7000–7011), 400 d, mean ± se:
+
+| | 6 tpd | 24 tpd |
+|---|---:|---:|
+| N @ 200 | 80 ± 8 | 71 ± 6 |
+| N @ 315 | 475 ± 49 | 466 ± 42 |
+| N @ 400 | 1176 ± 89 | 1193 ± 81 |
+| births by day 400 | 2513 ± 223 | 2519 ± 217 |
+
+Twelve seeds (7000–7011), 800 d, mean ± se (`_output/multiseed_peak_p2i.txt`):
+
+| | 6 tpd | 24 tpd | paired 24 − 6 |
+|---|---:|---:|---:|
+| Peak N (daily max) | 2269 ± 11 | 2281 ± 8 | +12 ± 17 |
+| 31-day mean peak | 2214 ± 10 | 2219 ± 7 | +4 ± 15 |
+| Peak day (first ≥97 %) | 524 ± 9 | 521 ± 9 | -3 ± 14 |
+| Surviving births cease | 602 ± 12 | 604 ± 11 | +2 ± 17 |
+| N @ 736 | 1990 ± 15 | 1992 ± 13 | +1 ± 21 |
+
+**Honest misses / open gaps**
+- *Peak day ≈35 d early* (518 at seed 7000; 12 seeds 524 ± 9; Calhoun 560; 2h: 85 d early).
+  Phase C is still ×2.7 between days 300 and 420 against Calhoun's ≈×1.7; the brake acts on pup
+  survival, not on the conception rate, and births run at 1000–1200 per 30 days through day 540.
+  On the long flat plateau the first-≥97 % day (518) sits ≈30 d before the maximum (545–550).
+- *N@736 3 % low* (1949; 12 seeds 1991 ± 15; 2h: 9 % low). N@736 / peak 0.87–0.88 (Calhoun 0.93):
+  the raw maximum still carries ≈290 pups that will die, because births to eroded mothers continue
+  at ≈1000 per 30 days while the weaned fraction fades. The fertility floor (A) does not fix this
+  (it removes partly-surviving litters first).
+- *Early phase seed-dominated* (unchanged): N@315 255–758 over 12 seeds (475 ± 49), adults@315
+  88–217 over the four calibration seeds; the training seed is 15 % low on N@315.
+- *Late collapse steep* (unchanged): 1515 at 1200, 480 at 1400, 0 at 1600 vs Calhoun 122 at ≈1444, 27 at 1588; collapse
+  onset 1300. A per-individual lifespan distribution would spread it.
+- *Pup survival in the uncrowded phase is low* (unchanged, ≈30–45 % to weaning).
+- *Loss weighting* (above): the multi-seed objective is now limited by the weights, not by noise.
+- *Warp*: the nursing brake lives in the host-side `_feed_by_nest` (nursing was host-only before);
+  `density_stress_kernel` parity 1.9e-9 unchanged; mortality kernel untested at hazard level.
+
 ## Phase 2h — graded social-breakdown pressure, recalibration (2026-10-31)
 
 Motivation: the peak sat 12–18 % above Calhoun's 2200 and ≈60 days early (2482 at 493, held-out
