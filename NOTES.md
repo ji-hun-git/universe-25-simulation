@@ -75,7 +75,7 @@ loss 0.026 vs 0.032; per-seed canonical error 0.026 / 0.042 / 0.047 vs 0.044 / 0
 through the early phase — N@315 630 / 581 / 534 vs 528 / 401 / 315 — by lowering the young
 baseline mortality 42 %, raising nursing 17 %, and compensating with erosion ×3, ramp 0.085, base
 mortality +58 %, stillbirth 0.51, fertility floor 0.81 and the brake slightly on (0.78 / 0.25).
-Scored out of sample over 12 seeds (7000–7011, 1200 d, 6 ticks/day; `scratchpad/seed_eval.py`):
+Scored out of sample over 12 seeds (7000–7011, 1200 d, 6 ticks/day; `scripts/seed_eval.py`):
 
 | | start (2i parameters) | trial 93 |
 |---|---:|---:|
@@ -235,7 +235,7 @@ Test suite green with `tests/test_calib_loss.py` added.
   objective, not the model.
 - *The weights are measured under one calibration.* `LANDMARK_REL_SEED_SD` is the 2i spread; a
   model with a very different plateau variance would need re-measuring (12 seeds × 1200 d ≈ 3 min
-  with `scratchpad/seed_sd.py`-style runs). The 5 % floor is a judgement: without it the
+  with `scripts/seed_eval.py`; sd = se × √12). The 5 % floor is a judgement: without it the
   first-litters day (sd 1 %) would take ≈60 % of the total weight.
 - *Three training seeds still leave N@315 noisy* (se ≈ 100): the term is small now, but a slow
   training seed (7002: N@315 315) still contributes the largest single term at that seed. More

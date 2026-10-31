@@ -438,6 +438,8 @@ universe25-play/
 ├── scripts/
 │   ├── calibrate.py
 │   ├── calibrate_optuna.py
+│   ├── seed_eval.py        ← out-of-sample scoring of a fragment over N seeds (adjudicator, 2k)
+│   ├── multiseed_peak.py   ← 12-seed plateau / 6-vs-24 ticks check (peak, peak day, N@736, cessation)
 │   ├── benchmark_backends.py
 │   ├── microbench_warp_post.py
 │   └── probe_nvidia.py
