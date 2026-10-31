@@ -122,8 +122,14 @@ def landmarks_from_series(
     if len(ns):
         peak_i = int(np.argmax(ns))
         out["n_min_after_peak"] = float(ns[peak_i:].min())
+        # Plateau level: the daily maximum of a pulsed birth process sits a few percent above
+        # the level around it (litters arriving in bursts, doomed pups in the pipeline).
+        # Reported, not fitted; Calhoun's 2200 is a single census, not a maximum.
+        w = min(31, len(ns))
+        out["peak_n_31d_mean"] = float(np.convolve(ns, np.ones(w) / w, mode="valid").max())
     else:
         out["n_min_after_peak"] = 0.0
+        out["peak_n_31d_mean"] = 0.0
     if surv_births_by_day is not None:
         out["last_young_day"] = surviving_birth_cessation_day(surv_births_by_day)
     return out

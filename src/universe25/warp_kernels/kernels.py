@@ -62,6 +62,7 @@ def density_stress_kernel(
     capacity_per_cell: float,
     dens_frac_arr: wp.array(dtype=wp.float32),
     menopause_thr: float,
+    breakdown_ramp: float,
     social_breakdown_boost: float,
     maturity_days: float,
     imprint_rate: float,
@@ -82,8 +83,15 @@ def density_stress_kernel(
         if nest_occ[nid] > nest_cap[nid]:
             gain = gain + nest_overcrowd_stress
             over = float(nest_occ[nid]) / float(nest_cap[nid]) - 1.0
+    # Social-breakdown pressure (mirrors BiologyConfig.breakdown_factor): full boost above the
+    # weaned-density threshold, linear ramp of width breakdown_ramp below it (0 = step).
+    f_bd = float(0.0)
     if dens_frac > menopause_thr:
-        gain = gain + social_breakdown_boost
+        f_bd = 1.0
+    elif breakdown_ramp > 0.0:
+        f_bd = wp.max(0.0, 1.0 - (menopause_thr - dens_frac) / breakdown_ramp)
+    if f_bd > 0.0:
+        gain = gain + social_breakdown_boost * f_bd
     # Exact relaxation toward gain/decay over dt (mirrors sim._density_stress): the daily
     # trajectory does not depend on the tick resolution.
     relax = 1.0 - wp.exp(-stress_decay * dt)

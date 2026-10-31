@@ -1,8 +1,9 @@
-# Calhoun-landmark calibration, phase 2g (2026-10-31). Phase-2f CMA-ES optimum + male courtship erosion
-# (rate 0.03 / stress 0.5, chosen by a 1-D scan and confirmed as the best of an 84-trial CMA-ES study, sigma0
-# 0.1). Seed 7000, 1200 d, 6 ticks/day: loss 0.120 (canonical mean rel. error 0.100); held-out 8000/8001/8002
-# canonical 0.11/0.15/0.17. Conception cessation 930 (held-out 885-1059) vs Calhoun ~920. See NOTES.md 'Phase 2g'
-# and configs/calibration_study_p2g.json. Fragment: merge over configs/default.yaml (same values are in it).
+# Calhoun-landmark calibration, phase 2h (2026-10-31). Phase-2g optimum + graded social-breakdown pressure
+# (breakdown_density_ramp 0.45: the stress boost ramps over this weaned-density width up to the threshold instead
+# of switching on; chosen by a 1-D scan, confirmed as the best of a 168-trial CMA-ES study, sigma0 0.1). Seed 7000,
+# 1200 d, 6 ticks/day: loss 0.094 (canonical mean rel. error 0.077); held-out 8000/8001/8002 canonical
+# 0.10/0.12/0.13. Peak 2115 @ 503, N@736 1845, surviving births cease 551, conceptions 932.
+# See NOTES.md 'Phase 2h' and configs/calibration_study_p2h.json. Fragment: merge over configs/default.yaml (same values are in it).
 biology:
   first_conception_min_day: 81.23565828830122
   gestation_days: 19.479738849243606
@@ -13,6 +14,7 @@ biology:
   breeding_stress_coef: 0.4662788930820273
   menopause_density_threshold: 0.6804868116669993
   breakdown_density_threshold: 0.5797082389182636
+  breakdown_density_ramp: 0.45
   stress_mortality_scale: 0.0006534730645402809
   base_mortality_per_day: 9.524360486307535e-05
   max_age_days: 938.1928704710334

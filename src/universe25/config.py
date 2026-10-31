@@ -80,6 +80,11 @@ class BiologyConfig(BaseModel):
     # arena; unweaned pups sit in nest boxes). Weaned numbers fall only through adult mortality,
     # so once the switch is on it stays on long enough for maternal breakdown to be lasting.
     breakdown_density_counts: Literal["all", "weaned"] = "weaned"
+    # Width (density fraction) over which the breakdown boost ramps linearly from 0 to its full
+    # value, ending at breakdown_density_threshold: social pressure builds as the arena fills
+    # (Calhoun phase C: infant mortality rose gradually from Day 315 on), instead of switching
+    # on at one density. 0 = step (phase 2e-2g behaviour).
+    breakdown_density_ramp: float = 0.0
     beautiful_one_aggression_max: float = 0.15
     # Developmental imprinting (Calhoun 1973: young raised under crowding never acquire
     # normal maternal / courtship / territorial behaviour; the deficit is irreversible).
@@ -96,6 +101,17 @@ class BiologyConfig(BaseModel):
         if self.breakdown_density_threshold is not None:
             return float(self.breakdown_density_threshold)
         return float(self.menopause_density_threshold)
+
+    def breakdown_factor(self, density: float) -> float:
+        """Fraction of social_breakdown_stress_boost applied at a (weaned) density fraction:
+        1 above the threshold, a linear ramp over breakdown_density_ramp below it, else 0."""
+        thr = self.breakdown_threshold()
+        if density > thr:
+            return 1.0
+        ramp = float(self.breakdown_density_ramp)
+        if ramp <= 0.0:
+            return 0.0
+        return max(0.0, 1.0 - (thr - density) / ramp)
 
     # Nursing is relaxation toward satiety: while a lactating mother of its box is in contact,
     # a pup's hunger/thirst deficit decays at nurse_rate_per_day x her maternal investment

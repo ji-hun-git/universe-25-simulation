@@ -146,6 +146,12 @@ def test_warp_density_stress_parity() -> None:
     bio = sim.cfg.biology
     bio.imprint_rate = 0.5
     bio.imprint_density_threshold = 0.0
+    # put the weaned density inside the breakdown ramp so the graded-boost branch is exercised
+    bio.breakdown_density_threshold = 1.0
+    bio.breakdown_density_ramp = 1.0
+    bio.social_breakdown_stress_boost = 0.5
+    f_bd = bio.breakdown_factor(sim._breakdown_density(a.alive))
+    assert 0.0 < f_bd < 1.0, f_bd
     d = sim.cfg.drives
 
     # NumPy reference on a copy (disable the random nest kick by fixing rank high)
@@ -175,7 +181,8 @@ def test_warp_density_stress_parity() -> None:
             b["cell_counts"], b["nest_occ"], b["nest_cap"], b["age_days"], b["competence"],
             float(sim.dt_days), float(d.stress_density_gain), float(d.stress_decay),
             float(bio.nest_overcrowd_stress), cap_cell, b["dens_social"],
-            float(bio.breakdown_threshold()), float(bio.social_breakdown_stress_boost),
+            float(bio.breakdown_threshold()), float(bio.breakdown_density_ramp),
+            float(bio.social_breakdown_stress_boost),
             float(bio.maturity_days), float(bio.imprint_rate), float(bio.imprint_density_threshold),
             b["event_scale"],
         ],
@@ -317,6 +324,34 @@ def test_maternal_erosion_is_weaned_only_and_irreversible() -> None:
     assert float(a.maternal[adult_f]) <= 0.9 * cap_before + 1e-6
 
 
+def test_breakdown_pressure_ramp_is_graded_and_step_at_zero_width() -> None:
+    from universe25.config import BiologyConfig
+
+    bio = BiologyConfig(breakdown_density_threshold=0.6, breakdown_density_ramp=0.0)
+    assert bio.breakdown_factor(0.59) == 0.0 and bio.breakdown_factor(0.61) == 1.0, "step"
+    bio = BiologyConfig(breakdown_density_threshold=0.6, breakdown_density_ramp=0.3)
+    assert bio.breakdown_factor(0.2) == 0.0, "below the ramp"
+    assert abs(bio.breakdown_factor(0.45) - 0.5) < 1e-12, "half way up the ramp"
+    assert bio.breakdown_factor(0.6) == 1.0 and bio.breakdown_factor(0.9) == 1.0
+    f = [bio.breakdown_factor(x) for x in np.linspace(0.3, 0.6, 7)]
+    assert all(b >= a for a, b in zip(f, f[1:])), "monotone in density"
+    # In the sim: with the ramp the stress gain already rises below the threshold.
+    sim = _make_sim(days=1.0, out="test_bio_ramp")
+    a = sim.agents
+    b2 = sim.cfg.biology
+    b2.breakdown_density_threshold = 1.0  # never reached by 8 founders ...
+    b2.social_breakdown_stress_boost = 0.5
+    b2.breakdown_density_ramp = 0.0
+    a.rank[:] = 0.9  # no nest kick
+    s0 = a.stress.copy()
+    sim._density_stress(a.alive)
+    step_stress = a.stress.copy()
+    a.stress[:] = s0
+    b2.breakdown_density_ramp = 1.0  # ... but the ramp spans the whole density range
+    sim._density_stress(a.alive)
+    assert np.all(a.stress[a.alive] > step_stress[a.alive] + 1e-7), "ramp adds pressure early"
+
+
 def test_courtship_erosion_is_weaned_males_only_and_irreversible() -> None:
     from universe25.agents.state import SEX_M
 
@@ -356,5 +391,6 @@ if __name__ == "__main__":
     test_relaxation_feeding_composes_over_substeps()
     test_maternal_erosion_is_weaned_only_and_irreversible()
     test_courtship_erosion_is_weaned_males_only_and_irreversible()
+    test_breakdown_pressure_ramp_is_graded_and_step_at_zero_width()
     test_warp_density_stress_parity()
     print("test_biology_guards: OK")

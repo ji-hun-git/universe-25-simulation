@@ -122,6 +122,11 @@ PARAM_PRIORS: dict[str, dict[str, Any]] = {
         "low": 0.3, "high": 0.9, "log": False, "group": "biology",
         "prior": "Uniform; stress above which adult maternal capacity erodes",
     },
+    "breakdown_density_ramp": {
+        "low": 0.0, "high": 0.6, "log": False, "group": "biology",
+        "prior": "Uniform; weaned-density width over which the breakdown stress boost ramps "
+                 "up to the threshold (0 = step; Calhoun C: infant mortality rose gradually)",
+    },
     "courtship_erosion_rate": {
         "low": 0.002, "high": 1.0, "log": True, "group": "biology",
         "prior": "LogUniform; irreversible male courtship-capacity loss per day per unit stress "

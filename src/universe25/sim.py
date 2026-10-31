@@ -701,8 +701,11 @@ class Universe25Sim:
         # graded overfullness (occupants beyond capacity, relative) for developmental exposure
         over_frac = np.where(nids >= 0, np.maximum(0.0, nest_occ[nclip] / cap[nclip] - 1.0), 0.0)
         gain = gain + float(self.cfg.biology.nest_overcrowd_stress) * over
-        if self._breakdown_density(alive) > self.cfg.biology.breakdown_threshold():
-            gain = gain + float(self.cfg.biology.social_breakdown_stress_boost)
+        # Social-breakdown pressure: full boost above the weaned-density threshold, a linear ramp
+        # below it (breakdown_density_ramp; 0 = step). Mirrors warp density_stress_kernel.
+        f_bd = self.cfg.biology.breakdown_factor(self._breakdown_density(alive))
+        if f_bd > 0.0:
+            gain = gain + float(self.cfg.biology.social_breakdown_stress_boost) * f_bd
         decision = self._decision_tick()
         # random nest kick for low-rank overcrowded agents: one 10 % chance per decision
         if decision:
@@ -1026,7 +1029,8 @@ class Universe25Sim:
                     b["cell_counts"], b["nest_occ"], b["nest_cap"], b["age_days"], b["competence"],
                     dt, float(d.stress_density_gain), float(d.stress_decay),
                     float(bio.nest_overcrowd_stress), capacity_per_cell, b["dens_social"],
-                    float(bio.breakdown_threshold()), float(bio.social_breakdown_stress_boost),
+                    float(bio.breakdown_threshold()), float(bio.breakdown_density_ramp),
+                    float(bio.social_breakdown_stress_boost),
                     float(bio.maturity_days), float(bio.imprint_rate),
                     float(bio.imprint_density_threshold), b["event_scale"],
                 ],

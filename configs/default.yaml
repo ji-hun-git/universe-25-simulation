@@ -1,7 +1,7 @@
-# Universe 25 abundant arm. Biology/drives = phase-2g calibration to Calhoun landmarks (2f CMA-ES
-# optimum + male courtship erosion scanned and confirmed by CMA-ES, 2026-10-31, seed 7000, 1200 d,
-# 6 ticks/day; see NOTES.md 'Phase 2g' and configs/calibrated_calhoun.yaml). Decisions are held for
-# 1/6 day at finer ticks_per_day.
+# Universe 25 abundant arm. Biology/drives = phase-2h calibration to Calhoun landmarks (2g optimum +
+# graded social-breakdown pressure, breakdown_density_ramp 0.45, chosen by a 1-D scan and confirmed by a
+# 168-trial CMA-ES study that found nothing better; 2026-10-31, seed 7000, 1200 d, 6 ticks/day; see
+# NOTES.md 'Phase 2h' and configs/calibrated_calhoun.yaml). Decisions are held for 1/6 day at finer ticks_per_day.
 seed: 7000
 ticks_per_day: 6  # reference resolution (ticks_per_day_ref); loop is dt-invariant, 12/24 give the same arc
 max_agents: 4096
@@ -65,6 +65,7 @@ biology:
   female_fertile_max_age_days: 583.0754563398896
   litter_abandon_p: 0.07998822448751196
   breakdown_density_threshold: 0.5797082389182636
+  breakdown_density_ramp: 0.45
   nurse_rate_per_day: 8.175439980634657
   maternal_erosion_rate: 0.1686670613068217
   maternal_erosion_stress: 0.5076751020956933
