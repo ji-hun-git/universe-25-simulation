@@ -160,18 +160,40 @@ PARAM_PRIORS: dict[str, dict[str, Any]] = {
     },
 }
 
-LOSS_WEIGHTS = {
-    "first_litters_day": 1.5,
-    "n_at_day_315": 2.0,
-    "peak_n": 2.0,
-    "peak_day": 1.5,
-    "last_young_day": 1.5,
+# Seed spread of each landmark (sd / target) under the phase-2i calibration: 12 seeds 7000-7011,
+# 1200 d, 6 ticks/day (NOTES.md "Phase 2j"). With 8 founders the early phase is set by the first
+# litters' luck (N@315 sd 27 %, adults@315 42 %) while the plateau landmarks spread 2-7 %.
+LANDMARK_REL_SEED_SD = {
+    "first_litters_day": 0.010,
+    "n_at_day_315": 0.273,
+    "peak_n": 0.018,
+    "peak_day": 0.058,
+    "last_young_day": 0.070,
+    "n_at_day_736": 0.026,
+    "adults_at_day_315": 0.420,
+    "last_conception_day": 0.048,
 }
-EXTRA_LOSS_WEIGHTS = {
-    "n_at_day_736": 1.5,
-    "adults_at_day_315": 1.0,
-    "last_conception_day": 1.0,
-}
+NOISE_FLOOR = 0.05  # relative modelling tolerance, added in quadrature to the seed spread
+TOTAL_LOSS_WEIGHT = 12.0  # the hand weights before 2j summed to 12; loss scale kept comparable
+
+
+def inverse_variance_weights(
+    rel_sd: dict[str, float], floor: float = NOISE_FLOOR, total: float = TOTAL_LOSS_WEIGHT
+) -> dict[str, float]:
+    """w_k proportional to 1 / (rel_sd_k^2 + floor^2), normalised to `total`: each loss term is
+    ~(rel_err / sigma_k)^2, i.e. how many noise sigmas the model is off. Before 2j the hand
+    weights (N@315 2.0, peak 2.0, ...) let the optimiser spend a 13 % peak miss (2 x 0.13^2 =
+    0.03) on N@315 noise (2 x 0.33^2 = 0.22) that did not generalise across seeds."""
+    raw = {k: 1.0 / (v * v + floor * floor) for k, v in rel_sd.items()}
+    scale = total / sum(raw.values())
+    return {k: w * scale for k, w in raw.items()}
+
+
+_W = inverse_variance_weights(LANDMARK_REL_SEED_SD)
+LOSS_WEIGHTS = {k: _W[k] for k in LANDMARKS}  # canonical five (reported as mean_rel_error)
+EXTRA_LOSS_WEIGHTS = {k: _W[k] for k in EXTRA_LANDMARKS}
+# Loss values of studies before 2j (configs/calibration_study_p2*.json up to p2i) use the hand
+# weights and are not comparable with these.
 # Inferred (not a Calhoun number): between N=2056 at Day 736 and N=122 at Day 1444 the
 # population at Day 1200 should sit well below the peak but not be extinct.
 DECLINE_BAND_AT_HORIZON = (0.35, 0.85)
