@@ -1,5 +1,175 @@
 # Universe25 Play — NOTES
 
+## Phase 2k — conception brake in crowded cells (neutral), peak-day landmark, recalibration (2026-10-31)
+
+Motivation: after 2i/2j the peak day (first day at ≥97 % of the maximum) was ≈35 days early
+(524 ± 9 over 12 seeds; Calhoun 560) with births still running at 1000–1200 per 30 days through
+phase C. The pass asked for a brake on the conception rate.
+
+### Where the mice are (phase-2i run, seed 7000, snapshots)
+
+Local cell density (count / 240), the 16 cells sorted:
+
+| day | N | cells |
+|---:|---:|---|
+| 300 | 488 | 0.41 0.26 0.24 0.20 0.20 0.11 0.10 0.09 0.09 0.08 0.06 0.05 0.05 0.03 0.03 0.03 |
+| 400 | 1228 | 0.79 0.74 0.58 0.40 0.35 0.32 0.30 0.29 0.24 0.24 0.18 0.15 0.15 0.13 0.13 0.12 |
+| 500 | 2075 | 1.19 1.10 0.93 0.72 0.55 0.50 0.44 0.44 0.41 0.39 0.38 0.38 0.33 0.33 0.28 0.28 |
+| 600 | 2094 | 1.23 1.11 1.05 0.99 0.46 0.46 0.42 0.40 0.38 0.36 0.35 0.34 0.31 0.31 0.28 0.27 |
+
+A behavioural sink: by day 400 three cells hold 40 % of the population at 0.6–0.8 of their
+design capacity, by 500 they exceed it. Any per-cell brake with an onset above ≈0.4 leaves
+phase B alone.
+
+### (A) Conception suppression in crowded cells — neutral at the training seed
+
+`conception_density_onset` / `conception_density_width`: a female's daily conception
+probability is scaled by clip(1 − (local cell density − onset) / width, 0, 1) — untouched below
+the onset, zero at onset + width (`_conception_density_factor`; Calhoun: reproduction in the sink
+cells was disrupted while cells with a territorial male and few females kept breeding). Spatial
+and graded, unlike the whole-population `menopause_density_threshold` term. Width 0 = off,
+bit-identical to 2j (hash `a264ccf2…`, 600 d, 6 ticks/day). Scan at the 2i parameters, seed 7000,
+1200 d (loss on the 2j scale; peak day still the first-97 % day here):
+
+| onset / width | off (2i) | 0.4 / 0.6 | 0.4 / 0.3 | 0.3 / 0.6 | 0.5 / 0.5 | 0.6 / 0.4 |
+|---|---:|---:|---:|---:|---:|---:|
+| N @ 315 | 528 | 517 | 521 | 500 | 528 | 528 |
+| peak N / 97 % day | 2234 / 518 | 2200 / 508 | 2209 / 497 | 2187 / 513 | 2175 / 517 | 2263 / 535 |
+| surviving births cease | 583 | 583 | 560 | 643 | 600 | 575 |
+| N @ 736 | 1949 | 1922 | 1930 | 1970 | 1930 | 1960 |
+| conception cessation | 915 | 920 | 842 | 919 | 927 | 846 |
+| loss | 0.019 | 0.026 | 0.045 | 0.024 | 0.021 | 0.025 |
+
+The brake does what it says (fewer conceptions in the sink cells) but does not delay the
+plateau: the 97 % day stays at 497–535 and N@736 drops 1–2 %, because the sink cells' litters are
+the ones already dying and the plateau timing is set by when maternal erosion starts, i.e. by
+when the sink cells fill (day ≈400–450), not by the conception rate. Same lesson as the fertility
+floor (2i): removing births in phase C removes some surviving litters too. Kept in the code (off)
+and in the search space.
+
+### The peak-day landmark marked the start of the plateau
+
+12 seeds (7000–7011), 800 d, mean ± se:
+
+| | 6 tpd | 24 tpd |
+|---|---:|---:|
+| first day at ≥97 % of max (the landmark up to 2j) | 524 ± 9 | 521 ± 9 |
+| day of the raw maximum | 553 ± 12 | 552 ± 15 |
+| day of the 31-day running-mean maximum | 555 ± 12 | 546 ± 12 |
+
+The plateau is flat within 3 % for ≈100 days, so "first day at 97 %" marks where it starts and sits
+≈30 days before the maximum by construction; Calhoun's 2200 at Day 560 is a census maximum. The
+raw-maximum day is set by litter pulses (spikes of 3–4 %, 2h). `peak_day` is now the day of the
+31-day running-mean maximum (`PEAK_WINDOW_DAYS`), with `peak_day_97pct` and `peak_day_raw_max`
+reported alongside (`tests/test_landmarks.py`); its seed spread (sd 40 d, 0.072 of the target)
+replaces the 97 %-day spread (0.058) in the loss weights. Under this definition the 2i
+calibration sits at 550 at seed 7000 and 555 ± 12 over 12 seeds (Calhoun 560) — the "peak day
+35 days early" of 2h–2j was mostly the statistic. The earlier phases' peak-day numbers in this
+file and in HANDOFF are 97 %-days and are not directly comparable.
+
+### Recalibration (multi-seed CMA-ES under the 2j weights and the new peak day, 112 trials, train seeds 7000 / 7001 / 7002, 60 min)
+
+Start = 2i parameters with the brake nearly off (onset 0.9, width 0.3). The brake and the
+fertility floor were in the search space. Trial 93 beat the start on the training seeds (mean
+loss 0.026 vs 0.032; per-seed canonical error 0.026 / 0.042 / 0.047 vs 0.044 / 0.102 / 0.113)
+through the early phase — N@315 630 / 581 / 534 vs 528 / 401 / 315 — by lowering the young
+baseline mortality 42 %, raising nursing 17 %, and compensating with erosion ×3, ramp 0.085, base
+mortality +58 %, stillbirth 0.51, fertility floor 0.81 and the brake slightly on (0.78 / 0.25).
+Scored out of sample over 12 seeds (7000–7011, 1200 d, 6 ticks/day; `scratchpad/seed_eval.py`):
+
+| | start (2i parameters) | trial 93 |
+|---|---:|---:|
+| N @ 315 | 475 ± 49 | 496 ± 52 |
+| Adults @ 315 | 172 ± 18 | 191 ± 21 |
+| Peak N | 2269 ± 11 | 2148 ± 12 |
+| Peak day (31-d mean max) | 555 ± 12 | 595 ± 18 |
+| Surviving births cease | 602 ± 12 | 639 ± 20 |
+| N @ 736 | 1991 ± 15 | 1964 ± 12 |
+| Conception cessation | 923 ± 13 | 944 ± 14 |
+| loss of the mean landmarks (2j weights) | **0.012** | 0.024 |
+| mean per-seed loss | **0.042** | 0.071 |
+| canonical error of the means | **0.058** | 0.075 |
+
+The N@315 gain did not generalise (496 vs 475 over 12 seeds: the three training seeds happened
+to respond) while the plateau moved late and low. **The 2i parameters stay**; the brake stays off
+(`conception_density_width` 0). Three training seeds still let the early phase lead the search by
+realisation luck even at weight 0.1 — the out-of-sample 12-seed score is now the adjudicator for
+any candidate. Artifact: `configs/calibration_study_p2k.json`.
+
+### Validation
+
+1600 d, seed 7000, 6 ticks/day (`_output/run1600_p2k_tpd6`, 98 s, 0 NaN; phases decline
+662 → collapse 1300) and 24 ticks/day (`_output/run1600_p2k_tpd24`, 184 s):
+
+| | 6 tpd | 24 tpd |
+|---|---:|---:|
+| First litters | 102 | 103 |
+| N @ 315 | 528 | 514 |
+| Peak N / day (31-d mean max; first-97 % day) | 2234 / 550 (518) | 2274 / 501 (486) |
+| Surviving births cease (strict latest pup) | 583 (618) | 581 (590) |
+| N @ 736 | 1949 | 1922 |
+| Conception cessation | 915 | 905 |
+| Decline onset / collapse onset | 662 / 1300 | 612 / 1300 |
+| N @ 1200 / 1400 / 1600 | 1515 / 480 / 0 | 1560 / 373 / 1 |
+| births / conceptions | 15,145 / 2,295 | 14,299 / 2,161 |
+| mean rel. error (canonical 5 / extended 8) | 0.046 / 0.047 | 0.070 / 0.087 |
+
+| day | N | adults | withdrawn | mean adult competence | births in prior 100 d |
+|---:|---:|---:|---:|---:|---:|
+| 200 | 73 | 20 | 0 | 0.99 | 140 |
+| 300 | 489 | 159 | 67 | 0.52 | 629 |
+| 400 | 1228 | 581 | 336 | 0.35 | 1820 |
+| 500 | 2077 | 1406 | 987 | 0.25 | 4076 |
+| 600 | 2100 | 1940 | 1516 | 0.20 | 3340 |
+| 700 | 1963 | 1931 | 1518 | 0.21 | 2501 |
+| 800 | 1852 | 1843 | 1445 | 0.21 | 1652 |
+| 900 | 1804 | 1782 | 1404 | 0.20 | 773 |
+| 1000 | 1723 | 1723 | 1358 | 0.20 | 201 |
+| 1100 | 1670 | 1670 | 1318 | 0.20 | 13 |
+| 1200 | 1515 | 1515 | 1229 | 0.18 | 0 |
+| 1300 | 1113 | 1113 | 973 | 0.14 | 0 |
+| 1400 | 480 | 480 | 466 | 0.10 | 0 |
+| 1500 | 52 | 52 | 50 | 0.18 | 0 |
+| 1600 | 0 | 0 | 0 | 1.00 | 0 |
+
+Twelve seeds (7000–7011), 400 d, mean ± se:
+
+| | 6 tpd | 24 tpd |
+|---|---:|---:|
+| N @ 200 | 80 ± 8 | 71 ± 6 |
+| N @ 315 | 475 ± 49 | 466 ± 42 |
+| N @ 400 | 1176 ± 89 | 1193 ± 81 |
+| births by day 400 | 2513 ± 223 | 2519 ± 217 |
+
+Twelve seeds (7000–7011), 800 d, mean ± se (`_output/multiseed_peak_p2k.txt`):
+
+| | 6 tpd | 24 tpd | paired 24 − 6 |
+|---|---:|---:|---:|
+| Peak N (daily max) | 2269 ± 11 | 2281 ± 8 | +12 ± 17 |
+| 31-day mean peak | 2214 ± 10 | 2219 ± 7 | +4 ± 15 |
+| Peak day (31-d mean max) | 555 ± 12 | 546 ± 12 | -10 ± 15 |
+| Peak day (raw max) | 553 ± 12 | 552 ± 15 | -0 ± 19 |
+| Peak day (first ≥97 %) | 524 ± 9 | 521 ± 9 | -3 ± 14 |
+| Surviving births cease | 602 ± 12 | 604 ± 11 | +2 ± 17 |
+| N @ 736 | 1990 ± 15 | 1992 ± 13 | +1 ± 21 |
+
+**Honest misses / open gaps**
+- *Early phase low and seed-dominated* (unchanged): N@315 475 ± 49 over 12 seeds (−23 %),
+  adults@315 172 ± 18 (+15 %); three training seeds are not enough to fit it, and the one
+  candidate that did (trial 93) did not generalise.
+- *N@736 3 % low* (1991 ± 15; 1949 at seed 7000), the raw peak 3 % high (2269 ± 11; the
+  smoothed plateau 2214 ± 10 is within 1 %): the count at the maximum still carries ≈290 pups that
+  will die while births run at ≈1000 per 30 days.
+- *Peak day*: 555 ± 12 under the smoothed-maximum definition (Calhoun 560); the 97 %-day is
+  524 ± 9 — a flat 100-day plateau has no sharp maximum, and Calhoun's single census day cannot
+  tell which statistic it corresponds to.
+- *Late collapse steep* (unchanged): 1515 at 1200, 480 at 1400, 0 at 1600 vs Calhoun 122 at ≈1444, 27 at 1588.
+- *Pup survival in the uncrowded phase is low* (unchanged, ≈30–45 % to weaning).
+- *Calibration method*: the objective (multi-seed mean, inverse-variance weights) is sound but a
+  3-seed training set still lets realisation luck in the early phase lead the search; candidates
+  must be scored on 12 seeds. CMA-ES in raw units barely moves the day-valued parameters.
+- *Warp*: the brake and the nursing terms are host-side; `density_stress_kernel` parity 1.9e-9.
+
 ## Phase 2j — inverse-seed-variance loss weights, multi-seed recalibration (2026-10-31)
 
 Motivation: in 2i the multi-seed CMA-ES lowered the loss by fitting N@315 at the training seeds

@@ -38,6 +38,12 @@
   (12-seed spread at 1200 d; N@315 / adults@315 get ≈0.1 / 0.04 of 12, plateau landmarks 1.0–2.7);
   the multi-seed CMA-ES rerun kept the 2i parameters. Remaining: peak day ≈35 d early, N@736 3 %
   low, steep late collapse (unchanged from 2i).
+- Status note 2026-10-31 (phase 2k): conception brake in crowded cells tested
+  (neutral: the plateau timing is set by when the sink cells fill, not by the conception rate; off);
+  `peak_day` = day of the 31-day running-mean maximum (the 97 %-day marked the plateau start) —
+  12 seeds 555 ± 12 vs Calhoun 560; multi-seed CMA-ES rerun — peak 2234 @ 550, surviving births
+  cease 583, N@736 1949, canonical error 0.046 (0.07–0.19 held-out). Remaining: early phase low (N@315 475 ± 49 vs 620), N@736 3 % low, steep
+  late collapse.
 - Work package: WP-G12-adjacent / Track E toy world (Universe 25 + playground); not L3 ecology
 - Track: **E** (emergent, exploratory)
 - Owner: Jason

@@ -13,13 +13,13 @@ Legend: **P0** blocking · **P1** high · **P2** medium · **P3** polish
 > mechanism added (2b), daily-only conception + nest-box nursing + litter abandonment (2d),
 > post-weaning maternal breakdown + weaned-density breakdown switch + relaxation nursing + lethal
 > starvation (2e), exact stress relaxation (2f), male courtship breakdown (2g), graded breakdown
-> pressure (2h), nursing-disturbance brake + multi-seed objective (2i), inverse-seed-variance
-> loss weights (2j, parameters unchanged): canonical mean rel. error
-> **0.057** (seed 7000; 0.08–0.17 held-out), surviving births cease at 556–717 and
-> conceptions at 867–1054 across four seeds (Calhoun 600 / ≈920), peak 2231–2309 @
-> 469–606, N@736 1949–2046; 12 seeds: peak 2269 ± 11 @ 524 ± 9, N@736 1990 ± 15.
-> See `NOTES.md` "Phase 2j" / "Phase 2i" and earlier. Still off: peak day ≈35 d early (524 ± 9 over 12 seeds); N@736 3 % low;
-> adults@315 and N@315 vary ±40 % by seed; late collapse steep.
+> pressure (2h), nursing-disturbance brake + multi-seed objective (2i), inverse-seed-variance loss
+> weights (2j), crowded-cell conception brake (neutral) + smoothed peak-day landmark (2k): canonical
+> mean rel. error **0.046** (seed 7000; 0.07–0.19 held-out), surviving births cease at
+> 556–717 and conceptions at 867–1054 across four seeds (Calhoun 600 / ≈920), peak
+> 2231–2309 @ 498–651, N@736 1949–2046; 12 seeds: peak 2269 ± 11 @ 555 ± 12, N@736 1990 ± 15.
+> See `NOTES.md` "Phase 2k" and earlier. Still off: N@315 23 % low and seed-dominated (475 ± 49 over 12 seeds); N@736 3 % low;
+> late collapse steep.
 
 **Goal:** Reduce mean relative landmark error from ~1.08; get first litters nearer day 104, N@315 nearer 620, peak nearer day 560, and either a collapse or an honest negative with mechanism notes.
 

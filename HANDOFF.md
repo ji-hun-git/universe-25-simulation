@@ -86,7 +86,7 @@ If a PR / commit introduces a play reward, reject it.
 
 ---
 
-## 4. Current status (as of phase 2j, 2026-10-31)
+## 4. Current status (as of phase 2k, 2026-10-31)
 
 ### Phase 1 — done
 
@@ -379,6 +379,43 @@ Diagnoses, scan tables and open gaps in `NOTES.md` → "Phase 2i" (and 2h / 2g /
 - **Calibrated parameters unchanged from 2i** (`configs/default.yaml`, `calibrated_calhoun.yaml`);
   the 2i table and validation apply. Study artifact: `configs/calibration_study_p2j.json`.
 
+### Phase 2k — conception brake in crowded cells (neutral), peak-day landmark, recalibration (2026-10-31)
+
+- `conception_density_onset` / `conception_density_width`: a female's daily conception
+  probability falls linearly from 1 at the onset local cell density to 0 at onset + width
+  (behavioural sink: the sink cells breed less). Off at width 0, bit-identical to 2j. Probed as
+  the requested conception-rate brake: it does not delay the plateau (the plateau timing is set by
+  when the sink cells fill and maternal erosion starts, not by the conception rate) and costs
+  1–2 % of N@736 — a documented neutral result, kept in the search space.
+- `peak_day` is now the day of the 31-day running-mean maximum of N (Calhoun's 2200 at Day 560
+  is a census maximum); the first-97 %-day used up to 2j marked the start of a ≈100-day plateau
+  and sat ≈30 days early by construction (12 seeds: 524 ± 9 vs raw maximum 553 ± 12, smoothed
+  555 ± 12). Reported alongside as `peak_day_97pct` / `peak_day_raw_max`; seed spread 0.072 in the
+  loss weights; `tests/test_landmarks.py`. Peak-day numbers in the tables above are 97 %-days.
+- Multi-seed CMA-ES rerun (112 trials, 60 min) with the brake in the search space: trial 93 beat
+  the start on the three training seeds through N@315, but scored out of sample over 12 seeds it
+  is worse on every plateau landmark (peak 2148 @ 595, cessation 639, N@736 1964; loss of the mean
+  landmarks 0.024 vs 0.012) and its N@315 gain vanishes (496 vs 475). **Parameters unchanged from
+  2i**; the 12-seed out-of-sample score is the adjudicator for candidates from now on.
+
+**Calibrated run (seed 7000, `configs/default.yaml`, 6 ticks/day, 1600 d):**
+
+| Landmark | Calhoun | Phase 2h | Phase 2i | **Phase 2k** | held-out 8000–8002 |
+|----------|--------:|---------:|---------:|-------------:|---:|
+| First litters | 104 | 102 | 102 | **102** | 102–105 |
+| N @ 315 | 620 | 531 | 528 | **528** | 286–569 |
+| Peak N | 2200 | 2115 | 2234 | **2234** | 2231–2309 |
+| Peak day (31-d mean max; 2h/2i: first ≥97 %) | 560 | 503 | 518 | **550** (518) | 498–651 |
+| Surviving births cease | 600 | 551 | 583 | **583** | 556–717 |
+| N @ 736 | 2056 | 1845 | 1949 | **1949** | 1953–2046 |
+| Adults @ 315 | 150 | 163 | 163 | **163** | 88–206 |
+| Conception cessation | ≈920 | 932 | 915 | **915** | 867–1054 |
+| N @ 1200 / 1400 / 1600 | 2056@736, 122@1444, 27@1588 | 1426 / 273 / 0 | 1515 / 480 / 0 | **1515 / 480 / 0** | 1514–1649 @1200 |
+| mean rel. error (5) | | 0.077 | 0.057 | **0.046** | 0.07–0.19 |
+
+Phases: decline (662) → collapse (1300). **Resolution:** 24 ticks/day gives peak 2274 / 501, cessation 581, N@736 1922, conception cessation 905; 12 seeds, 800 d: peak 2269 ± 11 (6 tpd) vs 2281 ± 8 (24 tpd), peak day 555 ± 12 vs 546 ± 12, N@736 1990 ± 15 vs 1992 ± 13, cessation 602 ± 12 vs 604 ± 11.
+Cell-density table, scan, landmark note and open gaps in `NOTES.md` → "Phase 2k".
+
 ---
 
 ## 5. Architecture map
@@ -515,8 +552,8 @@ Seeds: build/training `7000–7009`; unit tests `7100`; eval worlds later `8000�
 
 ### Phase 2 — Calibrate + GPU (calibration DONE 2026-10-30; GPU parity partial)
 **Accept when:**
-- [x] Mean relative landmark error **≪ 1.0** → **0.057** at seed 7000, 0.08–0.17 held-out (phase 2i: first litters 102, peak 2234 @ 518, surviving births cease 583, N@736 1949, conceptions cease 915; 2b was 0.14)
-- [x] Collapse phase appears under abundant arm → decline from 662, N(1200) = 68 % of peak, 480 at 1400, 0 left at 1600 (Calhoun 122 at ~1444, 27 at 1588); surviving births cease at 583, conceptions at 915 (2e–2j); documented misses: peak day ≈35 d early, N@736 3 % low, late collapse steep — see NOTES
+- [x] Mean relative landmark error **≪ 1.0** → **0.046** at seed 7000, 0.07–0.19 held-out (phase 2k: first litters 102, peak 2234 @ 550, surviving births cease 583, N@736 1949, conceptions cease 915; 2b was 0.14)
+- [x] Collapse phase appears under abundant arm → decline from 662, N(1200) = 68 % of peak, 480 at 1400, 0 left at 1600 (Calhoun 122 at ~1444, 27 at 1588); surviving births cease at 583, conceptions at 915 (2e–2k); documented misses: early phase 23 % low, N@736 3 % low, late collapse steep — see NOTES
 - [~] Warp tick path correct vs NumPy reference: density-stress + imprinting kernel parity test added (3e-8); mortality (hazard-level) and cells parity still open; CUDA Graph speedup documented in NSIGHT
 - [x] No NaNs (0 across calibration, held-out and 1600-d runs); `docs/NSIGHT.md` benches unchanged (no kernel perf work this round)
 
@@ -535,9 +572,14 @@ brake on phase C + narrower ramp, multi-seed CMA-ES objective — peak 2234 @ 51
 (12 seeds 1990 ± 15); canonical error 0.057 (held-out 0.08–0.17). Phase 2j (done): landmark loss
 weights ∝ inverse seed variance (N@315 / adults@315 no longer buy the plateau); the multi-seed
 CMA-ES rerun under them kept the 2i point (no trial beat it; runner-ups are plateau-faithful
-trade-offs, not N@315 fits). Remaining candidates (priority order): a later phase C (peak day
-524 ± 9 over 12 seeds vs 560: the nursing brake acts on pup survival while births run at 1000–1200
-per 30 days; a conception-rate brake is untested); a lifespan distribution (late collapse too steep); vectorize
+trade-offs, not N@315 fits). Phase 2k (done): conception brake in crowded cells (neutral, off),
+`peak_day` = day of the 31-day running-mean maximum (the 97 %-day marked the plateau start; 12
+seeds 555 ± 12 vs Calhoun 560), multi-seed CMA-ES rerun — peak 2234 @ 550, surviving
+births cease 583, N@736 1949 (12 seeds 1990 ± 15), conceptions cease 915; canonical
+error 0.046 (held-out 0.07–0.19). Remaining candidates (priority order): the early phase (N@315 475 ± 49 over 12 seeds vs 620: a phase-B mechanism or more
+founders; fitting it needs more training seeds than three) and the doomed-pup stock in the peak
+count (N@736 3 % low); a lifespan
+distribution (late collapse too steep); vectorize
 `_passive_nurse` / per-agent loops (`docs/TASKS.md` P1-3); Warp mortality-kernel parity at hazard level.
 
 ### Phase 3 — Visuals + dashboard
