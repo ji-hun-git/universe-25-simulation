@@ -105,6 +105,8 @@ class Universe25Sim:
         self._surv_births_by_day = np.zeros(int(math.ceil(cfg.days)) + 2, dtype=np.int64)
         self._surv_births_cum = 0
         self._conc_by_day = np.zeros(int(math.ceil(cfg.days)) + 2, dtype=np.int64)
+        self._cell_counts_tick = -1
+        self._cell_counts = np.zeros(self.world.n_cells, dtype=np.int64)
         self._last_conception_day = 0.0
         self._abandoned = 0  # pups expelled from their nest box by a stressed mother
         self._peak_n = 0
@@ -614,6 +616,16 @@ class Universe25Sim:
         if pups.size:
             self._feed_by_nest(np.array([i]), pups, radius2=25.0, dt=self.dt_days)
 
+    def _tick_cell_counts(self) -> np.ndarray:
+        """Alive agents per cell, computed once per tick on first use (cached)."""
+        if self._cell_counts_tick != self.tick:
+            a = self.agents
+            self._cell_counts = np.bincount(
+                a.cell_id[a.alive].astype(int), minlength=self.world.n_cells
+            )
+            self._cell_counts_tick = self.tick
+        return self._cell_counts
+
     def _feed_by_nest(
         self, moms: np.ndarray, pups: np.ndarray, *, radius2: float, dt: float
     ) -> None:
@@ -632,8 +644,17 @@ class Universe25Sim:
         cap = float(bio.nurse_max_pups)
         mom_nest = a.nest_id[moms]
         pup_nest = a.nest_id[pups]
+        # Nursing disturbance: a mother in a crowded cell nurses less effectively (reversible,
+        # graded in local density; Calhoun phase C infant mortality). Off when coef == 0.
+        coef = float(bio.nurse_disturb_coef)
+        if coef > 0.0:
+            counts = self._tick_cell_counts()
+            cap_cell = max(1.0, self.world.capacity_design / self.world.n_cells)
+            local_m = counts[a.cell_id[moms].astype(int)] / cap_cell
+            disturb = np.exp(-coef * np.maximum(0.0, local_m - float(bio.nurse_disturb_density)))
         for nid in np.intersect1d(mom_nest, pup_nest):
-            mi = moms[mom_nest == nid]
+            m_sel = mom_nest == nid
+            mi = moms[m_sel]
             pj = pups[pup_nest == nid]
             d2 = (a.x[mi][:, None] - a.x[pj][None, :]) ** 2
             d2 += (a.y[mi][:, None] - a.y[pj][None, :]) ** 2
@@ -642,7 +663,10 @@ class Universe25Sim:
             if not n_contact.any():
                 continue
             share = np.minimum(1.0, cap / np.maximum(1, n_contact))
-            w = (contact * (a.maternal[mi].astype(np.float64) * share)[:, None]).sum(axis=0)
+            invest = a.maternal[mi].astype(np.float64)
+            if coef > 0.0:
+                invest = invest * disturb[m_sel]
+            w = (contact * (invest * share)[:, None]).sum(axis=0)
             f = np.exp(-rate * w * dt)
             a.hunger[pj] = a.hunger[pj] * f
             a.thirst[pj] = a.thirst[pj] * f
@@ -886,6 +910,7 @@ class Universe25Sim:
         )
         if females.size == 0 or males.size == 0:
             return
+        floor = float(bio.fertility_cap_floor)
         # Per-cell mean male courtship capability: developmental competence x what adult-stage
         # stress has left of the courtship capacity.
         male_cells: dict[int, list[int]] = {}
@@ -902,6 +927,8 @@ class Universe25Sim:
             c_f = float(a.competence[f])
             p = p_base * (1.0 - float(bio.breeding_stress_coef) * float(a.stress[f]))
             p *= c_f * male_comp[int(a.cell_id[f])]
+            if floor < 1.0:  # fertility follows her own breakdown state
+                p *= floor + (1.0 - floor) * float(a.maternal_cap[f])
             if self.rng.random() < p:
                 a.gestating[f] = bio.gestation_days
                 a.role[f] = ROLE_NURSING

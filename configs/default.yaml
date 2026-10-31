@@ -1,7 +1,8 @@
-# Universe 25 abundant arm. Biology/drives = phase-2h calibration to Calhoun landmarks (2g optimum +
-# graded social-breakdown pressure, breakdown_density_ramp 0.45, chosen by a 1-D scan and confirmed by a
-# 168-trial CMA-ES study that found nothing better; 2026-10-31, seed 7000, 1200 d, 6 ticks/day; see
-# NOTES.md 'Phase 2h' and configs/calibrated_calhoun.yaml). Decisions are held for 1/6 day at finer ticks_per_day.
+# Universe 25 abundant arm. Biology/drives = phase-2i calibration to Calhoun landmarks (2g optimum +
+# breakdown ramp 0.2 + density-graded nursing disturbance (coef 4, onset 0.2) + courtship erosion 0.04,
+# chosen by 1-D scans; a 112-trial multi-seed CMA-ES study found lower mean loss only by overfitting the
+# early phase of the training seeds, see NOTES.md 'Phase 2i' and configs/calibrated_calhoun.yaml).
+# 2026-10-31, seed 7000, 1200 d, 6 ticks/day. Decisions are held for 1/6 day at finer ticks_per_day.
 seed: 7000
 ticks_per_day: 6  # reference resolution (ticks_per_day_ref); loop is dt-invariant, 12/24 give the same arc
 max_agents: 4096
@@ -65,15 +66,18 @@ biology:
   female_fertile_max_age_days: 583.0754563398896
   litter_abandon_p: 0.07998822448751196
   breakdown_density_threshold: 0.5797082389182636
-  breakdown_density_ramp: 0.45
+  breakdown_density_ramp: 0.2
   nurse_rate_per_day: 8.175439980634657
   maternal_erosion_rate: 0.1686670613068217
   maternal_erosion_stress: 0.5076751020956933
   nurse_max_pups: 6
   breakdown_density_counts: weaned
   starvation_hazard_per_day: 1.0
-  courtship_erosion_rate: 0.03
+  courtship_erosion_rate: 0.04
   courtship_erosion_stress: 0.5
+  fertility_cap_floor: 1.0
+  nurse_disturb_coef: 4.0
+  nurse_disturb_density: 0.2
 drives:
   hunger_gain_per_day: 1.2
   thirst_gain_per_day: 1.5

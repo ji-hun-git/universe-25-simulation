@@ -127,6 +127,20 @@ PARAM_PRIORS: dict[str, dict[str, Any]] = {
         "prior": "Uniform; weaned-density width over which the breakdown stress boost ramps "
                  "up to the threshold (0 = step; Calhoun C: infant mortality rose gradually)",
     },
+    "fertility_cap_floor": {
+        "low": 0.05, "high": 1.0, "log": False, "group": "biology",
+        "prior": "Uniform; conception probability scales with the female's maternal capacity "
+                 "between this floor and 1 (Calhoun D: pregnancies declined after the peak)",
+    },
+    "nurse_disturb_coef": {
+        "low": 0.05, "high": 10.0, "log": True, "group": "biology",
+        "prior": "LogUniform; nursing effectiveness exp(-coef x local density above onset) "
+                 "(Calhoun C: nursing disturbed under crowding)",
+    },
+    "nurse_disturb_density": {
+        "low": 0.05, "high": 0.5, "log": False, "group": "biology",
+        "prior": "Uniform; local cell density fraction where nursing disturbance starts",
+    },
     "courtship_erosion_rate": {
         "low": 0.002, "high": 1.0, "log": True, "group": "biology",
         "prior": "LogUniform; irreversible male courtship-capacity loss per day per unit stress "

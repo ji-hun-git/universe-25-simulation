@@ -130,6 +130,16 @@ class BiologyConfig(BaseModel):
     # cell's male competence in the daily breeding pass is competence x courtship capacity.
     courtship_erosion_rate: float = 0.0  # 0 = off
     courtship_erosion_stress: float = 0.6
+    # Fertility follows the female's own breakdown state (Calhoun phase D: the incidence of
+    # pregnancies declined rapidly after the peak while conceptions went on to ~Day 920): the
+    # daily conception probability is scaled by floor + (1 - floor) x maternal_cap. 1.0 = off.
+    fertility_cap_floor: float = 1.0
+    # Nursing disturbance (Calhoun phase C: nursing females in crowded cells were disturbed,
+    # moved litters and dropped young; infant mortality rose with density before the social
+    # breakdown): a mother's effective maternal investment while nursing is scaled by
+    # exp(-coef x max(0, local cell density - onset)). Reversible, density-graded. coef 0 = off.
+    nurse_disturb_coef: float = 0.0
+    nurse_disturb_density: float = 0.15
 
 
 class DriveConfig(BaseModel):

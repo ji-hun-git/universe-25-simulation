@@ -25,11 +25,38 @@ from universe25.calib.priors import (
 def _trial_record(
     trial: optuna.trial.FrozenTrial | optuna.Trial, loss: float, result: dict[str, Any]
 ) -> dict[str, Any]:
-    return {
+    rec = {
         "number": trial.number,
         "loss": float(loss),
         "observed": result["observed"],
         "params": result["params"],
+    }
+    if "per_seed" in result:
+        rec["per_seed"] = result["per_seed"]
+    return rec
+
+
+def _combine(results: list[dict[str, Any]], seeds: list[int]) -> dict[str, Any]:
+    """Multi-seed objective: mean loss over the training seeds (each trial is otherwise one
+    random realisation, and landmark differences of ~0.02 in loss are within that noise);
+    landmarks are averaged for reporting, per-seed results kept."""
+    losses = [float(r["loss"]) for r in results]
+    keys: set[str] = set()
+    for r in results:
+        keys |= set(r["observed"].keys())
+    mean_obs: dict[str, float] = {}
+    for k in sorted(keys):
+        vals = [r["observed"].get(k) for r in results]
+        vals = [float(v) for v in vals if isinstance(v, (int, float)) and v == v]
+        mean_obs[k] = float(sum(vals) / len(vals)) if vals else float("nan")
+    return {
+        "loss": float(sum(losses) / len(losses)),
+        "observed": mean_obs,
+        "params": results[0]["params"],
+        "per_seed": [
+            {"seed": s, "loss": lo, "observed": r["observed"]}
+            for s, lo, r in zip(seeds, losses, results)
+        ],
     }
 
 
@@ -56,12 +83,14 @@ def run_study(
     popsize: int | None = None,
     x0: dict[str, float] | None = None,
     sigma0: float | None = None,
+    train_seeds: list[int] | None = None,
 ) -> dict[str, Any]:
     """CMA-ES over PARAM_PRIORS.
 
     n_workers > 1 evaluates each CMA generation (popsize candidates) in a process pool via
     Optuna's ask/tell interface; evaluation is the NumPy CPU path so results are
-    deterministic per (seed, params) regardless of scheduling.
+    deterministic per (seed, params) regardless of scheduling. With several `train_seeds`
+    the objective is the mean loss over them (one sim per seed per trial).
     """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -74,7 +103,8 @@ def run_study(
         # whole asked-ahead first generation is random; evaluate the start point itself in it.
         # x0 / sigma0 shape the CMA distribution from the second generation on.
         study.enqueue_trial(dict(x0))
-    eval_kw = dict(seed=seed, days=days, ticks_per_day=ticks_per_day)
+    seeds = [int(s) for s in (train_seeds or [seed])]
+    eval_kw = dict(days=days, ticks_per_day=ticks_per_day)
     trials_log: list[dict[str, Any]] = []
 
     t0 = time.perf_counter()
@@ -82,7 +112,9 @@ def run_study(
 
         def objective(trial: optuna.Trial) -> float:
             params = suggest_params(trial)
-            result = evaluate_params(params, **eval_kw)
+            result = _combine(
+                [evaluate_params(params, seed=s, **eval_kw) for s in seeds], seeds
+            )
             trial.set_user_attr("observed", result["observed"])
             trials_log.append(_trial_record(trial, result["loss"], result))
             return float(result["loss"])
@@ -96,9 +128,12 @@ def run_study(
                 k = min(batch, n_trials - done)
                 trials = [study.ask() for _ in range(k)]
                 params_list = [suggest_params(t) for t in trials]
-                futs = [ex.submit(evaluate_params, p, **eval_kw) for p in params_list]
-                for t, f in zip(trials, futs):
-                    res = f.result()
+                futs = [
+                    [ex.submit(evaluate_params, p, seed=s, **eval_kw) for s in seeds]
+                    for p in params_list
+                ]
+                for t, fl in zip(trials, futs):
+                    res = _combine([f.result() for f in fl], seeds)
                     t.set_user_attr("observed", res["observed"])
                     study.tell(t, float(res["loss"]))
                     trials_log.append(_trial_record(t, res["loss"], res))
@@ -123,7 +158,14 @@ def run_study(
     wall = time.perf_counter() - t0
 
     best_params = dict(study.best_params)
-    train_eval = evaluate_params(best_params, **eval_kw)
+    if n_workers > 1 and len(seeds) > 1:
+        with ProcessPoolExecutor(max_workers=min(n_workers, len(seeds))) as ex:
+            futs = [ex.submit(evaluate_params, best_params, seed=s, **eval_kw) for s in seeds]
+            train_eval = _combine([f.result() for f in futs], seeds)
+    else:
+        train_eval = _combine(
+            [evaluate_params(best_params, seed=s, **eval_kw) for s in seeds], seeds
+        )
     heldout = []
     if heldout_seeds:
         if n_workers > 1:
@@ -148,6 +190,7 @@ def run_study(
         "popsize": popsize,
         "x0": x0,
         "train_seed": seed,
+        "train_seeds": seeds,
         "heldout_seeds": heldout_seeds,
         "days": days,
         "ticks_per_day": ticks_per_day,

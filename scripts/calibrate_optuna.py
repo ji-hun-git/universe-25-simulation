@@ -28,8 +28,13 @@ def main() -> int:
     p.add_argument("--popsize", type=int, default=None, help="CMA-ES population (= batch size)")
     p.add_argument("--x0", type=str, default=None, help="YAML biology/drives fragment as CMA start")
     p.add_argument("--sigma0", type=float, default=None)
+    p.add_argument("--train-seeds", type=str, default=None,
+                   help="comma-separated seeds; objective = mean loss over them (default: --seed)")
     args = p.parse_args()
     heldout = [int(x) for x in args.heldout.split(",") if x.strip()]
+    train_seeds = (
+        [int(x) for x in args.train_seeds.split(",") if x.strip()] if args.train_seeds else None
+    )
     x0 = load_x0(Path(args.x0)) if args.x0 else None
     report = run_study(
         out_dir=Path(args.out),
@@ -42,6 +47,7 @@ def main() -> int:
         popsize=args.popsize,
         x0=x0,
         sigma0=args.sigma0,
+        train_seeds=train_seeds,
     )
     print(json.dumps({
         "best_loss": report["train_eval"]["loss"],

@@ -352,6 +352,81 @@ def test_breakdown_pressure_ramp_is_graded_and_step_at_zero_width() -> None:
     assert np.all(a.stress[a.alive] > step_stress[a.alive] + 1e-7), "ramp adds pressure early"
 
 
+def test_fertility_floor_scales_conception_with_maternal_cap() -> None:
+    """fertility_cap_floor 0 + maternal_cap 0 -> no conceptions; floor 1 -> the usual rate."""
+    from universe25.agents.state import SEX_M
+
+    def run(floor: float, cap: float) -> int:
+        sim = _make_sim(days=1.0, out="test_bio_fert")
+        a = sim.agents
+        bio = sim.cfg.biology
+        bio.first_conception_min_day = 0.0
+        bio.fertility_cap_floor = floor
+        for s in a.free_slots(40):
+            sim._spawn(int(s), sex=0, age=200.0, x=10.0, y=10.0, nest_id=0, cell_id=0, role=0)
+        alive = np.flatnonzero(a.alive)
+        a.age_days[alive] = 200.0
+        a.sex[alive] = SEX_F
+        a.sex[alive[:8]] = SEX_M
+        a.x[alive] = 10.0
+        a.y[alive] = 10.0
+        a.cell_id[alive] = 0
+        a.stress[alive] = 0.1
+        a.energy[alive] = 1.0
+        a.gestating[alive] = 0.0
+        a.competence[alive] = 1.0
+        a.courtship_cap[alive] = 1.0
+        a.maternal_cap[alive] = cap
+        a.role[alive] = 0
+        sim._assign_roles(a.alive)
+        before = sim._conceptions
+        for day in range(1, 11):
+            sim.tick = day * sim.cfg.ticks_per_day
+            sim.day = float(day)
+            sim._daily_breeding_pass(a.alive)
+        return sim._conceptions - before
+
+    assert run(0.0, 0.0) == 0, "eroded females with floor 0 never conceive"
+    assert run(1.0, 0.0) > 5, "floor 1 = off: capacity does not matter"
+    assert run(0.0, 1.0) > 5, "intact females conceive at floor 0"
+
+
+def test_nursing_disturbance_is_graded_in_cell_density() -> None:
+    """A mother in a crowded cell nurses less with nurse_disturb_coef > 0; off at 0."""
+    sim = _make_sim(days=1.0, out="test_bio_disturb")
+    a = sim.agents
+    bio = sim.cfg.biology
+    # crowd cell 0 with weaned bystanders
+    for s in a.free_slots(60):
+        sim._spawn(int(s), sex=0, age=100.0, x=5.0, y=5.0, nest_id=3, cell_id=0, role=0)
+    alive = np.flatnonzero(a.alive)
+    mom, pup = alive[0], alive[1]
+    a.sex[mom] = SEX_F
+    a.age_days[mom] = 200.0
+    a.maternal[mom] = 0.9
+    a.nest_id[[mom, pup]] = 7
+    a.age_days[pup] = 5.0
+    a.role[pup] = ROLE_PUP
+    a.x[[mom, pup]] = 5.0
+    a.y[[mom, pup]] = 5.0
+    a.cell_id[[mom, pup]] = 0
+    sim.tick += 1
+
+    def relief(coef: float, onset: float) -> float:
+        bio.nurse_disturb_coef = coef
+        bio.nurse_disturb_density = onset
+        a.hunger[pup] = 1.0
+        sim._feed_by_nest(np.array([mom]), np.array([pup]), radius2=25.0, dt=sim.dt_days)
+        return 1.0 - float(a.hunger[pup])
+
+    base = relief(0.0, 0.15)
+    assert base > 0.1
+    assert abs(relief(2.0, 5.0) - base) < 1e-12, "onset above the density: no effect"
+    crowded = relief(2.0, 0.0)
+    assert crowded < base * 0.9, (crowded, base)
+    assert relief(6.0, 0.0) < crowded, "stronger coefficient, less milk"
+
+
 def test_courtship_erosion_is_weaned_males_only_and_irreversible() -> None:
     from universe25.agents.state import SEX_M
 
@@ -392,5 +467,7 @@ if __name__ == "__main__":
     test_maternal_erosion_is_weaned_only_and_irreversible()
     test_courtship_erosion_is_weaned_males_only_and_irreversible()
     test_breakdown_pressure_ramp_is_graded_and_step_at_zero_width()
+    test_fertility_floor_scales_conception_with_maternal_cap()
+    test_nursing_disturbance_is_graded_in_cell_density()
     test_warp_density_stress_parity()
     print("test_biology_guards: OK")
