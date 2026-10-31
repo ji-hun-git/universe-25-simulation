@@ -29,7 +29,12 @@ EXTRA_LANDMARKS = {
     "last_conception_day": 920.0,  # rate-based cessation (30-day count < 5 % of max for good)
 }
 
-PEAK_FRACTION = 0.97  # "peak_day" = first day N reaches 97% of the maximum (plateau-robust)
+# "peak_day" = day of the maximum of the PEAK_WINDOW_DAYS running mean of N: Calhoun's 2200 at
+# Day 560 is the census maximum, and the daily maximum of a pulsed birth process is a spike.
+# The first day at PEAK_FRACTION x max (used up to phase 2j) marks the *start* of a flat plateau
+# and ran ~30 days early by construction; it is still reported as peak_day_97pct.
+PEAK_WINDOW_DAYS = 31
+PEAK_FRACTION = 0.97
 
 
 CESSATION_WINDOW_DAYS = 30
@@ -91,14 +96,20 @@ def landmarks_from_series(
     first_litters = float(days[first_birth_idx[0]]) if len(first_birth_idx) else float("nan")
     peak_n = float(ns.max()) if len(ns) else 0.0
     if len(ns):
-        peak_day = float(days[int(np.argmax(ns >= PEAK_FRACTION * peak_n))])
+        peak_day_97 = float(days[int(np.argmax(ns >= PEAK_FRACTION * peak_n))])
+        peak_day_raw = float(days[int(np.argmax(ns))])
+        w = min(PEAK_WINDOW_DAYS, len(ns))
+        sm = np.convolve(ns.astype(np.float64), np.ones(w) / w, mode="valid")
+        peak_day = float(days[int(np.argmax(sm)) + w // 2])
     else:
-        peak_day = 0.0
+        peak_day = peak_day_97 = peak_day_raw = 0.0
     out = {
         "first_litters_day": first_litters,
         "n_at_day_315": _nearest(days, ns, 315.0),
         "peak_n": peak_n,
         "peak_day": peak_day,
+        "peak_day_97pct": peak_day_97,
+        "peak_day_raw_max": peak_day_raw,
         "last_young_day": float(np.max(last_young)) if len(last_young) else 0.0,
         "last_surviving_birth_strict_day": float(np.max(last_young)) if len(last_young) else 0.0,
         "n_at_day_736": (
@@ -188,7 +199,10 @@ def calibrate(metrics_path: Path, run_summary: dict[str, Any] | None = None) -> 
         "mean_rel_error": float(np.nanmean([errors[k]["rel_error"] for k in LANDMARKS])),
         "mean_rel_error_extended": float(np.nanmean(all_rel)),
         "last_young_source": ly_source,
-        "peak_day_definition": f"first day N >= {PEAK_FRACTION:.2f} * max N",
+        "peak_day_definition": (
+            f"day of the {PEAK_WINDOW_DAYS}-day running-mean maximum of N "
+            f"(peak_day_97pct: first day N >= {PEAK_FRACTION:.2f} * max N; peak_day_raw_max)"
+        ),
         "phases": phases,
         "run_summary": run_summary or {},
         "note": "Need-driven model; landmark errors reported without adjustment.",

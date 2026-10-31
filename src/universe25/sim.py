@@ -911,6 +911,9 @@ class Universe25Sim:
         if females.size == 0 or males.size == 0:
             return
         floor = float(bio.fertility_cap_floor)
+        width = float(bio.conception_density_width)
+        if width > 0.0:  # behavioural sink: crowded cells conceive less
+            dens_factor = self._conception_density_factor(females)
         # Per-cell mean male courtship capability: developmental competence x what adult-stage
         # stress has left of the courtship capacity.
         male_cells: dict[int, list[int]] = {}
@@ -920,7 +923,7 @@ class Universe25Sim:
             c: float(np.mean(a.competence[ms] * a.courtship_cap[ms]))
             for c, ms in male_cells.items()
         }
-        for f in females:
+        for j, f in enumerate(females):
             cands = male_cells.get(int(a.cell_id[f]), [])
             if not cands:
                 continue
@@ -929,6 +932,8 @@ class Universe25Sim:
             p *= c_f * male_comp[int(a.cell_id[f])]
             if floor < 1.0:  # fertility follows her own breakdown state
                 p *= floor + (1.0 - floor) * float(a.maternal_cap[f])
+            if width > 0.0:
+                p *= float(dens_factor[j])
             if self.rng.random() < p:
                 a.gestating[f] = bio.gestation_days
                 a.role[f] = ROLE_NURSING
@@ -938,6 +943,16 @@ class Universe25Sim:
                 self._conceptions += 1
                 self._last_conception_day = self.day
                 self._conc_by_day[min(int(self.day), self._conc_by_day.size - 1)] += 1
+
+    def _conception_density_factor(self, females: np.ndarray) -> np.ndarray:
+        """Per-female conception factor from her cell's density: 1 below
+        conception_density_onset, linear to 0 at onset + conception_density_width."""
+        bio = self.cfg.biology
+        counts = self._tick_cell_counts()
+        cap_cell = max(1.0, self.world.capacity_design / self.world.n_cells)
+        local = counts[self.agents.cell_id[females].astype(int)] / cap_cell
+        excess = local - float(bio.conception_density_onset)
+        return np.clip(1.0 - excess / float(bio.conception_density_width), 0.0, 1.0)
 
     def _reproduce(self, alive: np.ndarray) -> None:
         a = self.agents

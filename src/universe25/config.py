@@ -140,6 +140,13 @@ class BiologyConfig(BaseModel):
     # exp(-coef x max(0, local cell density - onset)). Reversible, density-graded. coef 0 = off.
     nurse_disturb_coef: float = 0.0
     nurse_disturb_density: float = 0.15
+    # Conception suppression in crowded cells (Calhoun's behavioural sink: reproduction in the
+    # most crowded cells was disrupted while cells with a territorial male and few females kept
+    # breeding). A female's daily conception probability is scaled by
+    # clip(1 - (local cell density - onset) / width, 0, 1): untouched below the onset, zero at
+    # onset + width. Spatial and graded, unlike the whole-population menopause term. width 0 = off.
+    conception_density_onset: float = 0.4
+    conception_density_width: float = 0.0
 
 
 class DriveConfig(BaseModel):

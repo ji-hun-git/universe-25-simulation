@@ -141,6 +141,15 @@ PARAM_PRIORS: dict[str, dict[str, Any]] = {
         "low": 0.05, "high": 0.5, "log": False, "group": "biology",
         "prior": "Uniform; local cell density fraction where nursing disturbance starts",
     },
+    "conception_density_onset": {
+        "low": 0.2, "high": 0.9, "log": False, "group": "biology",
+        "prior": "Uniform; local cell density fraction above which conception is suppressed "
+                 "(behavioural sink: crowded cells breed less)",
+    },
+    "conception_density_width": {
+        "low": 0.1, "high": 1.5, "log": False, "group": "biology",
+        "prior": "Uniform; local density span over which conception falls linearly to zero",
+    },
     "courtship_erosion_rate": {
         "low": 0.002, "high": 1.0, "log": True, "group": "biology",
         "prior": "LogUniform; irreversible male courtship-capacity loss per day per unit stress "
@@ -167,7 +176,7 @@ LANDMARK_REL_SEED_SD = {
     "first_litters_day": 0.010,
     "n_at_day_315": 0.273,
     "peak_n": 0.018,
-    "peak_day": 0.058,
+    "peak_day": 0.072,  # day of the 31-day running-mean maximum (2k); the first-97 % day had 0.058
     "last_young_day": 0.070,
     "n_at_day_736": 0.026,
     "adults_at_day_315": 0.420,

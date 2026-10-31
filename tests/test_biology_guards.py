@@ -391,6 +391,57 @@ def test_fertility_floor_scales_conception_with_maternal_cap() -> None:
     assert run(0.0, 1.0) > 5, "intact females conceive at floor 0"
 
 
+def test_conception_density_suppression_is_graded_per_cell() -> None:
+    """Conception factor: 1 below the onset, linear to 0 at onset + width; off at width 0."""
+    from universe25.agents.state import SEX_M
+
+    sim = _make_sim(days=1.0, out="test_bio_concdens")
+    a = sim.agents
+    bio = sim.cfg.biology
+    bio.first_conception_min_day = 0.0
+    for s in a.free_slots(80):  # crowd cell 0: 88 mice -> local density 88 / 240 = 0.367
+        sim._spawn(int(s), sex=0, age=200.0, x=10.0, y=10.0, nest_id=0, cell_id=0, role=0)
+    alive = np.flatnonzero(a.alive)
+    a.sex[alive] = SEX_F
+    a.sex[alive[:8]] = SEX_M
+    a.age_days[alive] = 200.0
+    a.x[alive] = 10.0
+    a.y[alive] = 10.0
+    a.cell_id[alive] = 0
+    a.stress[alive] = 0.1
+    a.energy[alive] = 1.0
+    a.competence[alive] = 1.0
+    a.courtship_cap[alive] = 1.0
+    a.maternal_cap[alive] = 1.0
+    a.gestating[alive] = 0.0
+    a.role[alive] = 0
+    sim._assign_roles(a.alive)
+    sim.tick += 1
+    females = alive[8:]
+    local = alive.size / (sim.world.capacity_design / sim.world.n_cells)
+    bio.conception_density_width = 0.2
+    bio.conception_density_onset = local + 0.1
+    assert np.all(sim._conception_density_factor(females) == 1.0), "below the onset"
+    bio.conception_density_onset = local - 0.1
+    f = sim._conception_density_factor(females)
+    assert np.allclose(f, 0.5), f[:3]
+    bio.conception_density_onset = local - 0.3
+    assert np.all(sim._conception_density_factor(females) == 0.0), "beyond onset + width"
+    # in the breeding pass: fully suppressed cell conceives nothing; width 0 is off
+    before = sim._conceptions
+    for day in range(1, 11):
+        sim.tick = day * sim.cfg.ticks_per_day
+        sim.day = float(day)
+        sim._daily_breeding_pass(a.alive)
+    assert sim._conceptions == before, "no conceptions in a fully suppressed cell"
+    bio.conception_density_width = 0.0
+    for day in range(11, 21):
+        sim.tick = day * sim.cfg.ticks_per_day
+        sim.day = float(day)
+        sim._daily_breeding_pass(a.alive)
+    assert sim._conceptions > before + 5, "width 0 = off"
+
+
 def test_nursing_disturbance_is_graded_in_cell_density() -> None:
     """A mother in a crowded cell nurses less with nurse_disturb_coef > 0; off at 0."""
     sim = _make_sim(days=1.0, out="test_bio_disturb")
@@ -469,5 +520,6 @@ if __name__ == "__main__":
     test_breakdown_pressure_ramp_is_graded_and_step_at_zero_width()
     test_fertility_floor_scales_conception_with_maternal_cap()
     test_nursing_disturbance_is_graded_in_cell_density()
+    test_conception_density_suppression_is_graded_per_cell()
     test_warp_density_stress_parity()
     print("test_biology_guards: OK")
