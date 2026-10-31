@@ -24,6 +24,10 @@
   `courtship_erosion_*`) ends conceptions at 930 (held-out 885–1059) vs ≈920; the
   conception landmark is rate-based like surviving births. Canonical error 0.100. Remaining:
   peak 2482 vs 2200, steep late collapse.
+- Status note 2026-10-31 (phase 2h): the social-breakdown stress boost ramps with
+  weaned density (`breakdown_density_ramp`) instead of switching on; recalibrated — peak
+  2115 @ 503 (held-out 2127–2328), N@736 1845, canonical error 0.077
+  (0.10–0.13 held-out). Remaining: peak day ≈85 d early, N@736 9 % low, steep late collapse.
 - Work package: WP-G12-adjacent / Track E toy world (Universe 25 + playground); not L3 ecology
 - Track: **E** (emergent, exploratory)
 - Owner: Jason

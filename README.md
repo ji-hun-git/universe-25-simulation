@@ -53,10 +53,10 @@ plus a developmental `competence` trait that young lose under crowding and keep 
 irreversible post-weaning loss of maternal capacity under sustained stress (Calhoun's phase C/D
 mothers that attacked and expelled their young while conceptions went on) and its male
 counterpart, a loss of courtship capacity that ends conceptions (phase D). A social-breakdown
-stress boost switches on above a weaned-population density (the behavioural sink), nursing is a
-relaxation toward satiety per nest box, and starvation is lethal within days. Conception is a
-once-per-day process and agents hold each decision for 1/6 day, so results do not depend on the
-tick resolution. No parameter names a collapse day.
+stress boost builds up with the weaned-population density (a ramp up to a threshold: the
+behavioural sink), nursing is a relaxation toward satiety per nest box, and starvation is lethal
+within days. Conception is a once-per-day process and agents hold each decision for 1/6 day, so
+results do not depend on the tick resolution. No parameter names a collapse day.
 `calibration.json` reports honest error; see `NOTES.md` for the current fit and its misses.
 
 Calibration (CMA-ES) runs from the repo-local `.venv` (has optuna; the shared lab venv does not):

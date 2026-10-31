@@ -86,7 +86,7 @@ If a PR / commit introduces a play reward, reject it.
 
 ---
 
-## 4. Current status (as of phase 2g, 2026-10-31)
+## 4. Current status (as of phase 2h, 2026-10-31)
 
 ### Phase 1 — done
 
@@ -293,6 +293,41 @@ Phases: decline (622) → collapse (1312). **Resolution:** 24 ticks/day gives pe
 Diagnoses, tables and open gaps (peak 12–18 % high, steep late collapse, low uncrowded pup
 survival, early-phase seed spread) in `NOTES.md` → "Phase 2g" / "Phase 2f" / "Phase 2e".
 
+### Phase 2h — graded social-breakdown pressure (2026-10-31)
+
+- `breakdown_density_ramp`: the social-breakdown stress boost ramps linearly over this weaned-
+  density width up to `breakdown_density_threshold` instead of switching on there (width 0 =
+  the 2e–2g step, bit-identical). Calhoun phase C: infant mortality rose gradually from Day 315;
+  the model tripled between days 300 and 420 with a flat weaned fraction and then stopped in one
+  window when the switch tripped. NumPy + Warp kernel (parity 1.9e-9).
+- Diagnosis in NOTES: the raw peak is a 3–4 % spike on the plateau (pulsed litters, doomed pups in
+  the pipeline; `peak_n_31d_mean` now reported, not fitted); adults decline at Calhoun's rate after
+  the peak; with a lower plateau the conception suppression bites less, so births to eroded mothers
+  keep N@736 at ≈0.87 of the peak (Calhoun 0.93).
+- Recalibrated from the 2g optimum + ramp 0.45 (168-trial CMA-ES, popsize 14, `--sigma0 0.1`,
+  40 min: no trial beat the start point, next best 0.165 — the single-seed objective is
+  noise-limited; a multi-seed objective is the next method step). 12 seeds, 800 d: peak
+  2221 ± 21 at 6 ticks/day vs 2266 ± 16 at 24 (Calhoun 2200), N@736 1869 ± 11 vs 1912 ± 11,
+  peak day 475 ± 8.
+
+**Calibrated run (seed 7000, `configs/default.yaml`, 6 ticks/day, 1600 d):**
+
+| Landmark | Calhoun | Phase 2f | Phase 2g | **Phase 2h** | held-out 8000–8002 |
+|----------|--------:|---------:|---------:|-------------:|---:|
+| First litters | 104 | 102 | 102 | **102** | 102–105 |
+| N @ 315 | 620 | 531 | 531 | **531** | 286–564 |
+| Peak N | 2200 | 2502 | 2482 | **2115** | 2127–2328 |
+| Peak day (first ≥97 %) | 560 | 502 | 493 | **503** | 421–565 |
+| Surviving births cease | 600 | 533 | 547 | **551** | 488–615 |
+| N @ 736 | 2056 | 2181 | 2173 | **1845** | 1838–1916 |
+| Adults @ 315 | 150 | 163 | 163 | **163** | 88–217 |
+| Conception cessation | ≈920 | 1003 | 930 | **932** | 812–1011 |
+| N @ 1200 / 1400 / 1600 | 2056@736, 122@1444, 27@1588 | 1756 / 370 / 1 | 1779 / 391 / 6 | **1426 / 273 / 0** | 1422–1524 @1200 |
+| mean rel. error (5) | | 0.103 | 0.100 | **0.077** | 0.10–0.13 |
+
+Phases: decline (671) → collapse (1291). **Resolution:** 24 ticks/day gives peak 2389 / 482, cessation 510, N@736 1948, conception cessation 805, collapse onset 1284; 12 seeds N@400 1316 ± 112 vs 1399 ± 109 (+6%).
+Diagnoses, tables and open gaps in `NOTES.md` → "Phase 2h" (and 2g / 2f / 2e).
+
 ---
 
 ## 5. Architecture map
@@ -425,8 +460,8 @@ Seeds: build/training `7000–7009`; unit tests `7100`; eval worlds later `8000�
 
 ### Phase 2 — Calibrate + GPU (calibration DONE 2026-10-30; GPU parity partial)
 **Accept when:**
-- [x] Mean relative landmark error **≪ 1.0** → **0.100** at seed 7000, 0.11–0.17 held-out (phase 2g: first litters 102, peak 2482 @ 493, surviving births cease 547, N@736 2173, conceptions cease 930; 2b was 0.14)
-- [x] Collapse phase appears under abundant arm → decline from 622, N(1200) = 72 % of peak, 391 at 1400, 6 left at 1600 (Calhoun 122 at ~1444, 27 at 1588); surviving births cease at 547, conceptions at 930 (2e–2g); documented misses: peak 13 % high, late collapse steep — see NOTES
+- [x] Mean relative landmark error **≪ 1.0** → **0.077** at seed 7000, 0.10–0.13 held-out (phase 2h: first litters 102, peak 2115 @ 503, surviving births cease 551, N@736 1845, conceptions cease 932; 2b was 0.14)
+- [x] Collapse phase appears under abundant arm → decline from 671, N(1200) = 67 % of peak, 273 at 1400, 0 left at 1600 (Calhoun 122 at ~1444, 27 at 1588); surviving births cease at 551, conceptions at 932 (2e–2h); documented misses: peak day ≈85 d early, N@736 9 % low, late collapse steep — see NOTES
 - [~] Warp tick path correct vs NumPy reference: density-stress + imprinting kernel parity test added (3e-8); mortality (hazard-level) and cells parity still open; CUDA Graph speedup documented in NSIGHT
 - [x] No NaNs (0 across calibration, held-out and 1600-d runs); `docs/NSIGHT.md` benches unchanged (no kernel perf work this round)
 
@@ -437,10 +472,14 @@ density breakdown switch, relaxation nursing, lethal starvation, held decisions.
 landmark error 0.103 at seed 7000, 0.11–0.17 held-out; surviving births cease 467–654 while
 conceptions continue; 6 vs 24 ticks/day agree within 5 %). Phase 2g (done): male courtship
 breakdown ends conceptions at 930 (held-out 885–1059; Calhoun ≈920), rate-based
-conception landmark. Remaining candidates (priority order): bring the peak down (2482 vs 2200)
-without losing N@736 (density-dependent infant survival before the switch); a lifespan
-distribution (late collapse too steep); vectorize `_passive_nurse` / per-agent loops
-(`docs/TASKS.md` P1-3); Warp mortality-kernel parity at hazard level.
+conception landmark. Phase 2h (done): graded breakdown pressure (ramp in weaned density
+instead of a step) brings the peak to 2115 @ 503 (held-out 2127–2328) with
+N@736 1845 (held-out 1838–1916); canonical error 0.077. Remaining candidates
+(priority order): a later, slower phase C (peak day 475 ± 8 across 12 seeds vs 560: a brake on
+growth that does not erode capacity) and the doomed-pup stock at the peak (N@736 9 % low: a
+conception term that declines with the female's own breakdown state); a multi-seed calibration
+objective; a lifespan distribution (late collapse too steep); vectorize
+`_passive_nurse` / per-agent loops (`docs/TASKS.md` P1-3); Warp mortality-kernel parity at hazard level.
 
 ### Phase 3 — Visuals + dashboard
 **Accept when:**

@@ -12,11 +12,12 @@ Legend: **P0** blocking · **P1** high · **P2** medium · **P3** polish
 > **Status 2026-10-30:** pup-mill bug fixed, developmental-imprinting collapse
 > mechanism added (2b), daily-only conception + nest-box nursing + litter abandonment (2d),
 > post-weaning maternal breakdown + weaned-density breakdown switch + relaxation nursing + lethal
-> starvation (2e), exact stress relaxation (2f), male courtship breakdown (2g): canonical mean
-> rel. error **0.100** (seed 7000; 0.11–0.17 held-out), surviving births cease at 467–666 and
-> conceptions at 885–1059 across four seeds (Calhoun 600 / ≈920), peak 2453–2608, N@736 2158–2285.
-> See `NOTES.md` "Phase 2g" and earlier. Still off: peak 12–18 % high and ≈60 d early; adults@315
-> and N@315 vary ±40 % by seed; late collapse steep.
+> starvation (2e), exact stress relaxation (2f), male courtship breakdown (2g), graded breakdown
+> pressure (2h): canonical mean rel. error **0.077** (seed 7000; 0.10–0.13 held-out),
+> surviving births cease at 488–615 and conceptions at 812–1011 across four seeds
+> (Calhoun 600 / ≈920), peak 2115–2328 @ 421–565, N@736 1838–1916.
+> See `NOTES.md` "Phase 2h" and earlier. Still off: peak day ≈85 d early (475 ± 8 over 12 seeds) and
+> surviving births ≈60 d early; N@736 9 % low; adults@315 and N@315 vary ±40 % by seed; late collapse steep.
 
 **Goal:** Reduce mean relative landmark error from ~1.08; get first litters nearer day 104, N@315 nearer 620, peak nearer day 560, and either a collapse or an honest negative with mechanism notes.
 
