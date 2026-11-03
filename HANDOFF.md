@@ -86,7 +86,7 @@ If a PR / commit introduces a play reward, reject it.
 
 ---
 
-## 4. Current status (as of phase 2k, 2026-10-31)
+## 4. Current status (as of phase 2l, 2026-11-03)
 
 ### Phase 1 — done
 
@@ -416,6 +416,42 @@ Diagnoses, scan tables and open gaps in `NOTES.md` → "Phase 2i" (and 2h / 2g /
 Phases: decline (662) → collapse (1300). **Resolution:** 24 ticks/day gives peak 2274 / 501, cessation 581, N@736 1922, conception cessation 905; 12 seeds, 800 d: peak 2269 ± 11 (6 tpd) vs 2281 ± 8 (24 tpd), peak day 555 ± 12 vs 546 ± 12, N@736 1990 ± 15 vs 1992 ± 13, cessation 602 ± 12 vs 604 ± 11.
 Cell-density table, scan, landmark note and open gaps in `NOTES.md` → "Phase 2k".
 
+### Phase 2l — per-individual lifespan, late collapse (2026-11-03)
+
+- `max_age_sd_days`: each animal draws its lifespan at birth (normal around `max_age_days`,
+  floor 0.3 × mean; SoA `lifespan`, NumPy + Warp `mortality_kernel`); the old-age hazard applies
+  past the individual's lifespan. sd 0 = the old single cutoff, bit-identical. Calibrated by a
+  1600-d scan on Calhoun's N@1444 = 122 and N@1588 = 27: **850 ± 100** (was 938 for all).
+- Late landmarks `n_at_day_1444` / `n_at_day_1588` reported (NaN below that horizon, so 1200-d
+  studies skip them; 12-seed spread 1.33 of the target → weight ≈ 0). The inferred decline band
+  now applies to N at day 1200, not to the run's final N (a 1600-d run ending near extinction, as
+  Calhoun's did, was penalised as collapsed too far). `tests/test_calib_loss.py`.
+- **Rebound hazard found**: with shorter lifespans (780 ± 170, 800 ± 150) the old cohorts die
+  while fertile, competent females from the sparse cells remain; density falls, nursing recovers
+  and surviving births resume in 1–3 of 12 seeds (seed 7007: 1434 animals at day 1588). Calhoun's
+  colony never recovered. 850 ± 100 shows no rebound in 12 seeds; the reversibility is an open
+  model gap (NOTES "Phase 2l").
+
+**Calibrated run (seed 7000, `configs/default.yaml`, 6 ticks/day, 1600 d):**
+
+| Landmark | Calhoun | Phase 2i/2k | **Phase 2l** | held-out 8000–8002 (1600 d) | 12 seeds, 1600 d |
+|----------|--------:|---------:|-------------:|---:|---:|
+| First litters | 104 | 102 | **102** | 102–103 | 102 ± 0 |
+| N @ 315 | 620 | 528 | **502** | 405–643 | 409 ± 45 |
+| Peak N | 2200 | 2234 | **2261** | 2255–2286 | 2294 ± 15 |
+| Peak day (31-d mean max) | 560 | 550 | **525** | 522–542 | 547 ± 17 |
+| Surviving births cease | 600 | 583 | **574** | 567–587 | 600 ± 20 |
+| N @ 736 | 2056 | 1949 | **1962** | 1946–1972 | 1999 ± 16 |
+| Conception cessation | ≈920 | 915 | **892** | 893–924 | 929 ± 26 |
+| N @ 1200 | (0.35–0.85 × peak) | 1515 | **1127** | 1043–1144 | 1212 ± 46 |
+| N @ 1444 | 122 | 223 | **120** | 113–140 | 193 ± 47 (median 131) |
+| N @ 1588 | 27 | 0 (extinct 1578) | **7** | 4–9 | 24 ± 10 (median 8) |
+| mean rel. error (canonical 5) | | 0.046 | **0.069** | 0.04–0.10 | |
+
+Phases: decline (638) → collapse (1198). **Resolution:** 24 ticks/day gives peak 2293 / 561, cessation 594, N@736 1981, N@1444 189, N@1588 15; 12 seeds, 800 d: peak 2294 ± 15 (6 tpd) vs 2275 ± 8 (24 tpd), peak day 547 ± 17 vs 566 ± 14, N@736 1999 ± 16 vs 2018 ± 15.
+The seed-7000 realisation differs from 2i/2k before any old-age death (the lifespan draws at birth shift the RNG stream): peak day 525 vs 550, N@315 502 vs 528; the 12-seed means hold (peak day 547 ± 17, N@736 1999 ± 16).
+Scan, rebound table and open gaps in `NOTES.md` → "Phase 2l".
+
 ---
 
 ## 5. Architecture map
@@ -554,8 +590,8 @@ Seeds: build/training `7000–7009`; unit tests `7100`; eval worlds later `8000�
 
 ### Phase 2 — Calibrate + GPU (calibration DONE 2026-10-30; GPU parity partial)
 **Accept when:**
-- [x] Mean relative landmark error **≪ 1.0** → **0.046** at seed 7000, 0.07–0.19 held-out (phase 2k: first litters 102, peak 2234 @ 550, surviving births cease 583, N@736 1949, conceptions cease 915; 2b was 0.14)
-- [x] Collapse phase appears under abundant arm → decline from 662, N(1200) = 68 % of peak, 480 at 1400, 0 left at 1600 (Calhoun 122 at ~1444, 27 at 1588); surviving births cease at 583, conceptions at 915 (2e–2k); documented misses: early phase 23 % low, N@736 3 % low, late collapse steep — see NOTES
+- [x] Mean relative landmark error **≪ 1.0** → **0.069** at seed 7000, 0.04–0.10 held-out (phase 2l: first litters 102, peak 2261 @ 525, surviving births cease 574, N@736 1962, conceptions cease 892, N@1444 120; 2b was 0.14)
+- [x] Collapse phase appears under abundant arm → decline from 638, N(1200) = 50 % of peak, 218 at 1400, 120 at 1444, 7 at 1588 (Calhoun 122 at ~1444, 27 at 1588); surviving births cease at 574, conceptions at 892 (2e–2l); documented misses: early phase 23–34 % low, N@736 3 % low, late tail thin at the median (N@1588 8 vs 27), breakdown reversible when density falls — see NOTES
 - [~] Warp tick path correct vs NumPy reference: density-stress + imprinting kernel parity test added (3e-8); mortality (hazard-level) and cells parity still open; CUDA Graph speedup documented in NSIGHT
 - [x] No NaNs (0 across calibration, held-out and 1600-d runs); `docs/NSIGHT.md` benches unchanged (no kernel perf work this round)
 
@@ -578,10 +614,12 @@ trade-offs, not N@315 fits). Phase 2k (done): conception brake in crowded cells 
 `peak_day` = day of the 31-day running-mean maximum (the 97 %-day marked the plateau start; 12
 seeds 555 ± 12 vs Calhoun 560), multi-seed CMA-ES rerun — peak 2234 @ 550, surviving
 births cease 583, N@736 1949 (12 seeds 1990 ± 15), conceptions cease 915; canonical
-error 0.046 (held-out 0.07–0.19). Remaining candidates (priority order): the early phase (N@315 475 ± 49 over 12 seeds vs 620: a phase-B mechanism or more
-founders; fitting it needs more training seeds than three) and the doomed-pup stock in the peak
-count (N@736 3 % low); a lifespan
-distribution (late collapse too steep); vectorize
+error 0.046 (held-out 0.07–0.19). Phase 2l (done): per-individual lifespan 850 ± 100 d — N@1444 120, N@1588 7 at seed 7000
+(Calhoun 122 / 27; 12 seeds 193 ± 47 (median 131) / 24 ± 10 (median 8)); shorter lifespans let the colony
+rebound in 1–3 of 12 seeds (the breakdown is reversible when density falls — open gap).
+Remaining candidates (priority order): the reversibility of the breakdown (colony-wide imprinting / erosion so late cohorts
+never acquire reproductive behaviour — Calhoun's "death of the spirit"), the early phase (N@315
+409 ± 45 over 12 seeds vs 620) and the doomed-pup stock in the peak count (N@736 3 % low); vectorize
 `_passive_nurse` / per-agent loops (`docs/TASKS.md` P1-3); Warp mortality-kernel parity at hazard level.
 
 ### Phase 3 — Visuals + dashboard

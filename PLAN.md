@@ -44,6 +44,12 @@
   12 seeds 555 ± 12 vs Calhoun 560; multi-seed CMA-ES rerun — peak 2234 @ 550, surviving births
   cease 583, N@736 1949, canonical error 0.046 (0.07–0.19 held-out). Remaining: early phase low (N@315 475 ± 49 vs 620), N@736 3 % low, steep
   late collapse.
+- Status note 2026-11-03 (phase 2l): per-individual lifespan (`max_age_sd_days`;
+  850 ± 100 d) replaces the single old-age cutoff — N@1444 120, N@1588 7 at seed 7000, 12 seeds
+  193 ± 47 (median 131) / 24 ± 10 (median 8) (Calhoun 122 / 27), no extinction before 1600. Shorter lifespans
+  let the colony rebound in 1–3 of 12 seeds: the breakdown is reversible when density falls (Calhoun's
+  was not) — open gap. Remaining: early phase low, N@736 3 % low, late tail thin at
+  the median, reversibility of the breakdown.
 - Work package: WP-G12-adjacent / Track E toy world (Universe 25 + playground); not L3 ecology
 - Track: **E** (emergent, exploratory)
 - Owner: Jason

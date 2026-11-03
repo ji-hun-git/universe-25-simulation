@@ -41,7 +41,7 @@ python scripts\calibrate.py --metrics _output\smoke\metrics.parquet --out _outpu
 | N at day 315 | ~620 | |
 | Peak | ~2200 at ~day 560 | `peak_day` = day of the 31-day running-mean maximum of N (the census maximum, plateau-robust; the first day at ≥ 97 % of max marks the start of the plateau and is reported as `peak_day_97pct`) |
 | Last surviving young | ~day 600 | cessation of surviving births: last birth day on which the 30-day rate of births that reach weaning is still ≥ 5 % of its maximum (the strict latest-weaned-pup day is also reported; it is set by single lucky survivors) |
-| Decline | thereafter | slow: N = 2056 at day 736, 122 at day ~1444 |
+| Decline | thereafter | slow: N = 2056 at day 736, 122 at day ~1444, 27 at day 1588 (N@1444 and N@1588 reported from 1600-day runs; old-age deaths follow a per-individual lifespan, 850 ± 100 d) |
 
 Also reported (not in the canonical mean error): N@736 = 2056, 150 adults (+470 immatures) at
 day 315, last conception ≈ day 920 (measured as the rate-based cessation of conceptions, like

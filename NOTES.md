@@ -1,5 +1,160 @@
 # Universe25 Play — NOTES
 
+## Phase 2l — per-individual lifespan, late collapse, rebound hazard (2026-11-03)
+
+Motivation: with one old-age cutoff (`max_age_days` 938, hazard +0.05 / day past it) the cohorts
+born 400–600 died together: 1515 at 1200, 480 at 1400, extinct at 1578 (Calhoun: 2056 at 736,
+122 at ≈1444, 27 at 1588).
+
+### Change (NumPy + Warp `mortality_kernel`)
+
+`max_age_sd_days`: every animal draws its lifespan at birth from a normal around `max_age_days`
+with this sd (floor 0.3 × mean; SoA `lifespan`, a new kernel buffer); the old-age hazard applies
+past the individual's lifespan. sd 0 = the old cutoff, bit-identical (hash `a264ccf2…`, 600 d).
+Two late landmarks are now reported: `n_at_day_1444` (122) and `n_at_day_1588` (27), NaN for
+runs shorter than that, so 1200-d calibration studies skip them; their 12-seed spread (1.33 of
+the target) gives them ≈0 weight in the loss.
+
+### Scan (seed 7000, 1600 d, 6 ticks/day; Calhoun 2056 / 122 / 27 at 736 / 1444 / 1588)
+
+| mean / sd | N@736 | N@1200 | N@1300 | N@1444 | N@1588 | extinct |
+|---|---:|---:|---:|---:|---:|---:|
+| 938 / 0 (2i–2k) | 1949 | 1515 | 1113 | 223 | 0 | 1578 |
+| 938 / 100 | 1966 | 1426 | 1034 | 343 | 46 | — |
+| 938 / 150 | 1942 | 1328 | 979 | 450 | 136 | — |
+| 900 / 200 | 1961 | 1159 | 854 | 417 | 164 | — |
+| 870 / 150 | 1952 | 1116 | 746 | 254 | 59 | — |
+| **850 / 100** | 1962 | 1127 | 623 | **120** | 7 | — |
+| 850 / 130 | 1967 | 1073 | 666 | 183 | 24 | — |
+| 850 / 150 | 1947 | 1046 | 657 | 215 | 44 | — |
+| 830 / 150 | 1944 | 960 | 568 | 179 | 32 | — |
+| 820 / 130 | 1939 | 952 | 510 | 124 | 11 | — |
+| 820 / 150 | 1948 | 916 | 538 | 174 | 32 | — |
+| 810 / 170 | 1941 | 918 | 547 | 192 | 49 | — |
+| 800 / 100 | 1966 | 881 | 381 | 59 | 1 | — |
+| 800 / 130 | 1974 | 892 | 440 | 102 | 7 | — |
+| 800 / 150 | 1975 | 884 | 464 | 149 | 21 | — |
+| 800 / 170 | 1976 | 888 | 534 | 190 | 38 | — |
+| 790 / 180 | 1931 | 832 | 489 | 164 | 35 | — |
+| 780 / 150 | 1984 | 801 | 407 | 90 | 13 | — |
+| 780 / 170 | 1947 | 832 | 471 | 144 | 24 | — |
+| 760 / 120 | 1948 | 706 | 287 | 53 | 2 | — |
+
+The plateau landmarks are untouched (peak 2239–2269, N@736 1931–1984; the first old-age deaths
+are the founders'). At the training seed several pairs fit both late numbers — 780 / 170
+(144 / 24), 800 / 150 (149 / 21), 850 / 100 (120 / 7) — and the held-out seeds agree
+(780 / 170: 160 / 42, 125 / 18, 146 / 22; 800 / 150: 136 / 24, 143 / 19, 136 / 16;
+850 / 100: 140 / 9, 113 / 7, 117 / 4).
+
+### The rebound hazard (12 seeds 7000–7011, 1600 d)
+
+| mean / sd | surviving births cease | conception cessation | N@1444 mean ± se (median) | N@1588 mean ± se (median) | seeds with a late rebound |
+|---|---:|---:|---:|---:|---|
+| 780 / 170 | 689 ± 83 | 1003 ± 60 | 242 ± 53 (170) | 159 ± 116 (29) | 7007 full (1434 at 1588), 7003 / 7009 partial |
+| 800 / 150 | 680 ± 83 | 964 ± 63 | 219 ± 45 (157) | 93 ± 58 (25) | 7003 full (725), 7009 partial |
+| **850 / 100** | **600 ± 20** | 929 ± 26 | 193 ± 47 (131) | 24 ± 10 (8) | none (7003 / 7009 slow: 411 / 623 at 1444) |
+
+With a shorter mean lifespan the old cohorts die while fertile, competent females remain (the
+sparse cells' late cohorts: no imprinting below local density 0.145, no erosion below stress
+0.51, fertile to 583 days of age), density falls, nursing recovers and surviving births resume —
+in seed 7007 at 780 / 170 the population is back at 1434 by day 1588. Calhoun's colony never
+recovered ("death of the spirit": the survivors could not reproduce even when given space). The
+hard cutoff at 938 had hidden this: deaths came only after the last fertile females (born ≤ 600)
+had aged out at ≈1180. **850 / 100 is the phase-2l calibration**: no rebound in 12 seeds, N@1588
+24 ± 10 (Calhoun 27) and N@1444 193 ± 47 with the median at 131 (122) — two slow realisations
+(late peak 644 / 681, late last fertile cohort) carry 411 / 623 at 1444. `max_age_days` is a
+searched parameter (938 from the 2f study); it is set by hand here and the 1200-d studies cannot
+see the late tail, so it should stay fixed in future studies unless they run to 1600 d.
+
+### Validation
+
+1600 d, seed 7000, 6 ticks/day (`_output/run1600_p2l_tpd6`, 90 s, 0 NaN; phases decline
+638 → collapse 1198) and 24 ticks/day (`_output/run1600_p2l_tpd24`, 181 s):
+
+| | 6 tpd | 24 tpd |
+|---|---:|---:|
+| First litters | 102 | 105 |
+| N @ 315 | 502 | 307 |
+| Peak N / day (31-d mean max; first-97 % day) | 2261 / 525 (485) | 2293 / 561 (513) |
+| Surviving births cease (strict latest pup) | 574 (580) | 594 (619) |
+| N @ 736 | 1962 | 1981 |
+| Conception cessation | 892 | 901 |
+| N @ 1444 / 1588 (Calhoun 122 / 27) | 120 / 7 | 189 / 15 |
+| Decline onset / collapse onset | 638 / 1198 | 672 / 1231 |
+| N @ 1200 / 1400 / 1600 | 1127 / 218 / 3 | 1272 / 333 / 13 |
+| births / conceptions | 14,725 / 2,232 | 15,472 / 2,332 |
+| mean rel. error (canonical 5 / extended 10) | 0.069 / 0.149 | 0.114 / 0.183 |
+
+The seed-7000 realisation differs from 2i/2k before any old-age death (the lifespan draws at birth shift the RNG stream): peak day 525 vs 550, N@315 502 vs 528; the 12-seed means hold (peak day 547 ± 17, N@736 1999 ± 16).
+
+| day | N | adults | withdrawn | mean adult competence | births in prior 100 d |
+|---:|---:|---:|---:|---:|---:|
+| 200 | 93 | 30 | 0 | 0.96 | 166 |
+| 300 | 370 | 142 | 72 | 0.47 | 593 |
+| 400 | 1401 | 616 | 340 | 0.37 | 2218 |
+| 500 | 2209 | 1531 | 1107 | 0.24 | 4203 |
+| 600 | 2105 | 2001 | 1597 | 0.20 | 3341 |
+| 700 | 2013 | 1956 | 1564 | 0.20 | 2330 |
+| 800 | 1915 | 1874 | 1500 | 0.20 | 1238 |
+| 900 | 1794 | 1794 | 1441 | 0.20 | 535 |
+| 1000 | 1721 | 1718 | 1385 | 0.19 | 101 |
+| 1100 | 1491 | 1491 | 1250 | 0.17 | 0 |
+| 1200 | 1127 | 1127 | 978 | 0.15 | 0 |
+| 1300 | 623 | 623 | 559 | 0.13 | 0 |
+| 1400 | 218 | 218 | 207 | 0.10 | 0 |
+| 1500 | 53 | 53 | 52 | 0.11 | 0 |
+| 1600 | 3 | 3 | 3 | 0.07 | 0 |
+
+Twelve seeds (7000–7011), 400 d, mean ± se (unchanged from 2i: no old-age death before day 400):
+
+| | 6 tpd | 24 tpd |
+|---|---:|---:|
+| N @ 315 | 475 ± 49 | 466 ± 42 |
+| N @ 400 | 1176 ± 89 | 1193 ± 81 |
+
+Twelve seeds, 800 d, mean ± se (`_output/multiseed_peak_p2l.txt`):
+
+| | 6 tpd | 24 tpd | paired 24 − 6 |
+|---|---:|---:|---:|
+| Peak N (daily max) | 2294 ± 15 | 2275 ± 8 | -19 ± 16 |
+| Peak day (31-d mean max) | 547 ± 17 | 566 ± 14 | +20 ± 20 |
+| Surviving births cease | 600 ± 20 | 615 ± 16 | +14 ± 23 |
+| N @ 736 | 1999 ± 16 | 2018 ± 15 | +19 ± 20 |
+
+Twelve seeds, 1600 d, 6 ticks/day, mean ± se (`scripts/seed_eval.py - p2l_final 12 12 7000 1600`;
+`_output/seed_eval_p2l_final.json`):
+
+| landmark | Calhoun | 12 seeds |
+|---|---:|---:|
+| N @ 315 | 620 | 409 ± 45 |
+| Peak N / day | 2200 / 560 | 2294 ± 15 / 547 ± 17 |
+| Surviving births cease | 600 | 600 ± 20 |
+| N @ 736 | 2056 | 1999 ± 16 |
+| Conception cessation | ≈920 | 929 ± 26 |
+| N @ 1200 | (0.35–0.85 × peak) | 1212 ± 46 |
+| N @ 1444 | 122 | 193 ± 47 (median 131) |
+| N @ 1588 | 27 | 24 ± 10 (median 8) |
+| N @ 1600 | | 18 ± 8 (median 7) |
+
+Loss of the mean landmarks 0.080 (mean per-seed); canonical error of the means
+0.085. Held-out seeds 8000–8002 at 1600 d: N@1444 113–140, N@1588
+4–9, canonical error 0.04–0.10.
+
+**Honest misses / open gaps**
+- *The breakdown is reversible when density falls* (above): a fidelity gap the lifespan spread
+  exposes. Calhoun's late-born mice never acquired reproductive behaviour in any cell; here the
+  sparse cells' cohorts keep competence and capacity. Candidate: imprinting / erosion driven by
+  the colony-wide social state (the arena-wide weaned density that already drives the breakdown
+  ramp) rather than the local cell alone, so the "death of the spirit" is colony-wide.
+- *Late tail at the median thin*: N@1588 median 8 vs 27 (mean 24 from the two slow seeds);
+  N@1444 median 131 vs 122. Slow realisations (late peak) dominate the late means.
+- *Early phase low and seed-dominated* (unchanged): N@315 409 ± 45 over 12 seeds at this horizon
+  (475 ± 49 at 1200 d in 2k; realisation differences from the lifespan draws), adults@315 143 ± 18.
+- *N@736 3 % low, raw peak 3 % high* (unchanged).
+- *Late landmarks are reported, not fitted*: spread 1.33 of the target → weight ≈ 0.02 of 12.
+- *Warp*: `mortality_kernel` takes the per-agent lifespan (smoke-tested; no hazard-level parity
+  test yet).
+
 ## Phase 2k — conception brake in crowded cells (neutral), peak-day landmark, recalibration (2026-10-31)
 
 Motivation: after 2i/2j the peak day (first day at ≥97 % of the maximum) was ≈35 days early
