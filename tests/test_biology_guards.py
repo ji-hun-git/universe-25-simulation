@@ -442,6 +442,46 @@ def test_conception_density_suppression_is_graded_per_cell() -> None:
     assert sim._conceptions > before + 5, "width 0 = off"
 
 
+def test_lifespan_is_per_individual_and_fixed_at_sd_zero() -> None:
+    """max_age_sd_days 0: every animal's lifespan is max_age_days (bit-identical path);
+    sd > 0: a normal spread around it with a floor, drawn at birth, used by the old-age hazard."""
+    sim = _make_sim(days=1.0, out="test_bio_lifespan")
+    a = sim.agents
+    bio = sim.cfg.biology
+    bio.max_age_sd_days = 0.0
+    slots = a.free_slots(50)
+    for s in slots:
+        sim._spawn(int(s), sex=0, age=10.0, x=5.0, y=5.0, nest_id=0, cell_id=0, role=0)
+    assert np.all(a.lifespan[slots] == np.float32(bio.max_age_days))
+    bio.max_age_sd_days = 100.0
+    slots = a.free_slots(400)
+    for s in slots:
+        sim._spawn(int(s), sex=0, age=10.0, x=5.0, y=5.0, nest_id=0, cell_id=0, role=0)
+    ls = a.lifespan[slots].astype(np.float64)
+    assert abs(ls.mean() - bio.max_age_days) < 20.0, ls.mean()
+    assert 70.0 < ls.std() < 130.0, ls.std()
+    assert ls.min() >= 0.3 * bio.max_age_days
+    # the old-age hazard follows the individual lifespan, not the global cutoff
+    i, j = int(slots[0]), int(slots[1])
+    a.lifespan[i] = 500.0
+    a.lifespan[j] = 1500.0
+    a.age_days[[i, j]] = 600.0
+    a.stress[[i, j]] = 0.0
+    a.hunger[[i, j]] = 0.2
+    a.thirst[[i, j]] = 0.2
+    a.energy[[i, j]] = 0.9
+    a.wounds[[i, j]] = 0.0
+    deaths_i = deaths_j = 0
+    for _ in range(2000):  # hazard 0.05 / day past the lifespan: p ~ 0.008 per tick at 6 tpd
+        a.alive[[i, j]] = True
+        a.age_days[[i, j]] = 600.0
+        sim._age_and_die(a.alive)
+        deaths_i += int(not a.alive[i])
+        deaths_j += int(not a.alive[j])
+    assert deaths_i >= 8, deaths_i
+    assert deaths_j <= 1, deaths_j
+
+
 def test_nursing_disturbance_is_graded_in_cell_density() -> None:
     """A mother in a crowded cell nurses less with nurse_disturb_coef > 0; off at 0."""
     sim = _make_sim(days=1.0, out="test_bio_disturb")
@@ -520,6 +560,7 @@ if __name__ == "__main__":
     test_breakdown_pressure_ramp_is_graded_and_step_at_zero_width()
     test_fertility_floor_scales_conception_with_maternal_cap()
     test_nursing_disturbance_is_graded_in_cell_density()
+    test_lifespan_is_per_individual_and_fixed_at_sd_zero()
     test_conception_density_suppression_is_graded_per_cell()
     test_warp_density_stress_parity()
     print("test_biology_guards: OK")

@@ -1,12 +1,10 @@
-# Calhoun-landmark calibration, phase 2i (2026-10-31). Phase-2g optimum + breakdown ramp 0.2 (was 0.45 in 2h) +
-# density-graded nursing disturbance (nurse_disturb_coef 4, onset 0.2: a reversible brake on phase-C growth) +
-# courtship erosion 0.04, chosen by 1-D scans. A 112-trial multi-seed CMA-ES study (train seeds 7000/7001/7002,
-# sigma0 0.1) reached a lower mean loss (0.243 vs 0.341) only by fitting the training seeds' early phase
-# (N@315) at the cost of the peak (+13 %) and the conception cessation (+16 %), held-out mean loss 0.96 vs 0.45;
-# this point was kept. Seed 7000, 1200 d, 6 ticks/day: loss 0.066 (canonical mean rel. error 0.057); held-out
-# 8000/8001/8002 canonical 0.10/0.08/0.17. 12 seeds, 800 d: peak 2269 +- 11 @ 524 +- 9, N@736 1991 +- 15,
-# surviving births cease 602 +- 12. See NOTES.md 'Phase 2i' and configs/calibration_study_p2i.json.
-# Fragment: merge over configs/default.yaml (same values are in it).
+# Calhoun-landmark calibration, phase 2l (2026-11-03). Phase-2i optimum (breakdown ramp 0.2, nursing disturbance
+# 4 / 0.2, courtship erosion 0.04; kept through the 2j/2k multi-seed studies) + per-individual lifespan: normal
+# around max_age_days 850 with sd 100 (was one cutoff at 938), chosen by a 1600-d scan on Calhoun's N@1444 = 122 and
+# N@1588 = 27 and a 12-seed check for late rebounds (shorter lifespans, e.g. 780 +- 170 or 800 +- 150, let
+# surviving births resume in 1-3 of 12 seeds once density falls while fertile competent females remain).
+# 12 seeds, 1600 d: N@1444 median 131 (mean 193 +- 47), N@1588 median 8 (mean 24 +- 10), no rebound.
+# See NOTES.md 'Phase 2l'. Fragment: merge over configs/default.yaml (same values are in it).
 biology:
   first_conception_min_day: 81.23565828830122
   gestation_days: 19.479738849243606
@@ -20,7 +18,8 @@ biology:
   breakdown_density_ramp: 0.2
   stress_mortality_scale: 0.0006534730645402809
   base_mortality_per_day: 9.524360486307535e-05
-  max_age_days: 938.1928704710334
+  max_age_days: 850.0
+  max_age_sd_days: 100.0
   young_mortality_scale: 0.44966255557347645
   maternal_neglect_stress: 0.7887827117100081
   stillbirth_neglect_p: 0.3867616954385288

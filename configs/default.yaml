@@ -1,8 +1,8 @@
-# Universe 25 abundant arm. Biology/drives = phase-2i calibration to Calhoun landmarks (2g optimum +
-# breakdown ramp 0.2 + density-graded nursing disturbance (coef 4, onset 0.2) + courtship erosion 0.04,
-# chosen by 1-D scans; a 112-trial multi-seed CMA-ES study found lower mean loss only by overfitting the
-# early phase of the training seeds, see NOTES.md 'Phase 2i' and configs/calibrated_calhoun.yaml).
-# 2026-10-31, seed 7000, 1200 d, 6 ticks/day. Decisions are held for 1/6 day at finer ticks_per_day.
+# Universe 25 abundant arm. Biology/drives = phase-2l calibration to Calhoun landmarks: the 2i optimum
+# (ramp 0.2, nursing disturbance 4 / 0.2, courtship erosion 0.04) with a per-individual lifespan
+# (max_age_days 850, max_age_sd_days 100, chosen by a 1600-d scan on N@1444 / N@1588 and a 12-seed
+# rebound check; see NOTES.md 'Phase 2l' and configs/calibrated_calhoun.yaml). 2026-11-03, seed 7000,
+# 6 ticks/day. Decisions are held for 1/6 day at finer ticks_per_day.
 seed: 7000
 ticks_per_day: 6  # reference resolution (ticks_per_day_ref); loop is dt-invariant, 12/24 give the same arc
 max_agents: 4096
@@ -42,7 +42,8 @@ biology:
   litter_sd: 1.5
   weaning_days: 21.0
   maturity_days: 63.902303850671544
-  max_age_days: 938.1928704710334
+  max_age_days: 850.0
+  max_age_sd_days: 100.0
   base_mortality_per_day: 9.524360486307535e-05
   stress_mortality_scale: 0.0006534730645402809
   first_conception_min_day: 81.23565828830122

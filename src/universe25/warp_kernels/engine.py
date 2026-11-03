@@ -52,6 +52,7 @@ class WarpTickEngine:
             "gestating": wp.zeros(n, dtype=wp.float32, device=self.device),
             "stress": wp.zeros(n, dtype=wp.float32, device=self.device),
             "wounds": wp.zeros(n, dtype=wp.float32, device=self.device),
+            "lifespan": wp.zeros(n, dtype=wp.float32, device=self.device),
             "rank": wp.zeros(n, dtype=wp.float32, device=self.device),
             "x": wp.zeros(n, dtype=wp.float32, device=self.device),
             "y": wp.zeros(n, dtype=wp.float32, device=self.device),
@@ -94,6 +95,7 @@ class WarpTickEngine:
         b["gestating"].assign(agents.gestating)
         b["stress"].assign(agents.stress)
         b["wounds"].assign(agents.wounds)
+        b["lifespan"].assign(agents.lifespan)
         b["rank"].assign(agents.rank)
         b["x"].assign(agents.x)
         b["y"].assign(agents.y)
@@ -201,7 +203,7 @@ class WarpTickEngine:
                     b["alive"], b["role"], b["stress"], b["wounds"], b["age_days"],
                     b["hunger"], b["thirst"], b["energy"], b["rng_states"],
                     float(dt), float(bio.base_mortality_per_day), float(bio.stress_mortality_scale),
-                    float(bio.max_age_days), float(bio.young_mortality_scale),
+                    b["lifespan"], float(bio.young_mortality_scale),
                     float(bio.density_mortality_scale), b["dens_frac"],
                     float(bio.starvation_hazard_per_day),
                 ],

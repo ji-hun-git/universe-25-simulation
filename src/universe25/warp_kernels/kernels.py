@@ -118,7 +118,7 @@ def mortality_kernel(
     dt: float,
     base_mort: float,
     stress_mort: float,
-    max_age: float,
+    lifespan: wp.array(dtype=wp.float32),
     young_scale: float,
     dens_mort: float,
     dens_frac_arr: wp.array(dtype=wp.float32),
@@ -135,7 +135,7 @@ def mortality_kernel(
     h = h + dens_mort * dens_frac * dens_frac
     h = h + stress_mort * stress[i] * stress[i]
     h = h + 0.02 * wounds[i] * wounds[i]
-    if age_days[i] > max_age:
+    if age_days[i] > lifespan[i]:  # old age, per individual (mirrors sim._age_and_die)
         h = h + 0.05
     if hunger[i] > 1.2 or thirst[i] > 1.2:
         h = h + starvation

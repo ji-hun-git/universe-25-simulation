@@ -181,6 +181,11 @@ LANDMARK_REL_SEED_SD = {
     "n_at_day_736": 0.026,
     "adults_at_day_315": 0.420,
     "last_conception_day": 0.048,
+    # late collapse (1600-d runs only; NaN and skipped in 1200-d studies). Measured over 12 seeds at
+    # 1600 d under the 2l calibration: small counts with slow realisations (late peak, late last
+    # fertile cohort) up to 5x the median, so these are reported landmarks with ~0 weight.
+    "n_at_day_1444": 1.33,
+    "n_at_day_1588": 1.33,
 }
 NOISE_FLOOR = 0.05  # relative modelling tolerance, added in quadrature to the seed spread
 TOTAL_LOSS_WEIGHT = 12.0  # the hand weights before 2j summed to 12; loss scale kept comparable
@@ -204,7 +209,9 @@ EXTRA_LOSS_WEIGHTS = {k: _W[k] for k in EXTRA_LANDMARKS}
 # Loss values of studies before 2j (configs/calibration_study_p2*.json up to p2i) use the hand
 # weights and are not comparable with these.
 # Inferred (not a Calhoun number): between N=2056 at Day 736 and N=122 at Day 1444 the
-# population at Day 1200 should sit well below the peak but not be extinct.
+# population at Day 1200 should sit well below the peak but not be extinct. Applied to N at
+# day 1200 when the run reaches it (runs to 1600 d end near extinction, as Calhoun's did), else
+# to the final N of a run of at least 1000 d.
 DECLINE_BAND_AT_HORIZON = (0.35, 0.85)
 
 
@@ -268,6 +275,9 @@ def landmark_loss(observed: dict[str, float], require_collapse: bool = True) -> 
         peak = observed.get("peak_n", 0.0) or 0.0
         final = observed.get("final_n", peak) or 0.0
         horizon = observed.get("final_day", 0.0) or 0.0
+        n1200 = observed.get("n_at_day_1200", float("nan"))
+        if n1200 == n1200 and horizon >= 1190.0:
+            final = n1200
         if peak > 0 and horizon >= 1000.0:
             frac = final / peak
             lo, hi = DECLINE_BAND_AT_HORIZON

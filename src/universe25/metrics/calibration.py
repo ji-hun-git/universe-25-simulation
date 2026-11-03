@@ -27,6 +27,10 @@ EXTRA_LANDMARKS = {
     "n_at_day_736": 2056.0,
     "adults_at_day_315": 150.0,
     "last_conception_day": 920.0,  # rate-based cessation (30-day count < 5 % of max for good)
+    # Late collapse (Calhoun: 122 at Day ~1444, 27 at Day 1588); NaN unless the run reaches them,
+    # so 1200-day calibration studies skip them and 1600-day validations report them.
+    "n_at_day_1444": 122.0,
+    "n_at_day_1588": 27.0,
 }
 
 # "peak_day" = day of the maximum of the PEAK_WINDOW_DAYS running mean of N: Calhoun's 2200 at
@@ -114,6 +118,15 @@ def landmarks_from_series(
         "last_surviving_birth_strict_day": float(np.max(last_young)) if len(last_young) else 0.0,
         "n_at_day_736": (
             _nearest(days, ns, 736.0) if len(days) and days[-1] >= 700 else float("nan")
+        ),
+        "n_at_day_1200": (
+            _nearest(days, ns, 1200.0) if len(days) and days[-1] >= 1190 else float("nan")
+        ),
+        "n_at_day_1444": (
+            _nearest(days, ns, 1444.0) if len(days) and days[-1] >= 1430 else float("nan")
+        ),
+        "n_at_day_1588": (
+            _nearest(days, ns, 1588.0) if len(days) and days[-1] >= 1570 else float("nan")
         ),
         "final_n": float(ns[-1]) if len(ns) else 0.0,
         "final_day": float(days[-1]) if len(days) else 0.0,

@@ -34,6 +34,19 @@ def test_weights_are_inverse_variance_and_normalised() -> None:
     assert abs(eq["a"] - 1.0) < 1e-12 and abs(eq["b"] - 1.0) < 1e-12
 
 
+def test_decline_band_applies_at_day_1200_not_at_the_horizon() -> None:
+    base = {**LANDMARKS, **EXTRA_LANDMARKS}
+    at_1200 = dict(base, final_n=1500.0, final_day=1200.0)
+    assert landmark_loss(at_1200) == 0.0
+    collapsed_at_1200 = dict(base, final_n=100.0, final_day=1200.0)
+    assert landmark_loss(collapsed_at_1200) > 0.5, "too far down at the 1200-d horizon"
+    # a 1600-d run near extinction (Calhoun: 27 at 1588) with N(1200) inside the band: no penalty
+    long_run = dict(base, final_n=5.0, final_day=1600.0, n_at_day_1200=1300.0)
+    assert landmark_loss(long_run) == 0.0
+    long_run_bad = dict(base, final_n=5.0, final_day=1600.0, n_at_day_1200=200.0)
+    assert landmark_loss(long_run_bad) > 0.5
+
+
 def test_peak_miss_costs_more_than_early_phase_noise() -> None:
     perfect = {**LANDMARKS, **EXTRA_LANDMARKS, "final_n": 1500.0, "final_day": 1200.0}
     assert landmark_loss(perfect) == 0.0
@@ -54,5 +67,6 @@ def test_peak_miss_costs_more_than_early_phase_noise() -> None:
 
 if __name__ == "__main__":
     test_weights_are_inverse_variance_and_normalised()
+    test_decline_band_applies_at_day_1200_not_at_the_horizon()
     test_peak_miss_costs_more_than_early_phase_noise()
     print("test_calib_loss: OK")

@@ -177,6 +177,14 @@ class Universe25Sim:
         a.competence[slot] = 1.0  # shaped during development (see _density_stress)
         a.maternal_cap[slot] = 1.0  # eroded in adulthood (see _daily_maternal_erosion)
         a.courtship_cap[slot] = 1.0  # males; eroded in adulthood (see _daily_maternal_erosion)
+        bio = self.cfg.biology
+        if bio.max_age_sd_days > 0.0:  # per-individual lifespan (old-age hazard onset)
+            a.lifespan[slot] = max(
+                0.3 * bio.max_age_days,
+                float(self.rng.normal(bio.max_age_days, bio.max_age_sd_days)),
+            )
+        else:
+            a.lifespan[slot] = bio.max_age_days
 
     # ------------------------------------------------------------------ step
     def step(self) -> None:
@@ -1012,7 +1020,7 @@ class Universe25Sim:
         h = h + float(bio.density_mortality_scale) * (dens ** 2)
         h += bio.stress_mortality_scale * (a.stress[idx] ** 2)
         h += 0.02 * (a.wounds[idx] ** 2)
-        h += np.where(a.age_days[idx] > bio.max_age_days, 0.05, 0.0)
+        h += np.where(a.age_days[idx] > a.lifespan[idx], 0.05, 0.0)  # old age, per individual
         starving = (a.hunger[idx] > 1.2) | (a.thirst[idx] > 1.2)
         h += np.where(starving, float(bio.starvation_hazard_per_day), 0.0)
         h += np.where(a.energy[idx] < 0.05, 0.2, 0.0)
@@ -1085,7 +1093,7 @@ class Universe25Sim:
                     b["alive"], b["role"], b["stress"], b["wounds"], b["age_days"],
                     b["hunger"], b["thirst"], b["energy"], b["rng_states"],
                     dt, float(bio.base_mortality_per_day), float(bio.stress_mortality_scale),
-                    float(bio.max_age_days), float(bio.young_mortality_scale),
+                    b["lifespan"], float(bio.young_mortality_scale),
                     float(bio.density_mortality_scale), b["dens_frac"],
                     float(bio.starvation_hazard_per_day),
                 ],

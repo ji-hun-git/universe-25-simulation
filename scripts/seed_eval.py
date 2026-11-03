@@ -21,7 +21,8 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 KEYS = ("first_litters_day", "n_at_day_315", "adults_at_day_315", "peak_n", "peak_day",
-        "peak_day_97pct", "last_young_day", "n_at_day_736", "last_conception_day", "final_n")
+        "peak_day_97pct", "last_young_day", "n_at_day_736", "last_conception_day",
+        "n_at_day_1200", "n_at_day_1444", "n_at_day_1588", "final_n")
 
 
 def _run(args: tuple[int, str, float]) -> tuple[int, float, dict[str, float]]:

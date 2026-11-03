@@ -50,6 +50,9 @@ class BiologyConfig(BaseModel):
     weaning_days: float = 21.0
     maturity_days: float = 50.0
     max_age_days: float = 800.0
+    # Per-individual lifespan: normal around max_age_days with this sd (floor 0.3 x mean),
+    # drawn at birth. 0 = one cutoff for all (the 400-600 cohorts then die together, 2e-2k).
+    max_age_sd_days: float = 0.0
     base_mortality_per_day: float = 0.0005
     stress_mortality_scale: float = 0.01
     wound_heal_per_day: float = 0.1  # wounds recover; mortality ~ wounds^2 while open

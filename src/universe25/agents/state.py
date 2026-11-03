@@ -65,6 +65,7 @@ class AgentSoA:
     competence: np.ndarray  # social development 0..1; shaped while young, frozen at maturity
     maternal_cap: np.ndarray  # adult maternal capacity 0..1; eroded irreversibly under stress
     courtship_cap: np.ndarray  # male courtship capacity 0..1; eroded irreversibly under stress
+    lifespan: np.ndarray  # age (days) past which the old-age hazard applies; per individual
     # bookkeeping
     n_alive: int = 0
 
@@ -99,6 +100,7 @@ class AgentSoA:
             competence=z(np.float32, 1.0),
             maternal_cap=z(np.float32, 1.0),
             courtship_cap=z(np.float32, 1.0),
+            lifespan=z(np.float32, 1.0e9),
             n_alive=0,
         )
 
