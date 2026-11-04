@@ -24,7 +24,9 @@ Legend: **P0** blocking · **P1** high · **P2** medium · **P3** polish
 > See `NOTES.md` "Phase 2m" and earlier. Still off: N@315 23–34 % low and seed-dominated (de-weighted to 0.10 of 12 in the loss);
 > N@736 3–4 % low; N@1444 27 % high at the mean (two slow realisations; median 119); conceptions
 > end ≈20 d late. **Calibration frozen at 2m** — reopen only if phase 3 / 4 needs it (caveats in
-> `NOTES.md` → "Phase 2m").
+> `NOTES.md` → "Phase 2m"). **2026-11-04:** the record review found the first-litter target
+> (104) contested — Calhoun 1971 says 50 d, his figures 60–65 — which would explain the N@315
+> miss; see P0-5. 122 / 27 are post-removal counts (≈ 150 mice removed after day 1000).
 
 **Goal:** Reduce mean relative landmark error from ~1.08; get first litters nearer day 104, N@315 nearer 620, peak nearer day 560, and either a collapse or an honest negative with mechanism notes.
 
@@ -55,6 +57,10 @@ Read HANDOFF.md + NOTES.md. Phase-1 1600d abundant run peaked at N≈1715 on day
 > **Status 2026-10-30:** `tests/test_biology_guards.py::test_warp_density_stress_parity` covers the
 > density-stress + imprinting kernel (max |Δ| ≈ 3e-8). Still open: mortality (different RNG streams —
 > compare hazards, not draws) and `update_cells`.
+> **2026-11-04:** the CUDA-graph capture tick skipped its launches (fixed: `wp.capture_launch`
+> after capture). Still missing on the Warp path, so it is not the calibrated model: homeless
+> nest adoption, the random nest kick and the young-female maternal cap (`sim._density_stress`
+> host-only parts); `update_drives_kernel` and `engine.download` are unused; add them or document.
 
 **Goal:** Device Warp path matches NumPy reference on a fixed seed for stress/mortality/cells (and any kernels you own), within agreed float tolerance.
 
@@ -129,6 +135,208 @@ landmarks move. No play reward. Pathspec commits.
 ```
 Pull --rebase origin master on universe25-play. Run tests\run_tests.py. If failures, fix minimal regressions without redesign. Report commit HEAD and test output.
 ```
+
+---
+
+## P0-5 — Re-anchor phase A (first litters 60 ± 15) + optional removal event (calibration version 2n)
+
+> **Status 2026-11-04:** not started. The record review (`docs/RESEARCH_DIGEST.md`
+> part A) found that Calhoun 1973's "first litters at 104" is contradicted by Calhoun 1971 (first
+> surviving litters at 50 d) and by both of his figures (60–65 d), and cannot fit 620 at 315 with
+> a 55-d doubling. The simulator reaches 102 and sits a third low at 315 (409 ± 45 vs 620): phase
+> B starts ≈ 40 d late. Also: ≈ 150 mice were removed after day 1000, so 122 / 27 are post-removal.
+
+**Goal:** a new calibration version (2n) that (a) targets first litters at 60 ± 15 instead of 104
+(`LANDMARKS["first_litters_day"]` and its seed-sd weight), (b) optionally models the removal as
+an event (`biology.removal_day`, `biology.removal_n`, off by default), and (c) is adjudicated the
+frozen-method way: 12 seeds, 1600 d, `scripts/seed_eval.py`, `scripts/multiseed_peak.py`; the
+expectation is that N@315 rises toward 620 without moving the plateau. If it does not, that is the
+result.
+
+**Files:** `src/universe25/metrics/calibration.py`, `src/universe25/calib/priors.py`,
+`src/universe25/config.py`, `src/universe25/sim.py` (removal event only), `configs/*.yaml`,
+`NOTES.md`, `HANDOFF.md`, `README.md`
+
+**Acceptance criteria:**
+- The 2m configs stay in git history as the frozen reference; 2n is a separate NOTES section with
+  the 12-seed table before / after
+- `landmark_notes` updated; the loss change is documented as a target correction, not a fit
+- `tests/run_tests.py` green; hash bit-identical with the new options off
+
+---
+
+## P4-0 — Observation builder + `mlp_frozen` policy (NumPy) + determinism
+
+> **Status 2026-11-04:** scaffold landed — `src/universe25/agents/policy.py`
+> (`Policy` protocol, `NeedDrivenPolicy`, `sample_masked`, `make_policy`), `policy.kind` in
+> `config.py`, `tests/test_policy.py`; the default is bit-identical to the inline softmax
+> (300-d trajectory hash `966401ea…`). Design: `docs/PHASE4_DESIGN.md`; prereg: `PLAN.md` §15.
+
+**Goal:** `agents/observation.py::build_observation(sim, idx) -> float32[m, K]` per
+`PHASE4_DESIGN.md` §1.3 (interoception, body, role one-hot, local, targets, last action; no
+`lifespan`, no PlayScore field); `MlpFrozenPolicy` (obs → 128 tanh → 128 tanh → 11 logits,
+weights from an `.npz`, pure NumPy float32 inference, `allowed` mask as −1e8 on logits, inverse-CDF
+sampling from the policy's **own** `make_rng` stream); a random-init weights file for smoke runs.
+
+**Files:** `src/universe25/agents/observation.py`, `src/universe25/agents/policy.py`,
+`src/universe25/config.py` (`policy.kind: mlp_frozen`, `policy.weights`), `tests/test_policy.py`,
+`tests/test_determinism.py`
+
+**Acceptance criteria:**
+- String audit: no play / bout / motif / exaggeration-named field in the observation or policy code
+- `test_determinism` passes for `mlp_frozen` (same seed → same hash, different seed → different)
+- `need_driven` 300-d hash unchanged (`966401ea…` at 6 ticks/day)
+- Observation builder < 2 ms per tick at 4,000 alive agents on the host path
+- `tests/run_tests.py` green
+
+**Test command:**
+```powershell
+$env:PYTHONPATH = "$PWD\src"
+python tests\run_tests.py
+python main.py --seed 7000 --out _output\mlp_frozen_smoke --config configs\smoke.yaml --days 30
+```
+
+**Task:**
+```
+Read HANDOFF.md, PLAN.md §15, docs/PHASE4_DESIGN.md §1 and this card. Build the observation
+vector and the frozen-MLP policy kind on the policy hook in agents/policy.py. Keep every biology
+kernel unchanged; the policy only returns int8 actions among `allowed`. Sample from the policy's
+own RNG stream. No play-named signal anywhere (H2). Add tests; keep need_driven bit-identical.
+```
+
+---
+
+## P4-1 — Calibration guard for policy arms (H-d)
+
+**Goal:** `tests/test_policy_calibration_guard.py` (400 d, 3 seeds, `mlp_frozen` with random
+weights vs `need_driven`: landmarks printed, tolerance asserted) and `scripts/policy_guard.py`
+(12 seeds 8000–8011, 1600 d, writes `_output/policy_guard_<kind>.json` with the canonical five,
+N@1444, N@1588, decline band, relative to the control). Tolerance: every canonical landmark within
+10 % of the control at the same seeds (PLAN.md H-d).
+
+**Files:** `tests/test_policy_calibration_guard.py`, `scripts/policy_guard.py`, `NOTES.md`
+
+**Acceptance criteria:**
+- Guard test runs in < 5 min on the NumPy path
+- Drift is **reported** in `NOTES.md` as a result; the biology is not retuned (frozen at 2m)
+- `tests/run_tests.py` green
+
+**Task:**
+```
+Read docs/PHASE4_DESIGN.md §4 and PLAN.md §15 (H-d). Implement the calibration guard for policy
+arms. Never change biology parameters to make a policy pass; write the drift to NOTES.md.
+```
+
+---
+
+## P4-2 — Homeostatic reward + PPO learner (torch, CUDA) + GPU determinism
+
+**Goal:** `src/universe25/learn/reward.py` (Keramati–Gutkin drive reduction per
+`PHASE4_DESIGN.md` §1.4: n = 4, m = 2, setpoints 0, no drive-independent term, death terminal,
+per-drive contributions logged, |r| capped at the one-tick maximum); `learn/ppo.py`
+(shared-parameter PPO with a local critic per §1.5; rollout ring buffer; deaths end segments,
+births reset the slot's GAE chain; masked losses); `policy.kind: mlp_ppo`; §5 GPU determinism
+recipe (`CUBLAS_WORKSPACE_CONFIG`, `use_deterministic_algorithms(True)`, Warp `RUN_TO_RUN`, no
+float atomics in obs/reward kernels); weights saved as the `.npz` that `mlp_frozen` loads.
+
+**Files:** `src/universe25/learn/*`, `src/universe25/agents/policy.py`, `src/universe25/config.py`,
+`tests/test_learn.py`, `docs/NVIDIA_STACK.md`
+
+**Acceptance criteria:**
+- Reward is a function of the drives only (unit test: zero drive change → zero reward; no bonus term)
+- H2 string audit covers `learn/*` (P4-7)
+- Run-to-run bit-identical on the same GPU for a 20-day nursery run (hash of weights + actions)
+- Nursery smoke: mean drive sum below the random-policy baseline after 10^7 agent-steps
+- No ICM / RND / count bonus (rejected: noisy-TV on conspecifics, see PHASE4_DESIGN.md §1.4)
+
+**Task:**
+```
+Read docs/PHASE4_DESIGN.md §1.4–1.5, §5 and docs/RESEARCH_DIGEST.md part B. Implement the
+homeostatic reward and the PPO learner on the policy hook. The heuristic is a control arm, never a
+teacher: no distillation, no behaviour cloning. No play-named term (H2).
+```
+
+---
+
+## P4-3 — Nursery pre-training harness
+
+**Goal:** `scripts/pretrain_nursery.py`: seeded nursery worlds (500–4,000 adults + juveniles,
+domain-randomised food / water refill, density and object count), 24 ticks/day, 10^8–10^9
+agent-steps, checkpoints, a run manifest (torch / CUDA / Warp / numpy versions, GPU model, seed).
+
+**Files:** `scripts/pretrain_nursery.py`, `src/universe25/learn/nursery.py`, `docs/NVIDIA_STACK.md`
+
+**Acceptance criteria:**
+- Throughput (agent-steps/s) and VRAM logged; seeds 7000–7009 only (never 8000–8011)
+- Produces weights consumed by P4-1 and P4-6; nursery start stated as a limitation in NOTES
+
+---
+
+## P4-4 — `evo` policy (inherited weights, no reward)
+
+**Goal:** per-agent weights (obs → 32 → 11) in a capacity-sized buffer; at spawn the child gets
+the mother's weights (or the parents' mean) plus N(0, 0.02) drawn from the **sim** stream at the
+spawn point (biology-ordered, so determinism holds); no reward, no learner; per-generation
+fecundity monitor; pre-evolution in nursery worlds (P4-3) because 1600 days is only ~15 generations.
+
+**Files:** `src/universe25/agents/policy.py`, `src/universe25/agents/state.py` (weights buffer),
+`src/universe25/sim.py` (`_spawn` inheritance hook), `tests/test_policy.py`
+
+**Acceptance criteria:**
+- `test_determinism` passes for `evo`; calibration guard (P4-1) run and reported
+- H2 clean by construction (no reward code path at all)
+
+---
+
+## P4-5 — Burghardt detectors + synthetic validation + V hopper fix
+
+**Goal:** `src/universe25/metrics/detectors.py` implementing `PHASE4_DESIGN.md` §2: episode
+segmentation (bout-criterion interval from the sim's own log-survivorship), criterion 1
+`nf_index`, criterion 2 onset / return / preference rates, criterion 3 `seq_struct_*`
+(incompleteness, amplitude z, Jensen–Shannon divergence vs serious templates), criterion 4
+recurrence / entropy rate / rigid-loop fraction / engagement vs cumulative exposure, criterion 5
+`gate_relaxed` dose–response; all logged as `*_unvalidated` vector fields;
+`free_choice_V_excl_hopper_unvalidated`; `scripts/validate_detectors.py` with scripted synthetic
+agents (sequences written from the criterion text), ≥ 1,000 surrogates per detector, ablations,
+preregistered AUC / FPR; neutral identifier names.
+
+**Files:** `src/universe25/metrics/detectors.py`, `src/universe25/metrics/playscore.py`,
+`src/universe25/sim.py` (`_log_metrics` only), `scripts/validate_detectors.py`,
+`tests/test_detectors.py`, `docs/PHASE4_DESIGN.md` §2 (thresholds), `NOTES.md`
+
+**Acceptance criteria:**
+- No policy or learner imports or reads `metrics/detectors.py` or any `*_unvalidated` field (audit)
+- Synthetic AUC / FPR per detector reported in NOTES whether pass or fail
+- Thresholds written into `PHASE4_DESIGN.md` §2 **before** any evaluation seed (8000–8011) is run
+- No animal or human play dataset anywhere (H1)
+
+---
+
+## P4-6 — Phase 4 sweep harness
+
+**Goal:** `scripts/sweep_phase4.py`: policy kind × resources (ABUND / SCARCE) × playground
+(ON / OFF) × seeds 8000–8011, 1600 d at 24 ticks/day, parquet + `run.json` + detector vectors;
+summary tables per PLAN.md §15.6 (mean ± se, paired differences, surrogate bands); resumable;
+manifest per run.
+
+**Files:** `scripts/sweep_phase4.py`, `NOTES.md` ("Phase 4" section), `HANDOFF.md`
+
+**Acceptance criteria:**
+- Budget within PLAN.md §15.4; negatives reported; H-d, H-e, H-f, H-g each answered or marked untested
+
+---
+
+## P4-7 — H2 audit extension (policy, observation, learner, detectors)
+
+**Goal:** extend the string audit (`tests/test_conservation.py` or P2-3's CI audit) to
+`agents/policy.py`, `agents/observation.py`, `learn/*` and `metrics/detectors.py`: forbidden
+identifiers `play_reward`, `reward_play`, `playscore` / `play_score` inside `learn/` and
+`agents/`, `motif`, `_bout` / `bout_`, `exaggerat`; plus an import audit (no `learn/` or
+`agents/` module imports `metrics.detectors` or `metrics.playscore`).
+
+**Acceptance criteria:**
+- A negative test proves the audit fails on an injected forbidden term
+- `tests/run_tests.py` green
 
 ---
 

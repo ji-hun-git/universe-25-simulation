@@ -1,5 +1,62 @@
 # Universe25 Play — NOTES
 
+## 2026-11-04 — Record review, phase 4 design and scaffold (documentation + code, not empirical)
+
+No empirical result changed in this pass and the calibration stays frozen at phase 2m. What
+changed is what the record is known to say, and what the code can now do.
+
+**The record** (`docs/RESEARCH_DIGEST.md` part A: Calhoun 1973 read in full with Fig 2
+digitised, Calhoun 1971, Marsden 1972, Kessler 1966, Ramsden & Adams 2009):
+- *First litters at day 104 is contested.* Calhoun 1971 gives first surviving litters at 50 d,
+  both of his figures imply 60–65 d, and 104 cannot be reconciled with 620 at day 315 and a 55-d
+  doubling (five doublings from 20 take 275 d). The simulator reaches 102 and sits a third low
+  at 315 (409 ± 45 vs 620) — consistent with phase B starting ≈ 40 d late. This is the best lead
+  on the early-phase miss that phase 2j de-weighted. Not applied (frozen); card P0-5 re-anchors
+  phase A as a new calibration version with its own 12-seed evaluation.
+- *≈ 150 mice were removed after day 1000* (Calhoun 1973 Fig 2 caption). 122 at 1444 and 27 at
+  1588 are post-removal counts; the no-removal envelope at 1444 is ≤ 272 and our 155 ± 29 lies
+  inside it. The decline is no longer chased toward 122.
+- *Irreversibility is n = 1.* Kessler 1966 and Hammock 1971 colonies resumed reproduction when
+  density fell; Marsden's transfers (Calhoun's own) did not. The phase 2m colony-wide exposure
+  encodes Universe 25's outcome — a model assumption fitted to one colony, listed as such.
+- New **reported-only** landmarks in `metrics/calibration.py` (`RECORD_LANDMARKS`, never in the
+  loss or the mean errors): 1871 at 811 and ≈ 1650 at 960 (Marsden 1972), 100 at 1471 (Calhoun
+  1973), doubling times 55 d (phase B, first litters → 315) and 145 d (phase C, 315 → peak day);
+  `landmark_notes` go into every calibration report. Not modelled, now documented: two of four
+  founder males dead by ≈ day 60; hoppers and water moved out of the nest compartments ≈ day
+  150–175; the 23 May 1973 "extinction" is a projection, no extinction date was observed.
+  Read off the existing 2m run (seed 7000, 6 ticks/day, 1600 d): 1833 at 811 (2 % low), 1584
+  at 960 (4 % low), 76 at 1471 (24 % low; seed 7000 is a fast decliner), phase B doubling
+  47.9 d (Calhoun 55: the simulator starts phase B late and grows faster), phase C doubling
+  100 d (1973: 145; the 1971 five-universe mean is 105, Universe 25 digitised 136).
+
+**Code (bit-identical where it touches the tick).**
+- Policy hook: `agents/policy.py` (`Policy` protocol, `NeedDrivenPolicy` moved verbatim,
+  `sample_masked`, `make_policy`), `policy.kind` in `config.py`, `tests/test_policy.py`. The
+  300-d trajectory hash (`966401ea…`, seed 7000, 6 ticks/day) is identical to the commit before
+  the change; the full suite is green.
+- CUDA-graph bug fixed: the capture tick recorded its launches without running them, so one
+  tick's post-step (stress, mortality, cells) was skipped in graph mode; `wp.capture_launch` now
+  follows the capture (Warp smoke: 45 replays for 48 ticks, was 44). NumPy-path results are
+  unaffected; graph-mode GPU runs made before this fix skipped one tick.
+- Found, not fixed (cards): the playground box contains six of the eight hoppers of cells 5, 6,
+  9, 10 and 16 nests, so free-choice V counts drinkers (P4-5 adds an excluding variant); the
+  Warp path skips three host-only parts of `_density_stress` (homeless adoption, the nest kick,
+  the young-female maternal cap) and is not the calibrated model (P0-2); PlayScore F is a
+  constant and D a stand-in (P4-5).
+
+**Phase 4** (`docs/PHASE4_DESIGN.md`, `PLAN.md` §15, `docs/TASKS.md` P4-0 … P4-7): learning
+agents on the frozen biology — a homeostatic drive-reduction reward (Keramati & Gutkin 2014;
+n = 4, m = 2, no drive-independent term, no ICM / RND because conspecifics are a "noisy TV"),
+one parameter-shared PPO policy over the same 11 actions with the simulator's eligibility mask,
+nursery pre-training, inherited-weight evolution as the reward-free second arm, the heuristic as
+a control and never a teacher, a preregistered calibration guard (H-d: every canonical landmark
+within 10 % of the control on 12 seeds), Burghardt detectors with synthetic ground truth and
+≥ 1,000 surrogates per detector, evaluation seeds 8000–8011 reserved. Hypotheses H-d … H-g are
+preregistered before any learning run. The house-mouse literature predicts small, juvenile,
+locomotor or object-based effects, so the preregistered tests are about structure (criteria 3
+and 4 at matched drive states), not frequency.
+
 ## Phase 2m — colony-wide developmental exposure: the collapse cannot rebound (2026-11-03)
 
 Motivation: phase 2l found the breakdown reversible — with lifespans short enough to fit the

@@ -37,11 +37,11 @@ python scripts\calibrate.py --metrics _output\smoke\metrics.parquet --out _outpu
 
 | Landmark | Target | Definition used |
 |---|---|---|
-| First litters | ~day 104 | first day with a birth |
+| First litters | ~day 104 (contested: Calhoun 1971 and his figures give 50–65; see `docs/RESEARCH_DIGEST.md`) | first day with a birth |
 | N at day 315 | ~620 | |
 | Peak | ~2200 at ~day 560 | `peak_day` = day of the 31-day running-mean maximum of N (the census maximum, plateau-robust; the first day at ≥ 97 % of max marks the start of the plateau and is reported as `peak_day_97pct`) |
 | Last surviving young | ~day 600 | cessation of surviving births: last birth day on which the 30-day rate of births that reach weaning is still ≥ 5 % of its maximum (the strict latest-weaned-pup day is also reported; it is set by single lucky survivors) |
-| Decline | thereafter | slow: N = 2056 at day 736, 122 at day ~1444, 27 at day 1588 (N@1444 and N@1588 reported from 1600-day runs; old-age deaths follow a per-individual lifespan, 850 ± 100 d) |
+| Decline | thereafter | slow: N = 2056 at day 736, 122 at day ~1444, 27 at day 1588 (N@1444 and N@1588 reported from 1600-day runs; old-age deaths follow a per-individual lifespan, 780 ± 150 d; both counts were taken after ≈ 150 mice had been removed after day 1000, so a run without removal sits above them). Reported-only record points: 1871 at 811, ≈ 1650 at 960, 100 at 1471, doubling times 55 d (phase B) / 145 d (phase C) |
 
 Also reported (not in the canonical mean error): N@736 = 2056, 150 adults (+470 immatures) at
 day 315, last conception ≈ day 920 (measured as the rate-based cessation of conceptions, like
@@ -78,17 +78,24 @@ PlayScore (gan formalization, **not validated**): `G · (1−|F|) · V · D · S
 
 ```
 configs/          default.yaml, smoke.yaml
-src/universe25/   sim, world, agents, metrics, io
+src/universe25/   sim, world, agents (state, policy hook), metrics, io
 tests/            geometry, determinism, conservation, biology guards + Warp parity (__main__ runner)
 scripts/          calibrate.py, calibrate_optuna.py, benchmark_backends.py
 _output/          runs (gitignored)
-PLAN.md           mini-prereg
+PLAN.md           mini-prereg (§15: phase 4 learning arms)
 NOTES.md          dated results
+docs/             TASKS.md, PHASE4_DESIGN.md (learning agents, detectors), RESEARCH_DIGEST.md (record + literature), NVIDIA_STACK.md
 ```
 
 ## References
 
 - Calhoun JB (1973). Death Squared. *Proc R Soc Med*. [PMC1644264](https://pmc.ncbi.nlm.nih.gov/articles/PMC1644264/)
+- Calhoun JB (1971). Space and the Strategy of Life. In Esser (ed.), *Behavior and Environment*, 329–387 — first surviving litters at 50 d; five-universe series
+- Marsden HM (1972). Crowding and Animal Behavior. In Wohlwill & Carson (eds.) — censuses 1871 @ 811, ≈ 1650 @ 960; transfer experiments
+- Kessler A (1966). Rockefeller PhD thesis — crowded mouse populations stabilised and resumed reproduction when re-paired (the non-replication)
+- Keramati M & Gutkin B (2014). Homeostatic reinforcement learning. *eLife* 3:e04811 — the drive-reduction reward used in phase 4
+- Burghardt GM (2005). *The Genesis of Animal Play*; Burghardt (2014) *Anim Behav Cogn* 1(2):90–98 — the five criteria, surplus resource theory
+- Full list with URLs: `docs/RESEARCH_DIGEST.md` part E
 - RatUtopia — [mantzaris/RatUtopia](https://github.com/mantzaris/RatUtopia), [arXiv:2508.08587](https://arxiv.org/abs/2508.08587)
 - Mouse utopia model — [tomgwizd/Mouse-utopia-model](https://github.com/tomgwizd/Mouse-utopia-model), [PMC12939635](https://pmc.ncbi.nlm.nih.gov/articles/PMC12939635/)
 - Leibo et al. 2017. Multi-agent Cooperation and the Emergence of (natural) Selection. [arXiv:1702.03037](https://arxiv.org/abs/1702.03037) (Gathering)

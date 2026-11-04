@@ -4,9 +4,9 @@
 > **Repo (private):** https://github.com/ji-hun-git/universe25-play  
 > **Local path (lab PC):** `C:\Users\user\Projects\universe25-play`  
 > **Owner:** Jason (ji-hun-git) · **Research partner:** gan  
-> **Date:** 2026-11-04 (Asia/Seoul) · **Phase:** 1 complete; **phase 2 calibration frozen at 2m (canonical landmark error 0.06 at seed 7000, 0.03–0.10 held-out; 12-seed plateau within 3–4 % of Calhoun; early phase a third low; emergent, irreversible collapse — caveats in `NOTES.md` → "Phase 2m")**; Warp parity partial; phase 3 (visuals) and phase 4 (play module) not started
+> **Date:** 2026-11-04 (Asia/Seoul) · **Phase:** 1 complete; **phase 2 calibration frozen at 2m (canonical landmark error 0.06 at seed 7000, 0.03–0.10 held-out; 12-seed plateau within 3–4 % of Calhoun; early phase a third low; emergent, irreversible collapse — caveats in `NOTES.md` → "Phase 2m")**; Warp parity partial; phase 3 (visuals) not started; **phase 4 (learning agents + play detectors) designed, preregistered and scaffolded 2026-11-04** (`docs/PHASE4_DESIGN.md`, `PLAN.md` §15, `docs/TASKS.md` P4-0…P4-7; policy hook landed, no learning run yet)
 
-Read this file first. Then read `PLAN.md`, `NOTES.md`, `docs/NVIDIA_STACK.md`, `docs/TASKS.md`. Follow `CONTRIBUTING.md` for day-to-day rules.
+Read this file first. Then read `PLAN.md`, `NOTES.md`, `docs/NVIDIA_STACK.md`, `docs/TASKS.md`; for agents, policies, learning or play metrics also `docs/PHASE4_DESIGN.md` and `docs/RESEARCH_DIGEST.md`. Follow `CONTRIBUTING.md` for day-to-day rules.
 
 ---
 
@@ -489,6 +489,24 @@ the hand point or lost out of sample, so the method of record is hand scans + 12
 out-of-sample scoring; the early phase was de-weighted (0.10 of 12), not fixed; since 2k the
 plateau moved by less than its seed se. Caveats in full in `NOTES.md` → "Phase 2m".
 
+### Record review + phase 4 design and scaffold (2026-11-04)
+
+- **Record** (`docs/RESEARCH_DIGEST.md` part A): first litters at 104 is contested (Calhoun
+  1971: 50 d; his figures: 60–65 d; 104 cannot fit 620 at 315 with a 55-d doubling) — the
+  simulator's third-low N@315 is consistent with phase B starting ≈ 40 d late (card P0-5, not
+  applied: frozen); ≈ 150 mice were removed after day 1000, so 122 / 27 are post-removal and
+  our 155 ± 29 at 1444 is inside the no-removal envelope; irreversibility is n = 1 (Kessler
+  1966 and Hammock 1971 colonies recovered) — the 2m exposure is a model assumption.
+  Reported-only record landmarks added (`RECORD_LANDMARKS`: 1871 @ 811, ≈ 1650 @ 960, 100 @
+  1471, doubling 55 d / 145 d) with `landmark_notes` in every report; loss unchanged.
+- **Code**: policy hook `agents/policy.py` + `policy.kind` (bit-identical, hash `966401ea…`);
+  CUDA-graph capture tick no longer skipped (`wp.capture_launch` after capture); found and
+  carded: V counts drinkers (six of eight hoppers inside the playground box), Warp path skips
+  three host-only density-stress parts (P0-2), PlayScore F constant / D stand-in.
+- **Phase 4**: `docs/PHASE4_DESIGN.md` (architecture, reward, learner, detectors, calibration
+  guard, determinism, compute), `PLAN.md` §15 (H-d … H-g, arms, seeds 8000–8011, budget, stop
+  rules), `docs/TASKS.md` P4-0 … P4-7. No learning run has been made.
+
 ---
 
 ## 5. Architecture map
@@ -506,6 +524,8 @@ universe25-play/
 │   └── smoke.yaml          ← 30-day smoke overrides
 ├── docs/
 │   ├── TASKS.md            ← prioritized task list
+│   ├── PHASE4_DESIGN.md    ← learning agents on the frozen biology: reward, learner, detectors, guard
+│   ├── RESEARCH_DIGEST.md  ← the Calhoun record (re-read 2026-11-04), learning-agent and play literature
 │   ├── NVIDIA_STACK.md
 │   └── NSIGHT.md
 ├── scripts/
@@ -518,11 +538,12 @@ universe25-play/
 │   └── probe_nvidia.py
 ├── src/universe25/
 │   ├── __main__.py         ← CLI: --seed --out --config --days --backend --device --playground --max-agents
-│   ├── config.py           ← pydantic: Geometry, Playground, Resource, Biology, Drive, SimConfig
+│   ├── config.py           ← pydantic: Geometry, Playground, Resource, Biology, Drive, Policy, SimConfig
 │   ├── sim.py              ← Universe25Sim (need-driven tick; density stress; breeding; logging)
 │   ├── rng.py
 │   ├── agents/
 │   │   ├── state.py        ← AgentSoA, ROLE_*, ACT_* (11 actions; no PLAY)
+│   │   ├── policy.py       ← Policy protocol; NeedDrivenPolicy (phase 1/2, bit-identical); learned kinds (phase 4)
 │   │   ├── drives.py       ← H2 documentation
 │   │   └── device.py       ← optional Warp mirror buffers
 │   ├── world/
@@ -675,13 +696,14 @@ in the peak count (N@736 3–4 % low) and the slow realisations' late tail (N@14
 - Look: paper `#F4F0E6`, ink `#1A1A1A`, stress `#8B1E1E`, nest teal `#2F5D50`; IBM Plex / Source Serif; **uPlot** charts; **no purple glows, glassmorphism, or AI-slop chrome**
 - shadcn/ui restyled to that palette (not default violet)
 
-### Phase 4 — Play behavior module (after env frozen)
+### Phase 4 — Learning agents + play detectors (design + scaffold done 2026-11-04; `docs/PHASE4_DESIGN.md`, `PLAN.md` §15)
 **Accept when:**
-- Playground free-choice and object/locomotor/social detectors implement Burghardt gates without rewarding play
-- Sweep harness: abundance × density × toys × unpredictability
-- Baselines: PPO, ICM, RND, random — **PlayScore eval-only**
-- Spinka transfer protocol sketched + seed list frozen in a new PLAN section
-- H2 audit still passes (grep for play reward terms)
+- [x] Policy hook: `agents/policy.py`, `policy.kind`, need-driven default bit-identical (hash `966401ea…`), H2 audit on the policy module
+- [x] Preregistration: H-d (policy invariance of the curve, 10 %), H-e / H-f / H-g, arms, seeds 8000–8011 reserved, budget, stop rules (`PLAN.md` §15)
+- [ ] Observation builder + `mlp_frozen` (P4-0) · calibration guard (P4-1) · homeostatic reward + PPO (P4-2) · nursery pre-training (P4-3) · `evo` (P4-4)
+- [ ] Burghardt detectors per criterion with synthetic ground truth, ≥ 1,000 surrogates, ablations, thresholds fixed before any evaluation seed; V hopper fix (P4-5) — **PlayScore eval-only, unvalidated**
+- [ ] Sweep: policy kind × abundance / scarcity × playground on / off × 12 seeds (P4-6); H-d … H-g answered or marked untested in NOTES
+- [ ] H2 audit extended to observation, learner and detector code with a negative test (P4-7); no ICM / RND bonus; the heuristic is never distilled
 
 ### Phase 5 — Paper-grade release hygiene
 README demos, pinned figures, reproducible `_output` cards, negative-result section.

@@ -59,6 +59,13 @@
   frozen at this point: the H-a bar (peak within 30 % of 2200 near day 560, collapse after ~600)
   is met with margin, later phases moved landmarks inside the seed se, and a fit of about ten
   parameters to one colony's ten landmarks is a plausibility check, not mechanism validation.
+- Status note 2026-11-04 (record review + phase 4 scaffold): the first-litter
+  target (104) is contested by Calhoun 1971 (50 d) and his figures (60–65 d) and cannot fit 620
+  at 315 with a 55-d doubling — the N@315 miss is consistent with phase B starting ≈ 40 d late
+  (`docs/TASKS.md` P0-5, not applied: frozen); 122 / 27 are post-removal counts (≈ 150 removed
+  after day 1000); irreversibility is n = 1 (Kessler 1966 colonies recovered) — a model
+  assumption. Reported-only record landmarks added; loss unchanged. Policy hook landed
+  (bit-identical); phase 4 preregistered in §15; no learning run yet.
 - Work package: WP-G12-adjacent / Track E toy world (Universe 25 + playground); not L3 ecology
 - Track: **E** (emergent, exploratory)
 - Owner: Jason
@@ -145,3 +152,70 @@ Unit: one seeded run. Report landmark errors, phase detection (adj/growth/stag/c
 
 ## 14. Freeze
 Environment schema frozen after first successful long run + NOTES entry; learning arms require a new PLAN.
+
+## 15. Phase 4 plan — learning arms (v2026-11-04; the "new PLAN" that §14 requires)
+
+- Status: preregistered design, **no runs yet**. Design: `docs/PHASE4_DESIGN.md`. Sources:
+  `docs/RESEARCH_DIGEST.md`. Scaffold landed 2026-11-04: `agents/policy.py` (policy hook,
+  bit-identical with `policy.kind: need_driven`).
+- Question: does play-like behaviour (Burghardt's five criteria, eval-only detectors) emerge more
+  under abundance than under survival in agents that **learn** a homeostatic drive-reduction
+  policy with **no play reward**, on the frozen Calhoun-calibrated biology — and does the Calhoun
+  population curve survive a learned policy at all?
+
+### 15.1 Hypotheses
+
+| ID | Hypothesis | Prediction | Measured by | Falsified if |
+|---|---|---|---|---|
+| H-d | Policy invariance: the calibrated curve is a property of the biology, not of the heuristic policy | 12-seed canonical landmarks of `mlp_frozen`, `mlp_ppo`, `evo` within 10 % of `need_driven`; decline band met at 1200 | calibration guard (`PHASE4_DESIGN.md` §4) | any canonical landmark > 10 % off the control, or no decline by day 1200 |
+| H-e | Relaxed-field dependence: object / locomotor detector rates are higher under abundance than under scarcity for learned policies | criterion 1, 3, 4, 5 detector rates higher in ABUND-PG than SCARCE-PG at matched phase | per-criterion detectors (`PHASE4_DESIGN.md` §2) with surrogate controls | rates equal or higher under scarcity |
+| H-f | Structure, not frequency: learned policies' object interactions differ from the heuristic's in sequence statistics (criteria 3 / 4), not only in rate | criterion 3 / 4 detectors differ from `need_driven` at matched free-choice V | time-shuffled and drive-shuffled surrogate bands | no difference beyond the surrogate band |
+| H-g | Breakdown suppresses play-likeness: detector rates fall in phases C / D (stress, withdrawal) under every policy | monotone decline after the plateau | detectors by phase | rates rise in phase D |
+| H-c (kept) | No play reward: any playground use is drive spillover unless criteria 3 / 4 show structure | code audit; H2 string audit over policy, observation and reward code | | any play-named term |
+
+### 15.2 Arms
+
+Policy kind × resources × playground: `need_driven` (control), `mlp_frozen`, `mlp_ppo`, `evo`;
+each in ABUND-PG, ABUND-NOPG, SCARCE-PG (arms of §4). The heuristic is a control, never a teacher
+(no distillation, no behaviour cloning).
+
+### 15.3 Seeds
+
+- Nursery pre-training and tuning: 7000–7009 only.
+- Canonical evaluation: **8000–8011** (12 seeds), never used for pre-training, tuning or detector
+  threshold choice. Arms are compared only on these.
+- Unit tests: 7100.
+
+### 15.4 Budget
+
+| Resource | Planned | Stop at |
+|---|---|---|
+| Nursery pre-training | 10^9 agent-steps per policy kind (≤ 2 GPU-hours each) | 4 GPU-hours each |
+| Canonical runs | 12 seeds × 3 resource arms × 4 kinds × 1600 d at 24 ticks/day ≈ 144 runs ≈ 8 h | 16 h |
+| Peak RAM / VRAM | < 8 GB / < 8 GB | 16 GB / 14 GB |
+| Disk | < 10 GB parquet + weights | 20 GB |
+| API spend | 0 | 0 |
+
+### 15.5 Stop rules
+
+- Success: H-d evaluated on 12 seeds for at least `mlp_frozen` and `evo`; detectors validated on
+  synthetic ground truth with the controls of `PHASE4_DESIGN.md` §2; H-e and H-f tested.
+- Futility: no policy kind beats the random-policy drive baseline after 10^9 nursery agent-steps
+  (reported as a negative result, not retried with a play term).
+- Safety: NaN; an H2 term appears; PlayScore used in any loss, reward or stopping criterion; any
+  training on animal or human play data.
+
+### 15.6 Analysis plan
+
+Unit = one seeded run. Per arm: mean ± se over the 12 evaluation seeds. H-e and H-f: paired
+differences across seeds against surrogate bands (time-shuffled action sequences within agent;
+drive-shuffled relaxed-field gate). Effect sizes reported. The detector set and thresholds are
+fixed in `docs/PHASE4_DESIGN.md` §2 **before** the first evaluation run; no detector is added or
+re-thresholded after seeing evaluation seeds. Negative results go to `NOTES.md`.
+
+### 15.7 Non-goals and freeze
+
+- Non-goals: a validated PlayScore (it stays `_unvalidated` unless the preregistered synthetic
+  validation passes); LLM narrators; visuals (phase 3, in parallel).
+- Freeze: biology frozen at phase 2m. The observation vector, the reward and the detector set
+  freeze when P4-0 and P4-5 land with tests; any later change is a new version of this section.
