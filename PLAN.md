@@ -50,6 +50,15 @@
   let the colony rebound in 1–3 of 12 seeds: the breakdown is reversible when density falls (Calhoun's
   was not) — open gap. Remaining: early phase low, N@736 3 % low, late tail thin at
   the median, reversibility of the breakdown.
+- Status note 2026-11-03 (phase 2m): colony-wide developmental exposure
+  (`imprint_breakdown_exposure` 1.0; young lose competence wherever they are once the colony is in
+  breakdown) makes the collapse irreversible — no seed of 12 resumes surviving births — and the
+  lifespan is re-chosen at 780 ± 150: N@1444 155 ± 29 (median 119), N@1588 31 ± 9 (median 20)
+  (Calhoun 122 / 27), plateau unchanged. Remaining: N@315 409 ± 45 vs 620 (seed-dominated,
+  de-weighted); N@736 3–4 % low; N@1444 155 ± 29 vs 122 at the mean (median 119). Calibration
+  frozen at this point: the H-a bar (peak within 30 % of 2200 near day 560, collapse after ~600)
+  is met with margin, later phases moved landmarks inside the seed se, and a fit of about ten
+  parameters to one colony's ten landmarks is a plausibility check, not mechanism validation.
 - Work package: WP-G12-adjacent / Track E toy world (Universe 25 + playground); not L3 ecology
 - Track: **E** (emergent, exploratory)
 - Owner: Jason

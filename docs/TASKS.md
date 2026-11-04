@@ -15,14 +15,16 @@ Legend: **P0** blocking · **P1** high · **P2** medium · **P3** polish
 > starvation (2e), exact stress relaxation (2f), male courtship breakdown (2g), graded breakdown
 > pressure (2h), nursing-disturbance brake + multi-seed objective (2i), inverse-seed-variance loss
 > weights (2j), crowded-cell conception brake (neutral) + smoothed peak-day landmark (2k),
-> per-individual lifespan 850 ± 100 (2l): canonical mean rel. error **0.069** (seed 7000;
-> 0.04–0.10 held-out), peak 2255–2286 @ 522–542, surviving births cease
-> 567–587, conceptions 892–924, N@736 1946–1972, N@1444 113–140, N@1588
-> 4–9 across four seeds (Calhoun 2200 @ 560, 600, ≈920, 2056, 122, 27); 12 seeds (1600 d):
-> N@1444 193 ± 47 (median 131), N@1588 24 ± 10 (median 8).
-> See `NOTES.md` "Phase 2l" and earlier. Still off: N@315 23–34 % low and seed-dominated; N@736 3 % low;
-> N@1588 8 at the median (27); the breakdown is reversible when density falls (rebounds with
-> shorter lifespans).
+> per-individual lifespan (2l), colony-wide developmental exposure + lifespan 780 ± 150 (2m, no
+> rebound in 12 seeds): canonical mean rel. error **0.060** (seed 7000; 0.03–0.10 held-out),
+> peak 2199–2285 @ 508–540, surviving births cease 571–621, conceptions
+> 905–945, N@736 1920–1955, N@1444 108–111, N@1588 10–16 across four
+> seeds (Calhoun 2200 @ 560, 600, ≈920, 2056, 122, 27); 12 seeds (1600 d): N@1444 155 ± 29 (median 119),
+> N@1588 31 ± 9 (median 20).
+> See `NOTES.md` "Phase 2m" and earlier. Still off: N@315 23–34 % low and seed-dominated (de-weighted to 0.10 of 12 in the loss);
+> N@736 3–4 % low; N@1444 27 % high at the mean (two slow realisations; median 119); conceptions
+> end ≈20 d late. **Calibration frozen at 2m** — reopen only if phase 3 / 4 needs it (caveats in
+> `NOTES.md` → "Phase 2m").
 
 **Goal:** Reduce mean relative landmark error from ~1.08; get first litters nearer day 104, N@315 nearer 620, peak nearer day 560, and either a collapse or an honest negative with mechanism notes.
 

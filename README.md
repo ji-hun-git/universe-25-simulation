@@ -48,7 +48,8 @@ day 315, last conception ≈ day 920 (measured as the rate-based cessation of co
 surviving births; the strict last-conception day is reported alongside).
 
 Collapse is **emergent**: density → stress → neglect / litter abandonment / breeding suppression,
-plus a developmental `competence` trait that young lose under crowding and keep for life
+plus a developmental `competence` trait that young lose under crowding — or anywhere in the
+colony once its social organisation has broken down — and keep for life
 (Calhoun's "beautiful ones"; Marsden 1972 showed the deficit persisted after transfer), an
 irreversible post-weaning loss of maternal capacity under sustained stress (Calhoun's phase C/D
 mothers that attacked and expelled their young while conceptions went on) and its male

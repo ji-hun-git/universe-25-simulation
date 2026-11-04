@@ -4,7 +4,7 @@
 > **Repo (private):** https://github.com/ji-hun-git/universe25-play  
 > **Local path (lab PC):** `C:\Users\user\Projects\universe25-play`  
 > **Owner:** Jason (ji-hun-git) · **Research partner:** gan  
-> **Date:** 2026-10-30 (Asia/Seoul) · **Phase:** 1 complete; **phase 2 calibration done (2b/2d: mean landmark error 0.117, emergent collapse; 2c: tick loop dt-invariant)**; Warp parity partial; phase 3 (visuals) and phase 4 (play module) not started
+> **Date:** 2026-11-04 (Asia/Seoul) · **Phase:** 1 complete; **phase 2 calibration frozen at 2m (canonical landmark error 0.06 at seed 7000, 0.03–0.10 held-out; 12-seed plateau within 3–4 % of Calhoun; early phase a third low; emergent, irreversible collapse — caveats in `NOTES.md` → "Phase 2m")**; Warp parity partial; phase 3 (visuals) and phase 4 (play module) not started
 
 Read this file first. Then read `PLAN.md`, `NOTES.md`, `docs/NVIDIA_STACK.md`, `docs/TASKS.md`. Follow `CONTRIBUTING.md` for day-to-day rules.
 
@@ -86,7 +86,7 @@ If a PR / commit introduces a play reward, reject it.
 
 ---
 
-## 4. Current status (as of phase 2l, 2026-11-03)
+## 4. Current status (as of phase 2m, 2026-11-03)
 
 ### Phase 1 — done
 
@@ -452,6 +452,43 @@ Phases: decline (638) → collapse (1198). **Resolution:** 24 ticks/day gives pe
 The seed-7000 realisation differs from 2i/2k before any old-age death (the lifespan draws at birth shift the RNG stream): peak day 525 vs 550, N@315 502 vs 528; the 12-seed means hold (peak day 547 ± 17, N@736 1999 ± 16).
 Scan, rebound table and open gaps in `NOTES.md` → "Phase 2l".
 
+### Phase 2m — colony-wide developmental exposure: the collapse cannot rebound (2026-11-03)
+
+- `imprint_breakdown_exposure`: young lose competence at `imprint_rate` × (local exposure +
+  gain × the breakdown factor) — the weaned-density ramp that already drives the colony-wide
+  stress boost — so a female raised in an uncrowded cell during phase C/D grows up withdrawn
+  instead of breeding when space returns (Calhoun / Marsden: the late-born never reproduced even
+  after transfer). NumPy + Warp `density_stress_kernel` (parity 1.9e-9, branch exercised); 0 = off,
+  bit-identical. Gain 1.0 by scan (0.5–2 all stop the rebound).
+- With the rebound gone the lifespan is re-chosen for the late tail: **780 ± 150** (2l: 850 ± 100,
+  which held 1197 at day 1200 and a median of 9 at 1588). 12 seeds, 1600 d: surviving births cease
+  608 ± 19 at every lifespan tried (2l at 780 ± 170: 689 ± 83 with three rebounding seeds).
+
+**Calibrated run (seed 7000, `configs/default.yaml`, 6 ticks/day, 1600 d):**
+
+| Landmark | Calhoun | Phase 2l | **Phase 2m** | held-out 8000–8002 (1600 d) | 12 seeds, 1600 d |
+|----------|--------:|---------:|-------------:|---:|---:|
+| First litters | 104 | 102 | **102** | 102–103 | 102 ± 0 |
+| N @ 315 | 620 | 502 | **502** | 405–643 | 409 ± 45 |
+| Peak N | 2200 | 2261 | **2199** | 2247–2285 | 2265 ± 18 |
+| Peak day (31-d mean max) | 560 | 525 | **528** | 508–540 | 550 ± 15 |
+| Surviving births cease | 600 | 574 | **621** | 571–583 | 608 ± 19 |
+| N @ 736 | 2056 | 1962 | **1955** | 1920–1942 | 1983 ± 20 |
+| Conception cessation | ≈920 | 892 | **905** | 926–945 | 939 ± 21 |
+| N @ 1200 | (0.35–0.85 × peak) | 1127 | **811** | 777–832 | 880 ± 48 |
+| N @ 1444 | 122 | 120 | **108** | 109–111 | 155 ± 29 (median 119) |
+| N @ 1588 | 27 | 7 | **10** | 14–16 | 31 ± 9 (median 20) |
+| mean rel. error (canonical 5) | | 0.069 | **0.060** | 0.03–0.10 | |
+
+Phases: decline (675) → collapse (1120). **Resolution:** 24 ticks/day gives peak 2317 / 543, cessation 601, N@736 1982, N@1444 158, N@1588 27; 12 seeds, 800 d: peak 2265 ± 18 (6 tpd) vs 2262 ± 15 (24 tpd), peak day 550 ± 15 vs 562 ± 13, N@736 1983 ± 20 vs 1987 ± 14.
+Scan, 12-seed rebound table and open gaps in `NOTES.md` → "Phase 2m".
+
+**Calibration frozen here.** The fit is a plausibility check, not mechanism validation (about
+ten tuned parameters against ten landmarks from one colony); every CMA-ES study since 2g returned
+the hand point or lost out of sample, so the method of record is hand scans + 12-seed
+out-of-sample scoring; the early phase was de-weighted (0.10 of 12), not fixed; since 2k the
+plateau moved by less than its seed se. Caveats in full in `NOTES.md` → "Phase 2m".
+
 ---
 
 ## 5. Architecture map
@@ -590,8 +627,8 @@ Seeds: build/training `7000–7009`; unit tests `7100`; eval worlds later `8000�
 
 ### Phase 2 — Calibrate + GPU (calibration DONE 2026-10-30; GPU parity partial)
 **Accept when:**
-- [x] Mean relative landmark error **≪ 1.0** → **0.069** at seed 7000, 0.04–0.10 held-out (phase 2l: first litters 102, peak 2261 @ 525, surviving births cease 574, N@736 1962, conceptions cease 892, N@1444 120; 2b was 0.14)
-- [x] Collapse phase appears under abundant arm → decline from 638, N(1200) = 50 % of peak, 218 at 1400, 120 at 1444, 7 at 1588 (Calhoun 122 at ~1444, 27 at 1588); surviving births cease at 574, conceptions at 892 (2e–2l); documented misses: early phase 23–34 % low, N@736 3 % low, late tail thin at the median (N@1588 8 vs 27), breakdown reversible when density falls — see NOTES
+- [x] Mean relative landmark error **≪ 1.0** → **0.060** at seed 7000, 0.03–0.10 held-out (phase 2m: first litters 102, peak 2199 @ 528, surviving births cease 621, N@736 1955, conceptions cease 905, N@1444 108; 2b was 0.14)
+- [x] Collapse phase appears under abundant arm → decline from 675, N(1200) = 37 % of peak, 174 at 1400, 108 at 1444, 10 at 1588 (Calhoun 122 at ~1444, 27 at 1588); surviving births cease at 621, conceptions at 905 (2e–2m); no rebound in 12 seeds; documented misses: early phase 23–34 % low (N@315 409 ± 45 over 12 seeds vs 620, de-weighted to 0.10 of 12 in the loss), N@736 3–4 % low, N@1444 27 % high at the mean (two slow realisations; median 119), conceptions end ≈20 d late (939 ± 21) — see NOTES
 - [~] Warp tick path correct vs NumPy reference: density-stress + imprinting kernel parity test added (3e-8); mortality (hazard-level) and cells parity still open; CUDA Graph speedup documented in NSIGHT
 - [x] No NaNs (0 across calibration, held-out and 1600-d runs); `docs/NSIGHT.md` benches unchanged (no kernel perf work this round)
 
@@ -617,9 +654,18 @@ births cease 583, N@736 1949 (12 seeds 1990 ± 15), conceptions cease 915; canon
 error 0.046 (held-out 0.07–0.19). Phase 2l (done): per-individual lifespan 850 ± 100 d — N@1444 120, N@1588 7 at seed 7000
 (Calhoun 122 / 27; 12 seeds 193 ± 47 (median 131) / 24 ± 10 (median 8)); shorter lifespans let the colony
 rebound in 1–3 of 12 seeds (the breakdown is reversible when density falls — open gap).
-Remaining candidates (priority order): the reversibility of the breakdown (colony-wide imprinting / erosion so late cohorts
-never acquire reproductive behaviour — Calhoun's "death of the spirit"), the early phase (N@315
-409 ± 45 over 12 seeds vs 620) and the doomed-pup stock in the peak count (N@736 3 % low); vectorize
+Phase 2m (done): colony-wide developmental exposure (`imprint_breakdown_exposure` 1.0: young lose
+competence wherever they are once the colony is in breakdown) ends the rebound — no seed of 12 resumes
+surviving births — and lets the lifespan be 780 ± 150: N@1444 155 ± 29 (median 119), N@1588
+31 ± 9 (median 20) (Calhoun 122 / 27) with the plateau unchanged. **Calibration is frozen at the 2m point** (`configs/default.yaml` =
+`configs/calibrated_calhoun.yaml`): since 2k each phase has moved the plateau landmarks by less
+than their seed se, and on the order of ten tuned biology parameters against ten landmarks from
+one colony is a plausibility fit, not evidence for the mechanisms (caveats in `NOTES.md` →
+"Phase 2m"). Reopen only if a phase 3 / 4 experiment needs a landmark the substrate cannot
+show; the open misses, in priority order, are the early phase (N@315 409 ± 45 over 12 seeds vs
+620 — seed-dominated and de-weighted, so the optimizer no longer sees it), the doomed-pup stock
+in the peak count (N@736 3–4 % low) and the slow realisations' late tail (N@1444 155 ± 29 vs
+122, median 119). Engineering candidates: vectorize
 `_passive_nurse` / per-agent loops (`docs/TASKS.md` P1-3); Warp mortality-kernel parity at hazard level.
 
 ### Phase 3 — Visuals + dashboard
