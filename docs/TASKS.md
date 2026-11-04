@@ -212,6 +212,12 @@ own RNG stream. No play-named signal anywhere (H2). Add tests; keep need_driven 
 
 ## P4-1 — Calibration guard for policy arms (H-d)
 
+> **Done 2026-11-04:** `src/universe25/calib/policy_guard.py`,
+> `scripts/policy_guard.py`, `tests/test_policy_calibration_guard.py` (3 seeds × 400 d, ≈ 1.5 min).
+> First run (seeds 8000–8011, 1600 d): control reproduces the record out of sample; a random
+> frozen MLP is NOT PRESERVED (N@315 −61 %, peak −11 % / +240 d, cessation +560 d, late tail
+> 5–20×). The curve is not policy-invariant; see `NOTES.md` 2026-11-04 → P4-1.
+
 **Goal:** `tests/test_policy_calibration_guard.py` (400 d, 3 seeds, `mlp_frozen` with random
 weights vs `need_driven`: landmarks printed, tolerance asserted) and `scripts/policy_guard.py`
 (12 seeds 8000–8011, 1600 d, writes `_output/policy_guard_<kind>.json` with the canonical five,

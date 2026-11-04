@@ -65,7 +65,11 @@
   (`docs/TASKS.md` P0-5, not applied: frozen); 122 / 27 are post-removal counts (≈ 150 removed
   after day 1000); irreversibility is n = 1 (Kessler 1966 colonies recovered) — a model
   assumption. Reported-only record landmarks added; loss unchanged. Policy hook landed
-  (bit-identical); phase 4 preregistered in §15; no learning run yet.
+  (bit-identical); phase 4 preregistered in §15; no learning run yet. P4-0 / P4-1 done the same
+  day: the first guard run (seeds 8000–8011, 1600 d) shows the control reproducing the record
+  out of sample and a random frozen MLP **not** preserving the curve (N@315 −61 %, peak −11 %
+  / +240 d, cessation +560 d, late tail 5–20×) — H-d falsified for an arbitrary policy; the
+  heuristic behaviour is load-bearing.
 - Work package: WP-G12-adjacent / Track E toy world (Universe 25 + playground); not L3 ecology
 - Track: **E** (emergent, exploratory)
 - Owner: Jason

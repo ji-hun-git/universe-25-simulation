@@ -506,6 +506,11 @@ plateau moved by less than its seed se. Caveats in full in `NOTES.md` → "Phase
 - **Phase 4**: `docs/PHASE4_DESIGN.md` (architecture, reward, learner, detectors, calibration
   guard, determinism, compute), `PLAN.md` §15 (H-d … H-g, arms, seeds 8000–8011, budget, stop
   rules), `docs/TASKS.md` P4-0 … P4-7. No learning run has been made.
+- **P4-0 / P4-1 done (2026-11-04)**: observation builder + frozen-MLP policy kind; calibration
+  guard. First guard run (12 evaluation seeds, 1600 d): the frozen calibration reproduces the
+  record out of sample; a random policy does **not** preserve the curve (slower, lower, later,
+  far more persistent colony) — the heuristic behaviour is load-bearing, H-d is falsified for
+  an arbitrary policy and every policy arm must report the guard (`NOTES.md` 2026-11-04 → P4-1).
 
 ---
 
@@ -532,6 +537,7 @@ universe25-play/
 │   ├── calibrate.py
 │   ├── calibrate_optuna.py
 │   ├── seed_eval.py        ← out-of-sample scoring of a fragment over N seeds (adjudicator, 2k)
+│   ├── policy_guard.py     ← H-d calibration guard: a policy kind vs the need-driven control on the same seeds
 │   ├── multiseed_peak.py   ← 12-seed plateau / 6-vs-24 ticks check (peak, peak day, N@736, cessation)
 │   ├── benchmark_backends.py
 │   ├── microbench_warp_post.py
@@ -702,7 +708,8 @@ in the peak count (N@736 3–4 % low) and the slow realisations' late tail (N@14
 - [x] Policy hook: `agents/policy.py`, `policy.kind`, need-driven default bit-identical (hash `966401ea…`), H2 audit on the policy module
 - [x] Preregistration: H-d (policy invariance of the curve, 10 %), H-e / H-f / H-g, arms, seeds 8000–8011 reserved, budget, stop rules (`PLAN.md` §15)
 - [x] Observation builder + `mlp_frozen` (P4-0, 2026-11-04: 48-float obs, NumPy MLP, seeded policy stream, CLI `--policy`; builder 1.8 ms per 4,000 agents; need-driven hash unchanged)
-- [ ] Calibration guard (P4-1) · homeostatic reward + PPO (P4-2) · nursery pre-training (P4-3) · `evo` (P4-4)
+- [x] Calibration guard (P4-1, 2026-11-04: `calib/policy_guard.py`, `scripts/policy_guard.py`; first run on seeds 8000–8011 at 1600 d — the control reproduces the record (peak 2252 ± 13 @ 534 ± 7, N@1444 127 ± 8, N@1588 19 ± 2), a random frozen MLP is **not preserved**: N@315 −61 %, peak −11 % and +240 d, surviving births +560 d, late tail 5–20×; the curve is not policy-invariant, see NOTES)
+- [ ] Homeostatic reward + PPO (P4-2) · nursery pre-training (P4-3) · `evo` (P4-4)
 - [ ] Burghardt detectors per criterion with synthetic ground truth, ≥ 1,000 surrogates, ablations, thresholds fixed before any evaluation seed; V hopper fix (P4-5) — **PlayScore eval-only, unvalidated**
 - [ ] Sweep: policy kind × abundance / scarcity × playground on / off × 12 seeds (P4-6); H-d … H-g answered or marked untested in NOTES
 - [ ] H2 audit extended to observation, learner and detector code with a negative test (P4-7); no ICM / RND bonus; the heuristic is never distilled

@@ -237,6 +237,17 @@ learning"), reported in NOTES.md; the biology is not retuned to rescue it (the c
 frozen, phase 2m). A test (`tests/test_policy_calibration_guard.py`, P4-1) runs a 400-day
 3-seed version of this check so that drift is caught before a sweep.
 
+**First measurement (2026-11-04, `scripts/policy_guard.py mlp_frozen --weights
+_output/policy_random_7000.npz`, seeds 8000–8011, 1600 d).** The need-driven control
+reproduces the record on seeds it had never seen (peak 2252 ± 13 at 534 ± 7, cessation 593 ± 8,
+N@1444 127 ± 8, N@1588 19 ± 2). A fixed random MLP (near-uniform over the eligible actions) is
+**not preserved**: N@315 −61 %, peak −11 % and +240 d, surviving births +560 d, conceptions
++410 d, N@1444 ×5, N@1588 ×20. The behavioural sink needs the heuristic's attraction to
+hoppers, nests and partners; spread uniformly the colony never concentrates enough for the
+breakdown to complete. So the calibration is "biology + heuristic behaviour", H-d is
+falsified for an arbitrary policy, and the random arm is the baseline bounding what a learned
+policy may do (`NOTES.md` 2026-11-04 → P4-1).
+
 ## 5. Determinism (two tiers, never cross-tier identity)
 
 - **Reference tier (NumPy, CPU):** `need_driven`, `mlp_frozen` and `evo` are bit-identical run

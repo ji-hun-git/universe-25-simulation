@@ -73,6 +73,44 @@ eligible actions: the "random policy" baseline of the detector validation. Smoke
 `need_driven`: first litters come at ≈ 100 d). No learning, no calibration claim: the guard is
 P4-1.
 
+**P4-1 done (2026-11-04) — first phase 4 measurement: the curve is not policy-invariant.**
+`calib/policy_guard.py`, `scripts/policy_guard.py`, `tests/test_policy_calibration_guard.py`
+(verdict rule, control-vs-control zero drift, a random arm end to end). Guard run: the 12
+evaluation seeds 8000–8011 (first use), 1600 d, 6 ticks/day, need-driven control vs one fixed
+random frozen MLP (`_output/policy_random_7000.npz`: orthogonal init, last-layer gain 0.01, i.e.
+near-uniform over the eligible actions, with the same masks and reflexes as the heuristic).
+`_output/policy_guard_mlp_random.json`; mean ± se, paired = arm − control on the same seed:
+
+| landmark | Calhoun | need_driven (control) | random MLP | drift | paired diff |
+|---|---:|---:|---:|---:|---:|
+| First litters | 104 | 102.2 ± 0.2 | 102.8 ± 0.3 | 0.006 | +0.6 ± 0.4 |
+| N @ 315 | 620 | 470 ± 43 | 181 ± 36 | **0.61** | −289 ± 41 |
+| Peak N | 2200 | 2252 ± 13 | 1995 ± 23 | **0.11** | −257 ± 27 |
+| Peak day | 560 | 534 ± 7 | 776 ± 27 | **0.45** | +242 ± 31 |
+| Surviving births cease | 600 | 593 ± 8 | 1154 ± 107 | **0.95** | +561 ± 108 |
+| N @ 736 | 2056 | 1956 ± 11 | 1791 ± 74 | 0.08 | −165 ± 71 |
+| Conception cessation | ≈920 | 935 ± 8 | 1349 ± 59 | 0.44 | +414 ± 62 |
+| N @ 1200 | (0.35–0.85 × peak) | 839 ± 20 | 1272 ± 54 | 0.52 | +433 ± 56 |
+| N @ 1444 | 122 | 127 ± 8 | 608 ± 74 | 3.8 | +481 ± 77 |
+| N @ 1588 | 27 | 19 ± 2 | 383 ± 93 | 19 | +364 ± 93 |
+
+H-d verdict for the random policy: **NOT PRESERVED** (N@315, peak N, peak day, cessation fail
+the 10 % rule; the decline band at 1200 holds). Reading:
+- The frozen 2m calibration, on evaluation seeds it had never seen, reproduces the record:
+  peak 2252 ± 13 at 534 ± 7, cessation 593 ± 8, N@736 1956 ± 11, conceptions 935 ± 8, N@1444
+  127 ± 8 (122), N@1588 19 ± 2 (27). The early phase stays low (470 ± 43 vs 620; see P0-5).
+- A policy that chooses uniformly among the eligible actions gives a slower, weaker and far
+  more persistent colony: phase B at half the rate (random mothers leave the nest, pups starve
+  more), a peak 11 % lower and 240 d later, surviving births for ≈ 560 d longer, conceptions
+  ≈ 410 d longer, and five to twenty times the control's late tail. The behavioural sink needs
+  the heuristic's attraction to hoppers, nests and partners; spread uniformly, the colony never
+  concentrates enough for the breakdown to run its course.
+- Consequence: "calibrated biology" is really calibrated biology **plus heuristic behaviour**.
+  H-d is falsified for an arbitrary policy, which is the baseline that bounds what a learned
+  drive-reduction policy may do; whether such a policy lands near the heuristic or near random
+  is the open question P4-2 / P4-3 answer, and every policy arm reports this guard before any
+  abundance-vs-scarcity comparison is read. The biology is not retuned (frozen at 2m).
+
 ## Phase 2m — colony-wide developmental exposure: the collapse cannot rebound (2026-11-03)
 
 Motivation: phase 2l found the breakdown reversible — with lifespans short enough to fit the
