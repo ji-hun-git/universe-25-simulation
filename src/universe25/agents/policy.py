@@ -36,6 +36,7 @@ from universe25.agents.state import (
     ROLE_NURSING,
     ROLE_WITHDRAWN,
 )
+from universe25.rng import make_rng
 
 if TYPE_CHECKING:  # pragma: no cover
     from universe25.config import PolicyConfig
@@ -100,7 +101,84 @@ class NeedDrivenPolicy:
         return sample_masked(np.exp(np.clip(U, -20, 20)), allowed, sim.rng.random(m))
 
 
-def make_policy(cfg: PolicyConfig) -> Policy:
+POLICY_SEED_OFFSET = 1_000_003  # the policy stream is seed + offset: never the biology stream
+PARAM_KEYS = ("W1", "b1", "W2", "b2", "W3", "b3")
+
+
+def _orthogonal(rng: np.random.Generator, n_in: int, n_out: int, gain: float) -> np.ndarray:
+    a = rng.standard_normal((max(n_in, n_out), min(n_in, n_out)))
+    q, r = np.linalg.qr(a)
+    q = q * np.sign(np.diag(r))
+    if n_in < n_out:
+        q = q.T
+    return (gain * q[:n_in, :n_out]).astype(np.float32)
+
+
+class MlpFrozenPolicy:
+    """obs -> hidden tanh -> hidden tanh -> N_ACTIONS logits; weights fixed for the run (no
+    learning). Inference is pure NumPy float32 on the reference path; sampling is inverse-CDF
+    on the masked softmax with one uniform per deciding agent from the policy's own stream."""
+
+    name = "mlp_frozen"
+
+    def __init__(self, params: dict[str, np.ndarray], seed: int):
+        from universe25.agents.observation import OBS_DIM, ObservationBuilder
+
+        self._builder_cls = ObservationBuilder
+        self.params = {k: np.asarray(params[k], dtype=np.float32) for k in PARAM_KEYS}
+        W1, W2, W3 = self.params["W1"], self.params["W2"], self.params["W3"]
+        if W1.shape[0] != OBS_DIM or W3.shape[1] != N_ACTIONS or W1.shape[1] != W2.shape[0]:
+            raise ValueError(f"bad MLP shapes {W1.shape} {W2.shape} {W3.shape}")
+        self.rng = make_rng(int(seed) + POLICY_SEED_OFFSET)
+        self.builder = None
+
+    @classmethod
+    def random_init(cls, seed: int, hidden: int = 128) -> MlpFrozenPolicy:
+        """Orthogonal init (last layer gain 0.01: near-uniform logits) from a seeded stream."""
+        from universe25.agents.observation import OBS_DIM
+
+        rng = make_rng(int(seed) + POLICY_SEED_OFFSET + 1)
+        params = {
+            "W1": _orthogonal(rng, OBS_DIM, hidden, np.sqrt(2.0)),
+            "b1": np.zeros(hidden, np.float32),
+            "W2": _orthogonal(rng, hidden, hidden, np.sqrt(2.0)),
+            "b2": np.zeros(hidden, np.float32),
+            "W3": _orthogonal(rng, hidden, N_ACTIONS, 0.01),
+            "b3": np.zeros(N_ACTIONS, np.float32),
+        }
+        return cls(params, seed)
+
+    @classmethod
+    def from_npz(cls, path: str, seed: int) -> MlpFrozenPolicy:
+        with np.load(path) as z:
+            return cls({k: z[k] for k in PARAM_KEYS}, seed)
+
+    def save_npz(self, path: str) -> None:
+        np.savez(path, **self.params)
+
+    def logits(self, obs: np.ndarray) -> np.ndarray:
+        p = self.params
+        h = np.tanh(obs @ p["W1"] + p["b1"])
+        h = np.tanh(h @ p["W2"] + p["b2"])
+        return h @ p["W3"] + p["b3"]
+
+    def observe(self, sim: Universe25Sim, idx: np.ndarray) -> np.ndarray:
+        if self.builder is None or self.builder.world is not sim.world:
+            self.builder = self._builder_cls(sim.world)
+        return self.builder.build(sim, idx)
+
+    def choose(self, sim: Universe25Sim, idx: np.ndarray, allowed: np.ndarray) -> np.ndarray:
+        z = self.logits(self.observe(sim, idx)).astype(np.float64)
+        z = np.where(allowed, z, -1e8)  # invalid-action mask on the logits
+        z -= z.max(axis=1, keepdims=True)
+        return sample_masked(np.exp(z), allowed, self.rng.random(idx.size))
+
+
+def make_policy(cfg: PolicyConfig, seed: int = 7000) -> Policy:
     if cfg.kind == "need_driven":
         return NeedDrivenPolicy()
+    if cfg.kind == "mlp_frozen":
+        if cfg.weights:
+            return MlpFrozenPolicy.from_npz(cfg.weights, seed)
+        return MlpFrozenPolicy.random_init(seed, hidden=int(cfg.hidden))
     raise ValueError(f"unknown policy kind {cfg.kind!r}")

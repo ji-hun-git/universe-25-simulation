@@ -60,7 +60,7 @@ class Universe25Sim:
         self._nest_x = np.array([n.x for n in self.world.nests], dtype=np.float64)
         self._nest_y = np.array([n.y for n in self.world.nests], dtype=np.float64)
         self.agents = AgentSoA.create(cfg.max_agents)
-        self.policy = make_policy(cfg.policy)  # chooses among eligible actions (H2-audited)
+        self.policy = make_policy(cfg.policy, cfg.seed)  # chooses among eligible actions
         self.tick = 0
         self.day = 0.0
         self.dt_days = 1.0 / cfg.ticks_per_day

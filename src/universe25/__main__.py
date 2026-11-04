@@ -22,6 +22,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--device", type=str, default=None, choices=["auto", "cpu", "cuda"])
     p.add_argument("--playground", type=str, default=None, choices=["on", "off"])
     p.add_argument("--max-agents", type=int, default=None)
+    p.add_argument("--policy", type=str, default=None, choices=["need_driven", "mlp_frozen"])
+    p.add_argument("--policy-weights", type=str, default=None, help=".npz for mlp kinds")
     args = p.parse_args(argv)
 
     from universe25.config import load_config
@@ -37,6 +39,13 @@ def main(argv: list[str] | None = None) -> int:
         overrides["device"] = args.device
     if args.max_agents is not None:
         overrides["max_agents"] = args.max_agents
+    if args.policy is not None or args.policy_weights is not None:
+        pol: dict = {}
+        if args.policy is not None:
+            pol["kind"] = args.policy
+        if args.policy_weights is not None:
+            pol["weights"] = args.policy_weights
+        overrides["policy"] = pol
     if args.playground == "on":
         overrides["playground"] = {"enabled": True}
     elif args.playground == "off":

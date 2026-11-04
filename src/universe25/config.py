@@ -180,9 +180,13 @@ class DriveConfig(BaseModel):
 class PolicyConfig(BaseModel):
     # Which policy chooses among the eligible actions at each decision (agents/policy.py).
     # "need_driven" is the phase 1/2 utility softmax (bit-identical to the inline version it
-    # replaced). Learned policies (phase 4) are added here; none may receive a play-named
-    # observation, reward or goal (H2).
-    kind: Literal["need_driven"] = "need_driven"
+    # replaced). "mlp_frozen" is a fixed-weight MLP over agents/observation.py (NumPy
+    # inference; weights from `weights` (.npz) or a seeded orthogonal init when null). Learned
+    # kinds never receive a play-named observation, reward or goal (H2) and sample from their
+    # own RNG stream.
+    kind: Literal["need_driven", "mlp_frozen"] = "need_driven"
+    weights: str | None = None  # path to an .npz with W1 b1 W2 b2 W3 b3 (mlp kinds)
+    hidden: int = 128  # hidden width for a random init (ignored when weights is set)
 
 
 class SimConfig(BaseModel):
