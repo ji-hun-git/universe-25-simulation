@@ -36,6 +36,7 @@ from universe25.agents.state import (
     AgentSoA,
     pick_backend,
 )
+from universe25.agents.policy import make_policy
 from universe25.config import SimConfig
 from universe25.metrics.calibration import rate_cessation_day, surviving_birth_cessation_day
 from universe25.metrics.logger import MetricsLogger
@@ -59,6 +60,7 @@ class Universe25Sim:
         self._nest_x = np.array([n.x for n in self.world.nests], dtype=np.float64)
         self._nest_y = np.array([n.y for n in self.world.nests], dtype=np.float64)
         self.agents = AgentSoA.create(cfg.max_agents)
+        self.policy = make_policy(cfg.policy)  # chooses among eligible actions (H2-audited)
         self.tick = 0
         self.day = 0.0
         self.dt_days = 1.0 / cfg.ticks_per_day
@@ -324,7 +326,9 @@ class Universe25Sim:
 
 
     def _select_actions(self, alive: np.ndarray) -> np.ndarray:
-        """Vectorized utility-based action selection. No play utility term.
+        """Physiology around the policy: decision cadence, eligibility mask, reflex overrides.
+        The choice among eligible actions is `self.policy.choose` (agents/policy.py; the default
+        need-driven utility softmax has no play utility term).
 
         Decisions are made every ticks_per_decision ticks (once per reference interval);
         on the ticks in between every agent continues its last action.
@@ -338,37 +342,17 @@ class Universe25Sim:
         if self.ticks_per_decision > 1 and (self.tick % self.ticks_per_decision) != 0:
             actions[idx] = a.last_action[idx]
             return actions
-        d = self.cfg.drives
         bio = self.cfg.biology
-        scarce = self.cfg.resources.mode == "scarce"
         m = idx.size
-        U = np.zeros((m, N_ACTIONS), dtype=np.float64)
         hung = a.hunger[idx]
         th = a.thirst[idx]
         fat = a.fatigue[idx]
         en = a.energy[idx]
         st = a.stress[idx]
-        soc = a.social_drive[idx]
-        cur = a.curiosity[idx]
-        bor = a.boredom[idx]
-        agg = a.aggression[idx] + (d.aggression_scarce_boost if scarce else 0.0)
         role = a.role[idx]
         sex = a.sex[idx]
         age = a.age_days[idx]
         mat = a.maternal[idx]
-        U[:, ACT_FORAGE] = hung * 2.0
-        U[:, ACT_DRINK] = th * 2.2
-        U[:, ACT_REST] = fat * 1.5 + (1.0 - en)
-        U[:, ACT_NEST] = 0.3 + 0.4 * (role == ROLE_NURSING)
-        U[:, ACT_SOCIAL] = soc * (1.0 - 0.7 * (role == ROLE_WITHDRAWN))
-        U[:, ACT_EXPLORE] = cur * 0.9 + bor * 0.5
-        if self.world.playground_enabled:
-            gate = np.where((en > 0.5) & (st < 0.4), 1.2, 0.3)
-            U[:, ACT_MANIPULATE] = (cur * 0.7 + bor * 0.8) * gate
-        U[:, ACT_AGGRESS] = agg * st * (1.5 if scarce else 0.6)
-        U[:, ACT_MATE] = 0.9
-        U[:, ACT_NURSE] = mat * 1.4
-        U[:, ACT_WITHDRAW] = st * 1.2 * (1.0 - soc)
 
         # Eligibility mask: ineligible actions get exactly zero probability. (Previously a
         # zero utility still carried softmax weight, so pups foraged, fought and conceived.)
@@ -384,14 +368,8 @@ class Universe25Sim:
         if not self.world.playground_enabled:
             allowed[:, ACT_MANIPULATE] = False
 
-        U -= U.max(axis=1, keepdims=True)
-        P = np.exp(np.clip(U, -20, 20)) * allowed
-        P /= P.sum(axis=1, keepdims=True)  # REST is always allowed, so sums are > 0
-        # Independent categorical samples
-        cdf = np.cumsum(P, axis=1)
-        r = self.rng.random(m)
-        chosen = (r[:, None] <= cdf).argmax(axis=1).astype(np.int8)
-        # Critical physiological needs override Softmax (dt-invariant need drive); pups
+        chosen = self.policy.choose(self, idx, allowed)  # REST is always allowed
+        # Critical physiological needs override the policy (dt-invariant need drive); pups
         # cannot use hoppers, their hunger/thirst are relieved only by nursing.
         chosen = np.where((th > 0.85) & ~pup, ACT_DRINK, chosen)
         chosen = np.where((hung > 0.85) & ~pup, ACT_FORAGE, chosen)
@@ -1128,6 +1106,10 @@ class Universe25Sim:
                     launches()
                     eng._graph = wp.capture_end(device=eng.device)
                     eng._graph_ready = True
+                    # Stream capture records the launches without running them: replay now so
+                    # the capture tick's post-step (stress, mortality, cells) is not skipped.
+                    wp.capture_launch(eng._graph)
+                    eng.n_graph_replays += 1
             else:
                 wp.capture_launch(eng._graph)
                 eng.n_graph_replays += 1

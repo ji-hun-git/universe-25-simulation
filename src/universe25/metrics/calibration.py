@@ -33,6 +33,43 @@ EXTRA_LANDMARKS = {
     "n_at_day_1588": 27.0,
 }
 
+# Record landmarks: reported only, never in the loss or in the mean errors (the calibration is
+# frozen at phase 2m and the loss weights are keyed on LANDMARKS + EXTRA_LANDMARKS). From the
+# 2026-11-04 review of Calhoun 1971 / 1973 and Marsden 1972 (docs/RESEARCH_DIGEST.md part A):
+# censuses 1871 at day 811 and about 1650 at day 960 (Marsden 1972 Fig 2), 100 at day 1471
+# (Calhoun 1973 Fig 2 caption); doubling times 55 d in phase B and 145 d in phase C (Calhoun 1973
+# pp. 83-84; Calhoun 1971 gives a 105-d five-universe mean for phase C, about 136 d digitised
+# for Universe 25). Doubling time over [t0, t1] = (t1 - t0) ln 2 / ln(N(t1) / N(t0)).
+RECORD_LANDMARKS = {
+    "n_at_day_811": 1871.0,
+    "n_at_day_960": 1650.0,
+    "n_at_day_1471": 100.0,
+    "doubling_time_phase_b_days": 55.0,  # first litters -> day 315
+    "doubling_time_phase_c_days": 145.0,  # day 315 -> peak_day
+}
+
+# Caveats on the record itself, carried into every calibration report.
+LANDMARK_NOTES = {
+    "first_litters_day": (
+        "Calhoun 1973 gives 104 (end of phase A); Calhoun 1971 gives first surviving litters at "
+        "50 d and both of his figures imply 60-65 d; 104 cannot be reconciled with 620 at day 315 "
+        "and a 55-d doubling (five doublings from 20 take 275 d). Treat the target as 50-104."
+    ),
+    "n_at_day_1444": (
+        "122 (22 M, 100 F) was counted after about 150 mice had been removed for other studies "
+        "after day 1000 (Calhoun 1973 Fig 2 caption); a run without removal should sit above "
+        "122 at day 1444 and 27 at day 1588."
+    ),
+    "n_at_day_1588": (
+        "27 (23 F, 4 M). The 23 May 1973 last-male date is a projection, not a census; no "
+        "extinction date was observed."
+    ),
+    "doubling_time_phase_c_days": (
+        "145 d (Calhoun 1973) vs a 105-d five-universe mean (Calhoun 1971) and about 136 d "
+        "digitised from the 1971 figure for Universe 25."
+    ),
+}
+
 # "peak_day" = day of the maximum of the PEAK_WINDOW_DAYS running mean of N: Calhoun's 2200 at
 # Day 560 is the census maximum, and the daily maximum of a pulsed birth process is a spike.
 # The first day at PEAK_FRACTION x max (used up to phase 2j) marks the *start* of a flat plateau
@@ -73,6 +110,18 @@ def surviving_birth_cessation_day(
     frac: float = CESSATION_FRACTION,
 ) -> float:
     return rate_cessation_day(surv_births_by_day, window, frac)
+
+
+def _doubling_time(days: np.ndarray, ns: np.ndarray, t0: float, t1: float) -> float:
+    """Doubling time (days) of N between days t0 and t1, (t1 - t0) ln 2 / ln(N(t1) / N(t0));
+    NaN when either day is outside the series, N(t0) <= 0 or N(t1) <= N(t0)."""
+    if not len(days) or not np.isfinite(t0) or not np.isfinite(t1) or t1 <= t0 or days[-1] < t1:
+        return float("nan")
+    n0 = _nearest(days, ns, t0)
+    n1 = _nearest(days, ns, t1)
+    if n0 <= 0.0 or n1 <= n0:
+        return float("nan")
+    return float((t1 - t0) * np.log(2.0) / np.log(n1 / n0))
 
 
 def _nearest(days: np.ndarray, values: np.ndarray, day: float) -> float:
@@ -128,6 +177,18 @@ def landmarks_from_series(
         "n_at_day_1588": (
             _nearest(days, ns, 1588.0) if len(days) and days[-1] >= 1570 else float("nan")
         ),
+        # record landmarks (reported only; see RECORD_LANDMARKS)
+        "n_at_day_811": (
+            _nearest(days, ns, 811.0) if len(days) and days[-1] >= 800 else float("nan")
+        ),
+        "n_at_day_960": (
+            _nearest(days, ns, 960.0) if len(days) and days[-1] >= 950 else float("nan")
+        ),
+        "n_at_day_1471": (
+            _nearest(days, ns, 1471.0) if len(days) and days[-1] >= 1460 else float("nan")
+        ),
+        "doubling_time_phase_b_days": _doubling_time(days, ns, first_litters, 315.0),
+        "doubling_time_phase_c_days": _doubling_time(days, ns, 315.0, peak_day),
         "final_n": float(ns[-1]) if len(ns) else 0.0,
         "final_day": float(days[-1]) if len(days) else 0.0,
     }
@@ -198,6 +259,7 @@ def calibrate(metrics_path: Path, run_summary: dict[str, Any] | None = None) -> 
         pred["last_conception_day"] = float(run_summary["conception_cessation_day"])
     errors = _rel_errors(pred, LANDMARKS)
     extra_errors = _rel_errors(pred, EXTRA_LANDMARKS)
+    record_errors = _rel_errors(pred, RECORD_LANDMARKS)  # reported, never scored
     phases = _detect_phases(days, ns)
 
     all_rel = [errors[k]["rel_error"] for k in LANDMARKS] + [
@@ -209,6 +271,9 @@ def calibrate(metrics_path: Path, run_summary: dict[str, Any] | None = None) -> 
         "observed": pred,
         "errors": errors,
         "extra_errors": extra_errors,
+        "record_landmarks": RECORD_LANDMARKS,
+        "record_errors": record_errors,
+        "landmark_notes": LANDMARK_NOTES,
         "mean_rel_error": float(np.nanmean([errors[k]["rel_error"] for k in LANDMARKS])),
         "mean_rel_error_extended": float(np.nanmean(all_rel)),
         "last_young_source": ly_source,

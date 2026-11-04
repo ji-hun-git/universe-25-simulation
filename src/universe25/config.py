@@ -177,6 +177,14 @@ class DriveConfig(BaseModel):
     aggression_scarce_boost: float = 0.5
 
 
+class PolicyConfig(BaseModel):
+    # Which policy chooses among the eligible actions at each decision (agents/policy.py).
+    # "need_driven" is the phase 1/2 utility softmax (bit-identical to the inline version it
+    # replaced). Learned policies (phase 4) are added here; none may receive a play-named
+    # observation, reward or goal (H2).
+    kind: Literal["need_driven"] = "need_driven"
+
+
 class SimConfig(BaseModel):
     seed: int = 7000
     ticks_per_day: int = 24
@@ -199,6 +207,7 @@ class SimConfig(BaseModel):
     resources: ResourceConfig = Field(default_factory=ResourceConfig)
     biology: BiologyConfig = Field(default_factory=BiologyConfig)
     drives: DriveConfig = Field(default_factory=DriveConfig)
+    policy: PolicyConfig = Field(default_factory=PolicyConfig)
 
     @field_validator("seed")
     @classmethod

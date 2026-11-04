@@ -9,7 +9,10 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from universe25.metrics.calibration import (  # noqa: E402
+    EXTRA_LANDMARKS,
+    LANDMARKS,
     PEAK_WINDOW_DAYS,
+    RECORD_LANDMARKS,
     landmarks_from_series,
     rate_cessation_day,
 )
@@ -47,7 +50,31 @@ def test_rate_cessation_ignores_single_stragglers() -> None:
     assert rate_cessation_day(hist) == 599.0
 
 
+def test_record_landmarks_are_reported_not_scored() -> None:
+    """Record landmarks (2026-11-04 review) stay out of the scored sets; doubling times follow
+    the definition (t1 - t0) ln 2 / ln(N1 / N0) and are NaN below the horizon."""
+    assert not set(RECORD_LANDMARKS) & (set(LANDMARKS) | set(EXTRA_LANDMARKS))
+    days = np.arange(0.0, 700.0)
+    # 8 founders, first litters at day 60, then a 55-day doubling from 20 up to a 2200 plateau
+    n = np.where(days < 60.0, 8.0, 20.0 * 2.0 ** ((days - 60.0) / 55.0))
+    n = np.minimum(n, 2200.0)
+    births = np.cumsum(days >= 60.0).astype(np.float64)
+    out = landmarks_from_series(days, n, births, np.zeros_like(days))
+    assert out["first_litters_day"] == 60.0
+    assert abs(out["doubling_time_phase_b_days"] - 55.0) < 0.5, out["doubling_time_phase_b_days"]
+    assert 0.0 < out["doubling_time_phase_c_days"] < 200.0  # 315 -> plateau peak day
+    assert np.isnan(out["n_at_day_811"]) and np.isnan(out["n_at_day_1471"])  # horizon 700
+    assert np.isnan(out["n_at_day_960"])
+    # with the horizon extended, the record censuses are read off the series
+    days2 = np.arange(0.0, 1500.0)
+    n2 = np.full_like(days2, 1000.0)
+    out2 = landmarks_from_series(days2, n2, np.cumsum(days2 >= 60.0), np.zeros_like(days2))
+    assert out2["n_at_day_811"] == 1000.0 and out2["n_at_day_1471"] == 1000.0
+    assert np.isnan(out2["doubling_time_phase_b_days"])  # no growth -> undefined
+
+
 if __name__ == "__main__":
     test_peak_day_is_smoothed_maximum_and_97pct_day_is_reported()
     test_rate_cessation_ignores_single_stragglers()
+    test_record_landmarks_are_reported_not_scored()
     print("test_landmarks: OK")
