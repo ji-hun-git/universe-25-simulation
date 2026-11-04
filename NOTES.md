@@ -57,6 +57,22 @@ preregistered before any learning run. The house-mouse literature predicts small
 locomotor or object-based effects, so the preregistered tests are about structure (criteria 3
 and 4 at matched drive states), not frequency.
 
+**P4-0 done (2026-11-04).** `agents/observation.py` builds the 48-float egocentric vector of
+`PHASE4_DESIGN.md` §1.3 (`OBS_NAMES`; no `lifespan`, no `competence`, no PlayScore field);
+`MlpFrozenPolicy` (48 → 128 tanh → 128 tanh → 11, orthogonal init with last-layer gain 0.01 from
+a seeded stream, or weights from an `.npz`; NumPy float32 inference; the `allowed` mask as −1e8
+on the logits; one uniform per deciding agent from the policy stream `seed + 1_000_003`);
+`policy.kind: mlp_frozen`, `policy.weights`, `policy.hidden`; CLI `--policy`,
+`--policy-weights`. Checks: `need_driven` 300-d hash unchanged (`966401ea…`); `mlp_frozen` is
+seed-deterministic and seed-sensitive, respects the mask, round-trips through `.npz`; the
+observation names pass the H2 audit. Cost at the plateau (seed 7000, day 560, 2172 alive):
+`build_observation` 0.97 ms, `choose` with the MLP 3.45 ms → 1.8 / 6.4 ms per 4,000 agents
+(acceptance < 2 ms for the builder). A random-init net is a near-uniform policy over the
+eligible actions: the "random policy" baseline of the detector validation. Smoke
+(`configs/smoke.yaml`, 30 d, `--policy mlp_frozen`): runs, 0 NaN, no births in 30 d (as with
+`need_driven`: first litters come at ≈ 100 d). No learning, no calibration claim: the guard is
+P4-1.
+
 ## Phase 2m — colony-wide developmental exposure: the collapse cannot rebound (2026-11-03)
 
 Motivation: phase 2l found the breakdown reversible — with lifespans short enough to fit the

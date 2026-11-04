@@ -543,7 +543,8 @@ universe25-play/
 │   ├── rng.py
 │   ├── agents/
 │   │   ├── state.py        ← AgentSoA, ROLE_*, ACT_* (11 actions; no PLAY)
-│   │   ├── policy.py       ← Policy protocol; NeedDrivenPolicy (phase 1/2, bit-identical); learned kinds (phase 4)
+│   │   ├── policy.py       ← Policy protocol; NeedDrivenPolicy (bit-identical); MlpFrozenPolicy (NumPy, seeded stream)
+│   │   ├── observation.py  ← 48-float egocentric observation (OBS_NAMES; no lifespan / PlayScore field)
 │   │   ├── drives.py       ← H2 documentation
 │   │   └── device.py       ← optional Warp mirror buffers
 │   ├── world/
@@ -700,7 +701,8 @@ in the peak count (N@736 3–4 % low) and the slow realisations' late tail (N@14
 **Accept when:**
 - [x] Policy hook: `agents/policy.py`, `policy.kind`, need-driven default bit-identical (hash `966401ea…`), H2 audit on the policy module
 - [x] Preregistration: H-d (policy invariance of the curve, 10 %), H-e / H-f / H-g, arms, seeds 8000–8011 reserved, budget, stop rules (`PLAN.md` §15)
-- [ ] Observation builder + `mlp_frozen` (P4-0) · calibration guard (P4-1) · homeostatic reward + PPO (P4-2) · nursery pre-training (P4-3) · `evo` (P4-4)
+- [x] Observation builder + `mlp_frozen` (P4-0, 2026-11-04: 48-float obs, NumPy MLP, seeded policy stream, CLI `--policy`; builder 1.8 ms per 4,000 agents; need-driven hash unchanged)
+- [ ] Calibration guard (P4-1) · homeostatic reward + PPO (P4-2) · nursery pre-training (P4-3) · `evo` (P4-4)
 - [ ] Burghardt detectors per criterion with synthetic ground truth, ≥ 1,000 surrogates, ablations, thresholds fixed before any evaluation seed; V hopper fix (P4-5) — **PlayScore eval-only, unvalidated**
 - [ ] Sweep: policy kind × abundance / scarcity × playground on / off × 12 seeds (P4-6); H-d … H-g answered or marked untested in NOTES
 - [ ] H2 audit extended to observation, learner and detector code with a negative test (P4-7); no ICM / RND bonus; the heuristic is never distilled

@@ -41,7 +41,7 @@ survives a learned policy is an **empirical question** (§4), not a tuning targe
 | kind | What | RNG | Status |
 |---|---|---|---|
 | `need_driven` | phase 1/2 utility softmax | one draw per deciding agent from the sim stream | done, bit-identical |
-| `mlp_frozen` | NumPy float32 MLP inference, weights from a file; learning off | own `make_rng(seed ^ POLICY_SALT)` stream | to build (P4-0) |
+| `mlp_frozen` | NumPy float32 MLP inference (48 → 128 → 128 → 11), weights from an `.npz` or a seeded orthogonal init; learning off | own `make_rng(seed + 1_000_003)` stream | done (P4-0, 2026-11-04) |
 | `mlp_ppo` | same net, PPO updates every T ticks in torch (CUDA) | torch generator seeded from `seed`; see §5 | to build (P4-2) |
 | `evo` | per-agent weights inherited at birth with Gaussian mutation; no reward, no learner | sim stream for mutation draws (biology-ordered) | to build (P4-4) |
 

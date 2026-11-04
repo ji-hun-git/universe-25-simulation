@@ -171,6 +171,10 @@ result.
 > (`Policy` protocol, `NeedDrivenPolicy`, `sample_masked`, `make_policy`), `policy.kind` in
 > `config.py`, `tests/test_policy.py`; the default is bit-identical to the inline softmax
 > (300-d trajectory hash `966401ea…`). Design: `docs/PHASE4_DESIGN.md`; prereg: `PLAN.md` §15.
+> **Done 2026-11-04:** `agents/observation.py` (48 floats, `OBS_NAMES`),
+> `MlpFrozenPolicy` (NumPy; orthogonal init or `.npz`; own RNG stream), `policy.kind: mlp_frozen`,
+> `--policy` / `--policy-weights`; tests in `tests/test_policy.py`; builder 1.8 ms per 4,000
+> agents; need-driven hash unchanged; smoke run OK. See `NOTES.md` 2026-11-04 → P4-0.
 
 **Goal:** `agents/observation.py::build_observation(sim, idx) -> float32[m, K]` per
 `PHASE4_DESIGN.md` §1.3 (interoception, body, role one-hot, local, targets, last action; no
