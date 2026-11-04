@@ -94,6 +94,13 @@ class BiologyConfig(BaseModel):
     # `competence` is a generic social-development trait, not a play term (H2).
     imprint_rate: float = 0.05  # competence loss per day per unit exposure, young only
     imprint_density_threshold: float = 0.15  # local cell density frac where exposure starts
+    # Colony-wide developmental exposure: young also lose competence at imprint_rate x this
+    # gain x the breakdown factor (the weaned-density ramp), wherever they are. Calhoun /
+    # Marsden: mice raised while the colony's social organisation had broken down never
+    # acquired reproductive behaviour even in uncrowded cells or after transfer ("death of
+    # the spirit"); without it the sparse cells' late cohorts stay competent and the colony
+    # can rebound once the old cohorts die (phase 2l). 0 = off.
+    imprint_breakdown_exposure: float = 0.0
     withdrawn_competence_threshold: float = 0.3  # adults below this withdraw ("beautiful ones")
     female_fertile_max_age_days: float = 420.0  # reproductive senescence (lab mouse ~12-15 mo)
     # Daily chance that a nursing mother above maternal_neglect_stress abandons her nest box's

@@ -1,10 +1,10 @@
-# Calhoun-landmark calibration, phase 2l (2026-11-03). Phase-2i optimum (breakdown ramp 0.2, nursing disturbance
-# 4 / 0.2, courtship erosion 0.04; kept through the 2j/2k multi-seed studies) + per-individual lifespan: normal
-# around max_age_days 850 with sd 100 (was one cutoff at 938), chosen by a 1600-d scan on Calhoun's N@1444 = 122 and
-# N@1588 = 27 and a 12-seed check for late rebounds (shorter lifespans, e.g. 780 +- 170 or 800 +- 150, let
-# surviving births resume in 1-3 of 12 seeds once density falls while fertile competent females remain).
-# 12 seeds, 1600 d: N@1444 median 131 (mean 193 +- 47), N@1588 median 8 (mean 24 +- 10), no rebound.
-# See NOTES.md 'Phase 2l'. Fragment: merge over configs/default.yaml (same values are in it).
+# Calhoun-landmark calibration, phase 2m (2026-11-03). Phase-2i optimum (breakdown ramp 0.2, nursing disturbance
+# 4 / 0.2, courtship erosion 0.04; kept through the 2j/2k multi-seed studies) + colony-wide developmental exposure
+# (imprint_breakdown_exposure 1.0, chosen by a scan: 0.5-2.0 all stop the late rebound, 1.0 keeps the plateau) +
+# per-individual lifespan 780 +- 150 (chosen by 12-seed 1600-d scans: 850 +- 100 held 1197 at 1200 and 23 at 1588,
+# 780 +- 170 gave 46 at 1588, 760 +- 150 gave 122 / 19). 12 seeds, 1600 d: N@1444 155 +- 29, N@1588 31 +- 9 (Calhoun
+# 122 / 27), no rebound; peak 2265 +- 18 @ 550 +- 15, N@736 1983 +- 20, surviving births cease 608 +- 19.
+# See NOTES.md 'Phase 2m'. Fragment: merge over configs/default.yaml (same values are in it).
 biology:
   first_conception_min_day: 81.23565828830122
   gestation_days: 19.479738849243606
@@ -18,8 +18,8 @@ biology:
   breakdown_density_ramp: 0.2
   stress_mortality_scale: 0.0006534730645402809
   base_mortality_per_day: 9.524360486307535e-05
-  max_age_days: 850.0
-  max_age_sd_days: 100.0
+  max_age_days: 780.0
+  max_age_sd_days: 150.0
   young_mortality_scale: 0.44966255557347645
   maternal_neglect_stress: 0.7887827117100081
   stillbirth_neglect_p: 0.3867616954385288
@@ -27,6 +27,7 @@ biology:
   social_breakdown_stress_boost: 0.24829430244099573
   imprint_rate: 0.02562789738225021
   imprint_density_threshold: 0.14530942474545908
+  imprint_breakdown_exposure: 1.0
   withdrawn_competence_threshold: 0.4460698250714801
   female_fertile_max_age_days: 583.0754563398896
   nurse_rate_per_day: 8.175439980634657

@@ -99,6 +99,11 @@ PARAM_PRIORS: dict[str, dict[str, Any]] = {
         "low": 0.05, "high": 0.40, "log": False, "group": "biology",
         "prior": "Uniform; local density fraction where developmental exposure begins",
     },
+    "imprint_breakdown_exposure": {
+        "low": 0.05, "high": 5.0, "log": True, "group": "biology",
+        "prior": "LogUniform; colony-wide developmental exposure per unit breakdown factor "
+                 "(young lose competence wherever they are once the colony is in breakdown)",
+    },
     "withdrawn_competence_threshold": {
         "low": 0.1, "high": 0.7, "log": False, "group": "biology",
         "prior": "Uniform; adults below this competence withdraw ('beautiful ones')",

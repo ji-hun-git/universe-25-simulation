@@ -150,6 +150,7 @@ def test_warp_density_stress_parity() -> None:
     bio.breakdown_density_threshold = 1.0
     bio.breakdown_density_ramp = 1.0
     bio.social_breakdown_stress_boost = 0.5
+    bio.imprint_breakdown_exposure = 0.5  # colony-wide exposure branch exercised too
     f_bd = bio.breakdown_factor(sim._breakdown_density(a.alive))
     assert 0.0 < f_bd < 1.0, f_bd
     d = sim.cfg.drives
@@ -184,7 +185,7 @@ def test_warp_density_stress_parity() -> None:
             float(bio.breakdown_threshold()), float(bio.breakdown_density_ramp),
             float(bio.social_breakdown_stress_boost),
             float(bio.maturity_days), float(bio.imprint_rate), float(bio.imprint_density_threshold),
-            b["event_scale"],
+            float(bio.imprint_breakdown_exposure), b["event_scale"],
         ],
         device=eng.device,
     )
@@ -442,6 +443,35 @@ def test_conception_density_suppression_is_graded_per_cell() -> None:
     assert sim._conceptions > before + 5, "width 0 = off"
 
 
+def test_colony_wide_imprinting_follows_the_breakdown_factor() -> None:
+    """Young in an uncrowded cell keep competence with the gain off, lose it in proportion to the
+    breakdown factor with the gain on; adults are untouched."""
+    sim = _make_sim(days=1.0, out="test_bio_colony")
+    a = sim.agents
+    bio = sim.cfg.biology
+    alive = np.flatnonzero(a.alive)
+    young, adult = alive[0], alive[1]
+    a.age_days[young] = 30.0
+    a.age_days[adult] = 300.0
+    a.competence[[young, adult]] = 1.0
+    a.nest_id[alive] = np.arange(alive.size) % sim.world.n_nests  # no overfull box
+    a.rank[:] = 0.9  # no nest kick
+    bio.imprint_density_threshold = 0.5  # 8 founders: local density far below -> no local exposure
+    bio.imprint_rate = 1.0
+    bio.breakdown_density_threshold = 1.0
+    bio.breakdown_density_ramp = 1.0  # factor = weaned density (> 0 with 8 adults)
+    f_bd = bio.breakdown_factor(sim._breakdown_density(a.alive))
+    assert 0.0 < f_bd < 0.05, f_bd
+    bio.imprint_breakdown_exposure = 0.0
+    sim._density_stress(a.alive)
+    assert a.competence[young] == 1.0, "no local exposure, gain off"
+    bio.imprint_breakdown_exposure = 10.0
+    sim._density_stress(a.alive)
+    expected = 1.0 - 1.0 * 10.0 * f_bd * sim.dt_days
+    assert abs(float(a.competence[young]) - expected) < 1e-5, (a.competence[young], expected)
+    assert a.competence[adult] == 1.0, "adults are frozen"
+
+
 def test_lifespan_is_per_individual_and_fixed_at_sd_zero() -> None:
     """max_age_sd_days 0: every animal's lifespan is max_age_days (bit-identical path);
     sd > 0: a normal spread around it with a floor, drawn at birth, used by the old-age hazard."""
@@ -561,6 +591,7 @@ if __name__ == "__main__":
     test_fertility_floor_scales_conception_with_maternal_cap()
     test_nursing_disturbance_is_graded_in_cell_density()
     test_lifespan_is_per_individual_and_fixed_at_sd_zero()
+    test_colony_wide_imprinting_follows_the_breakdown_factor()
     test_conception_density_suppression_is_graded_per_cell()
     test_warp_density_stress_parity()
     print("test_biology_guards: OK")

@@ -191,7 +191,8 @@ class WarpTickEngine:
                     float(bio.breakdown_threshold()), float(bio.breakdown_density_ramp),
                     float(bio.social_breakdown_stress_boost),
                     float(bio.maturity_days), float(bio.imprint_rate),
-                    float(bio.imprint_density_threshold), b["event_scale"],
+                    float(bio.imprint_density_threshold), float(bio.imprint_breakdown_exposure),
+                    b["event_scale"],
                 ],
                 device=self.device,
             )

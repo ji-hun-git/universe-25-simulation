@@ -765,6 +765,9 @@ class Universe25Sim:
         young = a.age_days[idx] < bio.maturity_days
         if young.any():
             exposure = np.maximum(0.0, local - bio.imprint_density_threshold) + over_frac
+            if bio.imprint_breakdown_exposure > 0.0 and f_bd > 0.0:
+                # colony-wide: the social breakdown reaches every nest (mirrors Warp kernel)
+                exposure = exposure + float(bio.imprint_breakdown_exposure) * f_bd
             yi = idx[young]
             a.competence[yi] = np.clip(
                 a.competence[yi] - bio.imprint_rate * exposure[young] * dt, 0.0, 1.0
@@ -1082,7 +1085,8 @@ class Universe25Sim:
                     float(bio.breakdown_threshold()), float(bio.breakdown_density_ramp),
                     float(bio.social_breakdown_stress_boost),
                     float(bio.maturity_days), float(bio.imprint_rate),
-                    float(bio.imprint_density_threshold), b["event_scale"],
+                    float(bio.imprint_density_threshold), float(bio.imprint_breakdown_exposure),
+                    b["event_scale"],
                 ],
                 device=eng.device,
             )

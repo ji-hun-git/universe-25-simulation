@@ -67,6 +67,7 @@ def density_stress_kernel(
     maturity_days: float,
     imprint_rate: float,
     imprint_thr: float,
+    imprint_breakdown: float,
     event_scale_arr: wp.array(dtype=wp.float32),
 ):
     i = wp.tid()
@@ -101,6 +102,8 @@ def density_stress_kernel(
     # Developmental imprinting: young lose social competence under crowding; frozen at maturity.
     if age_days[i] < maturity_days:
         exposure = wp.max(0.0, local - imprint_thr) + over
+        if imprint_breakdown > 0.0 and f_bd > 0.0:  # colony-wide (mirrors sim)
+            exposure = exposure + imprint_breakdown * f_bd
         competence[i] = wp.clamp(competence[i] - imprint_rate * exposure * dt, 0.0, 1.0)
 
 

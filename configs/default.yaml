@@ -1,7 +1,8 @@
-# Universe 25 abundant arm. Biology/drives = phase-2l calibration to Calhoun landmarks: the 2i optimum
-# (ramp 0.2, nursing disturbance 4 / 0.2, courtship erosion 0.04) with a per-individual lifespan
-# (max_age_days 850, max_age_sd_days 100, chosen by a 1600-d scan on N@1444 / N@1588 and a 12-seed
-# rebound check; see NOTES.md 'Phase 2l' and configs/calibrated_calhoun.yaml). 2026-11-03, seed 7000,
+# Universe 25 abundant arm. Biology/drives = phase-2m calibration to Calhoun landmarks: the 2i optimum
+# (ramp 0.2, nursing disturbance 4 / 0.2, courtship erosion 0.04) + colony-wide developmental exposure
+# (imprint_breakdown_exposure 1.0: young lose competence wherever they are once the colony is in breakdown,
+# so the collapse cannot rebound) + per-individual lifespan 780 +- 150 d (1600-d scans on N@1444 / N@1588,
+# 12-seed checks; see NOTES.md 'Phase 2m' and configs/calibrated_calhoun.yaml). 2026-11-03, seed 7000,
 # 6 ticks/day. Decisions are held for 1/6 day at finer ticks_per_day.
 seed: 7000
 ticks_per_day: 6  # reference resolution (ticks_per_day_ref); loop is dt-invariant, 12/24 give the same arc
@@ -42,8 +43,8 @@ biology:
   litter_sd: 1.5
   weaning_days: 21.0
   maturity_days: 63.902303850671544
-  max_age_days: 850.0
-  max_age_sd_days: 100.0
+  max_age_days: 780.0
+  max_age_sd_days: 150.0
   base_mortality_per_day: 9.524360486307535e-05
   stress_mortality_scale: 0.0006534730645402809
   first_conception_min_day: 81.23565828830122
@@ -63,6 +64,7 @@ biology:
   beautiful_one_aggression_max: 0.15
   imprint_rate: 0.02562789738225021
   imprint_density_threshold: 0.14530942474545908
+  imprint_breakdown_exposure: 1.0
   withdrawn_competence_threshold: 0.4460698250714801
   female_fertile_max_age_days: 583.0754563398896
   litter_abandon_p: 0.07998822448751196
