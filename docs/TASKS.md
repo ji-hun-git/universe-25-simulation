@@ -244,6 +244,15 @@ arms. Never change biology parameters to make a policy pass; write the drift to 
 
 ## P4-2 — Homeostatic reward + PPO learner (torch, CUDA) + GPU determinism
 
+> **Status 2026-11-06: built and tested; one acceptance item not met.**
+> `learn/reward.py`, `learn/ppo.py`, `learn/policy_ppo.py` (`policy.kind: mlp_ppo`),
+> `PPOConfig`, `scripts/nursery_smoke.py`, `tests/test_learn.py`; reflexes folded into the mask.
+> Met: drive-only reward, H2 audit of `learn/*`, bit-identical 20-day GPU run, no bonus,
+> learner D below the no-update baseline (0.43 vs 1.04). Not met: 10^7 transitions (2.5 × 10^6)
+> because **the learner abandons its young** (NURSE / NEST 0.00 for nursing mothers, 1.5 % pup
+> survival vs 13–15 %); the D comparison is confounded by the small colony. Next: decide how the
+> learner gets maternal motivation (`docs/PHASE4_DESIGN.md` §1.4 options; NOTES 2026-11-06).
+
 **Goal:** `src/universe25/learn/reward.py` (Keramati–Gutkin drive reduction per
 `PHASE4_DESIGN.md` §1.4: n = 4, m = 2, setpoints 0, no drive-independent term, death terminal,
 per-drive contributions logged, |r| capped at the one-tick maximum); `learn/ppo.py`

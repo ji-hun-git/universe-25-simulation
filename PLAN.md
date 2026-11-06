@@ -80,6 +80,11 @@
   = bit-identical). Heuristic continue mode within 2 % of the control on every resolvable
   landmark but fails the 10 % rule on N@315 at one paired se — H-d amendment proposed in §15.1
   (pending). Learned arms will run at K = 12 against the random policy at the same K.
+- Status note 2026-11-06 (P4-2): PPO learner with the preregistered seven-drive
+  reward built and deterministic. It abandons its young (nursing mothers never nurse; 1.5 % pup
+  survival), so the learned colony cannot reproduce the curve. The reward's drive list must be
+  settled (maternal motivation) before any learned arm is judged; no learned arm has been
+  evaluated on seeds 8000–8011.
 - Work package: WP-G12-adjacent / Track E toy world (Universe 25 + playground); not L3 ecology
 - Track: **E** (emergent, exploratory)
 - Owner: Jason

@@ -42,7 +42,7 @@ survives a learned policy is an **empirical question** (§4), not a tuning targe
 |---|---|---|---|
 | `need_driven` | phase 1/2 utility softmax | one draw per deciding agent from the sim stream | done, bit-identical |
 | `mlp_frozen` | NumPy float32 MLP inference (48 → 128 → 128 → 11), weights from an `.npz` or a seeded orthogonal init; learning off | own `make_rng(seed + 1_000_003)` stream; keeps its own cell counts (never the simulation's per-tick cache; fixed 2026-11-06) | done (P4-0, 2026-11-04) |
-| `mlp_ppo` | same net, PPO updates every T ticks in torch (CUDA) | torch generator seeded from `seed`; see §5 | to build (P4-2) |
+| `mlp_ppo` | same net, PPO updates every `rollout_ticks` decisions in torch (CUDA); sub-steps re-chosen | init from a seeded torch.Generator; sampling from `seed + 1_000_003` (decisions) or the sub-step stream; minibatches `seed + 4_000_003` | built (P4-2, 2026-11-06); maternal motivation pending |
 | `evo` | per-agent weights inherited at birth with Gaussian mutation; no reward, no learner | sim stream for mutation draws (biology-ordered) | to build (P4-4) |
 
 Rule for every learned kind: the policy never consumes the biology RNG stream for *sampling*
@@ -84,6 +84,15 @@ RND curiosity bonus: prediction-error bonuses fixate on the least predictable pa
 which in a colony is other mice (Burda et al. 2018 "noisy TV"), so they would pull agents into
 crowds and corrupt the density-driven calibration. Curiosity and boredom are already drives in
 D. Per-drive contributions to r are logged so reward hacking of one drive is visible.
+
+**P4-2 finding (2026-11-06): the seven-drive reward produces no maternal care.** In a 450-day
+nursery the learner never chose NURSE or NEST for nursing mothers, mothers sat a median 48 in
+from their nest, and 1.5 % of pups survived (no-update network 13 %, heuristic 15 %). Nursing
+relieves none of the seven drives. Options, decision pending (NOTES 2026-11-06 → P4-2):
+(1, recommended) an eighth, maternal-motivation drive for lactating females set by their own
+pre-weaning pups' hunger — physiology unchanged, only the learner's motivation, still
+drive-only; (2) a maternal reflex in physiology for every policy; (3) no change, report the
+collapse as the H-d result. Any change amends this section before a learned arm is judged.
 
 ### 1.5 Policy and learner
 

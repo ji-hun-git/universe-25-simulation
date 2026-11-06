@@ -1,5 +1,75 @@
 # Universe25 Play — NOTES
 
+## 2026-11-06 — P4-2: homeostatic reward + PPO learner; a drive-reduction learner abandons its young
+
+**Built.** `learn/reward.py` (Keramati & Gutkin drive reduction over the seven drives hunger,
+thirst, fatigue, social_drive, curiosity, boredom, stress; N = 4, M = 2, setpoints 0; death
+terminal at D − D_MAX; clipped to ±D_MAX; no drive-independent term, no bonus), `learn/ppo.py`
+(shared actor-critic 48 → 128 → 128 → 11 and 48 → 128 → 128 → 1, PPO with clipping, GAE along each
+slot's chain with per-transition discounts — decisions and sub-steps have different durations —
+value normalisation, masked logits, determinism recipe), `learn/policy_ppo.py`
+(`policy.kind: mlp_ppo`: one open transition per slot, closed at the agent's next call or as
+terminal on death / rebirth; update every `rollout_ticks` decisions; exports the actor in the
+`mlp_frozen` .npz layout), `PPOConfig`, `scripts/nursery_smoke.py`, `tests/test_learn.py`.
+The reflex overrides (critical thirst, hunger, fatigue) are now also the only action the mask
+allows on those rows, so a learner is never credited for an action physiology overrode
+(bit-identical for the heuristic: hash `966401ea…`).
+
+**Checks.** The reward is a function of the drives only (signature and values tested); GAE
+matches a hand recursion with a terminal and a truncated chain; a 20-day learning run on the GPU
+repeats bit for bit (actions, positions and final weights hashed); the exported actor gives the
+same logits as `mlp_frozen`; `ppo.enabled: false` never updates; learner code passes the H2
+identifier and import audits. Speed: 20 days with 80 agents and 12 sub-steps, 20 updates,
+31,000 transitions in 10 s on the RTX 5080.
+
+**Nursery smoke** (training seed 7000, 100 founding pairs, 12 sub-steps, 450 days;
+`_output/nursery_smoke.json`):
+
+| arm | mean D, last quarter | first quarter | N at day 450 | births | surviving births | learner transitions |
+|---|---:|---:|---:|---:|---:|---:|
+| learner (`mlp_ppo`) | **0.430** | 0.318 | **496** | 11,207 | **166** | 2.5 × 10^6 |
+| same network, no updates | 1.036 | 0.969 | 2,060 | 14,905 | 1,903 | — |
+| heuristic (continue) | 0.802 | 0.722 | 2,072 | 13,028 | 2,007 | — |
+
+Per-drive means in the last quarter: the learner rests more (fatigue 0.30 vs 0.94 / 0.68) and
+socialises more (social drive 0.64 vs 1.34 / 1.17), explores less (curiosity 0.45 vs 0.20 /
+0.23), and its stress is low (0.15 vs 0.49 / 0.56) because its colony is small.
+
+Acceptance as written: the learner's mean D is below the no-update baseline (**met**, by more
+than half) but it reached 2.5 × 10^6 transitions, not 10^7 (**not met**), because its colony never
+grew; and the D comparison is confounded by that demography.
+
+**Why the colony stayed small: the learner abandons its young.** Conceptions and births are
+normal (1,764 conceptions, 11,207 births); 1.5 % of pups survive to weaning against 13 % (no
+updates) and 15 % (heuristic); abandonment is zero, so the pups starve. Measured directly with
+the final weights frozen (days 110–160, same nursery):
+
+| policy | nursing mothers within 8 in of their nest | median distance | NURSE / NEST share of their decisions | mean pup hunger | surviving births |
+|---|---:|---:|---:|---:|---:|
+| learned | **0.05** | 48 in | **0.00 / 0.00** | 0.71 | 31 of 2,008 |
+| untrained network | 0.24 | 15 in | 0.05 / 0.05 | 0.39 | 330 of 1,955 |
+| heuristic | 0.25 | 13 in | 0.09 / 0.04 | 0.42 | 520 of 1,966 |
+
+None of the seven drives is relieved by nursing, so a pure drive-reduction learner has no reason
+to stay at the nest and learns not to. The heuristic encodes maternal motivation in its
+utilities (NURSE ∝ maternal investment, NEST raised for nursing females); the preregistered
+reward does not. This is a result about the reward, not a bug: homeostatic self-maintenance
+alone does not produce maternal care, and without it the calibrated colony cannot exist. It
+must be fixed before any learned arm can be compared with the control (H-d would fail on
+recruitment alone) and before the play question can be asked of a learner.
+
+**Options (decision pending, `PHASE4_DESIGN.md` §1.4):**
+1. *Maternal-motivation drive in the reward (recommended).* For a lactating female, a drive set
+   by her own pre-weaning pups' hunger (dams respond to pup cues), relieved when the pups are fed.
+   Physiology stays identical for every policy; only the learner's motivation changes, mirroring
+   what the heuristic already encodes. Still drive-only and H2-clean. Amends the preregistered
+   reward (seven → eight drives) before any learned arm is judged.
+2. *Maternal reflex in physiology.* Lactating mothers whose pups are hungry are forced to nurse,
+   like the thirst and hunger reflexes, for every policy. Maternal care is then not learned; the
+   heuristic's calibrated infant mortality must be re-guarded.
+3. *No change.* Report demographic collapse as the H-d result for drive-reduction learners and
+   study play only in nursery worlds without reproduction.
+
 ## 2026-11-06 — H-d amendment adopted (Jason)
 
 A canonical landmark now fails the calibration guard only if it drifts more than 10 % from the
