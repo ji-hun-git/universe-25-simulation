@@ -184,6 +184,10 @@ class MlpFrozenPolicy:
 def make_policy(cfg: PolicyConfig, seed: int = 7000) -> Policy:
     if cfg.kind == "need_driven":
         return NeedDrivenPolicy()
+    if cfg.kind == "mlp_ppo":  # torch is imported only for the learning kind
+        from universe25.learn.policy_ppo import MlpPpoPolicy
+
+        return MlpPpoPolicy(cfg, seed)
     if cfg.kind == "mlp_frozen":
         if cfg.weights:
             return MlpFrozenPolicy.from_npz(cfg.weights, seed)

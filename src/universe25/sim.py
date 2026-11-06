@@ -387,12 +387,20 @@ class Universe25Sim:
         if not self.world.playground_enabled:
             allowed[:, ACT_MANIPULATE] = False
 
-        chosen = self.policy.choose(self, idx, allowed)  # REST is always allowed
         # Critical physiological needs override the policy (dt-invariant need drive); pups
-        # cannot use hoppers, their hunger/thirst are relieved only by nursing.
-        chosen = np.where((th > 0.85) & ~pup, ACT_DRINK, chosen)
-        chosen = np.where((hung > 0.85) & ~pup, ACT_FORAGE, chosen)
-        chosen = np.where((fat > 1.2) & (hung < 0.7) & (th < 0.7), ACT_REST, chosen)
+        # cannot use hoppers, their hunger/thirst are relieved only by nursing. The forced
+        # action is also the only one the mask allows, so a learning policy is never credited
+        # for an action physiology overrode (same outcome, same draws: bit-identical).
+        forced = np.full(m, -1, dtype=np.int64)
+        forced = np.where((th > 0.85) & ~pup, ACT_DRINK, forced)
+        forced = np.where((hung > 0.85) & ~pup, ACT_FORAGE, forced)
+        forced = np.where((fat > 1.2) & (hung < 0.7) & (th < 0.7), ACT_REST, forced)
+        fr = forced >= 0
+        if fr.any():
+            allowed[fr, :] = False
+            allowed[np.flatnonzero(fr), forced[fr]] = True
+        chosen = self.policy.choose(self, idx, allowed)  # every row allows one action
+        chosen = np.where(fr, forced, chosen).astype(np.int8)
         actions[idx] = chosen
         return actions
 
@@ -1339,6 +1347,7 @@ class Universe25Sim:
                 break
         wall = time.perf_counter() - t0
         self.logger.close()
+        learn_summary = self.policy.finish(self) if hasattr(self.policy, "finish") else None
         trace_files = self.trace.close() if self.trace is not None else []
         # final snapshot
         self.snapshots.write(self.day, self.agents, self.world)
@@ -1372,6 +1381,8 @@ class Universe25Sim:
             "cuda_graph": self.cuda_graph.status(),
             "warp": None if self.warp_engine is None else self.warp_engine.status(),
             "trace_files": trace_files,
+            "policy_kind": self.cfg.policy.kind,
+            "learn": learn_summary,
         }
         (self.out_dir / "run.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
         return summary

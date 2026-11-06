@@ -177,6 +177,26 @@ class DriveConfig(BaseModel):
     aggression_scarce_boost: float = 0.5
 
 
+class PPOConfig(BaseModel):
+    # Shared-parameter PPO for policy.kind mlp_ppo (learn/ppo.py; PHASE4_DESIGN.md 1.5). The
+    # reward is the homeostatic drive reduction only (learn/reward.py).
+    enabled: bool = True  # False = act with the initial network, never update (baseline)
+    lr: float = 3e-4
+    lr_decay_updates: int = 0  # linear decay to 10 % over this many updates (0 = constant)
+    epochs: int = 4
+    minibatches: int = 4
+    clip: float = 0.2
+    gae_lambda: float = 0.95
+    gamma_per_decision: float = 0.98  # per decision (4 h); per sub-step gamma ** (1 / K)
+    entropy_coef: float = 0.01
+    vf_coef: float = 0.5
+    huber_delta: float = 1.0
+    max_grad_norm: float = 1.0
+    rollout_ticks: int = 12  # decisions between updates
+    device: Literal["auto", "cpu", "cuda"] = "auto"
+    cpu_threads: int = 4
+
+
 class PolicyConfig(BaseModel):
     # Which policy chooses among the eligible actions at each decision (agents/policy.py).
     # "need_driven" is the phase 1/2 utility softmax (bit-identical to the inline version it
@@ -184,7 +204,7 @@ class PolicyConfig(BaseModel):
     # inference; weights from `weights` (.npz) or a seeded orthogonal init when null). Learned
     # kinds never receive a play-named observation, reward or goal (H2) and sample from their
     # own RNG stream.
-    kind: Literal["need_driven", "mlp_frozen"] = "need_driven"
+    kind: Literal["need_driven", "mlp_frozen", "mlp_ppo"] = "need_driven"
     weights: str | None = None  # path to an .npz with W1 b1 W2 b2 W3 b3 (mlp kinds)
     hidden: int = 128  # hidden width for a random init (ignored when weights is set)
     # Free-time sub-steps (SimConfig.free_substeps > 1): "continue" repeats the decision action
@@ -193,6 +213,7 @@ class PolicyConfig(BaseModel):
     # need_driven (its motives exist only at the decision grain; re-choosing moved the
     # calibrated curve, NOTES 2026-11-06 P4-8), rechoose for learned kinds.
     substep_mode: Literal["auto", "continue", "rechoose"] = "auto"
+    ppo: PPOConfig = Field(default_factory=PPOConfig)
 
 
 class TraceConfig(BaseModel):

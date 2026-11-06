@@ -22,7 +22,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--device", type=str, default=None, choices=["auto", "cpu", "cuda"])
     p.add_argument("--playground", type=str, default=None, choices=["on", "off"])
     p.add_argument("--max-agents", type=int, default=None)
-    p.add_argument("--policy", type=str, default=None, choices=["need_driven", "mlp_frozen"])
+    p.add_argument("--policy", type=str, default=None,
+                   choices=["need_driven", "mlp_frozen", "mlp_ppo"])
     p.add_argument("--policy-weights", type=str, default=None, help=".npz for mlp kinds")
     p.add_argument("--free-substeps", type=int, default=None,
                    help="free-time sub-steps per decision (P4-8; 1 = off)")
