@@ -244,7 +244,10 @@ arms. Never change biology parameters to make a policy pass; write the drift to 
 
 ## P4-2 — Homeostatic reward + PPO learner (torch, CUDA) + GPU determinism
 
-> **Status 2026-11-06: built and tested; one acceptance item not met.**
+> **Done 2026-11-06, after an amendment.** Maternal drive adopted (eighth drive,
+> observation v2) and entropy 0.05: 650-day nursery, learner mean D 0.25 vs 1.04 (no updates)
+> vs 0.82 (heuristic), 1.5 × 10^7 transitions, full-size colony; acceptance met. History below.
+> **Earlier status (same day): built and tested; one acceptance item not met.**
 > `learn/reward.py`, `learn/ppo.py`, `learn/policy_ppo.py` (`policy.kind: mlp_ppo`),
 > `PPOConfig`, `scripts/nursery_smoke.py`, `tests/test_learn.py`; reflexes folded into the mask.
 > Met: drive-only reward, H2 audit of `learn/*`, bit-identical 20-day GPU run, no bonus,

@@ -42,7 +42,7 @@ survives a learned policy is an **empirical question** (§4), not a tuning targe
 |---|---|---|---|
 | `need_driven` | phase 1/2 utility softmax | one draw per deciding agent from the sim stream | done, bit-identical |
 | `mlp_frozen` | NumPy float32 MLP inference (48 → 128 → 128 → 11), weights from an `.npz` or a seeded orthogonal init; learning off | own `make_rng(seed + 1_000_003)` stream; keeps its own cell counts (never the simulation's per-tick cache; fixed 2026-11-06) | done (P4-0, 2026-11-04) |
-| `mlp_ppo` | same net, PPO updates every `rollout_ticks` decisions in torch (CUDA); sub-steps re-chosen | init from a seeded torch.Generator; sampling from `seed + 1_000_003` (decisions) or the sub-step stream; minibatches `seed + 4_000_003` | built (P4-2, 2026-11-06); maternal motivation pending |
+| `mlp_ppo` | same net, PPO updates every `rollout_ticks` decisions in torch (CUDA); sub-steps re-chosen; eight-drive reward | init from a seeded torch.Generator; sampling from `seed + 1_000_003` (decisions) or the sub-step stream; minibatches `seed + 4_000_003` | done (P4-2, 2026-11-06) |
 | `evo` | per-agent weights inherited at birth with Gaussian mutation; no reward, no learner | sim stream for mutation draws (biology-ordered) | to build (P4-4) |
 
 Rule for every learned kind: the policy never consumes the biology RNG stream for *sampling*
@@ -85,6 +85,12 @@ which in a colony is other mice (Burda et al. 2018 "noisy TV"), so they would pu
 crowds and corrupt the density-driven calibration. Curiosity and boredom are already drives in
 D. Per-drive contributions to r are logged so reward hacking of one drive is visible.
 
+**Amended 2026-11-06 (Jason): eight drives.** `maternal_need` (agents/drives.py) — for a
+female in the nursing role, the mean hunger of the pre-weaning pups in her nest box — joins
+the seven below in D (D_MAX = √8) and is the 49th observation value (observation v2). The
+biology does not read it. Entropy coefficient 0.05 (§1.5). With both, the learner nurses like
+the heuristic and keeps a full-size colony (NOTES 2026-11-06, maternal drive).
+
 **P4-2 finding (2026-11-06): the seven-drive reward produces no maternal care.** In a 450-day
 nursery the learner never chose NURSE or NEST for nursing mothers, mothers sat a median 48 in
 from their nest, and 1.5 % of pups survived (no-update network 13 %, heuristic 15 %). Nursing
@@ -93,6 +99,7 @@ relieves none of the seven drives. Options, decision pending (NOTES 2026-11-06 �
 pre-weaning pups' hunger — physiology unchanged, only the learner's motivation, still
 drive-only; (2) a maternal reflex in physiology for every policy; (3) no change, report the
 collapse as the H-d result. Any change amends this section before a learned arm is judged.
+Decision: option 1 adopted the same day.
 
 ### 1.5 Policy and learner
 
@@ -106,6 +113,9 @@ collapse as the H-d result. Any change amends this section before a learned arm 
   (6 tpd) / 16 (24 tpd); 4 epochs × 4 minibatches; Adam 3e-4 (eps 1e-5) with linear decay;
   clip 0.2; GAE λ 0.95; entropy 0.01 with a floor; value coef 0.5; Huber value loss; grad clip
   1.0; running value normalisation; per-minibatch advantage normalisation; **fixed** reward scale.
+  Entropy coefficient changed to **0.05** (2026-11-06, training seed 7000): at 0.01 the shared
+  policy learned during gestation, before any litter exists, that the nest never pays and
+  never rediscovered nursing (P(NEST), P(NURSE) for mothers 0.003 / 0.005 vs 0.10 at init).
 - Births and deaths: a death ends a segment (`done`, bootstrap 0 after the terminal reward); a
   birth starts a fresh segment in that SoA slot (GAE chain and last value reset so a reused
   slot never inherits its previous occupant's trajectory); losses are masked by

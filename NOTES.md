@@ -1,5 +1,54 @@
 # Universe25 Play — NOTES
 
+## 2026-11-06 — Maternal drive adopted; P4-2 acceptance met (Jason's decision)
+
+**Change (reward amended before any learned arm was judged).** An eighth drive,
+`maternal_need` (`agents/drives.py`): for a female in the nursing role with a nest box, the mean
+hunger of the pre-weaning pups in her box (nursing in the simulation is per box), zero
+otherwise. It enters the drive-reduction reward like the other seven (D over eight drives,
+D_MAX = √8) and is the 49th observation value (observation v2; 48-input weight files no longer
+load). The biology does not read it: the heuristic stays bit-identical (300-d hash `966401ea…`).
+
+**First run: necessary but not sufficient** (entropy 0.01, 450 d, same nursery as before):
+colony 984 (seven drives: 496; heuristic 2,072), 5.3 % pup survival, and the frozen final policy
+still chose NEST / NURSE 0.00 for nursing mothers. For mothers whose litter was hungry
+(maternal_need median 0.45 of its range) the learned policy gave P(NEST) 0.003 and P(NURSE)
+0.005, where its untrained start gave 0.10 each: PPO had driven them down. Cause: females enter
+the nursing role at conception, about three weeks before any pup exists; in that stretch the
+nest only costs time that relieves the social drive elsewhere, so the shared policy learns
+"nursing role: go elsewhere" and, with entropy 0.01, never samples the nest often enough after
+the litters arrive to see the payoff. An exploration failure, not a missing incentive.
+
+**Fix: entropy coefficient 0.05** (development choice on training seed 7000; the design said
+0.01). Same nursery, 450 d: colony 2,377, pup survival 31 % between days 350 and 450; frozen
+weights: mothers within 8 in of the nest 0.30 of the time (heuristic 0.25), NURSE 0.10 / NEST
+0.04 (heuristic 0.09 / 0.04), 838 of 2,013 pups survived (heuristic 520 of 1,966).
+
+**Acceptance run** (entropy 0.05 default, 100 founding pairs, 12 sub-steps, 650 d, training seed
+7000; `_output/nursery_smoke.json`):
+
+| arm | mean D, last quarter | first quarter | colony at day 650 | births | surviving births | learner transitions |
+|---|---:|---:|---:|---:|---:|---:|
+| learner (`mlp_ppo`, eight drives) | **0.251** | 0.417 | **2,165** | 14,617 | 2,224 | **1.51 × 10^7** |
+| same network, no updates | 1.035 | 1.014 | 1,751 | 23,320 | 1,864 | — |
+| heuristic (continue) | 0.822 | 0.791 | 1,781 | 15,898 | 2,007 | — |
+
+**P4-2 acceptance: met** — the learner's mean D is below the no-update baseline (0.25 vs 1.04,
+and below the heuristic's 0.82) with 1.5 × 10^7 transitions, and the comparison is no longer
+confounded by a small colony. All three colonies pass through a plateau and stop producing
+surviving young after about day 450. Per-drive means in the last quarter: the learner keeps
+fatigue (0.23 vs 1.03 / 0.71), social drive (0.46 vs 1.36 / 1.23), curiosity (0.07 vs 0.12 /
+0.21) and boredom (0.04 vs 0.07 / 0.07) low; its stress is the highest (0.57 vs 0.45 / 0.48),
+because its colony is the largest. Frozen 650-day weights (days 110–160 of a fresh nursery):
+mothers within 8 in of the nest 0.38 of the time, NURSE 0.15 / NEST 0.07, 905 of 1,975 pups
+survived.
+
+**What this does not show yet.** This is one training seed in a nursery world (100 founding
+pairs in the four corner cells), not the canonical 4-pair colony; whether a learned arm
+preserves the calibrated curve is the calibration guard's question (H-d, 12 evaluation seeds),
+which needs the nursery pre-training harness (P4-3) to produce weights for the 4-pair start.
+The learner was never trained on, or shown, any detector output.
+
 ## 2026-11-06 — P4-2: homeostatic reward + PPO learner; a drive-reduction learner abandons its young
 
 **Built.** `learn/reward.py` (Keramati & Gutkin drive reduction over the seven drives hunger,

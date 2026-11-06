@@ -524,8 +524,9 @@ plateau moved by less than its seed se. Caveats in full in `NOTES.md` → "Phase
 - **P4-2 built (2026-11-06)**: drive-reduction reward + shared PPO (`policy.kind: mlp_ppo`),
   deterministic on the GPU. Finding: with the seven preregistered drives the learner lowers its
   drive below the random baseline (0.43 vs 1.04) but never nurses — pups starve (1.5 % survive),
-  the colony stays at ~500. Decision pending: maternal-motivation drive (recommended), maternal
-  reflex, or report as is.
+  the colony stays at ~500. Resolved the same day: an eighth, maternal drive (adopted by Jason)
+  plus entropy 0.05 — the learner then nurses like the heuristic and keeps a full colony with
+  mean D 0.25 (P4-2 acceptance met). Next: nursery pre-training (P4-3), then the guard (H-d).
 
 ---
 
@@ -567,8 +568,8 @@ universe25-play/
 │   ├── agents/
 │   │   ├── state.py        ← AgentSoA, ROLE_*, ACT_* (11 actions; no PLAY)
 │   │   ├── policy.py       ← Policy protocol; NeedDrivenPolicy (bit-identical); MlpFrozenPolicy (NumPy, seeded stream)
+│   │   ├── drives.py       ← drive documentation; maternal_need (the learner's eighth drive)
 │   │   ├── observation.py  ← 48-float egocentric observation (OBS_NAMES; no lifespan / PlayScore field)
-│   │   ├── drives.py       ← H2 documentation
 │   │   └── device.py       ← optional Warp mirror buffers
 │   ├── learn/
 │   │   ├── reward.py       ← homeostatic drive-reduction reward (the only training signal)
@@ -733,7 +734,7 @@ in the peak count (N@736 3–4 % low) and the slow realisations' late tail (N@14
 - [x] Preregistration: H-d (policy invariance of the curve, 10 %), H-e / H-f / H-g, arms, seeds 8000–8011 reserved, budget, stop rules (`PLAN.md` §15)
 - [x] Observation builder + `mlp_frozen` (P4-0, 2026-11-04: 48-float obs, NumPy MLP, seeded policy stream, CLI `--policy`; builder 1.8 ms per 4,000 agents; need-driven hash unchanged)
 - [x] Calibration guard (P4-1, 2026-11-04: `calib/policy_guard.py`, `scripts/policy_guard.py`; first run on seeds 8000–8011 at 1600 d — the control reproduces the record (peak 2252 ± 13 @ 534 ± 7, N@1444 127 ± 8, N@1588 19 ± 2), a random frozen MLP is **not preserved**: N@315 −61 %, peak −11 % and +240 d, surviving births +560 d, late tail 5–20×; the curve is not policy-invariant, see NOTES)
-- [~] Homeostatic reward + PPO (P4-2, 2026-11-06: built, tested, bit-identical on the GPU; the seven-drive learner abandons its young — 1.5 % pup survival — so maternal motivation must be decided before any learned arm is judged; PHASE4_DESIGN §1.4)
+- [x] Homeostatic reward + PPO (P4-2, 2026-11-06: bit-identical on the GPU; the seven-drive learner abandoned its young, so the reward gained an eighth drive, `maternal_need` (adopted by Jason), and entropy 0.05; 650-day nursery: learner mean D 0.25 vs 1.04 untrained vs 0.82 heuristic, 1.5 × 10^7 transitions, full-size colony)
 - [ ] Nursery pre-training (P4-3) · `evo` (P4-4)
 - [x] Burghardt detectors per criterion with synthetic ground truth, ≥ 1,000 surrogates, thresholds fixed before any evaluation seed; V hopper fix (P4-5, 2026-11-06: rules v3 pass 12 / 12 preregistered checks on fresh seeds after v1 (11 / 12) and a falsifier failure in v2, all recorded; on the simulator both policies are non-functional and spontaneous but single-decision, so criteria 3 / 4 are not evaluable at 6 decisions per day) — **PlayScore eval-only, unvalidated**
 - [x] Finer decision grain for free-time behaviour (P4-8, 2026-11-06: `free_substeps`, `policy.substep_mode`; heuristic continue mode within 2 % of the control on every resolvable landmark, N@315 +13 % at one paired se; detectors have support; no arm meets all five criteria)

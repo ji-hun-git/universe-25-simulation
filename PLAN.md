@@ -85,6 +85,11 @@
   survival), so the learned colony cannot reproduce the curve. The reward's drive list must be
   settled (maternal motivation) before any learned arm is judged; no learned arm has been
   evaluated on seeds 8000–8011.
+- Amendment 2026-11-06 (Jason; before any learned arm was judged): the learner's reward has
+  eight drives — the seven of `PHASE4_DESIGN.md` §1.4 plus `maternal_need`, a nursing female's
+  motivation set by her own litter's hunger; entropy coefficient 0.05. P4-2 acceptance met
+  (training seed 7000 nursery, 650 d: learner mean D 0.25 vs 1.04 untrained vs 0.82 heuristic,
+  1.5 × 10^7 transitions, full-size colony, mothers nurse like the heuristic).
 - Work package: WP-G12-adjacent / Track E toy world (Universe 25 + playground); not L3 ecology
 - Track: **E** (emergent, exploratory)
 - Owner: Jason
