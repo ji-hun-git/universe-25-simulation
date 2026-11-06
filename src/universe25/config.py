@@ -189,6 +189,13 @@ class PolicyConfig(BaseModel):
     hidden: int = 128  # hidden width for a random init (ignored when weights is set)
 
 
+class TraceConfig(BaseModel):
+    # Per-agent decision traces for the eval-only detectors (metrics/trace.py), recorded in day
+    # windows [start, end) and written as trace_<start>_<end>.npz. Empty = off: no recorder,
+    # bit-identical tick. The recorder draws no random numbers and writes no simulation state.
+    windows: list[tuple[float, float]] = Field(default_factory=list)
+
+
 class SimConfig(BaseModel):
     seed: int = 7000
     ticks_per_day: int = 24
@@ -212,6 +219,7 @@ class SimConfig(BaseModel):
     biology: BiologyConfig = Field(default_factory=BiologyConfig)
     drives: DriveConfig = Field(default_factory=DriveConfig)
     policy: PolicyConfig = Field(default_factory=PolicyConfig)
+    trace: TraceConfig = Field(default_factory=TraceConfig)
 
     @field_validator("seed")
     @classmethod

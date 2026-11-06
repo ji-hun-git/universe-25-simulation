@@ -41,6 +41,7 @@ from universe25.config import SimConfig
 from universe25.metrics.calibration import rate_cessation_day, surviving_birth_cessation_day
 from universe25.metrics.logger import MetricsLogger
 from universe25.metrics.playscore import PlayScoreAccumulator
+from universe25.metrics.trace import TraceRecorder
 from universe25.io.snapshots import SnapshotWriter
 from universe25.rng import make_rng
 from universe25.world.geometry import World, build_world
@@ -98,6 +99,10 @@ class Universe25Sim:
             )
             self.cuda_graph.bind_engine(self.warp_engine)
         self._action_hist = np.zeros(N_ACTIONS, dtype=np.int64)
+        self._cell_food = np.array([c.food_xy for c in self.world.cells], dtype=np.float64)
+        self._cell_water = np.array([c.water_xy for c in self.world.cells], dtype=np.float64)
+        # eval-only decision traces (off when no windows: no recorder, bit-identical tick)
+        self.trace = TraceRecorder(self, cfg.trace.windows) if cfg.trace.windows else None
         self._conceptions = 0
         self._births = 0
         self._deaths = 0
@@ -210,7 +215,12 @@ class Universe25Sim:
                 self._assign_roles(alive)
             with nvtx_range("actions"):
                 actions = self._select_actions(alive)
+                record = self.trace is not None and self._decision_tick()
+                if record:
+                    self.trace.capture_pre(self, alive, actions)
                 self._execute_actions(alive, actions)
+                if record:
+                    self.trace.record_post(self)
             with nvtx_range("life"):
                 self._passive_nurse(alive)
                 self._daily_breeding_pass(alive)
@@ -1140,6 +1150,22 @@ class Universe25Sim:
         ne = int(eligible.sum())
         v = float(np.sum(eligible & a.in_playground) / ne) if ne > 0 else 0.0
         g = float(np.mean((a.energy[alive] > 0.5) & (a.stress[alive] < 0.4))) if n else 0.0
+        # V without hopper users: six of the eight hoppers of cells 5, 6, 9, 10 and 16 nests lie
+        # inside the playground box, so eating or drinking there counted as free choice.
+        # Excludes agents whose last action was FORAGE / DRINK or that sit within 4 in of their
+        # cell's food or water point (P4-5; the box and hoppers are calibrated geometry).
+        hop = np.zeros(a.capacity, dtype=bool)
+        ia = np.flatnonzero(alive)
+        if ia.size:
+            ca = a.cell_id[ia].astype(int)
+            near = (np.hypot(a.x[ia] - self._cell_food[ca, 0], a.y[ia] - self._cell_food[ca, 1])
+                    <= 4.0) | (np.hypot(a.x[ia] - self._cell_water[ca, 0],
+                                        a.y[ia] - self._cell_water[ca, 1]) <= 4.0)
+            used = (a.last_action[ia] == ACT_FORAGE) | (a.last_action[ia] == ACT_DRINK)
+            hop[ia] = near | used
+        elig_x = eligible & ~hop
+        ne_x = int(elig_x.sum())
+        v_x = float(np.sum(elig_x & a.in_playground) / ne_x) if ne_x > 0 else 0.0
         # Action entropy S over recent hist
         hist = self._action_hist.astype(np.float64)
         if hist.sum() > 0:
@@ -1177,6 +1203,7 @@ class Universe25Sim:
             "playground_occupancy": pg_occ,
             "playground_frac": pg_occ / max(1, n),
             "free_choice_V": v,
+            "free_choice_V_excl_hopper_unvalidated": v_x,
             "gate_G": g,
             "action_entropy_S": entropy,
             "playscore_F_unvalidated": ps["F"],
@@ -1209,6 +1236,7 @@ class Universe25Sim:
                 break
         wall = time.perf_counter() - t0
         self.logger.close()
+        trace_files = self.trace.close() if self.trace is not None else []
         # final snapshot
         self.snapshots.write(self.day, self.agents, self.world)
         summary = {
@@ -1240,6 +1268,7 @@ class Universe25Sim:
             "n_play_objects": len(self.world.play_objects),
             "cuda_graph": self.cuda_graph.status(),
             "warp": None if self.warp_engine is None else self.warp_engine.status(),
+            "trace_files": trace_files,
         }
         (self.out_dir / "run.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
         return summary

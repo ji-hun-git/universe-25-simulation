@@ -24,6 +24,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--max-agents", type=int, default=None)
     p.add_argument("--policy", type=str, default=None, choices=["need_driven", "mlp_frozen"])
     p.add_argument("--policy-weights", type=str, default=None, help=".npz for mlp kinds")
+    p.add_argument("--trace-windows", type=str, default=None,
+                   help="decision-trace day windows, e.g. 150:170,400:420 (eval-only)")
     args = p.parse_args(argv)
 
     from universe25.config import load_config
@@ -46,6 +48,9 @@ def main(argv: list[str] | None = None) -> int:
         if args.policy_weights is not None:
             pol["weights"] = args.policy_weights
         overrides["policy"] = pol
+    if args.trace_windows:
+        wins = [tuple(float(v) for v in w.split(":")) for w in args.trace_windows.split(",")]
+        overrides["trace"] = {"windows": wins}
     if args.playground == "on":
         overrides["playground"] = {"enabled": True}
     elif args.playground == "off":
