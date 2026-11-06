@@ -537,6 +537,10 @@ plateau moved by less than its seed se. Caveats in full in `NOTES.md` → "Phase
   2,406, N@736 2,095, conceptions end 907 (Calhoun 2,200 / 2,056 / ≈920), but about 100 days
   early (peak day 456, last surviving birth 483) because its mothers raise more young early.
   Next: the preregistered guard (seeds 8000–8011) with `_output/pretrain/pretrain_v2`.
+- **H-d preregistered (2026-11-07)**: the learned arm is not preserved on seeds 8000–8011
+  (N@315 +77 %, peak day −69 d, surviving births cease −103 d, decline band missed; peak N,
+  N@736, conceptions hold). H-d is falsified: the curve is biology plus behaviour. The play
+  hypotheses compare conditions within a policy and can run on the learned colony.
 
 ---
 

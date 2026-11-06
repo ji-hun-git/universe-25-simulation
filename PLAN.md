@@ -99,6 +99,9 @@
   nursery the frozen learner spreads the canonical colony and reaches peak 2,406 / N@736 2,095 /
   conceptions ending 907, about 100 days early (training seeds 7000–7002). The preregistered
   H-d guard on seeds 8000–8011 is the next step.
+- Status note 2026-11-07 (H-d): the preregistered guard on seeds 8000–8011 found
+  the learned arm not preserved (see §15.1, "H-d result"); H-d is falsified for both the
+  random and the learned policy.
 - Work package: WP-G12-adjacent / Track E toy world (Universe 25 + playground); not L3 ecology
 - Track: **E** (emergent, exploratory)
 - Owner: Jason
@@ -220,6 +223,14 @@ readings kept as `verdict` and `verdict_10pct_rule`): random frozen MLP NOT PRES
 7.1 se, peak 10.7 se, peak day 8.0 se, cessation 5.4 se); heuristic K = 12 rechoose NOT
 PRESERVED (decline band only; N@315 +17 % at 1.1 se now passes); heuristic K = 12 continue
 PRESERVED (N@315 +13 % at 1.1 se). Every guard report prints both readings.
+
+**H-d result (2026-11-07, seeds 8000–8011, 1,600 d): falsified.** Random frozen MLP: not
+preserved (P4-1). Pre-trained drive-reduction learner (`pretrain_v2`, eight drives, 12
+sub-steps): not preserved — N@315 +77 % (5.2 paired se), peak day −69 d (9.1 se), surviving
+births cease −103 d (14.5 se), decline band 0.29 < 0.35 — while peak N (+4.9 %), N@736 (+6.8 %)
+and conception cessation (−2.7 %) hold. The heuristic with 12 sub-steps (continue) is preserved.
+The calibrated curve is biology plus behaviour; the learner runs the same arc about 70–100 days
+early. H-e … H-g compare conditions within a policy and are unaffected (NOTES 2026-11-07).
 
 ### 15.2 Arms
 

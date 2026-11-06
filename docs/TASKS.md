@@ -220,6 +220,9 @@ own RNG stream. No play-named signal anywhere (H2). Add tests; keep need_driven 
 > **2026-11-06:** H-d amended (adopted by Jason): a landmark fails only beyond 10 % drift and
 > 2 paired se; both readings printed. Random MLP still not preserved; heuristic with 12
 > sub-steps (continue) preserved.
+> **2026-11-07 — first learned arm, preregistered:** `pretrain_v2` at 12 sub-steps, seeds
+> 8000–8011: NOT PRESERVED (N@315 +77 %, peak day −69 d, surviving births cease −103 d, decline
+> band missed; peak N, N@736, conceptions hold). H-d falsified; NOTES 2026-11-07.
 
 **Goal:** `tests/test_policy_calibration_guard.py` (400 d, 3 seeds, `mlp_frozen` with random
 weights vs `need_driven`: landmarks printed, tolerance asserted) and `scripts/policy_guard.py`

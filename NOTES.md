@@ -1,5 +1,52 @@
 # Universe25 Play — NOTES
 
+## 2026-11-07 — H-d, preregistered test of a learned arm: not preserved; the learned colony runs the Universe 25 arc about 70–100 days early
+
+**Test as preregistered** (`PLAN.md` §15.1, H-d amended 2026-11-06): the frozen pre-trained
+learner (`_output/pretrain/pretrain_v2/policy_final.npz`, eight-drive reward, `mlp_frozen` with
+12 re-chosen sub-steps) against the calibrated need-driven control (no sub-steps; the cached
+control every arm has been judged against) on the 12 evaluation seeds 8000–8011, 1,600 days, the
+canonical 4-pair start. First use of the evaluation seeds by a learned arm.
+`_output/policy_guard_mlp_pretrain_v2.json`; mean ± se, paired = learner − control:
+
+| landmark | Calhoun | control | heuristic, 12 sub-steps (continue) | **learner v2** | drift | paired |
+|---|---:|---:|---:|---:|---:|---:|
+| first litters | 104 | 102 ± 0 | 102 ± 0 | 102 ± 0 | 0.001 | +0.1 ± 0.3 |
+| N @ 315 | 620 | 470 ± 43 | 531 ± 49 | **832 ± 52** | 0.771 | +362 ± 70 |
+| peak N | 2,200 | 2,252 ± 13 | 2,241 ± 15 | 2,364 ± 18 | 0.049 | +111 ± 23 |
+| peak day | 560 | 534 ± 7 | 541 ± 13 | **465 ± 7** | 0.129 | −69 ± 8 |
+| surviving births cease | 600 | 593 ± 8 | 597 ± 15 | **490 ± 7** | 0.174 | −103 ± 7 |
+| N @ 736 | 2,056 | 1,956 ± 11 | 1,951 ± 13 | 2,089 ± 11 | 0.068 | +133 ± 18 |
+| conception cessation | ≈ 920 | 935 ± 8 | 947 ± 11 | 910 ± 6 | 0.027 | −25 ± 12 |
+| N @ 1200 (band 0.35–0.85 × peak) | | 839 ± 20 | 822 ± 32 | 692 ± 26 (**0.29**) | 0.175 | −147 ± 35 |
+| N @ 1444 | 122 | 127 ± 8 | 128 ± 14 | 63 ± 6 | 0.503 | −64 ± 10 |
+| N @ 1588 | 27 | 19 ± 2 | 23 ± 3 | 6 ± 1 | 0.670 | −13 ± 2 |
+
+**Verdict: NOT PRESERVED** under the amended rule and under the original 10 % rule (failures:
+N@315 at 5.2 paired se, peak day at 9.1, cessation of surviving births at 14.5, decline band
+missed). Peak N (+4.9 %), N@736 (+6.8 %) and conception cessation (−2.7 %) pass. The three
+training seeds (development guard) gave the same picture.
+
+**What H-d now says.** The calibrated Calhoun curve is a property of the biology *and* the
+behaviour, not of the biology alone: a random policy breaks it entirely (P4-1), and a learned
+drive-reduction policy with maternal motivation reproduces its shape and size but shifts it
+forward. The mechanism (NOTES 2026-11-07, nursery v2): learned mothers raise more young early, so
+crowding and the developmental breakdown arrive sooner; the biology was calibrated against the
+heuristic's slow early growth.
+
+**Against the record** (canonical error of the means over the five canonical landmarks): control
+0.068, heuristic with 12 sub-steps 0.043, learner 0.157. The learner is closer to Calhoun than the
+control on peak size relative to N@736 (2,089 vs 2,056) and on conception cessation (910 vs ≈ 920),
+further on N@315 (832 vs 620), peak day (465 vs 560), cessation of surviving births (490 vs 600)
+and the late tail (63 / 6 vs 122 / 27; Calhoun's late counts are post-removal, so the record sits
+above a no-removal run, not below).
+
+**Consequences for the play experiments.** H-e, H-f and H-g compare conditions *within* a policy
+(abundance vs scarcity, playground on vs off, phase of the arc), so they can run on the learned
+colony as it is, with its arc reported alongside. Any statement that ties a learned colony to the
+Calhoun record must use the learned colony's own phases (its peak near day 465, not 560).
+Recalibrating the biology for the learner would reopen the frozen calibration (Jason's call).
+
 ## 2026-11-07 — Nursery v2 (founding colonies): the learned colony now spreads and runs the Universe 25 arc, faster
 
 **Change** (Jason chose "widen and retrain"): founding worlds in 40 % of episodes — 4 to 30
