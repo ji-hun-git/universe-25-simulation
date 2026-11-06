@@ -26,6 +26,7 @@ from universe25.agents.state import N_ACTIONS
 from universe25.learn.ppo import PPOLearner
 from universe25.learn.reward import (
     D_MAX,
+    DRIVES,
     contributions,
     drive,
     drive_reduction,
@@ -74,7 +75,7 @@ class MlpPpoPolicy:
         self.p_mask = np.zeros((cap, N_ACTIONS), dtype=bool)
         self.p_D = np.zeros(cap, dtype=np.float64)
         self.p_time = np.zeros(cap, dtype=np.int64)
-        self.p_contrib = np.zeros((cap, 7), dtype=np.float32)
+        self.p_contrib = np.zeros((cap, len(DRIVES)), dtype=np.float32)
         self.prev_age = np.full(cap, np.inf)
         self.K = max(1, int(getattr(sim, "free_substeps", 1)))
         self.gamma_unit = float(self.ppo.gamma_per_decision) ** (1.0 / self.K)
@@ -114,8 +115,7 @@ class MlpPpoPolicy:
         st["update"] = float(self.learner.n_updates)
         st["transitions_total"] = float(self.n_transitions)
         st["mean_D_at_call"] = float(np.mean(B["contrib"].sum(axis=1) ** 0.5))
-        for i, k in enumerate(("hunger", "thirst", "fatigue", "social_drive", "curiosity",
-                               "boredom", "stress")):
+        for i, k in enumerate(DRIVES):
             st[f"contrib_{k}"] = float(B["contrib"][:, i].mean())
         self.history.append(st)
         if self.log_path is not None:

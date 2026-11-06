@@ -5,7 +5,8 @@ PlayScore field, no play-named feature (the playground box is geometry, like a c
 not the agent's own `lifespan` (hidden information). Pure NumPy, no RNG, so the reference path
 stays deterministic and the builder can be timed and audited on its own.
 
-Blocks (48 floats):
+Blocks (49 floats; v2 2026-11-06 appended maternal_need — v1 weight files with 48 inputs no
+longer load):
   interoception 7   hunger, thirst, fatigue, social_drive, curiosity, boredom, stress   (/ 1.5)
   body 6            energy, age / max_age_days, sex, gestating, maternal, wounds (/ 1.5)
   role 7            one-hot of ROLE_PUP .. ROLE_WITHDRAWN
@@ -14,6 +15,7 @@ Blocks (48 floats):
   targets 12        for food, water, own nest, nearest object: capped distance (/ DIST_CAP) and
                     unit direction (dx, dy); a missing target reads (1, 0, 0)
   last action 11    one-hot of the previous action
+  maternal 1        maternal_need / 1.5 (agents/drives.py; a drive of the learner's reward)
 """
 from __future__ import annotations
 
@@ -21,6 +23,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from universe25.agents.drives import maternal_need
 from universe25.agents.state import N_ACTIONS
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -42,9 +45,10 @@ OBS_NAMES: tuple[str, ...] = (
     "nest_dist", "nest_dx", "nest_dy", "object_dist", "object_dx", "object_dy",
     "last_rest", "last_forage", "last_drink", "last_nest", "last_social", "last_explore",
     "last_manipulate", "last_aggress", "last_mate", "last_nurse", "last_withdraw",
+    "maternal_need",
 )
 OBS_DIM = len(OBS_NAMES)
-assert OBS_DIM == 7 + 6 + N_ROLES + 5 + 12 + N_ACTIONS == 48
+assert OBS_DIM == 7 + 6 + N_ROLES + 5 + 12 + N_ACTIONS + 1 == 49
 
 
 def _target_block(x: np.ndarray, y: np.ndarray, tx: np.ndarray, ty: np.ndarray,
@@ -139,4 +143,5 @@ class ObservationBuilder:
         # last action one-hot
         act = np.clip(a.last_action[idx].astype(int), 0, N_ACTIONS - 1)
         obs[:, 37:48] = self._act_eye[act]
+        obs[:, 48] = np.clip(maternal_need(a, idx) / DRIVE_SCALE, 0.0, 1.0)
         return obs

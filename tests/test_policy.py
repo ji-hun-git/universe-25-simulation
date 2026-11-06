@@ -97,7 +97,7 @@ def test_mlp_frozen_is_deterministic_masked_and_seed_sensitive() -> None:
 
 
 def test_observation_names_have_no_forbidden_feature_or_hidden_information() -> None:
-    assert len(OBS_NAMES) == OBS_DIM == 48
+    assert len(OBS_NAMES) == OBS_DIM == 49
     assert "lifespan" not in OBS_NAMES and "competence" not in OBS_NAMES
     joined = " ".join(OBS_NAMES).lower().replace("playground", "")
     for bad in ("play", "bout", "motif", "exagger", "score", "reward"):

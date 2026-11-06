@@ -188,7 +188,11 @@ class PPOConfig(BaseModel):
     clip: float = 0.2
     gae_lambda: float = 0.95
     gamma_per_decision: float = 0.98  # per decision (4 h); per sub-step gamma ** (1 / K)
-    entropy_coef: float = 0.01
+    # 0.05, not the design's 0.01: at 0.01 the shared policy learned during the ~3 weeks of
+    # gestation before any litter exists that the nest never pays, drove P(NEST), P(NURSE)
+    # for mothers from 0.10 to 0.003 / 0.005 and never rediscovered nursing (pups starved);
+    # at 0.05 mothers nurse like the heuristic (training seed 7000 nursery, NOTES 2026-11-06).
+    entropy_coef: float = 0.05
     vf_coef: float = 0.5
     huber_delta: float = 1.0
     max_grad_norm: float = 1.0

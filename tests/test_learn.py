@@ -23,13 +23,13 @@ from universe25.sim import Universe25Sim  # noqa: E402
 
 
 def test_reward_is_drive_reduction_only() -> None:
-    h = np.array([[0.3, 0.2, 0.1, 0.5, 0.4, 0.2, 0.1]])
+    h = np.array([[0.3, 0.2, 0.1, 0.5, 0.4, 0.2, 0.1, 0.6]])
     d = R.drive(h)
     assert np.allclose(R.drive_reduction(d, d), 0.0), "no drive change, no reward"
     lower = h.copy()
     lower[0, 0] = 0.0  # a meal
     assert R.drive_reduction(d, R.drive(lower))[0] > 0
-    assert np.isclose(R.D_MAX, np.sqrt(7.0))
+    assert np.isclose(R.D_MAX, np.sqrt(8.0))
     assert np.allclose(R.terminal_reward(d), d - R.D_MAX)
     assert np.allclose(R.contributions(h).sum(axis=1) ** 0.5, d)
     assert R.drive_reduction(np.array([10.0]), np.array([0.0]))[0] == R.D_MAX, "clipped"
@@ -38,7 +38,35 @@ def test_reward_is_drive_reduction_only() -> None:
         params = [p for p in inspect.signature(fn).parameters]
         assert all(p in ("drives", "d_before", "d_after") for p in params), (fn.__name__, params)
     assert R.DRIVES == ("hunger", "thirst", "fatigue", "social_drive", "curiosity", "boredom",
-                        "stress")
+                        "stress", "maternal_need")
+
+
+def test_maternal_need_is_the_own_litters_hunger() -> None:
+    """A nursing female's maternal_need is the mean hunger of the pups in her nest box; it is
+    zero without pups, for non-nursing agents and for pups; feeding the pups lowers it."""
+    from universe25.agents.drives import maternal_need
+    from universe25.agents.state import ROLE_BREEDING_FEMALE, ROLE_NURSING, ROLE_PUP
+
+    sim = Universe25Sim(load_config(ROOT / "configs" / "default.yaml", dict(
+        seed=7100, days=1.0, ticks_per_day=6, backend="numpy", device="cpu", max_agents=64,
+        log_every_ticks=10**9, snapshot_every_days=0)), Path(tempfile.mkdtemp(prefix="u25mat_")))
+    a = sim.agents
+    s = np.flatnonzero(a.alive)[:8]
+    mom, other, p1, p2, p3 = s[0], s[1], s[2], s[3], s[4]
+    a.role[s] = ROLE_BREEDING_FEMALE
+    a.nest_id[s] = 200
+    a.role[mom] = ROLE_NURSING
+    a.nest_id[mom] = 7
+    a.role[[p1, p2, p3]] = ROLE_PUP
+    a.nest_id[[p1, p2]] = 7
+    a.nest_id[p3] = 9  # another box
+    a.hunger[[p1, p2, p3]] = [0.4, 0.8, 1.4]
+    need = maternal_need(a, np.array([mom, other, p1]))
+    assert np.isclose(need[0], 0.6) and need[1] == 0.0 and need[2] == 0.0
+    a.hunger[[p1, p2]] = 0.1  # the litter is fed
+    assert np.isclose(maternal_need(a, np.array([mom]))[0], 0.1)
+    a.nest_id[[p1, p2]] = 9  # no pups left in her box
+    assert maternal_need(a, np.array([mom]))[0] == 0.0
 
 
 def test_gae_matches_hand_recursion() -> None:
@@ -110,7 +138,7 @@ def test_disabled_learner_never_updates() -> None:
     assert not (out / "learn_log.jsonl").exists()
     from universe25.learn.ppo import PPOLearner
 
-    fresh = PPOLearner(48, 11, 128, sim.cfg.policy.ppo, seed=7100).actor_params()
+    fresh = PPOLearner(49, 11, 128, sim.cfg.policy.ppo, seed=7100).actor_params()
     with np.load(out / "policy_final.npz") as z:
         for k, v in fresh.items():
             assert np.array_equal(z[k], v), k
@@ -128,6 +156,7 @@ def test_h2_learner_code_has_no_play_signal() -> None:
 
 if __name__ == "__main__":
     test_reward_is_drive_reduction_only()
+    test_maternal_need_is_the_own_litters_hunger()
     test_gae_matches_hand_recursion()
     test_learning_run_is_bit_identical_and_exports_to_mlp_frozen()
     test_disabled_learner_never_updates()
