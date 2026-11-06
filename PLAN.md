@@ -181,21 +181,26 @@ Environment schema frozen after first successful long run + NOTES entry; learnin
 
 | ID | Hypothesis | Prediction | Measured by | Falsified if |
 |---|---|---|---|---|
-| H-d | Policy invariance: the calibrated curve is a property of the biology, not of the heuristic policy | 12-seed canonical landmarks of `mlp_frozen`, `mlp_ppo`, `evo` within 10 % of `need_driven`; decline band met at 1200 | calibration guard (`PHASE4_DESIGN.md` §4) | any canonical landmark > 10 % off the control, or no decline by day 1200 |
+| H-d | Policy invariance: the calibrated curve is a property of the biology, not of the heuristic policy | 12-seed canonical landmarks of `mlp_frozen`, `mlp_ppo`, `evo` within 10 % of `need_driven` or within 2 paired se of it; decline band met at 1200 | calibration guard (`PHASE4_DESIGN.md` §4) | any canonical landmark > 10 % off the control **and** > 2 paired se (amended 2026-11-06), or the decline band missed at day 1200 |
 | H-e | Relaxed-field dependence: object / locomotor detector rates are higher under abundance than under scarcity for learned policies | criterion 1, 3, 4, 5 detector rates higher in ABUND-PG than SCARCE-PG at matched phase | per-criterion detectors (`PHASE4_DESIGN.md` §2) with surrogate controls | rates equal or higher under scarcity |
 | H-f | Structure, not frequency: learned policies' object interactions differ from the heuristic's in sequence statistics (criteria 3 / 4), not only in rate | criterion 3 / 4 detectors differ from `need_driven` at matched free-choice V | time-shuffled and drive-shuffled surrogate bands | no difference beyond the surrogate band |
 | H-g | Breakdown suppresses play-likeness: detector rates fall in phases C / D (stress, withdrawal) under every policy | monotone decline after the plateau | detectors by phase | rates rise in phase D |
 | H-c (kept) | No play reward: any playground use is drive spillover unless criteria 3 / 4 show structure | code audit; H2 string audit over policy, observation and reward code | | any play-named term |
 
-**Proposed amendment to H-d (2026-11-06; pending Jason's approval, NOT applied).**
+**Amendment to H-d — ADOPTED 2026-11-06 (Jason; proposed the same day, before
+any learned arm was judged).**
 The 10 % rule cannot resolve N@315 at 12 seeds: its paired se is 12–16 % of the mean, and the
 heuristic with 12 sub-steps in continue mode — the control's distribution by construction —
 failed it at one paired se (+13 %). Proposed: a canonical landmark fails only if its drift
 exceeds 10 % **and** the paired difference exceeds 2 paired se (equivalence where resolvable);
 the decline band unchanged. Effect on the arms run so far: continue mode would be preserved;
 the random frozen MLP stays not preserved (peak −11.5 % at 10 paired se, peak day +238 d,
-cessation +508 d); the re-choosing heuristic stays not preserved (decline band). The amendment
-is decided before any learned arm is judged; until then both readings are reported.
+cessation +508 d); the re-choosing heuristic stays not preserved (decline band).
+Re-verdict of the stored guard runs under the adopted rule (`_output/policy_guard_*.json`, both
+readings kept as `verdict` and `verdict_10pct_rule`): random frozen MLP NOT PRESERVED (N@315
+7.1 se, peak 10.7 se, peak day 8.0 se, cessation 5.4 se); heuristic K = 12 rechoose NOT
+PRESERVED (decline band only; N@315 +17 % at 1.1 se now passes); heuristic K = 12 continue
+PRESERVED (N@315 +13 % at 1.1 se). Every guard report prints both readings.
 
 ### 15.2 Arms
 

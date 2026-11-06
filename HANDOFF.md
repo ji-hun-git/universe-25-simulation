@@ -727,7 +727,8 @@ in the peak count (N@736 3–4 % low) and the slow realisations' late tail (N@14
 - [ ] Homeostatic reward + PPO (P4-2) · nursery pre-training (P4-3) · `evo` (P4-4)
 - [x] Burghardt detectors per criterion with synthetic ground truth, ≥ 1,000 surrogates, thresholds fixed before any evaluation seed; V hopper fix (P4-5, 2026-11-06: rules v3 pass 12 / 12 preregistered checks on fresh seeds after v1 (11 / 12) and a falsifier failure in v2, all recorded; on the simulator both policies are non-functional and spontaneous but single-decision, so criteria 3 / 4 are not evaluable at 6 decisions per day) — **PlayScore eval-only, unvalidated**
 - [x] Finer decision grain for free-time behaviour (P4-8, 2026-11-06: `free_substeps`, `policy.substep_mode`; heuristic continue mode within 2 % of the control on every resolvable landmark, N@315 +13 % at one paired se; detectors have support; no arm meets all five criteria)
-- [ ] Detector rules v4 (P4-9: phase-preserving trigger null, template minimum support) · H-d amendment decision (PLAN §15.1)
+- [x] H-d amendment adopted 2026-11-06 (drift > 10 % and > 2 paired se; heuristic with 12 sub-steps in continue mode preserved, random MLP not)
+- [ ] Detector rules v4 (P4-9: phase-preserving trigger null, template minimum support)
 - [ ] Sweep: policy kind × abundance / scarcity × playground on / off × 12 seeds (P4-6); H-d … H-g answered or marked untested in NOTES
 - [ ] H2 audit extended to observation, learner and detector code with a negative test (P4-7); no ICM / RND bonus; the heuristic is never distilled
 

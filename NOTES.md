@@ -1,5 +1,23 @@
 # Universe25 Play — NOTES
 
+## 2026-11-06 — H-d amendment adopted (Jason)
+
+A canonical landmark now fails the calibration guard only if it drifts more than 10 % from the
+control **and** the paired difference exceeds 2 paired se; the decline band is unchanged
+(`calib/policy_guard.py` `SE_MULT`; the 10 %-only reading is kept as `verdict_10pct_rule` and
+printed with every guard). Reason: the 12-seed paired se of N@315 is 12–16 % of its mean, so
+the 10 % rule failed a distributionally identical arm at one se. Decided before any learned
+arm was judged. Re-verdict of the stored runs (seeds 8000–8011, 1600 d):
+
+| arm | amended rule | 10 % rule | deciding landmarks |
+|---|---|---|---|
+| random frozen MLP | NOT PRESERVED | NOT PRESERVED | N@315 7.1 se, peak 10.7 se, peak day 8.0 se, cessation 5.4 se |
+| heuristic, 12 sub-steps, rechoose | NOT PRESERVED | NOT PRESERVED | decline band (0.342 < 0.35); N@315 +17 % at 1.1 se |
+| heuristic, 12 sub-steps, continue | **PRESERVED** | NOT PRESERVED | N@315 +13 % at 1.1 se |
+
+So the sub-step layer in continue mode leaves the calibrated curve intact; the random policy's
+departure (the P4-1 result) is unaffected by the amendment.
+
 ## 2026-11-06 — P4-8: free-time sub-steps
 
 **What it is.** `free_substeps: K` (config, CLI `--free-substeps`; 1 = off, bit-identical, 300-d

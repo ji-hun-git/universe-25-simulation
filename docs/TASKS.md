@@ -217,6 +217,9 @@ own RNG stream. No play-named signal anywhere (H2). Add tests; keep need_driven 
 > First run (seeds 8000–8011, 1600 d): control reproduces the record out of sample; a random
 > frozen MLP is NOT PRESERVED (N@315 −61 %, peak −11 % / +240 d, cessation +560 d, late tail
 > 5–20×). The curve is not policy-invariant; see `NOTES.md` 2026-11-04 → P4-1.
+> **2026-11-06:** H-d amended (adopted by Jason): a landmark fails only beyond 10 % drift and
+> 2 paired se; both readings printed. Random MLP still not preserved; heuristic with 12
+> sub-steps (continue) preserved.
 
 **Goal:** `tests/test_policy_calibration_guard.py` (400 d, 3 seeds, `mlp_frozen` with random
 weights vs `need_driven`: landmarks printed, tolerance asserted) and `scripts/policy_guard.py`

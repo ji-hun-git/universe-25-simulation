@@ -321,8 +321,11 @@ What the 2026-11-04 review of the record (`RESEARCH_DIGEST.md` part A) changes:
 
 For every policy arm, the 12-seed means of the canonical five landmarks (first litters, N@315,
 peak N, peak day, cessation of surviving births) and the late tail (N@1444, N@1588) are compared
-with the `need_driven` control at the same seeds. **Preserved** means every canonical landmark
-within 10 % (relative) and the decline band still met at day 1200. A policy that breaks the
+with the `need_driven` control at the same seeds. **Preserved** means no canonical landmark
+drifts more than 10 % (relative) with a paired arm − control difference beyond 2 paired se
+(H-d as amended 2026-11-06: at 12 seeds the paired se of N@315 is 12–16 % of its mean, so a
+10 %-only rule could not resolve it), and the decline band still met at day 1200. The original
+10 %-only reading is reported alongside. A policy that breaks the
 curve is a **result** ("the Calhoun curve is not policy-invariant under drive-reduction
 learning"), reported in NOTES.md; the biology is not retuned to rescue it (the calibration is
 frozen, phase 2m). A test (`tests/test_policy_calibration_guard.py`, P4-1) runs a 400-day
