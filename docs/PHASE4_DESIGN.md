@@ -269,6 +269,20 @@ under predator cues; social isolation increases it on return (a rebound confound
 did not score play, so H-g (breakdown suppresses play-likeness) is a prediction, not a
 replication.
 
+## 2b. Free-time sub-steps (P4-8, 2026-11-06)
+
+At 6 decisions per day every episode in the simulator lasted one decision, so criteria 3 and 4
+had nothing to measure for any policy. `free_substeps: K` replays a free decision (EXPLORE /
+SOCIAL / MANIPULATE) as K sub-steps, each moving 1/K of a decision's reach with 1/K of the
+relief, after the decision itself has executed (so the biology's random stream is unchanged;
+sub-steps draw from their own). Feeding, nursing, conception, stress and mortality stay per
+decision. `policy.substep_mode`: `continue` (the decision action at every sub-step; the
+heuristic's default, because its motives exist only at the decision grain and re-choosing moved
+the calibrated arc) or `rechoose` (the policy chooses among the free actions at every sub-step;
+the default for learned kinds, which is what lets a learner show within-episode form). Learned
+arms run at K = 12 (20-minute sub-steps) and are compared with the random frozen MLP at the
+same K. Guard and baseline readings: `NOTES.md` 2026-11-06 → P4-8.
+
 ## 3. Fidelity: landmarks and the record
 
 What the 2026-11-04 review of the record (`RESEARCH_DIGEST.md` part A) changes:

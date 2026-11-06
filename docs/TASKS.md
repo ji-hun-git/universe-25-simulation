@@ -330,6 +330,13 @@ preregistered AUC / FPR; neutral identifier names.
 
 ## P4-8 — Finer decision grain for free-time behaviour (prerequisite for H-f)
 
+> **Done 2026-11-06:** `free_substeps` (config / CLI), `policy.substep_mode`
+> (continue / rechoose / auto), sub-step rows in the trace, `tests/test_substeps.py`. Guard at
+> K = 12: heuristic continue mode within 2 % on every resolvable landmark, fails only the 10 %
+> rule on N@315 (+13 %, one paired se — below the rule's resolution; amendment proposed in
+> PLAN §15.1); rechoose mode moved the arc (recorded negative). Detectors now have support
+> (253–8,309 direction pairs per window); no arm meets all five criteria. See NOTES 2026-11-06.
+
 > **Status 2026-11-06:** not started. P4-5 found that at 6 decisions per day (one
 > every 4 hours) every episode in the simulator lasts one decision, for the heuristic and the
 > random policy alike, so criteria 3 and 4 have no structure to evaluate (12–21 direction pairs
@@ -353,6 +360,26 @@ bit-identical.
 - traced runs show multi-step episodes; detectors (v3, unchanged) report criteria 3 / 4 with
   support (≥ 100 direction pairs per window)
 - detector rules are not re-tuned on simulator output (they are fixed at v3)
+
+---
+
+## P4-9 — Detector rules v4: phase-preserving trigger null, template minimum support
+
+> **Status 2026-11-06:** not started. Found by P4-5 / P4-8 on simulator traces
+> (never used to tune): (a) with sub-steps, criterion 2's circular-shift null shifts triggers by
+> arbitrary rows, while density and wound triggers update once per decision and continue-mode
+> onsets fall on decision boundaries, so criterion 2 reads "locked" by construction; (b) the
+> serious template's reversal fraction has no minimum support (one pair at the decision grain).
+
+**Goal:** v4 rules: shift the trigger and relaxed series by whole decisions (multiples of
+`free_substeps`, read from the trace meta); treat the serious reversal fraction as 0 below 20
+direction pairs. Write v4 into `docs/PHASE4_DESIGN.md` §2 first, then test on a fresh synthetic
+split (seeds 40,000 + …), adding a synthetic class whose onsets fall only on decision boundaries
+with no trigger dependence (must pass criterion 2).
+
+**Acceptance criteria:**
+- v3 record kept; v4 passes the preregistered AUC / TPR / FPR on the fresh split
+- no rule tuned on simulator output; `tests/run_tests.py` green
 
 ---
 

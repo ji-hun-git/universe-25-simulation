@@ -1,5 +1,65 @@
 # Universe25 Play — NOTES
 
+## 2026-11-06 — P4-8: free-time sub-steps
+
+**What it is.** `free_substeps: K` (config, CLI `--free-substeps`; 1 = off, bit-identical, 300-d
+hash `966401ea…`). An agent whose decision action is EXPLORE / SOCIAL / MANIPULATE replays that
+decision as K sub-steps: the decision-level move and curiosity / boredom / social relief are
+undone, then each sub-step moves 1/K of a decision's reach (random walks with sd / √K) with 1/K of
+the relief. The decision itself still executes in full first, so the biology's random stream is
+consumed exactly as without sub-steps (tested); sub-step draws come from their own stream.
+Feeding, nursing, conception, stress and mortality stay per decision, from wherever agents end.
+`policy.substep_mode`: `continue` repeats the decision action at every sub-step (the same reach
+and relief as the decision, in distribution — tested for EXPLORE: sd ratio within 0.8–1.2,
+relief exact), `rechoose` lets the policy choose among the free actions at every sub-step;
+`auto` = continue for `need_driven`, rechoose for learned kinds. The trace uses a uniform time
+base of K rows per decision (non-free decisions interpolated along their move).
+
+**Guard (12 evaluation seeds 8000–8011, 1600 d, vs the need-driven control without sub-steps):**
+
+| arm (K = 12) | first litters | N @ 315 | peak N / day | cessation | N @ 736 | conceptions | N @ 1200 / band | N @ 1444 | N @ 1588 | H-d (10 % rule) |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| control (no sub-steps) | 102.2 | 470 ± 43 | 2252 / 534 | 593 | 1956 | 935 | 839 / ok | 127 | 19 | — |
+| heuristic, rechoose | 103.0 | 551 ± 42 (+17 %) | 2318 / 512 | 572 | 2000 | 900 | 793 / **0.342 < 0.35** | 108 | 15 | not preserved (N@315, band) |
+| heuristic, **continue** | 102.4 | 531 ± 49 (+13 %) | 2241 / 541 | 597 | 1951 | 947 | 822 / ok | 128 | 23 | not preserved (N@315 only) |
+
+- Re-choosing at every sub-step moved the arc earlier and steeper (peak day −22, cessation −21,
+  conceptions −35 d; band missed by 0.008): mixing explore / social / manipulate inside a decision
+  leaves manipulating agents short of their object and puts relief on other drives, so the colony
+  spreads differently from the calibration. Recorded as a negative; the heuristic's motives exist
+  only at the decision grain (its drives barely move within a decision), so `continue` is its
+  faithful sub-step policy.
+- Continue mode is within 2 % of the control on every landmark the guard can resolve. It still
+  fails the preregistered 10 % rule on N@315 (+61 ± 57 paired, one se). That arm is the control's
+  distribution by construction (only the random draws differ), and the 12-seed paired se of N@315
+  is 12 % of its mean, so two equivalent realisations miss the 10 % rule about 40 % of the time:
+  **the H-d rule cannot resolve 10 % on the early phase.** Verdict recorded as written; an
+  amendment is proposed in `PLAN.md` §15.1 (pending Jason's approval, not applied).
+
+**Detectors (v3, unchanged) on traced runs, K = 12, training seeds 7000–7002, 10-day windows at
+days 150 / 400 / 700 / 1000, one individual in four, 1,000 surrogates
+(`_output/p48_trace_summary.txt`):**
+- Support now exists: from day 400 on, 253–8,309 direction pairs and 394–4,000 comparable
+  episode pairs per window (at the decision grain: at most 21 and 2). Episodes last 2.3–11.3
+  sub-steps; the gap criterion finds structure (3–10 sub-steps).
+- Heuristic (continue), object episodes: stereotyped approach-and-stay — criterion 3 rejected
+  (reversal 0.00), criterion 4 rejected (rigid 0.29–0.36 > 0.2). Locomotor episodes: a random walk
+  (reversal 0.48, rigid 0.00), so criteria 3 and 4 pass from randomness, as for `random_walk` in
+  the synthetic validation.
+- Heuristic (rechoose) and the random frozen MLP: object episodes not rigid (0.04–0.06) but with
+  no approach–withdraw (reversal ≤ 0.01: re-choosing ends an episode rather than withdrawing within
+  it); locomotor as above.
+- No arm prefers the relaxed field (criterion 5 met in 1 of 3 seeds in one window at most), so
+  **no arm meets all five criteria in any window.** This is the profile a learned policy has to
+  beat: approach–withdraw structure in object episodes (criterion 3) and relaxed-field dependence
+  (criterion 5), against the random policy at the same sub-step grain.
+- Known v3 limitation exposed by sub-steps: in continue mode criterion 2 reads "locked" for
+  locomotor episodes. Density and wound triggers update once per decision, so they fall on
+  decision-boundary rows, where continue-mode onsets also fall; the v3 circular-shift null shifts
+  by arbitrary rows, not whole decisions. A phase-preserving null (shift by multiples of K) and a
+  minimum support for the serious template are the v4 changes (card P4-9; fresh synthetic split
+  required, never tuned on simulator output).
+
 ## 2026-11-06 — P4-5: Burghardt detectors, synthetic validation, decision traces
 
 **Confound found and fixed first (affects P4-1).** The observation builder (P4-0) filled the

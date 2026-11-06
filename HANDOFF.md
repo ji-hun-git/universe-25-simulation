@@ -516,6 +516,11 @@ plateau moved by less than its seed se. Caveats in full in `NOTES.md` → "Phase
   fresh seeds; a confound in the P4-0 observation builder (pre-move cell counts reached the
   biology under learned policies) was fixed and the P4-1 guard rerun (verdict unchanged).
   Simulator reading: no multi-decision structure at 6 decisions per day for any policy → P4-8.
+- **P4-8 done (2026-11-06)**: free-time sub-steps (`free_substeps`, off = bit-identical); the
+  heuristic continues its decision action across sub-steps (re-choosing moved the arc: recorded
+  negative); detectors now measure criteria 3 / 4 with support. Baseline at K = 12: heuristic
+  object use is stereotyped approach-and-stay, locomotion and the random policy are random
+  walks, and no arm prefers the relaxed field. H-d rule flaw on N@315 found (PLAN §15.1).
 
 ---
 
@@ -721,7 +726,8 @@ in the peak count (N@736 3–4 % low) and the slow realisations' late tail (N@14
 - [x] Calibration guard (P4-1, 2026-11-04: `calib/policy_guard.py`, `scripts/policy_guard.py`; first run on seeds 8000–8011 at 1600 d — the control reproduces the record (peak 2252 ± 13 @ 534 ± 7, N@1444 127 ± 8, N@1588 19 ± 2), a random frozen MLP is **not preserved**: N@315 −61 %, peak −11 % and +240 d, surviving births +560 d, late tail 5–20×; the curve is not policy-invariant, see NOTES)
 - [ ] Homeostatic reward + PPO (P4-2) · nursery pre-training (P4-3) · `evo` (P4-4)
 - [x] Burghardt detectors per criterion with synthetic ground truth, ≥ 1,000 surrogates, thresholds fixed before any evaluation seed; V hopper fix (P4-5, 2026-11-06: rules v3 pass 12 / 12 preregistered checks on fresh seeds after v1 (11 / 12) and a falsifier failure in v2, all recorded; on the simulator both policies are non-functional and spontaneous but single-decision, so criteria 3 / 4 are not evaluable at 6 decisions per day) — **PlayScore eval-only, unvalidated**
-- [ ] Finer decision grain for free-time behaviour (P4-8): prerequisite for H-f
+- [x] Finer decision grain for free-time behaviour (P4-8, 2026-11-06: `free_substeps`, `policy.substep_mode`; heuristic continue mode within 2 % of the control on every resolvable landmark, N@315 +13 % at one paired se; detectors have support; no arm meets all five criteria)
+- [ ] Detector rules v4 (P4-9: phase-preserving trigger null, template minimum support) · H-d amendment decision (PLAN §15.1)
 - [ ] Sweep: policy kind × abundance / scarcity × playground on / off × 12 seeds (P4-6); H-d … H-g answered or marked untested in NOTES
 - [ ] H2 audit extended to observation, learner and detector code with a negative test (P4-7); no ICM / RND bonus; the heuristic is never distilled
 
