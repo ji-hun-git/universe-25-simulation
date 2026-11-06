@@ -140,7 +140,9 @@ with 12 sub-steps rather than 24 ticks per day). Pre-training v1 (10^8 steps) le
 care, but its nurseries always started spread over all 16 cells: on the canonical 4-pair start
 the frozen policy keeps the colony in the founders' four cells and it plateaus near 960. The
 nursery distribution must include founding colonies (few founders, one to four cells) before
-its weights stand for the canonical start (NOTES 2026-11-06 → P4-3).
+its weights stand for the canonical start (NOTES 2026-11-06 → P4-3). Done in v2 (2026-11-07):
+founding worlds in 40 % of episodes; the v2 policy spreads the canonical colony and runs the
+Universe 25 arc at full size, about 100 days early (NOTES 2026-11-07).
 
 ### 1.7 Alternative learner: inherited weights (`evo`)
 

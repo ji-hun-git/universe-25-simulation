@@ -95,6 +95,10 @@
   frozen learner keeping the canonical colony in the founders' four cells and plateauing near
   960 — the nurseries never contained a founding colony. No learned arm has been evaluated on
   seeds 8000–8011.
+- Status note 2026-11-07 (nursery v2): with founding-colony worlds in the
+  nursery the frozen learner spreads the canonical colony and reaches peak 2,406 / N@736 2,095 /
+  conceptions ending 907, about 100 days early (training seeds 7000–7002). The preregistered
+  H-d guard on seeds 8000–8011 is the next step.
 - Work package: WP-G12-adjacent / Track E toy world (Universe 25 + playground); not L3 ecology
 - Track: **E** (emergent, exploratory)
 - Owner: Jason

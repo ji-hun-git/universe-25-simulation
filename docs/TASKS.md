@@ -285,6 +285,12 @@ teacher: no distillation, no behaviour cloning. No play-named term (H2).
 
 ## P4-3 — Nursery pre-training harness
 
+> **v2 2026-11-07:** founding-colony worlds (40 %) and concentrated mixed worlds
+> added; pre-training v2 (10^8 steps, 50 min). The frozen v2 policy spreads the canonical colony
+> like the heuristic and reaches peak 2,406, N@736 2,095, conceptions ending at 907 (Calhoun
+> 2,200 / 2,056 / 920), on an arc about 100 days early (training seeds 7000–7002). Next: the
+> preregistered guard on seeds 8000–8011 with `pretrain_v2/policy_final.npz`.
+
 > **Done 2026-11-06:** `learn/nursery.py`, `scripts/pretrain_nursery.py`,
 > `tests/test_nursery.py` (composition, training seeds only, bit-for-bit resume); throughput
 > 51,700 agent-steps/s, VRAM 246 MB (`docs/NVIDIA_STACK.md`). Pre-training v1: 1.02 × 10^8 steps.

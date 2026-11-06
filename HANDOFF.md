@@ -532,6 +532,11 @@ plateau moved by less than its seed se. Caveats in full in `NOTES.md` → "Phase
   heuristic's early (N@315 624, Calhoun 620) but stays in the founders' four cells (NEST 48 %)
   and plateaus near 960. Decision pending: founding-colony nurseries + re-pretrain
   (recommended), the preregistered guard now, or a stress drive amendment.
+- **Nursery v2 (2026-11-07)**: founding-colony and concentrated worlds added; re-pretrained
+  (10^8 steps). The frozen v2 policy spreads the canonical colony like the heuristic: peak
+  2,406, N@736 2,095, conceptions end 907 (Calhoun 2,200 / 2,056 / ≈920), but about 100 days
+  early (peak day 456, last surviving birth 483) because its mothers raise more young early.
+  Next: the preregistered guard (seeds 8000–8011) with `_output/pretrain/pretrain_v2`.
 
 ---
 

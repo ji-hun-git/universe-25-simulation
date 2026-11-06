@@ -1,5 +1,52 @@
 # Universe25 Play — NOTES
 
+## 2026-11-07 — Nursery v2 (founding colonies): the learned colony now spreads and runs the Universe 25 arc, faster
+
+**Change** (Jason chose "widen and retrain"): founding worlds in 40 % of episodes — 4 to 30
+pairs of 48- to 90-day-old founders in one to four cells, 300 days, the calibrated conception
+gate — and mixed worlds concentrated into one to eight cells half the time (conception gate
+lifted for their mature adults). Pre-training v2 from scratch (`_output/pretrain/pretrain_v2/`):
+45 episodes (14 founding), 1.02 × 10^8 agent-steps, 3,075 updates, 50 min, 34,000 steps/s, VRAM
+262 MB; founding colonies grew from 12–60 animals to 950–1,800 in 300 days; policy entropy
+1.13 → 1.04 (v1 ended at 0.60).
+
+**Development guard** (frozen v2 policy, canonical 4-pair start, training seeds 7000–7002,
+1,600 d, 12 sub-steps, against the heuristic at the same grain; not the preregistered evaluation):
+
+| landmark | Calhoun | heuristic | learner v1 | **learner v2** |
+|---|---:|---:|---:|---:|
+| first litters | 104 | 103 | 102 | 102 |
+| N @ 315 | 620 | 367 ± 61 | 624 ± 56 | 852 ± 106 |
+| peak N | 2,200 | 2,255 ± 28 | 958 ± 90 | **2,406 ± 44** |
+| peak day | 560 | 535 ± 17 | 709 ± 40 | 456 ± 24 |
+| surviving births cease | 600 | 606 ± 18 | 882 ± 147 | 483 ± 28 |
+| N @ 736 | 2,056 | 1,971 ± 35 | 918 ± 82 | **2,095 ± 21** |
+| conception cessation | ≈ 920 | 923 ± 26 | 863 ± 147 | **907 ± 23** |
+| N @ 1200 / peak | 0.35–0.85 | 0.40 | 0.41 | 0.29 (band missed) |
+| N @ 1444 / 1588 | 122 / 27 | 139 / 19 | 160 / 77 | 65 / 7 |
+
+Amended H-d on these three training seeds: not preserved (N@315 +132 %, surviving births cease
+−20 %, decline band); peak N, N@736 and conception cessation are within 10 % of the control.
+
+**Why it spreads now** (seed 7000, 800 d): from day 300 only 34–42 % of the learned colony sits
+in its four most crowded cells (heuristic 40–55 %, v1 95–99 %); NEST is 3 % of adult decisions
+(v1 48 %); the adult action mix — FORAGE 0.28, DRINK 0.28, REST 0.15, SOCIAL 0.09, EXPLORE 0.09,
+MANIPULATE 0.04 — resembles the heuristic's. The v1 crowding was the harness defect diagnosed in
+P4-3, and it is gone.
+
+**Why the arc is faster:** the learned mothers raise more young early (N@315 852 vs 367), so the
+colony reaches crowding sooner; competence collapses earlier (0.57 at day 250 vs 0.97), the
+withdrawn majority forms earlier, surviving births stop near day 480 and the late decline is
+steeper. The biology was calibrated against the heuristic's slow early growth (its N@315 is the
+known third-low miss), so better maternal care moves the whole arc forward. That is the content of
+H-d: the calibrated curve depends on the behaviour policy, here through maternal care.
+
+**Reading against the record:** the learned colony now has Universe 25's shape and size — a peak
+of 2,406 (2,200), N@736 2,095 (2,056), conceptions ending at day 907 (≈ 920), an irreversible
+collapse — on a timeline about 100 days early (peak day 456 vs 560, last surviving birth 483 vs
+600) with faster early growth (852 vs 620 at day 315). Three training seeds only; the
+preregistered test is the guard on seeds 8000–8011.
+
 ## 2026-11-06 — P4-3: nursery pre-training; on the canonical start the learned colony crowds into four cells
 
 **Built.** `learn/nursery.py` + `scripts/pretrain_nursery.py`: one persistent learner over
