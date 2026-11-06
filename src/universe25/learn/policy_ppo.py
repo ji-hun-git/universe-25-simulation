@@ -60,6 +60,7 @@ class MlpPpoPolicy:
         self.n_transitions = 0
         self.n_calls = 0
         self.log_path: Path | None = None
+        self.log_dir: Path | None = None  # set by the nursery harness (else the run directory)
         self.history: list[dict[str, float]] = []
         self._buf: dict[str, list[np.ndarray]] = {k: [] for k in BUFFER_KEYS}
 
@@ -79,7 +80,7 @@ class MlpPpoPolicy:
         self.prev_age = np.full(cap, np.inf)
         self.K = max(1, int(getattr(sim, "free_substeps", 1)))
         self.gamma_unit = float(self.ppo.gamma_per_decision) ** (1.0 / self.K)
-        self.log_path = Path(sim.out_dir) / "learn_log.jsonl"
+        self.log_path = (self.log_dir or Path(sim.out_dir)) / "learn_log.jsonl"
         self.builder = ObservationBuilder(sim.world)
 
     def _close(self, slots: np.ndarray, reward: np.ndarray, done: np.ndarray,
@@ -170,6 +171,40 @@ class MlpPpoPolicy:
         self.p_contrib[idx] = contrib.astype(np.float32)
         self.n_calls += int(idx.size)
         return act.astype(np.int8)
+
+    # ---------------------------------------------------------------- episodes (P4-3)
+    def attach(self, sim: Universe25Sim) -> None:
+        """Install this learner in a new simulation (a nursery episode): per-slot state is rebuilt
+        on the first call; the network, optimiser, value normalisation and streams persist."""
+        sim.policy = self
+        self.cap = 0
+        self._tick = -1
+        self._call = 0
+
+    def end_episode(self) -> None:
+        """Update on the transitions closed so far and drop the open ones (truncated episode)."""
+        if self._buf["reward"]:
+            self._update()
+        self._decisions_since_update = 0
+        self.cap = 0
+
+    def state_dict(self) -> dict[str, Any]:
+        L = self.learner
+        return {"net": L.net.state_dict(), "opt": L.opt.state_dict(),
+                "vnorm": [L.vnorm.m1, L.vnorm.m2, L.vnorm.debias], "n_updates": L.n_updates,
+                "n_transitions": self.n_transitions, "n_calls": self.n_calls,
+                "rng": self.rng.bit_generator.state, "mb_rng": self.mb_rng.bit_generator.state}
+
+    def load_state_dict(self, d: dict[str, Any]) -> None:
+        L = self.learner
+        L.net.load_state_dict(d["net"])
+        L.opt.load_state_dict(d["opt"])
+        L.vnorm.m1, L.vnorm.m2, L.vnorm.debias = (float(v) for v in d["vnorm"])
+        L.n_updates = int(d["n_updates"])
+        self.n_transitions = int(d["n_transitions"])
+        self.n_calls = int(d["n_calls"])
+        self.rng.bit_generator.state = d["rng"]
+        self.mb_rng.bit_generator.state = d["mb_rng"]
 
     def finish(self, sim: Universe25Sim) -> dict[str, Any]:
         out = Path(sim.out_dir)

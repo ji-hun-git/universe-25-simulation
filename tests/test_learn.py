@@ -146,10 +146,12 @@ def test_disabled_learner_never_updates() -> None:
 
 def test_h2_learner_code_has_no_play_signal() -> None:
     bad = ("play", "bout", "motif", "exaggerat", "playscore", "detector", "trace")
+    geometry = {"playground", "playground_enabled", "playground_bounds", "in_playground",
+                "play_objects", "PlayObject"}  # world geometry, allowed by H2
     for path in sorted((ROOT / "src" / "universe25" / "learn").glob("*.py")):
         src = path.read_text(encoding="utf-8")
         for tok in tokenize.generate_tokens(io.StringIO(src).readline):
-            if tok.type == tokenize.NAME:
+            if tok.type == tokenize.NAME and tok.string not in geometry:
                 low = tok.string.lower()
                 assert not any(b in low for b in bad), (path.name, tok.string)
 
