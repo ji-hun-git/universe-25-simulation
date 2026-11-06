@@ -300,6 +300,12 @@ fecundity monitor; pre-evolution in nursery worlds (P4-3) because 1600 days is o
 
 ## P4-5 — Burghardt detectors + synthetic validation + V hopper fix
 
+> **Done 2026-11-06:** `metrics/trace.py`, `metrics/detectors.py` (rules v3),
+> `metrics/synthetic_traces.py`, `scripts/validate_detectors.py`, `scripts/detect.py`,
+> `tests/test_detectors.py`, `free_choice_V_excl_hopper_unvalidated`. Preregistered validation:
+> v1 11 / 12, v2 12 / 12 but falsifier failed, v3 12 / 12 (each on fresh seeds). Simulator:
+> single-decision episodes, criteria 3 / 4 not evaluable → P4-8. See `NOTES.md` 2026-11-06.
+
 **Goal:** `src/universe25/metrics/detectors.py` implementing `PHASE4_DESIGN.md` §2: episode
 segmentation (bout-criterion interval from the sim's own log-survivorship), criterion 1
 `nf_index`, criterion 2 onset / return / preference rates, criterion 3 `seq_struct_*`
@@ -319,6 +325,34 @@ preregistered AUC / FPR; neutral identifier names.
 - Synthetic AUC / FPR per detector reported in NOTES whether pass or fail
 - Thresholds written into `PHASE4_DESIGN.md` §2 **before** any evaluation seed (8000–8011) is run
 - No animal or human play dataset anywhere (H1)
+
+---
+
+## P4-8 — Finer decision grain for free-time behaviour (prerequisite for H-f)
+
+> **Status 2026-11-06:** not started. P4-5 found that at 6 decisions per day (one
+> every 4 hours) every episode in the simulator lasts one decision, for the heuristic and the
+> random policy alike, so criteria 3 and 4 have no structure to evaluate (12–21 direction pairs
+> per 20-day window). Mouse play bouts last seconds to minutes. Without a finer grain, H-f
+> (structure, not frequency) cannot be tested for any policy.
+
+**Goal:** a free-time sub-step layer that leaves the calibrated biology untouched: when an
+agent's chosen action is a free one (EXPLORE, MANIPULATE, SOCIAL) it executes K sub-decisions
+(e.g. K = 12, 20 min each) inside the decision interval, with movement and object contact per
+sub-step and no change to drives, nursing, conception, stress or mortality accounting (those
+stay per decision). The policy (heuristic, frozen MLP, learner) chooses the sub-step actions
+among the free actions only; the trace recorder logs sub-steps. Off by default and
+bit-identical.
+
+**Files:** `src/universe25/sim.py` (execute only), `src/universe25/config.py`,
+`src/universe25/agents/policy.py`, `src/universe25/metrics/trace.py`, `tests/`
+
+**Acceptance criteria:**
+- K = 1 (off) bit-identical (300-d hash); the calibration guard (P4-1) for the heuristic with
+  K = 12 shows every canonical landmark within 10 % (the sub-steps must not move the biology)
+- traced runs show multi-step episodes; detectors (v3, unchanged) report criteria 3 / 4 with
+  support (≥ 100 direction pairs per window)
+- detector rules are not re-tuned on simulator output (they are fixed at v3)
 
 ---
 

@@ -1,5 +1,74 @@
 # Universe25 Play — NOTES
 
+## 2026-11-06 — P4-5: Burghardt detectors, synthetic validation, decision traces
+
+**Confound found and fixed first (affects P4-1).** The observation builder (P4-0) filled the
+simulator's per-tick cell-count cache before the actions ran. The biology reads that cache after
+the actions (nursing disturbance, conception density), so under learned policies it got
+pre-move counts while the heuristic did not: the biology rules were not identical across guard
+arms. The builder now keeps its own count. The 12-seed 1600-d guard was rerun: every landmark
+moved by less than its se (peak 1995 → 1993, peak day 776 → 772, cessation 1154 → 1101, N@1588
+383 → 357) and the verdict is unchanged — NOT PRESERVED, same four failures. Both versions are in
+`_output/` (`policy_guard_mlp_random*.json`).
+
+**What was built** (all eval-only; nothing here is imported by a policy, observation builder or
+learner — audited):
+- `metrics/trace.py`: per-agent decision traces in day windows (`trace.windows`, CLI
+  `--trace-windows 150:170,400:420`). Off by default: no recorder, bit-identical tick (300-d
+  hash `966401ea…` unchanged). When on it draws no random numbers, writes no simulation state,
+  keeps its own cell counts, and a traced run is identical to an untraced one (tested).
+- `metrics/detectors.py`: episode segmentation and the five criterion detectors with surrogate
+  nulls and effect-size floors (rules in `docs/PHASE4_DESIGN.md` §2). Output is a vector of
+  `*_unvalidated` statistics and per-criterion flags, never a single score.
+- `metrics/synthetic_traces.py`: seven scripted classes written from the criterion text (no
+  dataset, H1): `all_criteria` (built to meet all five) and one class built to violate each
+  criterion (`serious`, `triggered`, `rigid_loop`, `novelty`, `stressed`), plus a matched-speed
+  `random_walk`.
+- `scripts/validate_detectors.py`, `scripts/detect.py`; `tests/test_detectors.py`.
+- `free_choice_V_excl_hopper_unvalidated` in the metrics parquet.
+
+**Validation history (each version tested on seeds never used before; rules fixed before each
+test run, all recorded in the design doc).**
+
+| Rules | Test seeds | Checks passed | What failed and why |
+|---|---|---:|---|
+| v1 | 10,000 + … | 11 / 12 | criterion 3 on object episodes (AUC 0.58, FPR 0.77 on `serious`): the gap criterion merged single consumption acts a day apart, and the trips between them read as approach–withdraw cycles |
+| v2: form statistics use only the episode's own decisions | 20,000 + … | 12 / 12 | the episode falsifier failed afterwards in a unit test: least squares on the log-survivorship found a "break" in purely memoryless events (sparse tail points weighted like dense ones) |
+| **v3**: gap criterion = maximum-likelihood one- vs two-process fit (Sibly, Nott & Fletcher 1990), criterion minimising misassigned gaps (Slater & Lester 1982) | 30,000 + … | **12 / 12** | — (memoryless events at rates 0.05–0.5: no structure; planted bouts: criterion 2) |
+
+v3, 30 colonies per class, 1,000 surrogates per statistic, both episode kinds: AUC 0.993–1.000,
+TPR 1.00, FPR 0.00 on every check. Every violating class fails exactly its criterion; the
+`random_walk` passes criteria 1–3 and fails 5 (and 4 in 57 % of colonies), which is why every
+reading must be set against the random baseline. **Limit, stated plainly:** the synthetic classes
+and the detectors come from the same hand, so this shows the detectors compute what the
+criteria say on behaviour built to the criteria; it does not show they would recognise real
+play, and the thresholds are conventions, not estimates.
+
+**First reading on the simulator** (training seeds 7000–7002, 1020 d, windows at days 150, 400,
+700, 1000 of 20 d, 400 individuals per window, 1,000 surrogates; `_output/p45_trace_summary.txt`):
+
+| arm | episodes per window | c1 not functional | c2 spontaneous | c3 / c4 | c5 relaxed field |
+|---|---:|---|---|---|---|
+| need-driven, playground on | object 63–1104, locomotor 78–1489 | met (nf 0.69–0.91) | met (not trigger-locked) | **not evaluable** | not met (log ratio −1.1 to +0.5 < ln 2) |
+| random frozen MLP | object 42–930, locomotor 41–1227 | met | met | **not evaluable** | not met (−1.2 to +0.1) |
+| need-driven, playground off | object 0, locomotor 216–2006 | locomotor met | locomotor met | not evaluable | not met |
+
+- Episodes last one decision (mean 1.00–1.04 events; the gap criterion finds no structure), so a
+  20-day window has only 12–21 direction pairs for criterion 3 and at most 2 comparable episode
+  pairs for criterion 4. Those flags read False for lack of structure, not because a structure
+  was found and rejected; the serious template's reversal fraction rests on a single pair.
+- Drive spillover is not called play: the heuristic's object use is non-functional and
+  spontaneous but unstructured and not relaxed-field gated beyond chance-level ratios.
+- The differential prediction holds: with the playground off, object episodes vanish and
+  locomotor episodes persist (more of them).
+- The old free-choice V counted hopper users: day 150 V 0.132 → 0.048 without them, day 400
+  0.234 → 0.116 (about half of the "free choice" was eating or drinking inside the box).
+
+**Consequence for phase 4.** At 6 decisions per day (one every 4 hours) no policy, learned or
+not, can show within-episode form: mouse play bouts last seconds to minutes. Criteria 3 and 4 —
+the preregistered non-trivial tests (H-f) — need a finer decision grain for free-time behaviour.
+New card P4-8. The detectors are ready; the substrate's time grain is now the binding constraint.
+
 ## 2026-11-04 — Record review, phase 4 design and scaffold (documentation + code, not empirical)
 
 No empirical result changed in this pass and the calibration stays frozen at phase 2m. What

@@ -70,6 +70,12 @@
   out of sample and a random frozen MLP **not** preserving the curve (N@315 −61 %, peak −11 %
   / +240 d, cessation +560 d, late tail 5–20×) — H-d falsified for an arbitrary policy; the
   heuristic behaviour is load-bearing.
+- Status note 2026-11-06 (P4-5): detectors frozen at rules v3 (12 / 12
+  preregistered synthetic checks on fresh seeds, after v1 11 / 12 and a v2 falsifier failure);
+  the P4-1 guard was rerun after an observation-builder confound was fixed (verdict unchanged).
+  On the simulator, episodes last one decision for every policy, so criteria 3 / 4 — the H-f
+  test — are not evaluable at 6 decisions per day; P4-8 (free-time sub-steps) is a
+  prerequisite for H-f. No evaluation seed has been used for detector development.
 - Work package: WP-G12-adjacent / Track E toy world (Universe 25 + playground); not L3 ecology
 - Track: **E** (emergent, exploratory)
 - Owner: Jason

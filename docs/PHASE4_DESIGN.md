@@ -41,7 +41,7 @@ survives a learned policy is an **empirical question** (§4), not a tuning targe
 | kind | What | RNG | Status |
 |---|---|---|---|
 | `need_driven` | phase 1/2 utility softmax | one draw per deciding agent from the sim stream | done, bit-identical |
-| `mlp_frozen` | NumPy float32 MLP inference (48 → 128 → 128 → 11), weights from an `.npz` or a seeded orthogonal init; learning off | own `make_rng(seed + 1_000_003)` stream | done (P4-0, 2026-11-04) |
+| `mlp_frozen` | NumPy float32 MLP inference (48 → 128 → 128 → 11), weights from an `.npz` or a seeded orthogonal init; learning off | own `make_rng(seed + 1_000_003)` stream; keeps its own cell counts (never the simulation's per-tick cache; fixed 2026-11-06) | done (P4-0, 2026-11-04) |
 | `mlp_ppo` | same net, PPO updates every T ticks in torch (CUDA) | torch generator seeded from `seed`; see §5 | to build (P4-2) |
 | `evo` | per-agent weights inherited at birth with Gaussian mutation; no reward, no learner | sim stream for mutation draws (biology-ordered) | to build (P4-4) |
 
@@ -153,6 +153,83 @@ survivorship curve means no episode structure to score.
 | 3 structurally / temporally different from the serious form | serious templates from the sim's own functional sequences (forage → consume, aggress → wound, approach → mate): incompleteness fraction (terminal act available but dropped), amplitude z-scores (speed, turn rate, approach–withdraw cycles), Jensen–Shannon divergence between candidate and serious first-order transition matrices, targeting of non-consumable object parts | divergence within the surrogate band; episodes complete | interruption or failure mimics incompleteness; early-training incompetence mimics precocity — match training stage, classify blocked serious episodes separately |
 | 4 repeated but not rigidly stereotyped | recurrence of episodes in a feature space across days above a preset rate; conditional entropy rate and Lempel–Ziv compressibility of within-episode action sequences; rigid-loop fraction (pairs with normalised edit distance below ε); engagement as a function of **cumulative object exposure** (curiosity decays with exposure, play recurs after novelty is exhausted) | episodes not repeated, or compressibility that of a fixed loop | a deterministic policy in a static world loops by construction — report against matched-entropy random policies and over training time |
 | 5 relaxed field | `gate_relaxed`: survival drives below their action thresholds, no aggression received in the last m ticks, local density below the crowding threshold, wounds low. Used as a gate **and** a dose–response variable, P(episode | relaxed) vs P(episode | not), never as evidence on its own. | episodes equally frequent under stress | this gate is what manufactures spillover; post-deprivation rebound (Held & Špinka 2011) inflates rates right after stress ends |
+
+**Preregistered decision rules (v1, fixed 2026-11-06 before the synthetic test run and before
+any evaluation seed; implemented in `src/universe25/metrics/detectors.py`).** Every rule pairs
+a surrogate test with an effect-size floor, so a large window cannot pass on significance alone.
+z is (observed − surrogate mean) / surrogate sd with ≥ 1,000 surrogates; NaN reads as not met;
+fewer than 10 episodes of a kind = criteria not evaluated (all False).
+
+| Criterion | Flag is True when |
+|---|---|
+| 1 not fully functional | `nf_index` ≥ 0.5 **and** z > 1.645 against a circular shift of the per-step relief / at-target series within individual |
+| 2 spontaneous | **not** time-locked: it fails only if the trigger-free onset fraction is < 0.8 × its circular-shift null mean **and** z < −1.645 (triggers = cell entry, own-cell density rise > 0.1 of design capacity, wound increase > 0.01, at or one decision before onset) |
+| 3 structurally different | within-episode approach–withdraw reversal fraction (radial direction to the sequence's own end point, moves of > 1 in) ≥ 0.25, **and** ≥ 0.2 above that of serious FORAGE / DRINK runs (a direct move has no reversal pair and counts as 0), **and** z > 1.645 under label permutation over sequences |
+| 4 repeated, not rigid | fraction of same-individual episode pairs (≥ 2 symbols) with normalised edit distance < 0.2 is ≤ 0.2, **and** the slope of log onset rate on log(1 + cumulative exposure) is > −0.5 |
+| 5 relaxed field | log P(onset relaxed) / P(onset not relaxed) ≥ ln 2 **and** z > 1.645 against a circular shift of the relaxed flag (relaxed = hunger < 0.5, thirst < 0.5, energy > 0.5, stress < 0.4, wounds < 0.3, no wound in the last 6 decisions, own-cell density < 1) |
+
+Episodes: gap criterion from the broken-stick fit of the log-survivorship of inter-event gaps
+(BIC margin 2, capped at one day of decisions); no break → runs of consecutive events and
+`episode_structure_unvalidated = False`. Locomotor events: EXPLORE moves above the 90th
+percentile of serious (FORAGE / DRINK / NEST) displacement in the same trace.
+
+Development and test split. The rules above were shaped on one synthetic colony per class
+(seeds 100–106, `metrics/synthetic_traces.py`); three changes were made there and are recorded
+here: (a) each criterion got an effect-size floor (significance alone flagged every class once
+hundreds of sequences were pooled); (b) criterion 3 moved from a movement-transition JS
+divergence (still reported) to the approach–withdraw reversal fraction, because the JS compared
+sequence-length compositions rather than form and because at 6 decisions per day serious moves
+reach their target in one step, so there is no multi-step serious form to compare transitions
+against; (c) criterion 4's strings are object-centred for object episodes. The test run uses
+fresh seeds (10,000 + 1,000 × class + colony). **Preregistered pass per criterion and episode
+kind:** AUC ≥ 0.80 of the statistic between `all_criteria` (the class built to meet all five) and the class built to violate that
+criterion (c1 / c3: `serious`; c2: `triggered`; c4: `rigid_loop` for rigidity, `novelty` for the
+exposure slope; c5: `stressed`), flag rate ≥ 0.80 on `all_criteria` colonies (TPR) and ≤ 0.10 on
+the violating class (FPR). `random_walk` (a matched-speed random policy) is read against every
+criterion and has no pass condition: it shows what a policy without structure scores.
+
+**v1 test result (2026-11-06, seeds 10,000 + …, 30 colonies per class, 1,000 surrogates):
+11 of 12 checks pass** (AUC 0.98–1.00, TPR 1.00, FPR 0.00–0.07); **criterion 3 on object
+episodes fails** (AUC 0.58, FPR 0.77 on `serious`). Mechanism: the gap criterion found a break
+on the functional class and merged single consumption acts up to a day apart into one episode;
+the form statistic then read the trips home and back between them as approach–withdraw cycles.
+
+**v2 (fixed 2026-11-06 after the v1 test, before the v2 test).** One change: the form
+statistics (criterion 3 reversals, JS and amplitude; criterion 4 strings and entropy rate) use
+only the episode's own event decisions, and a transition or direction pair exists only between
+two consecutive event decisions; the other actions inside an episode's gap no longer count.
+All thresholds unchanged. v2 is tested on a new fresh split (seeds 20,000 + 1,000 × class +
+colony), never used before; the v1 result above stays the record of v1.
+
+**v2 test result (seeds 20,000 + …): 12 of 12 checks pass.** But the episode falsifier failed
+in the unit test written afterwards: on purely memoryless (Bernoulli) events the broken-stick
+least-squares fit on the log-survivorship still reported a break (capped at 6 decisions),
+because unweighted least squares on log S(t) treats a sparse tail point like a dense one. The
+same defect produced the v1 merges.
+
+**v3 (fixed 2026-11-06 after the falsifier failure, before the v3 test).** One change: the gap
+criterion is a maximum-likelihood comparison of one geometric process against a two-component
+geometric mixture on the inter-event gaps within individuals (Sibly, Nott & Fletcher 1990;
+EM fit), BIC margin 10, distinct rates (fast > 2 × slow) and both components > 2 %; the
+criterion is the gap that minimises the expected misassigned gaps (Slater & Lester 1982),
+capped at one day of decisions. On memoryless events at rates 0.05–0.5 it reports no structure;
+on planted runs separated by long pauses it reports a criterion of 2. Everything else as v2. v3
+is tested on a new fresh split (seeds 30,000 + 1,000 × class + colony).
+
+**v3 test result (2026-11-06): 12 of 12 checks pass** (AUC 0.993–1.000, TPR 1.00, FPR 0.00 on
+every check, both episode kinds; `_output/detector_validation.json`). v3 is the frozen rule
+set for phase 4; any later change is v4 and needs its own fresh split. Limit: the synthetic
+classes and the detectors come from the same hand, so this shows the detectors compute what
+the criteria say, not that they would recognise real play.
+
+**First simulator reading (training seeds 7000–7002, 4 windows).** Need-driven and random
+policies: object and locomotor episodes are non-functional (c1) and spontaneous (c2) but last
+one decision (mean 1.00–1.04 events), so c3 / c4 are not evaluable (≤ 21 direction pairs, ≤ 2
+comparable episode pairs per window) and c5 is not met (log ratio below ln 2). Playground off:
+object episodes vanish, locomotor persist. At 6 decisions per day no policy can show
+within-episode form; card P4-8 adds a free-time sub-step layer (biology untouched) before any
+H-f test. Known v3 limitation to fix in v4 if needed: the serious template's reversal fraction
+has no minimum support (in the simulator it rests on one pair).
 
 Free-choice V hopper fix (measurement bug found 2026-11-04). The playground box (35, 35)–(66, 66)
 covers cells 5, 6, 9 and 10 and contains six of their eight hoppers (all four water points, the

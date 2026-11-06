@@ -511,6 +511,11 @@ plateau moved by less than its seed se. Caveats in full in `NOTES.md` → "Phase
   record out of sample; a random policy does **not** preserve the curve (slower, lower, later,
   far more persistent colony) — the heuristic behaviour is load-bearing, H-d is falsified for
   an arbitrary policy and every policy arm must report the guard (`NOTES.md` 2026-11-04 → P4-1).
+- **P4-5 done (2026-11-06)**: decision traces (`metrics/trace.py`, off = bit-identical),
+  detectors (`metrics/detectors.py`, rules v3), synthetic ground truth, validation 12 / 12 on
+  fresh seeds; a confound in the P4-0 observation builder (pre-move cell counts reached the
+  biology under learned policies) was fixed and the P4-1 guard rerun (verdict unchanged).
+  Simulator reading: no multi-decision structure at 6 decisions per day for any policy → P4-8.
 
 ---
 
@@ -538,6 +543,8 @@ universe25-play/
 │   ├── calibrate_optuna.py
 │   ├── seed_eval.py        ← out-of-sample scoring of a fragment over N seeds (adjudicator, 2k)
 │   ├── policy_guard.py     ← H-d calibration guard: a policy kind vs the need-driven control on the same seeds
+│   ├── validate_detectors.py ← preregistered synthetic validation of the detectors (AUC / TPR / FPR)
+│   ├── detect.py           ← run the detectors on a traced run (writes detectors_unvalidated.json)
 │   ├── multiseed_peak.py   ← 12-seed plateau / 6-vs-24 ticks check (peak, peak day, N@736, cessation)
 │   ├── benchmark_backends.py
 │   ├── microbench_warp_post.py
@@ -557,6 +564,9 @@ universe25-play/
 │   │   └── geometry.py     ← World, Cell, Nest, PlayObject, build_world
 │   ├── metrics/
 │   │   ├── logger.py       ← parquet
+│   │   ├── trace.py        ← per-agent decision traces in day windows (eval-only; off = bit-identical)
+│   │   ├── detectors.py    ← Burghardt criterion detectors (rules v3; *_unvalidated; never read by policies)
+│   │   ├── synthetic_traces.py ← scripted ground-truth classes for detector validation (no dataset)
 │   │   ├── playscore.py    ← PlayScoreAccumulator (unvalidated)
 │   │   └── calibration.py  ← Calhoun landmarks + phase detect
 │   ├── calib/              ← Optuna/CMA-ES helpers (phase 2)
@@ -710,7 +720,8 @@ in the peak count (N@736 3–4 % low) and the slow realisations' late tail (N@14
 - [x] Observation builder + `mlp_frozen` (P4-0, 2026-11-04: 48-float obs, NumPy MLP, seeded policy stream, CLI `--policy`; builder 1.8 ms per 4,000 agents; need-driven hash unchanged)
 - [x] Calibration guard (P4-1, 2026-11-04: `calib/policy_guard.py`, `scripts/policy_guard.py`; first run on seeds 8000–8011 at 1600 d — the control reproduces the record (peak 2252 ± 13 @ 534 ± 7, N@1444 127 ± 8, N@1588 19 ± 2), a random frozen MLP is **not preserved**: N@315 −61 %, peak −11 % and +240 d, surviving births +560 d, late tail 5–20×; the curve is not policy-invariant, see NOTES)
 - [ ] Homeostatic reward + PPO (P4-2) · nursery pre-training (P4-3) · `evo` (P4-4)
-- [ ] Burghardt detectors per criterion with synthetic ground truth, ≥ 1,000 surrogates, ablations, thresholds fixed before any evaluation seed; V hopper fix (P4-5) — **PlayScore eval-only, unvalidated**
+- [x] Burghardt detectors per criterion with synthetic ground truth, ≥ 1,000 surrogates, thresholds fixed before any evaluation seed; V hopper fix (P4-5, 2026-11-06: rules v3 pass 12 / 12 preregistered checks on fresh seeds after v1 (11 / 12) and a falsifier failure in v2, all recorded; on the simulator both policies are non-functional and spontaneous but single-decision, so criteria 3 / 4 are not evaluable at 6 decisions per day) — **PlayScore eval-only, unvalidated**
+- [ ] Finer decision grain for free-time behaviour (P4-8): prerequisite for H-f
 - [ ] Sweep: policy kind × abundance / scarcity × playground on / off × 12 seeds (P4-6); H-d … H-g answered or marked untested in NOTES
 - [ ] H2 audit extended to observation, learner and detector code with a negative test (P4-7); no ICM / RND bonus; the heuristic is never distilled
 
