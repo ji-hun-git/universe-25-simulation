@@ -135,6 +135,13 @@ for 10^8–10^9 agent-steps; then run the canonical 4-pair world (a) with the fr
 `need_driven` control with identical seeds. The nursery start is not Calhoun's start — a stated
 limitation. The heuristic is never distilled into the net.
 
+**P4-3 result (2026-11-06).** The harness is built (`learn/nursery.py`; 6 decisions per day
+with 12 sub-steps rather than 24 ticks per day). Pre-training v1 (10^8 steps) learned maternal
+care, but its nurseries always started spread over all 16 cells: on the canonical 4-pair start
+the frozen policy keeps the colony in the founders' four cells and it plateaus near 960. The
+nursery distribution must include founding colonies (few founders, one to four cells) before
+its weights stand for the canonical start (NOTES 2026-11-06 → P4-3).
+
 ### 1.7 Alternative learner: inherited weights (`evo`)
 
 Each mouse carries its own small net (obs → 32 → 11, about 2 k params; 4,096 slots × 2 k × 4 B

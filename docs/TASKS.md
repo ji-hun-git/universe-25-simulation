@@ -285,6 +285,14 @@ teacher: no distillation, no behaviour cloning. No play-named term (H2).
 
 ## P4-3 — Nursery pre-training harness
 
+> **Done 2026-11-06:** `learn/nursery.py`, `scripts/pretrain_nursery.py`,
+> `tests/test_nursery.py` (composition, training seeds only, bit-for-bit resume); throughput
+> 51,700 agent-steps/s, VRAM 246 MB (`docs/NVIDIA_STACK.md`). Pre-training v1: 1.02 × 10^8 steps.
+> On the canonical 4-pair start the frozen policy keeps the colony in the founders' four cells
+> (NEST 48 % of adult decisions) and plateaus near 960 — harness mismatch: no nursery episode
+> showed a founding colony. Next: decide (a) founding-colony nurseries + re-pretrain,
+> (b) preregistered guard now, (c) stress drive amendment (NOTES 2026-11-06 → P4-3).
+
 **Goal:** `scripts/pretrain_nursery.py`: seeded nursery worlds (500–4,000 adults + juveniles,
 domain-randomised food / water refill, density and object count), 24 ticks/day, 10^8–10^9
 agent-steps, checkpoints, a run manifest (torch / CUDA / Warp / numpy versions, GPU model, seed).

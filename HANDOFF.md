@@ -527,6 +527,11 @@ plateau moved by less than its seed se. Caveats in full in `NOTES.md` → "Phase
   the colony stays at ~500. Resolved the same day: an eighth, maternal drive (adopted by Jason)
   plus entropy 0.05 — the learner then nurses like the heuristic and keeps a full colony with
   mean D 0.25 (P4-2 acceptance met). Next: nursery pre-training (P4-3), then the guard (H-d).
+- **P4-3 done (2026-11-06)**: nursery harness and 10^8-step pre-training (33 min on the RTX
+  5080). Development guard on training seeds: the learned colony grows faster than the
+  heuristic's early (N@315 624, Calhoun 620) but stays in the founders' four cells (NEST 48 %)
+  and plateaus near 960. Decision pending: founding-colony nurseries + re-pretrain
+  (recommended), the preregistered guard now, or a stress drive amendment.
 
 ---
 
@@ -554,6 +559,8 @@ universe25-play/
 │   ├── calibrate_optuna.py
 │   ├── seed_eval.py        ← out-of-sample scoring of a fragment over N seeds (adjudicator, 2k)
 │   ├── policy_guard.py     ← H-d calibration guard: a policy kind vs the need-driven control on the same seeds
+│   ├── nursery_smoke.py    ← learner vs no-update network vs heuristic in one nursery (P4-2)
+│   ├── pretrain_nursery.py ← nursery pre-training with checkpoints and a manifest (P4-3)
 │   ├── validate_detectors.py ← preregistered synthetic validation of the detectors (AUC / TPR / FPR)
 │   ├── detect.py           ← run the detectors on a traced run (writes detectors_unvalidated.json)
 │   ├── multiseed_peak.py   ← 12-seed plateau / 6-vs-24 ticks check (peak, peak day, N@736, cessation)
@@ -574,7 +581,8 @@ universe25-play/
 │   ├── learn/
 │   │   ├── reward.py       ← homeostatic drive-reduction reward (the only training signal)
 │   │   ├── ppo.py          ← shared actor-critic, PPO, per-transition-discount GAE, determinism
-│   │   └── policy_ppo.py   ← policy.kind mlp_ppo (transitions per slot, updates, .npz export)
+│   │   ├── policy_ppo.py   ← policy.kind mlp_ppo (transitions per slot, updates, .npz export)
+│   │   └── nursery.py      ← randomised nursery worlds and the pre-training loop (P4-3)
 │   ├── world/
 │   │   └── geometry.py     ← World, Cell, Nest, PlayObject, build_world
 │   ├── metrics/
@@ -735,7 +743,8 @@ in the peak count (N@736 3–4 % low) and the slow realisations' late tail (N@14
 - [x] Observation builder + `mlp_frozen` (P4-0, 2026-11-04: 48-float obs, NumPy MLP, seeded policy stream, CLI `--policy`; builder 1.8 ms per 4,000 agents; need-driven hash unchanged)
 - [x] Calibration guard (P4-1, 2026-11-04: `calib/policy_guard.py`, `scripts/policy_guard.py`; first run on seeds 8000–8011 at 1600 d — the control reproduces the record (peak 2252 ± 13 @ 534 ± 7, N@1444 127 ± 8, N@1588 19 ± 2), a random frozen MLP is **not preserved**: N@315 −61 %, peak −11 % and +240 d, surviving births +560 d, late tail 5–20×; the curve is not policy-invariant, see NOTES)
 - [x] Homeostatic reward + PPO (P4-2, 2026-11-06: bit-identical on the GPU; the seven-drive learner abandoned its young, so the reward gained an eighth drive, `maternal_need` (adopted by Jason), and entropy 0.05; 650-day nursery: learner mean D 0.25 vs 1.04 untrained vs 0.82 heuristic, 1.5 × 10^7 transitions, full-size colony)
-- [ ] Nursery pre-training (P4-3) · `evo` (P4-4)
+- [x] Nursery pre-training (P4-3, 2026-11-06: harness + 10^8-step pre-training; the frozen policy on the canonical start crowds the colony into the founders' four cells and plateaus near 960 — no nursery episode showed a founding colony; next step pending)
+- [ ] `evo` (P4-4)
 - [x] Burghardt detectors per criterion with synthetic ground truth, ≥ 1,000 surrogates, thresholds fixed before any evaluation seed; V hopper fix (P4-5, 2026-11-06: rules v3 pass 12 / 12 preregistered checks on fresh seeds after v1 (11 / 12) and a falsifier failure in v2, all recorded; on the simulator both policies are non-functional and spontaneous but single-decision, so criteria 3 / 4 are not evaluable at 6 decisions per day) — **PlayScore eval-only, unvalidated**
 - [x] Finer decision grain for free-time behaviour (P4-8, 2026-11-06: `free_substeps`, `policy.substep_mode`; heuristic continue mode within 2 % of the control on every resolvable landmark, N@315 +13 % at one paired se; detectors have support; no arm meets all five criteria)
 - [x] H-d amendment adopted 2026-11-06 (drift > 10 % and > 2 paired se; heuristic with 12 sub-steps in continue mode preserved, random MLP not)

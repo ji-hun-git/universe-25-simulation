@@ -1,5 +1,63 @@
 # Universe25 Play — NOTES
 
+## 2026-11-06 — P4-3: nursery pre-training; on the canonical start the learned colony crowds into four cells
+
+**Built.** `learn/nursery.py` + `scripts/pretrain_nursery.py`: one persistent learner over
+60-day randomised nursery episodes (training seeds 7000–7009 only): 200–1,500 adults and
+juveniles in random nest boxes of all 16 cells, nursing mothers with litters, pregnant females,
+abundant or scarce food, playground open or closed with random object counts, 12 re-chosen
+sub-steps; checkpoints with bit-for-bit resume (tested), episodes and update logs, manifest
+(versions, GPU, commit, throughput, VRAM). Decisions stay at 6 per day (the card's 24 ticks per
+day would only hold actions over more ticks); the learner sees 20-minute sub-steps.
+
+**Pre-training v1** (`_output/pretrain/pretrain_v1/`): 61 episodes, 1.02 × 10^8 agent-steps,
+1,891 updates, 33 min, 51,700 steps/s, VRAM peak 246 MB. Young surviving to weaning: 410 in the
+first ten episodes, 7,420 in the last ten; colonies that shrank in early episodes (2,381 → 1,820)
+grow in late ones (1,205 → 1,819); mean D at episode end 0.157 → 0.124; policy entropy
+1.16 → 0.60.
+
+**Development guard — the pretrained policy frozen on the canonical 4-pair start** (training
+seeds 7000–7002, 1,600 d, 12 sub-steps, against the heuristic at the same grain; these are not
+the preregistered evaluation seeds):
+
+| landmark | Calhoun | heuristic | pretrained learner |
+|---|---:|---:|---:|
+| N @ 315 | 620 | 367 ± 61 | **624 ± 56** |
+| peak N | 2,200 | 2,255 ± 28 | **958 ± 90** |
+| peak day | 560 | 535 ± 17 | 709 ± 40 |
+| surviving births cease | 600 | 606 ± 18 | 882 ± 147 |
+| N @ 736 | 2,056 | 1,971 ± 35 | 918 ± 82 |
+| conception cessation | ≈ 920 | 923 ± 26 | 863 ± 147 |
+| N @ 1444 / 1588 | 122 / 27 | 139 / 19 | 160 / 77 |
+
+Not preserved under the amended H-d rule (N@315, peak N, peak day). Early growth now matches
+Calhoun better than the heuristic does (good maternal care); the colony then stops near 960.
+
+**Why (seed 7000, 800 d, per 50 days; `plateau_diag` in a scratch folder):** from day 300
+the learned adults spend **48 %** of their decisions going home (NEST; heuristic 5 %) and almost
+none on SOCIAL, EXPLORE, MANIPULATE or MATE; **95–99 %** of the colony sits in its four most
+crowded cells (heuristic 40–55 %). The founders' nests are in the four corner cells and pups
+inherit their mother's nest, so a stay-home policy keeps the whole colony in those cells; the
+nest-capacity spill-over that scatters the heuristic colony never fires (four cells hold 960
+animals in their boxes). Local crowding then runs the breakdown early: adult competence 0.51 at
+day 250 and 0.05 by day 400 (heuristic 0.97 and 0.48), withdrawn adults 486 of 642 at day 400,
+about 30 conceptions per 50 days, and a plateau between 650 and 1,100.
+
+Two causes, both fixable and both worth recording:
+1. *Train-test mismatch in the nursery.* Nursery colonies start spread over all 16 cells, so
+   going home never meant crowding; no episode showed a colony founded in a few cells. A defect
+   of the v1 harness.
+2. *The reward barely sees chronic stress.* With N = 4, a stress of 0.3 (δ = 0.2) contributes
+   δ⁴ ≈ 0.002 to D, so moderate crowding is almost free to the learner, while the biology turns
+   it into developmental damage and withdrawal that no drive registers.
+
+Options (decision pending): (a) widen the nursery to include founding colonies (few founders in
+one to four cells, as in the canonical start) and re-pretrain, then repeat this guard; (b) run
+the preregistered guard on seeds 8000–8011 now and record "not preserved" as the H-d result for
+the drive-reduction learner; (c) revisit the drive function for stress (an amendment to the
+preregistered reward). (a) first is recommended: it removes a harness defect without touching the
+reward, and (b) stays available afterwards.
+
 ## 2026-11-06 — Maternal drive adopted; P4-2 acceptance met (Jason's decision)
 
 **Change (reward amended before any learned arm was judged).** An eighth drive,

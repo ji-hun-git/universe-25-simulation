@@ -22,6 +22,29 @@ Target GPU: RTX 50-series (lab: **RTX 5080**, sm_120; Warp 1.18 + CUDA 13.x). Ja
 5. **RL vec env** (`rl_env_spec.py`): Gymnasium or Isaac Lab style, PyTorch PPO; rewards = survival + homeostasis (+ generic curiosity); **PlayScore eval-only** (H2).
 6. **Omniverse**: live USD stage / Nucleus only if Kit is installed; until then static USDA + JSON snapshots for a WebGPU viewer.
 
+## Learner on the GPU (phase 4, P4-2 / P4-3, 2026-11-06)
+
+| Piece | Role | Measured |
+|---|---|---|
+| **PyTorch 2.11 + CUDA 12.8** | shared actor-critic (48/49 -> 128 -> 128 -> 11 / 1), PPO updates, inference per policy call (`learn/ppo.py`) | RTX 5080; VRAM peak **246 MB** over 10^8 steps |
+| **Nursery pre-training** (`scripts/pretrain_nursery.py`) | single process: host NumPy biology + GPU learner, 60-day randomised episodes | **51,700 agent-steps/s** average (30k-79k per episode); 1.02 x 10^8 steps, 1,891 updates in 33 min |
+| **Learning run in one world** (`policy.kind: mlp_ppo`) | same | 20 d, 80 agents, 12 sub-steps: 20 updates, 31,000 transitions in 10 s |
+
+The host-side biology and observation building dominate; the network itself is tiny. Agent-steps
+count policy calls (decisions and free-time sub-steps).
+
+Determinism recipe (implemented in `learn/ppo.py`, tested in `tests/test_learn.py` and
+`tests/test_nursery.py`): `CUBLAS_WORKSPACE_CONFIG=:4096:8` set before torch loads;
+`torch.use_deterministic_algorithms(True)`; cuDNN autotuning off and deterministic; TF32 off;
+fixed CPU thread count; initial weights from a seeded `torch.Generator`; action sampling and
+minibatch order from seeded NumPy streams; no `torch.compile`. A learning run and a resumed
+pre-training run repeat bit for bit on the same GPU and library versions. CPU and GPU runs are not
+expected to agree with each other, and the docs never claim they do.
+
+Planned item 5 above is done in a different form: a shared-parameter PPO inside the simulation
+(no Gymnasium wrapper), reward = homeostatic drive reduction over eight drives, PlayScore and the
+detectors eval-only.
+
 ## H2 reminder
 
 No play reward in training. Newton contacts and Warp speeds must not introduce a “play” objective.

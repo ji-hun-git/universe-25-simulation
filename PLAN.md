@@ -90,6 +90,11 @@
   motivation set by her own litter's hunger; entropy coefficient 0.05. P4-2 acceptance met
   (training seed 7000 nursery, 650 d: learner mean D 0.25 vs 1.04 untrained vs 0.82 heuristic,
   1.5 × 10^7 transitions, full-size colony, mothers nurse like the heuristic).
+- Status note 2026-11-06 (P4-3): nursery pre-training (10^8 steps) built. A
+  development guard on training seeds 7000–7002 (not the preregistered evaluation) shows the
+  frozen learner keeping the canonical colony in the founders' four cells and plateauing near
+  960 — the nurseries never contained a founding colony. No learned arm has been evaluated on
+  seeds 8000–8011.
 - Work package: WP-G12-adjacent / Track E toy world (Universe 25 + playground); not L3 ecology
 - Track: **E** (emergent, exploratory)
 - Owner: Jason
