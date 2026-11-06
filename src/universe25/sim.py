@@ -101,8 +101,12 @@ class Universe25Sim:
         self._action_hist = np.zeros(N_ACTIONS, dtype=np.int64)
         self._cell_food = np.array([c.food_xy for c in self.world.cells], dtype=np.float64)
         self._cell_water = np.array([c.water_xy for c in self.world.cells], dtype=np.float64)
+        # free-time sub-steps (P4-8): 1 = off; their own stream, never the biology stream
+        self.free_substeps = max(1, int(cfg.free_substeps))
+        self._sub_rng = make_rng(cfg.seed + 2_000_003) if self.free_substeps > 1 else None
         # eval-only decision traces (off when no windows: no recorder, bit-identical tick)
-        self.trace = TraceRecorder(self, cfg.trace.windows) if cfg.trace.windows else None
+        self.trace = (TraceRecorder(self, cfg.trace.windows, cfg.trace.sample_every)
+                      if cfg.trace.windows else None)
         self._conceptions = 0
         self._births = 0
         self._deaths = 0
@@ -215,10 +219,15 @@ class Universe25Sim:
                 self._assign_roles(alive)
             with nvtx_range("actions"):
                 actions = self._select_actions(alive)
-                record = self.trace is not None and self._decision_tick()
+                decision = self._decision_tick()
+                record = self.trace is not None and decision
                 if record:
                     self.trace.capture_pre(self, alive, actions)
+                free = (self._free_pre(alive, actions)
+                        if self.free_substeps > 1 and decision else None)
                 self._execute_actions(alive, actions)
+                if free is not None:
+                    self._run_free_substeps(free)
                 if record:
                     self.trace.record_post(self)
             with nvtx_range("life"):
@@ -571,6 +580,100 @@ class Universe25Sim:
 
         self.playscore.observe_actions(actions[alive])
 
+
+    def _free_pre(self, alive: np.ndarray, actions: np.ndarray) -> dict[str, np.ndarray]:
+        """Agents whose decision action is free, and their state before the action."""
+        a = self.agents
+        idx = np.flatnonzero(alive)
+        act = actions[idx]
+        free = np.isin(act, (ACT_EXPLORE, ACT_SOCIAL))
+        if self.world.playground_enabled and self.world.play_objects:
+            free |= act == ACT_MANIPULATE
+        F = idx[free]
+        return {"F": F, "act": act[free].copy(), "x": a.x[F].copy(), "y": a.y[F].copy(),
+                "curiosity": a.curiosity[F].copy(), "boredom": a.boredom[F].copy(),
+                "social_drive": a.social_drive[F].copy()}
+
+    def _run_free_substeps(self, pre: dict[str, np.ndarray]) -> None:
+        """Replay the free agents' decision as K sub-steps (P4-8). The decision-level move and
+        curiosity / boredom / social relief are undone; each sub-step either repeats the
+        decision action (`policy.substep_mode` continue) or lets the policy re-choose among
+        EXPLORE / SOCIAL / MANIPULATE (rechoose; own RNG stream), and the agent moves 1/K of a
+        decision's reach (random walks with sd / sqrt(K)) with 1/K of the relief. Everything
+        else the decision did (fatigue, object nudges, biology draws) stands; feeding,
+        nursing, conception, stress and mortality run per decision from where agents end."""
+        F = pre["F"]
+        if F.size == 0:
+            return
+        a = self.agents
+        d = self.cfg.drives
+        K = self.free_substeps
+        r = self._sub_rng
+        for k in ("x", "y", "curiosity", "boredom", "social_drive"):
+            getattr(a, k)[F] = pre[k]
+        allowed = np.zeros((F.size, N_ACTIONS), dtype=bool)
+        allowed[:, ACT_EXPLORE] = True
+        allowed[:, ACT_SOCIAL] = True
+        objs = self.world.play_objects if self.world.playground_enabled else []
+        if objs:
+            allowed[:, ACT_MANIPULATE] = True
+        ox = np.array([o.x for o in objs], dtype=np.float64)
+        oy = np.array([o.y for o in objs], dtype=np.float64)
+        sq = math.sqrt(K)
+        sd_e = 10.0 * self.dt_ref * 10 / sq  # EXPLORE walk, as in _execute_actions
+        sd_s = 3.0 * self.dt_ref * 10 / sq  # SOCIAL walk
+        step_m = 7.0 * self.reach / K  # MANIPULATE approach speed
+        cur_rel = d.curiosity_decay_on_novel / K
+        bor_rel = d.boredom_decay_on_vary / K
+        xmax, ymax = self.world.width - 0.5, self.world.height - 0.5
+        nx, ny = self.cfg.geometry.n_cells_x, self.cfg.geometry.n_cells_y
+        cw, ch = self.world.width / nx, self.world.height / ny
+        tracing = self.trace is not None
+        mode = self.cfg.policy.substep_mode
+        if mode == "auto":
+            mode = "continue" if self.cfg.policy.kind == "need_driven" else "rechoose"
+        for j in range(K):
+            pre_j = None
+            if tracing:
+                pre_j = {"curiosity": a.curiosity[F].copy(), "boredom": a.boredom[F].copy(),
+                         "social_drive": a.social_drive[F].copy(),
+                         "cell": a.cell_id[F].astype(int)}
+            if mode == "continue":  # the decision action at every sub-step
+                act = pre["act"].astype(np.int8)
+            else:  # the policy re-chooses among the free actions
+                act = self.policy.choose(self, F, allowed, rng=r)
+            ii = F[act == ACT_EXPLORE]
+            if ii.size:
+                a.x[ii] = np.clip(a.x[ii] + r.normal(0, sd_e, ii.size), 0.5, xmax)
+                a.y[ii] = np.clip(a.y[ii] + r.normal(0, sd_e, ii.size), 0.5, ymax)
+                a.curiosity[ii] = np.maximum(0.0, a.curiosity[ii] - cur_rel)
+                a.boredom[ii] = np.maximum(0.0, a.boredom[ii] - 0.5 * bor_rel)
+            ii = F[act == ACT_SOCIAL]
+            if ii.size:
+                a.x[ii] = np.clip(a.x[ii] + r.normal(0, sd_s, ii.size), 0.5, xmax)
+                a.y[ii] = np.clip(a.y[ii] + r.normal(0, sd_s, ii.size), 0.5, ymax)
+                a.social_drive[ii] = np.maximum(0.0, a.social_drive[ii] - 0.3 / K)
+                a.boredom[ii] = np.maximum(0.0, a.boredom[ii] - bor_rel)
+            ii = F[act == ACT_MANIPULATE]
+            if ii.size:
+                d2 = (a.x[ii, None] - ox[None, :]) ** 2 + (a.y[ii, None] - oy[None, :]) ** 2
+                jo = np.argmin(d2, axis=1)
+                dx, dy = ox[jo] - a.x[ii], oy[jo] - a.y[ii]
+                dist = np.hypot(dx, dy) + 1e-6
+                stp = np.minimum(step_m, dist)
+                a.x[ii] = np.clip(a.x[ii] + dx / dist * stp, 0.5, xmax)
+                a.y[ii] = np.clip(a.y[ii] + dy / dist * stp, 0.5, ymax)
+                a.curiosity[ii] = np.maximum(0.0, a.curiosity[ii] - cur_rel)
+                a.boredom[ii] = np.maximum(0.0, a.boredom[ii] - bor_rel)
+            ix = np.clip((a.x[F] / cw).astype(int), 0, nx - 1)
+            iy = np.clip((a.y[F] / ch).astype(int), 0, ny - 1)
+            a.cell_id[F] = (iy * nx + ix).astype(np.int16)
+            if self.world.playground_enabled:
+                x0, y0, x1, y1 = self.world.playground_bounds
+                a.in_playground[F] = ((a.x[F] >= x0) & (a.x[F] <= x1)
+                                      & (a.y[F] >= y0) & (a.y[F] <= y1))
+            if tracing:
+                self.trace.micro(self, F, j, act, pre_j)
 
     def _move_toward(self, i: int, tx: float, ty: float, speed: float) -> None:
         """Per-decision move (callers only move on decision ticks)."""

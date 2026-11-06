@@ -34,9 +34,12 @@ TOL = 0.10  # H-d: relative drift of each canonical landmark mean vs the control
 TICKS_PER_DAY = 6
 
 
-def arm_config(kind: str, weights: str | None = None, base: Path | None = None) -> Path:
-    """Write a temporary config: the base yaml with the policy block set to `kind`."""
+def arm_config(kind: str, weights: str | None = None, base: Path | None = None,
+               extra: dict[str, Any] | None = None) -> Path:
+    """Write a temporary config: the base yaml with the policy block set to `kind` and the
+    top-level `extra` keys (e.g. free_substeps) set."""
     data = yaml.safe_load((base or DEFAULT_BASE).read_text(encoding="utf-8")) or {}
+    data.update(extra or {})
     pol: dict[str, Any] = {"kind": kind}
     if weights:
         pol["weights"] = str(weights)
@@ -63,9 +66,10 @@ def run_arm(
     weights: str | None = None,
     base: Path | None = None,
     progress: Callable[[str], None] | None = None,
+    extra: dict[str, Any] | None = None,
 ) -> dict[int, dict[str, float]]:
     """Landmarks per seed for one policy kind on the frozen biology (NumPy path, 6 ticks/day)."""
-    cfg = arm_config(kind, weights, base)
+    cfg = arm_config(kind, weights, base, extra)
     jobs = [(s, str(cfg), float(days)) for s in seeds]
     rows: dict[int, dict[str, float]] = {}
     if workers > 1:
@@ -154,14 +158,15 @@ def guard(
     control_rows: dict[int, dict[str, float]] | None = None,
     base: Path | None = None,
     progress: Callable[[str], None] | None = None,
+    extra: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Run (or reuse) the control and run the arm on the same seeds; return the full report."""
     control = control_rows or run_arm("need_driven", seeds, days, workers, None, base, progress)
-    arm = run_arm(kind, seeds, days, workers, weights, base, progress)
+    arm = run_arm(kind, seeds, days, workers, weights, base, progress, extra)
     table = drift_table(control, arm)
     band = decline_band_ok(arm)
     return {
-        "kind": kind, "weights": weights, "seeds": seeds, "days": days,
+        "kind": kind, "weights": weights, "extra": extra or {}, "seeds": seeds, "days": days,
         "ticks_per_day": TICKS_PER_DAY, "control": {str(s): control[s] for s in seeds},
         "arm": {str(s): arm[s] for s in seeds}, "table": table,
         "decline_band_arm": band, "decline_band_control": decline_band_ok(control),

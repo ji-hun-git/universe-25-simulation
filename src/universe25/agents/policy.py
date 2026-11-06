@@ -49,7 +49,8 @@ class Policy(Protocol):
 
     name: str
 
-    def choose(self, sim: Universe25Sim, idx: np.ndarray, allowed: np.ndarray) -> np.ndarray: ...
+    def choose(self, sim: Universe25Sim, idx: np.ndarray, allowed: np.ndarray,
+               rng: np.random.Generator | None = None) -> np.ndarray: ...
 
 
 def sample_masked(weights: np.ndarray, allowed: np.ndarray, r: np.ndarray) -> np.ndarray:
@@ -66,7 +67,10 @@ class NeedDrivenPolicy:
 
     name = "need_driven"
 
-    def choose(self, sim: Universe25Sim, idx: np.ndarray, allowed: np.ndarray) -> np.ndarray:
+    def choose(self, sim: Universe25Sim, idx: np.ndarray, allowed: np.ndarray,
+               rng: np.random.Generator | None = None) -> np.ndarray:
+        """`rng` None = the simulation stream (decisions, bit-identity); the free-time
+        sub-steps pass their own stream so they never perturb the biology draws."""
         a = sim.agents
         d = sim.cfg.drives
         scarce = sim.cfg.resources.mode == "scarce"
@@ -98,7 +102,8 @@ class NeedDrivenPolicy:
         U[:, ACT_WITHDRAW] = st * 1.2 * (1.0 - soc)
         U -= U.max(axis=1, keepdims=True)
         # one draw per deciding agent from the simulation stream (bit-identity with phase 1/2)
-        return sample_masked(np.exp(np.clip(U, -20, 20)), allowed, sim.rng.random(m))
+        r = sim.rng if rng is None else rng
+        return sample_masked(np.exp(np.clip(U, -20, 20)), allowed, r.random(m))
 
 
 POLICY_SEED_OFFSET = 1_000_003  # the policy stream is seed + offset: never the biology stream
@@ -167,11 +172,13 @@ class MlpFrozenPolicy:
             self.builder = self._builder_cls(sim.world)
         return self.builder.build(sim, idx)
 
-    def choose(self, sim: Universe25Sim, idx: np.ndarray, allowed: np.ndarray) -> np.ndarray:
+    def choose(self, sim: Universe25Sim, idx: np.ndarray, allowed: np.ndarray,
+               rng: np.random.Generator | None = None) -> np.ndarray:
         z = self.logits(self.observe(sim, idx)).astype(np.float64)
         z = np.where(allowed, z, -1e8)  # invalid-action mask on the logits
         z -= z.max(axis=1, keepdims=True)
-        return sample_masked(np.exp(z), allowed, self.rng.random(idx.size))
+        r = self.rng if rng is None else rng
+        return sample_masked(np.exp(z), allowed, r.random(idx.size))
 
 
 def make_policy(cfg: PolicyConfig, seed: int = 7000) -> Policy:

@@ -7,10 +7,14 @@ reads); it keeps its own counts. It runs on decision ticks only.
 
 Every decision tick it tracks identities (a slot whose agent died and was reborn gets a new
 `uid`) and each individual's cumulative object contacts since birth (or since recording began).
-Inside a window [start, end) it also appends one row per alive agent: the state the agent
-decided from (pre-action drives), the action, and the outcome (post-action position, survival
-drives, nearest object, distances to its hoppers and nest). Each window is written to
-`trace_<start>_<end>.npz` in the run directory when it closes.
+Inside a window [start, end) it appends rows on a uniform time base of `free_substeps` (K) rows
+per decision and agent: an agent whose decision action is free (EXPLORE / SOCIAL / MANIPULATE)
+contributes its K sub-step rows (written by the simulation's sub-step loop through `micro`);
+every other agent contributes K rows interpolated along its decision move, with the decision's
+survival-drive change on the last row. With K = 1 this is one row per decision, as before.
+`step` counts rows (decision index x K + sub-step); `meta.decisions_per_day` is rows per day.
+Each window is written to `trace_<start>_<end>.npz` when it closes; `sample_every` keeps only
+individuals whose uid is a multiple of it.
 
 Nothing here is read by a policy or learner (tests/test_detectors.py import audit).
 """
@@ -35,6 +39,7 @@ POST_FIELDS = ("x", "y", "hunger_post", "thirst_post", "fatigue_post", "stress_p
                "obj_dist", "contact", "in_playground", "food_dist", "water_dist", "nest_dist",
                "cum_contacts")
 FIELDS = PRE_FIELDS + POST_FIELDS
+SURV = ("hunger", "thirst", "fatigue", "stress")
 
 
 def nearest_object(x: np.ndarray, y: np.ndarray, ox: np.ndarray, oy: np.ndarray,
@@ -49,8 +54,10 @@ def nearest_object(x: np.ndarray, y: np.ndarray, ox: np.ndarray, oy: np.ndarray,
 
 
 class TraceRecorder:
-    def __init__(self, sim: Universe25Sim, windows: list[tuple[float, float]]):
+    def __init__(self, sim: Universe25Sim, windows: list[tuple[float, float]],
+                 sample_every: int = 1):
         self.windows = sorted((float(a), float(b)) for a, b in windows)
+        self.sample_every = max(1, int(sample_every))
         cap = sim.agents.capacity
         self.slot_uid = np.full(cap, -1, np.int64)
         self.prev_age = np.full(cap, np.inf)
@@ -64,25 +71,78 @@ class TraceRecorder:
         self.nest_xy = np.array([(n.x, n.y) for n in w.nests], dtype=np.float64)
         self.cap_cell = max(1.0, w.capacity_design / w.n_cells)
         self.n_cells = w.n_cells
+        self.nx, self.ny = int(sim.cfg.geometry.n_cells_x), int(sim.cfg.geometry.n_cells_y)
+        self.cw, self.ch = w.width / self.nx, w.height / self.ny
+        self.pg_bounds = tuple(float(v) for v in w.playground_bounds)
+        self.pg_on = bool(w.playground_enabled)
+        self.K = max(1, int(getattr(sim, "free_substeps", 1)))
+        dec_per_day = int(sim.cfg.ticks_per_day // sim.ticks_per_decision)
         self.meta: dict[str, Any] = {
             "seed": int(sim.cfg.seed),
             "ticks_per_day": int(sim.cfg.ticks_per_day),
             "ticks_per_decision": int(sim.ticks_per_decision),
-            "decisions_per_day": int(sim.cfg.ticks_per_day // sim.ticks_per_decision),
-            "playground_enabled": bool(w.playground_enabled),
+            "free_substeps": self.K,
+            "decisions_per_day": dec_per_day * self.K,  # rows per day (the detectors' unit)
+            "sample_every": self.sample_every,
+            "playground_enabled": self.pg_on,
             "playground_bounds": np.array(w.playground_bounds, dtype=np.float64),
             "policy_kind": str(sim.cfg.policy.kind),
         }
         self._buf: dict[str, list[np.ndarray]] = {k: [] for k in FIELDS}
         self._win: int | None = None
-        self._pending: tuple[np.ndarray, dict[str, np.ndarray] | None] | None = None
+        self._cur: dict[str, Any] | None = None  # this decision: idx, pre state, free set
 
+    # ------------------------------------------------------------------ helpers
     def _window_index(self, day: float) -> int | None:
         for i, (a, b) in enumerate(self.windows):
             if a <= day < b:
                 return i
         return None
 
+    def _objects(self, sim: Universe25Sim) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        objs = sim.world.play_objects if self.pg_on else []
+        return (np.array([o.x for o in objs], dtype=np.float64),
+                np.array([o.y for o in objs], dtype=np.float64),
+                np.array([o.radius for o in objs], dtype=np.float64))
+
+    def _cell_of(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
+        ix = np.clip((x / self.cw).astype(int), 0, self.nx - 1)
+        iy = np.clip((y / self.ch).astype(int), 0, self.ny - 1)
+        return iy * self.nx + ix
+
+    def _in_pg(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
+        if not self.pg_on:
+            return np.zeros(x.size, dtype=np.int8)
+        x0, y0, x1, y1 = self.pg_bounds
+        return ((x >= x0) & (x <= x1) & (y >= y0) & (y <= y1)).astype(np.int8)
+
+    def _append(self, rows: dict[str, np.ndarray]) -> None:
+        keep = (rows["uid"] % self.sample_every) == 0
+        if not keep.any():
+            return
+        for k in FIELDS:
+            self._buf[k].append(np.asarray(rows[k])[keep])
+
+    def _place(self, rows: dict[str, Any], sim: Universe25Sim, x: np.ndarray, y: np.ndarray,
+               nest_id: np.ndarray, contact: np.ndarray, oid: np.ndarray,
+               odist: np.ndarray) -> None:
+        """Position-derived post fields for rows at (x, y)."""
+        cell_now = self._cell_of(x, y)
+        nclip = np.clip(nest_id, 0, len(self.nest_xy) - 1)
+        nest_d = np.hypot(x - self.nest_xy[nclip, 0], y - self.nest_xy[nclip, 1])
+        rows["x"] = x.astype(np.float32)
+        rows["y"] = y.astype(np.float32)
+        rows["obj_id"] = oid
+        rows["obj_dist"] = np.where(np.isfinite(odist), odist, 1e3).astype(np.float32)
+        rows["contact"] = contact.astype(np.int8)
+        rows["in_playground"] = self._in_pg(x, y)
+        rows["food_dist"] = np.hypot(x - self.food_xy[cell_now, 0],
+                                     y - self.food_xy[cell_now, 1]).astype(np.float32)
+        rows["water_dist"] = np.hypot(x - self.water_xy[cell_now, 0],
+                                      y - self.water_xy[cell_now, 1]).astype(np.float32)
+        rows["nest_dist"] = np.where(nest_id >= 0, nest_d, 1e3).astype(np.float32)
+
+    # ------------------------------------------------------------------ hooks
     def capture_pre(self, sim: Universe25Sim, alive: np.ndarray, actions: np.ndarray) -> None:
         a = sim.agents
         idx = np.flatnonzero(alive)
@@ -100,78 +160,115 @@ class TraceRecorder:
         if self._win is not None and w != self._win:
             self._flush()
         self._win = w
-        if w is None:
-            self._pending = (idx, None)
-            return
         cell = a.cell_id[idx].astype(int)
         counts = np.bincount(a.cell_id[alive].astype(int), minlength=self.n_cells)
-        rec = {
-            "uid": self.slot_uid[idx].copy(),
-            "step": np.full(idx.size, sim.tick // sim.ticks_per_decision, np.int64),
-            "tick": np.full(idx.size, sim.tick, np.int64),
-            "day": np.full(idx.size, sim.day, np.float64),
-            "slot": idx.astype(np.int32),
-            "action": actions[idx].astype(np.int16),
-            "age": a.age_days[idx].astype(np.float32),
-            "sex": a.sex[idx].astype(np.int8),
-            "role": a.role[idx].astype(np.int8),
-            "hunger": a.hunger[idx].astype(np.float32),
-            "thirst": a.thirst[idx].astype(np.float32),
-            "fatigue": a.fatigue[idx].astype(np.float32),
-            "stress": a.stress[idx].astype(np.float32),
-            "curiosity": a.curiosity[idx].astype(np.float32),
-            "boredom": a.boredom[idx].astype(np.float32),
-            "social_drive": a.social_drive[idx].astype(np.float32),
-            "energy": a.energy[idx].astype(np.float32),
-            "wounds": a.wounds[idx].astype(np.float32),
-            "cell": cell.astype(np.int16),
-            "cell_density": (counts[cell] / self.cap_cell).astype(np.float32),
+        self._cur = {
+            "idx": idx, "in_window": w is not None, "free": np.zeros(0, dtype=np.int64),
+            "step0": (sim.tick // sim.ticks_per_decision) * self.K, "tick": sim.tick,
+            "day": sim.day, "action": actions[idx].astype(np.int16),
+            "x": a.x[idx].astype(np.float64), "y": a.y[idx].astype(np.float64),
+            "cell": cell, "cell_density": (counts[cell] / self.cap_cell).astype(np.float32),
         }
-        self._pending = (idx, rec)
+        for k in ("age", "hunger", "thirst", "fatigue", "stress", "curiosity", "boredom",
+                  "social_drive", "energy", "wounds"):
+            self._cur[k] = getattr(a, "age_days" if k == "age" else k)[idx].astype(np.float32)
+        self._cur["sex"] = a.sex[idx].astype(np.int8)
+        self._cur["role"] = a.role[idx].astype(np.int8)
+
+    def micro(self, sim: Universe25Sim, free: np.ndarray, j: int, act: np.ndarray,
+              pre: dict[str, np.ndarray]) -> None:
+        """Sub-step j of the agents `free` (slots), after the move: `act` is the sub-step
+        action, `pre` the curiosity / boredom / social_drive / x / y / cell before it."""
+        cur = self._cur
+        if cur is None:
+            return
+        a = sim.agents
+        if j == 0:
+            cur["free"] = free
+        x = a.x[free].astype(np.float64)
+        y = a.y[free].astype(np.float64)
+        ox, oy, orad = self._objects(sim)
+        oid, odist, orr = nearest_object(x, y, ox, oy, orad)
+        contact = (act == ACT_MANIPULATE) & (odist <= orr + CONTACT_SLACK)
+        self.cum_contacts[free] += contact.astype(np.int32)
+        if not cur["in_window"]:
+            return
+        pos = np.searchsorted(cur["idx"], free)  # rows of `free` in the decision arrays
+        rows: dict[str, Any] = {
+            "uid": self.slot_uid[free].copy(),
+            "step": np.full(free.size, cur["step0"] + j, np.int64),
+            "tick": np.full(free.size, cur["tick"], np.int64),
+            "day": np.full(free.size, cur["day"], np.float64),
+            "slot": free.astype(np.int32), "action": act.astype(np.int16),
+            "cell": pre["cell"].astype(np.int16), "cell_density": cur["cell_density"][pos],
+            "curiosity": pre["curiosity"].astype(np.float32),
+            "boredom": pre["boredom"].astype(np.float32),
+            "social_drive": pre["social_drive"].astype(np.float32),
+            "cum_contacts": self.cum_contacts[free].copy(),
+        }
+        for k in ("age", "sex", "role", "energy", "wounds"):
+            rows[k] = cur[k][pos]
+        for k in SURV:  # first sub-step carries the decision's change; later ones none
+            now = getattr(a, k)[free].astype(np.float32)
+            rows[k] = cur[k][pos] if j == 0 else now
+            rows[f"{k}_post"] = now
+        self._place(rows, sim, x, y, a.nest_id[free].astype(int), contact, oid, odist)
+        self._append(rows)
 
     def record_post(self, sim: Universe25Sim) -> None:
-        if self._pending is None:
+        cur = self._cur
+        self._cur = None
+        if cur is None:
             return
-        idx, rec = self._pending
-        self._pending = None
         a = sim.agents
-        objs = sim.world.play_objects if sim.world.playground_enabled else []
-        ox = np.array([o.x for o in objs], dtype=np.float64)
-        oy = np.array([o.y for o in objs], dtype=np.float64)
-        orad = np.array([o.radius for o in objs], dtype=np.float64)
-        x = a.x[idx].astype(np.float64)
-        y = a.y[idx].astype(np.float64)
-        oid, odist, orr = nearest_object(x, y, ox, oy, orad)
-        contact = (a.last_action[idx] == ACT_MANIPULATE) & (odist <= orr + CONTACT_SLACK)
-        self.cum_contacts[idx] += contact.astype(np.int32)
-        if rec is None:
+        idx = cur["idx"]
+        rest = ~np.isin(idx, cur["free"]) if cur["free"].size else np.ones(idx.size, bool)
+        ii = idx[rest]
+        if ii.size == 0:
             return
-        cell = rec["cell"].astype(int)
-        cell_now = a.cell_id[idx].astype(int)  # hoppers of the cell the agent ended in
-        nid = a.nest_id[idx].astype(int)
-        nclip = np.clip(nid, 0, len(self.nest_xy) - 1)
-        nest_d = np.hypot(x - self.nest_xy[nclip, 0], y - self.nest_xy[nclip, 1])
-        rec.update({
-            "x": x.astype(np.float32),
-            "y": y.astype(np.float32),
-            "hunger_post": a.hunger[idx].astype(np.float32),
-            "thirst_post": a.thirst[idx].astype(np.float32),
-            "fatigue_post": a.fatigue[idx].astype(np.float32),
-            "stress_post": a.stress[idx].astype(np.float32),
-            "obj_id": oid,
-            "obj_dist": np.where(np.isfinite(odist), odist, 1e3).astype(np.float32),
-            "contact": contact.astype(np.int8),
-            "in_playground": a.in_playground[idx].astype(np.int8),
-            "food_dist": np.hypot(x - self.food_xy[cell_now, 0],
-                                  y - self.food_xy[cell_now, 1]).astype(np.float32),
-            "water_dist": np.hypot(x - self.water_xy[cell_now, 0],
-                                   y - self.water_xy[cell_now, 1]).astype(np.float32),
-            "nest_dist": np.where(nid >= 0, nest_d, 1e3).astype(np.float32),
-            "cum_contacts": self.cum_contacts[idx].copy(),
-        })
-        del cell
-        for k in FIELDS:
-            self._buf[k].append(rec[k])
+        ox, oy, orad = self._objects(sim)
+        x1 = a.x[ii].astype(np.float64)
+        y1 = a.y[ii].astype(np.float64)
+        if self.K == 1:  # contacts for decision-level manipulation (no sub-steps)
+            _, d1, r1 = nearest_object(x1, y1, ox, oy, orad)
+            c1 = (a.last_action[ii] == ACT_MANIPULATE) & (d1 <= r1 + CONTACT_SLACK)
+            self.cum_contacts[ii] += c1.astype(np.int32)
+        if not cur["in_window"]:
+            return
+        K = self.K
+        x0, y0 = cur["x"][rest], cur["y"][rest]
+        n = ii.size
+        jj = np.tile(np.arange(K), n)
+        rep = np.repeat(np.arange(n), K)
+        frac = (jj + 1.0) / K
+        x = x0[rep] + (x1 - x0)[rep] * frac
+        y = y0[rep] + (y1 - y0)[rep] * frac
+        prev_x = x0[rep] + (x1 - x0)[rep] * (jj / K)
+        prev_y = y0[rep] + (y1 - y0)[rep] * (jj / K)
+        oid, odist, orr = nearest_object(x, y, ox, oy, orad)
+        act = cur["action"][rest][rep]
+        contact = (act == ACT_MANIPULATE) & (odist <= orr + CONTACT_SLACK) & (jj == K - 1)
+        last = jj == K - 1
+        rows: dict[str, Any] = {
+            "uid": self.slot_uid[ii][rep],
+            "step": cur["step0"] + jj.astype(np.int64),
+            "tick": np.full(n * K, cur["tick"], np.int64),
+            "day": np.full(n * K, cur["day"], np.float64),
+            "slot": ii[rep].astype(np.int32), "action": act,
+            "cell": np.where(jj == 0, cur["cell"][rest][rep],
+                             self._cell_of(prev_x, prev_y)).astype(np.int16),
+            "cell_density": cur["cell_density"][rest][rep],
+            "cum_contacts": self.cum_contacts[ii][rep],
+        }
+        for k in ("age", "sex", "role", "curiosity", "boredom", "social_drive", "energy",
+                  "wounds"):
+            rows[k] = cur[k][rest][rep]
+        for k in SURV:
+            pre_k = cur[k][rest][rep]
+            rows[k] = pre_k
+            rows[f"{k}_post"] = np.where(last, getattr(a, k)[ii].astype(np.float32)[rep], pre_k)
+        self._place(rows, sim, x, y, a.nest_id[ii].astype(int)[rep], contact, oid, odist)
+        self._append(rows)
 
     def _flush(self) -> None:
         if self._win is None or not self._buf["uid"]:

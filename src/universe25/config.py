@@ -187,6 +187,12 @@ class PolicyConfig(BaseModel):
     kind: Literal["need_driven", "mlp_frozen"] = "need_driven"
     weights: str | None = None  # path to an .npz with W1 b1 W2 b2 W3 b3 (mlp kinds)
     hidden: int = 128  # hidden width for a random init (ignored when weights is set)
+    # Free-time sub-steps (SimConfig.free_substeps > 1): "continue" repeats the decision action
+    # at every sub-step (distributionally the same reach and relief as the decision), "rechoose"
+    # lets the policy choose among the free actions at every sub-step. "auto" = continue for
+    # need_driven (its motives exist only at the decision grain; re-choosing moved the
+    # calibrated curve, NOTES 2026-11-06 P4-8), rechoose for learned kinds.
+    substep_mode: Literal["auto", "continue", "rechoose"] = "auto"
 
 
 class TraceConfig(BaseModel):
@@ -194,6 +200,7 @@ class TraceConfig(BaseModel):
     # windows [start, end) and written as trace_<start>_<end>.npz. Empty = off: no recorder,
     # bit-identical tick. The recorder draws no random numbers and writes no simulation state.
     windows: list[tuple[float, float]] = Field(default_factory=list)
+    sample_every: int = 1  # keep rows only for individuals whose uid is a multiple of this
 
 
 class SimConfig(BaseModel):
@@ -220,6 +227,12 @@ class SimConfig(BaseModel):
     drives: DriveConfig = Field(default_factory=DriveConfig)
     policy: PolicyConfig = Field(default_factory=PolicyConfig)
     trace: TraceConfig = Field(default_factory=TraceConfig)
+    # Free-time sub-steps (P4-8): an agent whose decision action is EXPLORE / SOCIAL /
+    # MANIPULATE replays that decision's move and curiosity / boredom / social relief as this
+    # many sub-steps, the policy re-choosing among the free actions at each (1/K of the reach
+    # and relief per sub-step, its own RNG stream). Feeding, nursing, conception, stress and
+    # mortality stay per decision. 1 = off (bit-identical).
+    free_substeps: int = Field(1, ge=1)
 
     @field_validator("seed")
     @classmethod
