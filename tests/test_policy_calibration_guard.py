@@ -56,6 +56,27 @@ def test_verdict_rule_on_synthetic_rows() -> None:
     assert v3["preserved"] and not v3["decline_band_checked"]
 
 
+def test_amended_rule_needs_drift_and_two_paired_se() -> None:
+    """H-d as amended 2026-11-06: a landmark fails only beyond 10 % drift AND 2 paired se."""
+    control = _rows(2200.0, 1100.0)
+    noisy = _rows(2200.0, 1100.0)
+    for s, pk in zip(SEEDS, (2200.0, 2900.0, 2500.0)):  # mean +15 %, paired 333 +- 203
+        noisy[s]["peak_n"] = pk
+    t = drift_table(control, noisy)
+    assert t["peak_n"]["rel_drift"] > 0.10
+    assert abs(t["peak_n"]["paired_diff"]) < 2 * t["peak_n"]["paired_se"]
+    assert verdict(t, True)["preserved"], "noisy drift within 2 paired se passes"
+    assert not verdict(t, True, se_mult=None)["preserved"], "the old 10 % rule fails it"
+    steady = _rows(2200.0, 1100.0)
+    for s, pk in zip(SEEDS, (2500.0, 2540.0, 2560.0)):  # +15 %, paired 333 +- 18
+        steady[s]["peak_n"] = pk
+    v = verdict(drift_table(control, steady), True)
+    assert not v["preserved"] and v["failures"] == ["peak_n"]
+    low = _rows(2200.0, 1980.0)  # the decline band is unchanged by the amendment
+    assert verdict(drift_table(control, low), decline_band_ok(low))["failures"] == [
+        "decline_band_1200"]
+
+
 def test_control_vs_control_has_zero_drift_and_mlp_arm_runs() -> None:
     control = run_arm("need_driven", SEEDS, DAYS, workers=1)
     assert set(control) == set(SEEDS)
@@ -83,5 +104,6 @@ def test_control_vs_control_has_zero_drift_and_mlp_arm_runs() -> None:
 
 if __name__ == "__main__":
     test_verdict_rule_on_synthetic_rows()
+    test_amended_rule_needs_drift_and_two_paired_se()
     test_control_vs_control_has_zero_drift_and_mlp_arm_runs()
     print("test_policy_calibration_guard: OK")

@@ -2,10 +2,13 @@
 
 Runs the same seeds under the need-driven control and under a policy kind, both on the frozen
 biology, and reports the drift of every landmark. The verdict is preregistered (PLAN.md
-section 15, H-d): a policy *preserves* the calibration when every canonical landmark mean is
-within `TOL` (10 %) of the control mean on the same seeds and the decline band at day 1200
-(0.35-0.85 x peak) still holds for the arm. A failed guard is a result to report in NOTES.md,
-never a reason to retune the biology.
+section 15, H-d, amended 2026-11-06): a canonical landmark *fails* only when its mean drifts
+more than `TOL` (10 %) from the control mean on the same seeds **and** the paired arm - control
+difference exceeds `SE_MULT` (2) paired standard errors; a policy preserves the calibration
+when no canonical landmark fails and the decline band at day 1200 (0.35-0.85 x peak) holds.
+The original 10 %-only reading is reported alongside (`verdict_10pct_rule`): at 12 seeds the
+paired se of N@315 is 12-16 % of its mean, so that rule could not resolve 10 % there. A
+failed guard is a result to report in NOTES.md, never a reason to retune the biology.
 
 The guard never reads a PlayScore field and has no play-named term (H2).
 """
@@ -31,6 +34,7 @@ REPORT_KEYS: tuple[str, ...] = CANONICAL + (
 )
 DECLINE_BAND = (0.35, 0.85)  # N@1200 / peak, as in calib/priors.landmark_loss
 TOL = 0.10  # H-d: relative drift of each canonical landmark mean vs the control
+SE_MULT = 2.0  # H-d (amended 2026-11-06): ... and the paired difference beyond 2 paired se
 TICKS_PER_DAY = 6
 
 
@@ -137,15 +141,29 @@ def decline_band_ok(rows: dict[int, dict[str, float]]) -> bool | None:
     return bool(DECLINE_BAND[0] <= ratio <= DECLINE_BAND[1])
 
 
-def verdict(table: dict[str, dict[str, float]], band_ok: bool | None,
-            tol: float = TOL) -> dict[str, Any]:
-    """H-d: preserved iff every canonical landmark drifts <= tol and the band holds (when
-    measurable). Lists every failing landmark."""
-    failures = [k for k in CANONICAL
-                if not (np.isfinite(table[k]["rel_drift"]) and table[k]["rel_drift"] <= tol)]
+def _landmark_fails(r: dict[str, float], tol: float, se_mult: float | None) -> bool:
+    """Drift beyond tol (NaN = fail) and, when se_mult is set, a paired difference beyond
+    se_mult paired se (an undefined se cannot clear a drift)."""
+    drift = r["rel_drift"]
+    if not (np.isfinite(drift) and drift <= tol):
+        if se_mult is None:
+            return True
+        d, se = r.get("paired_diff", np.nan), r.get("paired_se", np.nan)
+        if not (np.isfinite(d) and np.isfinite(se)):
+            return True
+        return bool(abs(d) > se_mult * se)
+    return False
+
+
+def verdict(table: dict[str, dict[str, float]], band_ok: bool | None, tol: float = TOL,
+            se_mult: float | None = SE_MULT) -> dict[str, Any]:
+    """H-d (amended 2026-11-06): preserved iff no canonical landmark drifts more than tol with a
+    paired difference beyond se_mult paired se, and the decline band holds (when measurable).
+    se_mult=None gives the original 10 %-only rule. Lists every failing landmark."""
+    failures = [k for k in CANONICAL if _landmark_fails(table[k], tol, se_mult)]
     if band_ok is False:
         failures.append("decline_band_1200")
-    return {"preserved": not failures, "failures": failures, "tol": tol,
+    return {"preserved": not failures, "failures": failures, "tol": tol, "se_mult": se_mult,
             "decline_band_checked": band_ok is not None}
 
 
@@ -171,6 +189,7 @@ def guard(
         "arm": {str(s): arm[s] for s in seeds}, "table": table,
         "decline_band_arm": band, "decline_band_control": decline_band_ok(control),
         "verdict": verdict(table, band),
+        "verdict_10pct_rule": verdict(table, band, se_mult=None),
     }
 
 
@@ -183,8 +202,11 @@ def format_table(report: dict[str, Any]) -> str:
              f"{'drift':>7s} {'paired diff':>14s}"]
     for k in REPORT_KEYS:
         r = t[k]
-        flag = " *" if k in CANONICAL and (not np.isfinite(r["rel_drift"])
-                                           or r["rel_drift"] > report["verdict"]["tol"]) else ""
+        flag = ""
+        if k in CANONICAL and _landmark_fails(r, report["verdict"]["tol"], None):
+            amended = _landmark_fails(r, report["verdict"]["tol"],
+                                      report["verdict"].get("se_mult", SE_MULT))
+            flag = " **" if amended else " *"  # * drift > 10 %, ** and beyond 2 paired se
         lines.append(f"{k:22s} {r['control_mean']:9.1f} {r['control_se']:6.1f} "
                      f"{r['arm_mean']:9.1f} {r['arm_se']:6.1f} {r['rel_drift']:7.3f} "
                      f"{r['paired_diff']:+8.1f} ± {r['paired_se']:4.1f}{flag}")
@@ -192,8 +214,14 @@ def format_table(report: dict[str, Any]) -> str:
     band = report["decline_band_arm"]
     lines.append(f"decline band at 1200 (arm): "
                  f"{'not measurable' if band is None else ('ok' if band else 'FAILED')}")
-    lines.append(f"H-d verdict: {'PRESERVED' if v['preserved'] else 'NOT PRESERVED'} "
-                 f"(tol {v['tol']:.0%}; failures: {', '.join(v['failures']) or 'none'})")
+    lines.append(f"H-d verdict (amended: drift > {v['tol']:.0%} and > "
+                 f"{v.get('se_mult', SE_MULT):g} paired se): "
+                 f"{'PRESERVED' if v['preserved'] else 'NOT PRESERVED'} "
+                 f"(failures: {', '.join(v['failures']) or 'none'})")
+    v0 = report.get("verdict_10pct_rule")
+    if v0 is not None:
+        lines.append(f"original 10 % rule: {'PRESERVED' if v0['preserved'] else 'NOT PRESERVED'}"
+                     f" (failures: {', '.join(v0['failures']) or 'none'})")
     return "\n".join(lines)
 
 
