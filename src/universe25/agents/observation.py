@@ -103,7 +103,11 @@ class ObservationBuilder:
         obs[:, 13:20] = self._role_eye[role]
         # local
         cell = a.cell_id[idx].astype(int)
-        counts = sim._tick_cell_counts()
+        # Own count, never sim._tick_cell_counts(): that cache is filled on first use in a tick
+        # and the biology (nursing disturbance, conception density) reads it after the actions
+        # have moved agents. Filling it here, before the actions, gave the biology pre-move
+        # counts under learned policies only (fixed 2026-11-06; the P4-1 guard was rerun).
+        counts = np.bincount(a.cell_id[a.alive].astype(int), minlength=self.world.n_cells)
         obs[:, 20] = counts[cell] / self.cap_cell
         nid = a.nest_id[idx].astype(int)
         housed = a.alive & (a.nest_id >= 0)
