@@ -22,7 +22,8 @@ sys.path.insert(0, str(ROOT / "src"))
 
 def show(r: dict) -> None:
     d_end = r["mean_D_end"]
-    print(f"ep {r['episode']:4d} seed {r['sim_seed']} {r['resources'][:5]} "
+    print(f"ep {r['episode']:4d} {r['kind'][:5]} cells {r['n_cells']:2d} "
+          f"seed {r['sim_seed']} {r['resources'][:5]} "
           f"pg={int(r['playground'])} N {r['n_start']:5d}->{r['n_end']:5d} "
           f"surv {r['surviving_births']:5d}/{r['births']:5d} "
           f"D_end {'-' if d_end is None else round(d_end, 3)} "
@@ -40,11 +41,14 @@ def main() -> int:
     p.add_argument("--ckpt-every", type=int, default=5)
     p.add_argument("--free-substeps", type=int, default=12)
     p.add_argument("--resume", type=str, default=None)
+    p.add_argument("--founding-days", type=float, default=300.0)
+    p.add_argument("--p-founding", type=float, default=0.4)
     a = p.parse_args()
     out = ROOT / "_output" / "pretrain" / a.label
     summ = pretrain(out, steps=a.steps, episode_days=a.episode_days, seed=a.seed,
                     free_substeps=a.free_substeps, ckpt_every=a.ckpt_every,
-                    resume=Path(a.resume) if a.resume else None, progress=show)
+                    resume=Path(a.resume) if a.resume else None, progress=show,
+                    founding_days=a.founding_days, p_founding=a.p_founding)
     print(json.dumps(summ, indent=1))
     return 0
 

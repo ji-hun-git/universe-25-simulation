@@ -5,8 +5,15 @@ Calhoun's four pairs: adults and juveniles spread over all 16 cells, pregnant fe
 nursing mothers with litters of various ages, so maternal situations exist from the first day
 (in P4-2 the learner learned to avoid the nest during the weeks before any litter existed).
 Every episode draws a new world: colony size and composition, abundant or scarce food, and
-whether the playground is open and how many objects it holds. Simulation seeds cycle through the
-training band 7000-7009; evaluation seeds (8000-8011) are never used here.
+whether the playground is open and how many objects it holds.
+
+v2 (2026-11-07) adds the canonical situation, which v1 never showed: *founding* worlds (four to
+thirty pairs of 48- to 90-day-old founders in one to four cells, 300 days, the calibrated
+conception gate), and *concentrated* mixed worlds (the colony seeded into one to eight cells
+instead of all 16). Trained on v1 only, the learner kept the canonical colony in its founders'
+four cells (NOTES 2026-11-06 → P4-3). Mixed worlds lift the conception gate (their adults are
+already mature; the gate is an absolute day of the canonical run). Simulation seeds cycle
+through the training band 7000-7009; evaluation seeds (8000-8011) are never used here.
 
 The learner itself is not built here: the caller keeps one `MlpPpoPolicy` across episodes and
 installs it in each nursery simulation (`attach`). Nothing here reads a detector, a trace or a
@@ -22,6 +29,7 @@ import numpy as np
 
 from universe25.agents.state import (
     ROLE_BREEDING_FEMALE,
+    ROLE_TERRITORIAL_MALE,
     ROLE_JUVENILE,
     ROLE_NURSING,
     ROLE_PUP,
@@ -41,6 +49,9 @@ class NurseryParams:
     episode: int
     sim_seed: int
     days: float
+    kind: str  # "mixed" | "founding"
+    n_cells: int  # cells whose nest boxes the colony is seeded into
+    n_pairs: int  # founding worlds: founder pairs (0 for mixed)
     n_adults: int
     frac_juvenile: float
     frac_nursing: float  # of adult females, each with a litter
@@ -56,14 +67,32 @@ class NurseryParams:
         return asdict(self)
 
 
-def sample_params(rng: np.random.Generator, episode: int, days: float = 60.0) -> NurseryParams:
-    """One randomised nursery world (domain randomisation)."""
-    scarce = bool(rng.random() < 0.3)
+def sample_params(rng: np.random.Generator, episode: int, days: float = 60.0,
+                  founding_days: float = 300.0, p_founding: float = 0.4) -> NurseryParams:
+    """One randomised nursery world (domain randomisation): a founding world with probability
+    p_founding, else a mixed world, half of them concentrated into one to eight cells."""
+    founding = bool(rng.random() < p_founding)
+    scarce = bool(rng.random() < (0.2 if founding else 0.3))
     pg = bool(rng.random() < 0.85)
+    if founding:
+        n_pairs = int(rng.integers(4, 31))
+        return NurseryParams(
+            episode=episode, sim_seed=TRAIN_SEEDS[episode % len(TRAIN_SEEDS)],
+            days=float(founding_days), kind="founding", n_cells=int(rng.integers(1, 5)),
+            n_pairs=n_pairs, n_adults=2 * n_pairs, frac_juvenile=0.0, frac_nursing=0.0,
+            frac_pregnant=0.0, resources="scarce" if scarce else "abundant",
+            food_per_agent_day=float(rng.uniform(0.6, 1.1)) if scarce else 0.0,
+            playground=pg, n_balls=int(rng.integers(0, 13)) if pg else 0,
+            n_tunnels=int(rng.integers(0, 7)) if pg else 0,
+            n_ramps=int(rng.integers(0, 5)) if pg else 0,
+        )
     return NurseryParams(
         episode=episode,
         sim_seed=TRAIN_SEEDS[episode % len(TRAIN_SEEDS)],
         days=float(days),
+        kind="mixed",
+        n_cells=16 if rng.random() < 0.5 else int(rng.integers(1, 9)),
+        n_pairs=0,
         n_adults=int(rng.integers(200, 1501)),
         frac_juvenile=float(rng.uniform(0.0, 0.3)),
         frac_nursing=float(rng.uniform(0.05, 0.3)),
@@ -82,6 +111,8 @@ def build_nursery(p: NurseryParams, out_dir: Path, rng: np.random.Generator,
     """A nursery simulation with the seeded colony; its own policy is a placeholder (the caller
     attaches the learner). Sub-steps are re-chosen (the learner's mode)."""
     n_expected = int(p.n_adults * (1 + p.frac_juvenile + 0.5 * p.frac_nursing * 5.5))
+    if p.kind == "founding":  # scarce food scaled to the colony a founding world reaches
+        n_expected = max(n_expected, 400)
     res: dict[str, Any] = {"mode": p.resources}
     if p.resources == "scarce":  # daily food relative to the seeded colony's need
         res["scarce_food_per_day"] = float(p.food_per_agent_day * 1.2 * max(n_expected, 1))
@@ -91,6 +122,8 @@ def build_nursery(p: NurseryParams, out_dir: Path, rng: np.random.Generator,
                 playground={"enabled": p.playground, "n_balls": p.n_balls,
                             "n_tunnels": p.n_tunnels, "n_ramps": p.n_ramps},
                 policy={"kind": "need_driven", "substep_mode": "rechoose"})
+    if p.kind == "mixed":  # mature adults: no absolute-day conception gate
+        over["biology"] = {"first_conception_min_day": 0.0}
     cfg = load_config(base or DEFAULT_BASE, over)
     sim = Universe25Sim(cfg, Path(out_dir))
     seed_population(sim, p, rng)
@@ -105,10 +138,12 @@ def seed_population(sim: Universe25Sim, p: NurseryParams, rng: np.random.Generat
     a = sim.agents
     n_juv = int(round(p.n_adults * p.frac_juvenile))
     counts = {"adults": 0, "juveniles": 0, "nursing": 0, "pups": 0, "pregnant": 0}
+    cells = np.sort(rng.choice(w.n_cells, size=min(int(p.n_cells), w.n_cells), replace=False))
+    boxes = np.array([nid for c in cells for nid in w.cells[int(c)].nest_ids])
 
     def place(slot: int, sex: int, age: float, role: int, nest_id: int | None = None) -> int:
         if nest_id is None:
-            nest_id = int(rng.integers(0, w.n_nests))
+            nest_id = int(rng.choice(boxes))
         nest = w.nests[nest_id]
         sim._spawn(slot, sex=sex, age=float(age), x=nest.x + float(rng.normal(0, 1.0)),
                    y=nest.y + float(rng.normal(0, 1.0)), nest_id=nest_id, cell_id=nest.cell_id,
@@ -121,6 +156,17 @@ def seed_population(sim: Universe25Sim, p: NurseryParams, rng: np.random.Generat
         a.boredom[slot] = float(rng.uniform(0.0, 0.5))
         return nest_id
 
+    if p.kind == "founding":  # Calhoun-like founders: young adult pairs sharing a box
+        slots = a.free_slots(2 * p.n_pairs)
+        for k in range(p.n_pairs):
+            nid = int(rng.choice(boxes))
+            place(int(slots[2 * k]), SEX_F, float(rng.uniform(48.0, 90.0)),
+                  ROLE_BREEDING_FEMALE, nest_id=nid)
+            place(int(slots[2 * k + 1]), SEX_M, float(rng.uniform(48.0, 90.0)),
+                  ROLE_TERRITORIAL_MALE, nest_id=nid)
+            counts["adults"] += 2
+        a.n_alive = int(a.alive.sum())
+        return counts
     slots = a.free_slots(p.n_adults + n_juv)
     females: list[tuple[int, float]] = []
     for k, s in enumerate(slots[:p.n_adults]):
@@ -196,6 +242,7 @@ def pretrain(out_dir: Path, steps: float = 1e8, max_episodes: int = 10**6,
              episode_days: float = 60.0, seed: int = 7000, free_substeps: int = 12,
              ckpt_every: int = 5, resume: Path | None = None,
              n_adults_range: tuple[int, int] | None = None,
+             founding_days: float = 300.0, p_founding: float = 0.4,
              ppo: dict[str, Any] | None = None, progress: Any = None) -> dict[str, Any]:
     """Pre-train one shared learner over randomised nursery episodes until `steps` transitions
     (agent-steps: one per policy call) or `max_episodes`. Writes episodes.jsonl,
@@ -230,6 +277,7 @@ def pretrain(out_dir: Path, steps: float = 1e8, max_episodes: int = 10**6,
         wall_before = float(ck.get("wall", 0.0))
     man = manifest(seed)
     man.update({"steps_target": float(steps), "episode_days": float(episode_days),
+                "founding_days": float(founding_days), "p_founding": float(p_founding),
                 "free_substeps": int(free_substeps), "ppo": pcfg.ppo.model_dump(),
                 "device": str(policy.learner.device),
                 "resumed_from": str(resume) if resume else None})
@@ -247,8 +295,8 @@ def pretrain(out_dir: Path, steps: float = 1e8, max_episodes: int = 10**6,
         np.savez(out_dir / "checkpoints" / f"{tag}_actor.npz", **policy.learner.actor_params())
 
     while policy.n_transitions < steps and episode < max_episodes:
-        p = sample_params(nrng, episode, episode_days)
-        if n_adults_range is not None:  # tests: small colonies
+        p = sample_params(nrng, episode, episode_days, founding_days, p_founding)
+        if n_adults_range is not None and p.kind == "mixed":  # tests: small colonies
             p = NurseryParams(**{**p.to_dict(), "n_adults": int(nrng.integers(*n_adults_range))})
         tmp = Path(tempfile.mkdtemp(prefix="u25nursery_"))
         sim = build_nursery(p, tmp, nrng, free_substeps)

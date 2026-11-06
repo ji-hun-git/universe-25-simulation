@@ -24,7 +24,8 @@ from universe25.learn.nursery import (  # noqa: E402
 
 
 def _params(**kw) -> NurseryParams:
-    base = dict(episode=0, sim_seed=7003, days=5.0, n_adults=300, frac_juvenile=0.2,
+    base = dict(episode=0, sim_seed=7003, days=5.0, kind="mixed", n_cells=16, n_pairs=0,
+                n_adults=300, frac_juvenile=0.2,
                 frac_nursing=0.2, frac_pregnant=0.2, resources="abundant", food_per_agent_day=0.0,
                 playground=True, n_balls=4, n_tunnels=2, n_ramps=1)
     base.update(kw)
@@ -51,12 +52,43 @@ def test_seeded_colony_has_the_drawn_composition() -> None:
         assert np.array_equal(getattr(a, k), getattr(sim2.agents, k)), k
 
 
+def test_founding_and_concentrated_worlds() -> None:
+    """Founding worlds: young adult pairs in at most n_cells cells, no litters, the calibrated
+    conception gate kept. Concentrated mixed worlds stay within their cells; mixed worlds lift the
+    gate."""
+    from universe25.config import load_config
+
+    gate = load_config(ROOT / "configs" / "default.yaml").biology.first_conception_min_day
+    f = _params(kind="founding", n_cells=2, n_pairs=12, n_adults=24, frac_juvenile=0.0,
+                frac_nursing=0.0, frac_pregnant=0.0, days=300.0)
+    sim = build_nursery(f, Path(tempfile.mkdtemp(prefix="u25f_")), np.random.default_rng(5))
+    a = sim.agents
+    al = a.alive
+    assert int(al.sum()) == 24 and int((al & (a.sex == 0)).sum()) == 12
+    assert np.unique(a.cell_id[al]).size <= 2
+    assert np.all((a.age_days[al] >= 48) & (a.age_days[al] <= 90))
+    assert not np.any(al & (a.role == ROLE_PUP)) and not np.any(al & (a.gestating > 0))
+    assert sim.cfg.biology.first_conception_min_day == gate
+    c = _params(n_cells=3)
+    sim2 = build_nursery(c, Path(tempfile.mkdtemp(prefix="u25c_")), np.random.default_rng(6))
+    al2 = sim2.agents.alive
+    assert np.unique(sim2.agents.cell_id[al2]).size <= 3
+    assert sim2.cfg.biology.first_conception_min_day == 0.0
+    rng = np.random.default_rng(1)
+    kinds = [sample_params(rng, ep).kind for ep in range(200)]
+    assert 0.3 < kinds.count("founding") / 200 < 0.5
+
+
 def test_worlds_use_training_seeds_only() -> None:
     rng = np.random.default_rng(0)
     for ep in range(25):
         p = sample_params(rng, ep)
         assert p.sim_seed in TRAIN_SEEDS and not 8000 <= p.sim_seed <= 8011
-        assert 200 <= p.n_adults <= 1500 and p.resources in ("abundant", "scarce")
+        assert p.resources in ("abundant", "scarce") and 1 <= p.n_cells <= 16
+        if p.kind == "mixed":
+            assert 200 <= p.n_adults <= 1500
+        else:
+            assert 4 <= p.n_pairs <= 30 and p.n_cells <= 4 and p.days == 300.0
     try:
         pretrain(Path(tempfile.mkdtemp()), seed=8000, max_episodes=1)
     except ValueError:
@@ -68,7 +100,7 @@ def test_worlds_use_training_seeds_only() -> None:
 def _small(out: Path, max_episodes: int, resume: Path | None = None) -> dict:
     return pretrain(out, steps=1e12, max_episodes=max_episodes, episode_days=3.0, seed=7000,
                     ckpt_every=1, resume=resume, n_adults_range=(40, 80),
-                    ppo={"rollout_ticks": 6})
+                    founding_days=3.0, p_founding=0.5, ppo={"rollout_ticks": 6})
 
 
 def test_resumed_pretraining_continues_bit_for_bit() -> None:
@@ -93,6 +125,7 @@ def test_resumed_pretraining_continues_bit_for_bit() -> None:
 
 if __name__ == "__main__":
     test_seeded_colony_has_the_drawn_composition()
+    test_founding_and_concentrated_worlds()
     test_worlds_use_training_seeds_only()
     test_resumed_pretraining_continues_bit_for_bit()
     print("test_nursery: OK")
