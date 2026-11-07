@@ -250,6 +250,40 @@ set for phase 4; any later change is v4 and needs its own fresh split. Limit: th
 classes and the detectors come from the same hand, so this shows the detectors compute what
 the criteria say, not that they would recognise real play.
 
+**v4 (fixed 2026-11-07 before the v4 test; card P4-9).** Two changes, motivated by simulator
+traces with free-time sub-steps (never used to tune a threshold):
+1. *Phase-preserving surrogate shifts.* With K sub-steps per decision (`free_substeps`, from the
+   trace meta), the circular shifts behind criteria 1, 2 and 5 move each series by a whole number
+   of decisions (a random multiple of K rows), not an arbitrary number of rows. Density and wound
+   triggers, relief and the relaxed flag update once per decision, so an arbitrary shift moved
+   them off the decision-boundary rows and made any behaviour whose onsets fall on decision
+   boundaries read as trigger-locked. With K = 1 the shift and its random draws are exactly v3's.
+2. *Minimum support for the serious template.* The serious runs' reversal fraction counts as 0
+   below 20 direction pairs (in the observed statistic and in every permutation), instead of
+   resting on a handful of pairs.
+3. *Trigger window counted in decisions* (added after a development look at one colony per
+   sub-step class, seed 101, before the test): a trigger counts for an onset if it falls between
+   the start of the previous decision and the onset row, inclusive. An object episode's first
+   contact comes several sub-steps into its decision, after the approach, while triggers sit on
+   the decision's first row, so the v3 window (the onset row or the one before) missed them. With
+   K = 1 the window is exactly v3's.
+All thresholds and every other rule unchanged. Test on a fresh split (seeds 40,000 + 1,000 ×
+class + colony), with the 12 v3 checks plus two sub-step checks (criterion 2, episodes of K = 12
+rows, onsets only on decision boundaries): `all_criteria_k12` (onsets independent of triggers)
+must be flagged spontaneous in ≥ 80 % of colonies and `triggered_k12` (onsets after a trigger) in
+≤ 10 %, with AUC ≥ 0.80 between them. Sub-step classes are the K = 1 classes expanded to 12 rows
+per decision the way the trace recorder writes non-free decisions (positions interpolated,
+drive change on the last row, triggers on the first).
+
+**v4 test result (2026-11-08, seeds 40,000 + …, 30 colonies per class, 1,000 surrogates):
+14 of 14 checks pass** — the 12 v3 checks (AUC 0.983–1.000, TPR ≥ 0.97, FPR 0.00) and both
+sub-step checks for criterion 2 (object and locomotor: AUC 1.00, TPR 1.00, FPR 0.00;
+`_output/detector_validation_v4.json`). v4 is the frozen rule set. Recorded limit: the
+expanded classes lose criterion 3 (decision-level approach / withdrawal stretched over 12
+interpolated rows becomes 12-row runs in one direction), so at the sub-step grain criterion 3
+detects alternation only when it happens between sub-steps — which a learner at that grain
+can produce and stretched decision-level behaviour cannot.
+
 **First simulator reading (training seeds 7000–7002, 4 windows).** Need-driven and random
 policies: object and locomotor episodes are non-functional (c1) and spontaneous (c2) but last
 one decision (mean 1.00–1.04 events), so c3 / c4 are not evaluable (≤ 21 direction pairs, ≤ 2

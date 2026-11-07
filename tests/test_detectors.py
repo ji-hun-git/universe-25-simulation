@@ -83,6 +83,25 @@ def test_each_synthetic_class_fails_the_criterion_it_violates() -> None:
     assert not rw["locomotor"]["decisions_unvalidated"]["c5_relaxed_field"]
 
 
+def test_v4_substep_rules() -> None:
+    """Rules v4: with K = 1 the trigger window is v3's (the onset row or the consecutive row
+    before); with 12 sub-steps per decision, onsets independent of triggers read spontaneous and
+    onsets after a trigger read locked, in both episode kinds."""
+    tr = make_colony("triggered", seed=5)
+    S = D.prepare(tr)
+    before = np.zeros_like(S.trigger)
+    before[1:] = S.trigger[:-1]
+    v3 = S.trigger | (S.prev_ok & before)
+    cs = np.concatenate([[0], np.cumsum(S.trigger.astype(np.int64))])
+    v4 = (cs[np.arange(S.n) + 1] - cs[S.win_lo]) > 0
+    assert np.array_equal(v3, v4) and S.K == 1
+    pos = D.detect_trace(make_colony("all_criteria_k12", seed=61), n_surrogates=200, seed=3)
+    neg = D.detect_trace(make_colony("triggered_k12", seed=62), n_surrogates=200, seed=3)
+    for kind in ("object", "locomotor"):
+        assert pos[kind]["decisions_unvalidated"]["c2_spontaneous"], (kind, pos[kind])
+        assert not neg[kind]["decisions_unvalidated"]["c2_spontaneous"], (kind, neg[kind])
+
+
 def test_gap_criterion_finds_no_structure_in_memoryless_gaps() -> None:
     rng = np.random.default_rng(5)
     n_ind, T = 40, 600
@@ -154,6 +173,7 @@ def test_detector_code_has_no_play_named_identifier() -> None:
 if __name__ == "__main__":
     test_trace_off_by_default_and_recorder_does_not_perturb()
     test_each_synthetic_class_fails_the_criterion_it_violates()
+    test_v4_substep_rules()
     test_gap_criterion_finds_no_structure_in_memoryless_gaps()
     test_free_choice_v_excluding_hoppers_is_logged()
     test_no_policy_or_learner_imports_a_detector()

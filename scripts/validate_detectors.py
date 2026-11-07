@@ -3,7 +3,7 @@
 
 For every synthetic class (metrics/synthetic_traces.py) it builds M colonies on test seeds
 (seed_base + 1000 * class index + colony; development used seeds 100-106, the v1 rules were
-tested on seed_base 10_000, v2 on 20_000, v3 on 30_000, the default), runs the
+tested on seed_base 10_000, v2 on 20_000, v3 on 30_000, v4 on 40_000, the default), runs the
 detectors for both episode kinds with n surrogates, and scores each criterion against the class
 built to violate it:
 
@@ -45,6 +45,9 @@ SCORES = (  # (criterion flag, statistic key, transform, target negative class)
     ("c4_repeated_not_rigid", "rep_rigid_loop_frac_unvalidated", -1.0, "rigid_loop"),
     ("c4_repeated_not_rigid", "rep_exposure_slope_unvalidated", 1.0, "novelty"),
     ("c5_relaxed_field", "gate_relaxed_z_unvalidated", 1.0, "stressed"),
+    # v4: criterion 2 with 12 sub-steps per decision (onsets on decision boundaries)
+    ("c2_spontaneous", "onset_trigger_free_z_unvalidated", 1.0, "triggered_k12",
+     "all_criteria_k12"),
 )
 
 
@@ -68,7 +71,7 @@ def auc(pos: np.ndarray, neg: np.ndarray) -> float:
 
 
 def main() -> int:
-    from universe25.metrics.synthetic_traces import CLASSES
+    from universe25.metrics.synthetic_traces import CLASSES, SUBSTEP_CLASSES
 
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--colonies", type=int, default=30)
@@ -76,18 +79,19 @@ def main() -> int:
     p.add_argument("--days", type=int, default=20)
     p.add_argument("--surrogates", type=int, default=1000)
     p.add_argument("--workers", type=int, default=6)
-    p.add_argument("--seed-base", type=int, default=30_000)
+    p.add_argument("--seed-base", type=int, default=40_000)
     p.add_argument("--out", type=str, default=str(ROOT / "_output" / "detector_validation.json"))
     a = p.parse_args()
+    all_classes = tuple(CLASSES) + tuple(SUBSTEP_CLASSES)
     jobs = [(c, a.seed_base + 1000 * i + m, a.individuals, a.days, a.surrogates, 7 + m)
-            for i, c in enumerate(CLASSES) for m in range(a.colonies)]
+            for i, c in enumerate(all_classes) for m in range(a.colonies)]
     t0 = time.perf_counter()
     with ProcessPoolExecutor(max_workers=a.workers) as ex:
         results = list(ex.map(_one, jobs, chunksize=4))
     print(f"{len(results)} colonies in {time.perf_counter() - t0:.0f} s "
           f"({a.surrogates} surrogates per statistic)")
     by: dict[str, list[dict]] = {c: [r["result"] for r in results if r["class"] == c]
-                                 for c in CLASSES}
+                                 for c in all_classes}
     report: dict = {"config": vars(a), "criteria": {}, "flag_rates": {},
                     "thresholds": {"auc_min": AUC_MIN, "tpr_min": TPR_MIN, "fpr_max": FPR_MAX}}
     all_pass = True
@@ -96,16 +100,18 @@ def main() -> int:
         print(f"{'criterion':28s} {'statistic':38s} {'negative':11s} {'AUC':>6s} {'TPR':>6s} "
               f"{'FPR':>6s}  pass")
         rows = []
-        for flag, key, sign, neg in SCORES:
-            pos_v = np.array([r[kind].get(key, np.nan) for r in by["all_criteria"]], float) * sign
+        for flag, key, sign, neg, *pos_cls in SCORES:
+            pc = pos_cls[0] if pos_cls else "all_criteria"
+            pos_v = np.array([r[kind].get(key, np.nan) for r in by[pc]], float) * sign
             neg_v = np.array([r[kind].get(key, np.nan) for r in by[neg]], float) * sign
-            pos_r = by["all_criteria"]
+            pos_r = by[pc]
             tpr = float(np.mean([r[kind]["decisions_unvalidated"][flag] for r in pos_r]))
             fpr = float(np.mean([r[kind]["decisions_unvalidated"][flag] for r in by[neg]]))
             au = auc(pos_v, neg_v)
             ok = au >= AUC_MIN and tpr >= TPR_MIN and fpr <= FPR_MAX
             all_pass &= ok
-            rows.append({"criterion": flag, "statistic": key, "negative": neg, "auc": au,
+            rows.append({"criterion": flag, "statistic": key, "negative": neg,
+                         "positive": pc, "auc": au,
                          "tpr": tpr, "fpr": fpr, "pass": ok})
             print(f"{flag:28s} {key:38s} {neg:11s} {au:6.3f} {tpr:6.2f} {fpr:6.2f}  "
                   f"{'PASS' if ok else 'FAIL'}")
@@ -114,7 +120,7 @@ def main() -> int:
         print(f"\nflag rate per class ({kind}): " + " ".join(f"{f[:3]:>5s}" for f in flags)
               + "   all five")
         rates = {}
-        for c in CLASSES:
+        for c in all_classes:
             fr = [float(np.mean([r[kind]["decisions_unvalidated"][f] for r in by[c]]))
                   for f in flags]
             five = float(np.mean([all(r[kind]["decisions_unvalidated"].values()) for r in by[c]]))

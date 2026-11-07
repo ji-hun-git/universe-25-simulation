@@ -43,6 +43,8 @@ from universe25.metrics.trace import FIELDS, nearest_object
 
 CLASSES = ("all_criteria", "serious", "rigid_loop", "novelty", "triggered", "stressed",
            "random_walk")
+# Sub-step classes (rules v4): a base class expanded to K rows per decision
+SUBSTEP_CLASSES = {"all_criteria_k12": ("all_criteria", 12), "triggered_k12": ("triggered", 12)}
 FOOD = np.array([8.0, 8.0])
 WATER = np.array([8.0, 12.0])
 OBJECTS = np.array([[32.0, 32.0], [36.0, 28.0], [28.0, 36.0], [8.0, 8.0]])  # last: at the food
@@ -281,9 +283,59 @@ def _onset(cls: str, r: np.random.Generator, relaxed: bool, triggered: bool,
     return (_free_object_plan(r) if kind == "object" else _free_loco_plan(r)), kind
 
 
+def expand_substeps(trace: dict[str, Any], K: int) -> dict[str, Any]:
+    """K rows per decision, written the way the trace recorder writes a non-free decision:
+    positions interpolated from the previous decision's end, drives and triggers constant within
+    the decision (so density jumps and wounds appear on its first row), the survival-drive change
+    on its last row; object contact and distances recomputed per row."""
+    order = np.lexsort((trace["step"], trace["uid"]))
+    t = {k: np.asarray(trace[k])[order] for k in FIELDS}
+    n = t["uid"].size
+    first = np.ones(n, dtype=bool)
+    first[1:] = t["uid"][1:] != t["uid"][:-1]
+    xp = np.where(first, t["x"], np.roll(t["x"], 1))
+    yp = np.where(first, t["y"], np.roll(t["y"], 1))
+    ndp = np.where(first, t["nest_dist"], np.roll(t["nest_dist"], 1))
+    rep = np.repeat(np.arange(n), K)
+    j = np.tile(np.arange(K), n)
+    f = (j + 1.0) / K
+    out: dict[str, Any] = {k: t[k][rep] for k in FIELDS}
+    out["step"] = t["step"][rep] * K + j
+    out["x"] = xp[rep] + (t["x"] - xp)[rep] * f
+    out["y"] = yp[rep] + (t["y"] - yp)[rep] * f
+    out["nest_dist"] = ndp[rep] + (t["nest_dist"] - ndp)[rep] * f
+    last = j == K - 1
+    for k in ("hunger", "thirst", "fatigue", "stress"):
+        out[f"{k}_post"] = np.where(last, t[f"{k}_post"][rep], t[k][rep])
+    oid, od, orr = nearest_object(out["x"], out["y"], OBJECTS[:, 0], OBJECTS[:, 1],
+                                  np.full(len(OBJECTS), OBJ_RADIUS))
+    out["obj_id"], out["obj_dist"] = oid, od
+    out["contact"] = ((out["action"] == ACT_MANIPULATE) & (od <= orr + 1.0)).astype(np.int8)
+    x0, y0, x1, y1 = PG_BOX
+    out["in_playground"] = ((out["x"] >= x0) & (out["x"] <= x1) & (out["y"] >= y0)
+                            & (out["y"] <= y1)).astype(np.int8)
+    out["food_dist"] = np.hypot(out["x"] - FOOD[0], out["y"] - FOOD[1])
+    out["water_dist"] = np.hypot(out["x"] - WATER[0], out["y"] - WATER[1])
+    cum = np.cumsum(out["contact"].astype(np.int64))
+    starts = np.flatnonzero(first)  # first original row of each individual
+    lens = np.diff(np.r_[starts, n]) * K  # its expanded rows
+    base = np.concatenate([[0], cum])[np.repeat(starts * K, lens)]  # cum before its first row
+    out["cum_contacts"] = cum - base
+    meta = dict(trace.get("meta", {}))
+    meta["decisions_per_day"] = int(meta.get("decisions_per_day", 6)) * K
+    meta["free_substeps"] = K
+    out["meta"] = meta
+    return out
+
+
 def make_colony(cls: str, n_individuals: int = 30, days: int = 20, dpd: int = 6,
                 seed: int = 0) -> dict[str, Any]:
     """One synthetic colony of a class, as a trace dict (schema of metrics/trace.py)."""
+    if cls in SUBSTEP_CLASSES:
+        base, K = SUBSTEP_CLASSES[cls]
+        out = expand_substeps(make_colony(base, n_individuals, days, dpd, seed), K)
+        out["meta"]["synthetic_class"] = cls
+        return out
     if cls not in CLASSES:
         raise ValueError(cls)
     r = np.random.default_rng(seed)

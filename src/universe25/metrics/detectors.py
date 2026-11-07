@@ -17,6 +17,10 @@ Nott & Fletcher 1990) gives the criterion minimising misassigned gaps (Slater & 
 otherwise episodes are runs of consecutive events and `episode_structure_unvalidated` is
 False (the falsifier).
 
+Rules v4 (2026-11-07): surrogate shifts move series by whole decisions when the trace has
+free-time sub-steps (K rows per decision); the serious template's reversal fraction needs 20
+direction pairs, else counts as 0. With K = 1 the shifts and their draws are v3's.
+
 Criteria (decision rules v3, preregistered in PHASE4_DESIGN.md section 2; form
 statistics use only the episode's own event decisions; the gap criterion is a
 maximum-likelihood one- vs two-process fit, Sibly et al. 1990):
@@ -66,6 +70,7 @@ RIGID_MAX_FRAC = 0.2
 EXPOSURE_SLOPE_MIN = -0.5
 MIN_EPISODES = 10
 GAP_BIC_MARGIN = 10.0  # v3: two-process model must beat one process by this much
+REV_TEMPLATE_MIN_PAIRS = 20  # v4: serious reversal fraction below this support counts as 0
 MAX_RIGID_PAIRS = 4000
 N_SYM = 9  # movement symbols: 3 displacement bins x 3 radial directions
 KINDS = ("object", "locomotor")
@@ -76,6 +81,7 @@ class Steps:
     """A trace sorted by (uid, step) with per-row derived quantities."""
 
     n: int
+    K: int  # rows per decision (free-time sub-steps); surrogate shifts keep this phase (v4)
     uid: np.ndarray
     step: np.ndarray
     gid: np.ndarray
@@ -100,6 +106,7 @@ class Steps:
     xprev: np.ndarray  # post position of the previous decision (NaN if none)
     yprev: np.ndarray
     ddobj: np.ndarray  # change of the nearest-object distance since the previous decision
+    win_lo: np.ndarray  # v4: first row of the trigger window (start of the previous decision)
 
 
 def _prev(v: np.ndarray, ok: np.ndarray, fill: float = np.nan) -> np.ndarray:
@@ -160,13 +167,16 @@ def prepare(trace: dict[str, Any], max_individuals: int | None = None,
     ])
     relaxed = conds.all(axis=0)
     dpd = int(np.asarray(trace.get("meta", {}).get("decisions_per_day", 6)))
+    k_sub = max(1, int(np.asarray(trace.get("meta", {}).get("free_substeps", 1))))
     return Steps(
-        n=n, uid=uid, step=step, gid=gid, gstart=gstart, glen=glen, prev_ok=same_prev,
+        n=n, K=k_sub,
+        uid=uid, step=step, gid=gid, gstart=gstart, glen=glen, prev_ok=same_prev,
         next_ok=next_ok, action=col("action", np.int64), contact=col("contact", np.int64) > 0,
         disp=disp, relief=relief, at_target=at_target, trigger=trigger, relaxed=relaxed,
         relax_score=conds.sum(axis=0), in_pg=col("in_playground", np.int64) > 0,
         obj_id=col("obj_id", np.int64), cum_contacts=col("cum_contacts"),
         day=step // max(1, dpd), x=x, y=y, xprev=_prev(x, same_prev), yprev=_prev(y, same_prev),
+        win_lo=_window_start(uid, step, same_prev, k_sub),
         ddobj=col("obj_dist") - _prev(col("obj_dist"), same_prev),
     )
 
@@ -180,8 +190,10 @@ def _rolling_any(flag: np.ndarray, gid: np.ndarray, gstart: np.ndarray, w: int) 
 
 
 def _shift_index(S: Steps, rng: np.random.Generator) -> np.ndarray:
-    """Row index of a circular shift within each individual by a random non-zero offset."""
-    k = np.where(S.glen > 1, rng.integers(1, np.maximum(S.glen, 2)), 0)
+    """Row index of a circular shift within each individual by a random non-zero number of whole
+    decisions (v4: K rows each; with K = 1 exactly v3's arbitrary-row shift and draws)."""
+    n_dec = S.glen // S.K
+    k = np.where(n_dec > 1, rng.integers(1, np.maximum(n_dec, 2)), 0) * S.K
     o = S.gstart[S.gid]
     return o + (np.arange(S.n) - o + k[S.gid]) % S.glen[S.gid]
 
@@ -299,11 +311,30 @@ def crit1(S: Steps, s: np.ndarray, e: np.ndarray, B: int, rng: np.random.Generat
 
 
 # ---------------------------------------------------------------- criterion 2
-def _trigger_free(trig: np.ndarray, prev_ok: np.ndarray, s: np.ndarray) -> float:
-    before = np.zeros_like(trig)
-    before[1:] = trig[:-1]
-    window = trig | (prev_ok & before)
-    return float(np.mean(~window[s]))
+def _window_start(uid: np.ndarray, step: np.ndarray, prev_ok: np.ndarray, K: int) -> np.ndarray:
+    """v4 trigger window: per row, the first row of the previous decision of the same individual
+    when it directly precedes (else the first row of the row's own decision). With K = 1 this is
+    the previous row when it is consecutive, else the row itself (v3's window)."""
+    n = uid.size
+    if n == 0:
+        return np.zeros(0, dtype=np.int64)
+    blk = step // K
+    i = np.arange(n)
+    new = np.ones(n, dtype=bool)
+    new[1:] = (uid[1:] != uid[:-1]) | (blk[1:] != blk[:-1])
+    start = np.maximum.accumulate(np.where(new, i, 0))
+    before = start - 1
+    ok = before >= 0
+    bb = np.where(ok, before, 0)
+    prev_start = start[bb]
+    linked = ok & (uid[bb] == uid) & (blk[bb] == blk - 1) & prev_ok[start]
+    return np.where(linked, prev_start, start)
+
+
+def _trigger_free(trig: np.ndarray, win_lo: np.ndarray, s: np.ndarray) -> float:
+    """Fraction of onsets with no trigger from the window start to the onset row, inclusive."""
+    cs = np.concatenate([[0], np.cumsum(trig.astype(np.int64))])
+    return float(np.mean((cs[s + 1] - cs[win_lo[s]]) == 0))
 
 
 def _return_hazard(S: Steps, horizon: int) -> float:
@@ -323,11 +354,11 @@ def _return_hazard(S: Steps, horizon: int) -> float:
 
 
 def crit2(S: Steps, s: np.ndarray, B: int, rng: np.random.Generator, horizon: int) -> dict:
-    obs = _trigger_free(S.trigger, S.prev_ok, s)
+    obs = _trigger_free(S.trigger, S.win_lo, s)
     null = np.empty(B)
     for b in range(B):
         j = _shift_index(S, rng)
-        null[b] = _trigger_free(S.trigger[j], S.prev_ok, s)
+        null[b] = _trigger_free(S.trigger[j], S.win_lo, s)
     return {"onset_trigger_free_unvalidated": obs,
             "onset_trigger_free_z_unvalidated": _z(obs, null),
             "onset_trigger_free_null_mean_unvalidated": float(null.mean()),
@@ -472,7 +503,8 @@ def crit3(S: Steps, ev: np.ndarray, s: np.ndarray, e: np.ndarray, B: int,
             y1 = m @ X
             y0 = X.sum(axis=0)[None, :] - y1
             rev1 = y1[:, 0] / y1[:, 1]
-            rev0 = np.where(y0[:, 1] > 0, y0[:, 0] / np.maximum(y0[:, 1], 1e-12), 0.0)
+            rev0 = np.where(y0[:, 1] >= REV_TEMPLATE_MIN_PAIRS,
+                            y0[:, 0] / np.maximum(y0[:, 1], 1e-12), 0.0)
             m1, m0 = y1[:, 2] / y1[:, 4], y0[:, 2] / y0[:, 4]
             tot_n = y1[:, 4] + y0[:, 4]
             var = (y1[:, 3] + y0[:, 3]) / tot_n - ((y1[:, 2] + y0[:, 2]) / tot_n) ** 2
