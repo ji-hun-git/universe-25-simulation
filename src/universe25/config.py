@@ -39,6 +39,19 @@ class ResourceConfig(BaseModel):
     food_refill_per_tick: float = 1e9
     water_refill_per_tick: float = 1e9
     scarce_food_per_day: float = 50.0
+    # Scarce mode supply rule. "fixed": scarce_food_per_day in total per day, split equally over
+    # the cells (phase 1). "capacity" (SCARCE-PG arm of phase 4): a food-limited carrying
+    # capacity - the colony receives enough food per day for scarce_capacity_animals animals
+    # eating at hunger_gain_per_day, shared out to the cells in proportion to their weaned
+    # occupants, each cell's stock capped at two days of its share. Below the capacity food is
+    # effectively free; above it every animal gets capacity / N of a full ration.
+    scarce_supply: Literal["fixed", "capacity"] = "fixed"
+    scarce_capacity_animals: float = 1000.0
+    # Optional famine pulses in capacity mode: every famine_period_days the supply drops to
+    # famine_factor of normal for famine_days (0 = no famines).
+    scarce_famine_period_days: float = 0.0
+    scarce_famine_days: float = 0.0
+    scarce_famine_factor: float = 1.0
 
 
 class BiologyConfig(BaseModel):

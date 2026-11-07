@@ -281,6 +281,19 @@ class Universe25Sim:
         if self.cfg.resources.mode == "abundant":
             self.food[:] = self.cfg.resources.food_refill_per_tick
             self.water[:] = self.cfg.resources.water_refill_per_tick
+        elif self.cfg.resources.scarce_supply == "capacity":
+            a = self.agents
+            weaned = a.alive & (a.age_days >= self.cfg.biology.weaning_days)
+            occ = np.bincount(a.cell_id[weaned].astype(int), minlength=self.world.n_cells)
+            n_w = max(1, int(occ.sum()))
+            r = self.cfg.resources
+            supply = r.scarce_capacity_animals * self.cfg.drives.hunger_gain_per_day
+            period = r.scarce_famine_period_days
+            if period > 0 and (self.day % period) < r.scarce_famine_days:
+                supply *= r.scarce_famine_factor
+            share = supply * occ / n_w  # per cell per day, by weaned occupancy
+            self.food = np.minimum(self.food + share / self.cfg.ticks_per_day, 2.0 * share)
+            self.water[:] = self.cfg.resources.water_refill_per_tick
         else:
             per = self.cfg.resources.scarce_food_per_day / self.cfg.ticks_per_day
             self.food += per / max(1, self.world.n_cells)
@@ -451,9 +464,14 @@ class Universe25Sim:
             # The meal is a per-decision event (eat until satiated, stock-limited) on the
             # decision tick; the held ticks are spent at the hopper (fatigue, a little rest).
             if decision:
+                # Scramble competition: the foragers at a hopper this decision split its stock
+                # equally (each takes at most stock / foragers). With abundant food the share
+                # always exceeds hunger, so the abundant arm is unchanged (bit-identical).
+                n_c = np.bincount(a.cell_id[ii].astype(int), minlength=self.world.n_cells)
+                share = self.food / np.maximum(n_c, 1)
                 for i in ii:
                     c = int(a.cell_id[i])
-                    take = min(float(a.hunger[i]), self.food[c])
+                    take = min(float(a.hunger[i]), self.food[c], float(share[c]))
                     self.food[c] -= take
                     a.hunger[i] = max(0.0, a.hunger[i] - take)
                     a.energy[i] = min(1.0, a.energy[i] + 0.25 * take + 0.1 * dt)
