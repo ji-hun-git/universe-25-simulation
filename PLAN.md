@@ -232,6 +232,16 @@ and conception cessation (−2.7 %) hold. The heuristic with 12 sub-steps (conti
 The calibrated curve is biology plus behaviour; the learner runs the same arc about 70–100 days
 early. H-e … H-g compare conditions within a policy and are unaffected (NOTES 2026-11-07).
 
+**Manipulation check for H-e (2026-11-08): failed for every food-scarcity design tried.**
+Food scarcity shrinks the colony until its survivors are fed; the smaller colony escapes the
+crowding stress that dominates the relaxed field, so the scarce arm is *more* relaxed than the
+abundant one in the later phases (day 900: 0.33–0.38 vs 0.13–0.16). H-e as written cannot test
+surplus-resource theory in this world. **Proposed amendment (pending Jason, not applied):**
+H-e tests the surplus prediction by the animals' state — detector rates as a function of the
+relaxed-field share, pooled over arms, windows and seeds (dose-response, preregistered slope
+sign) — with ABUND-PG vs SCARCE-PG (capacity 1,000) reported as a secondary contrast and its
+manipulation check stated. Criterion 2 also needs rules v5 before any sweep (NOTES 2026-11-08).
+
 ### 15.2 Arms
 
 Policy kind × resources × playground: `need_driven` (control), `mlp_frozen`, `mlp_ppo`, `evo`;

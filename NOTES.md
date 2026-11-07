@@ -1,5 +1,56 @@
 # Universe25 Play — NOTES
 
+## 2026-11-08 — P4-9 detector rules v4; the survival condition fails its manipulation check
+
+**Detector rules v4** (written into `docs/PHASE4_DESIGN.md` §2 before the test). With K
+free-time sub-steps per decision: surrogate shifts for criteria 1, 2 and 5 move by whole
+decisions; the criterion-2 trigger window runs from the start of the previous decision to the
+onset row (added after a development look at seed 101, before the test); the serious template's
+reversal fraction counts as 0 below 20 direction pairs. With K = 1 the shifts, their random draws
+and the window are exactly v3's (tested). Fresh split (seeds 40,000 + …, 30 colonies per class,
+1,000 surrogates): **14 of 14 checks pass** — the 12 v3 checks (AUC 0.983–1.000, TPR ≥ 0.97,
+FPR 0.00) and two new sub-step checks for criterion 2 (`all_criteria_k12` vs `triggered_k12`,
+object and locomotor: AUC 1.00, TPR 1.00, FPR 0.00). Recorded limit: stretched decision-level
+alternation loses criterion 3 at the sub-step grain.
+
+**v4 on the simulator** (the P4-8 traces, training seeds 7000–7002, windows at days 400, 700 and
+1000, flag rate over 9 window-seeds): criteria 1, 3, 4 and 5 are unchanged from v3; **criterion
+2 now reads "locked" in every arm** (object episodes: heuristic continue 1.00 → 0.00, heuristic
+rechoose 1.00 → 0.00, random network 0.78 → 0.00). Cause: entering a new cell counts as an
+exogenous trigger, and with the window now spanning the previous decision, an agent's own approach
+to an object — which usually crosses into a playground cell — counts as the trigger of its own
+episode. The synthetic worlds never tested this (their individuals stay in one cell). Criterion 2
+is not interpretable on simulator traces until the trigger set separates self-caused cell entries
+from exogenous events (rules v5, needs synthetic classes that move between cells and a fresh
+split). No hypothesis has been tested with simulator detector readings.
+
+**Survival condition: three designs fail the manipulation check.** The preregistered SCARCE-PG arm
+had no quantitative definition. Tools added (`resources.scarce_supply: capacity`,
+`scarce_capacity_animals`, optional famine pulses; foragers at a hopper split a short stock
+equally — scramble competition, bit-identical for the abundant arm; `configs/scarce.yaml`;
+`tests/test_scarcity.py`). A first per-capita rule (85 % of need, split equally over the cells)
+starved the colony before day 100 and is a death spiral by construction (supply shrinks with the
+colony). The manipulation check that matters for H-e is the share of weaned animals in the
+relaxed field (fed, watered, energetic, unstressed, unwounded), heuristic policy, training seeds
+7001–7002, 900 d:
+
+| condition | colony, days 450–900 | relaxed share, day 600 | relaxed share, day 900 |
+|---|---:|---:|---:|
+| abundant (calibrated) | 1,750–2,170 | 0.05–0.08 | 0.13–0.16 |
+| carrying capacity 1,000 animals | 1,190–1,330 | 0.19–0.30 | 0.33–0.34 |
+| carrying capacity 400 animals | 480–620 | 0.14–0.28 | 0.33–0.35 |
+| capacity 1,000 + famines (15 of every 60 d at 25 %) | 450–800 | 0.33–0.38 | 0.34–0.38 (0.33 in famines, 0.37 between) |
+
+In this demographic world food scarcity acts through mortality: the colony shrinks until its
+survivors are fed, and the smaller colony escapes the crowding stress that dominates the relaxed
+field under abundance. So unlimited food produces the *least* relaxed animals in the later phases
+— Calhoun's paradox — and a food-regime contrast points opposite to Burghardt's surplus-resource
+prediction that H-e assumes. H-e as preregistered (detector rates higher in ABUND-PG than in
+SCARCE-PG) cannot be read as a test of surplus-resource theory here. Decision pending (PLAN §15.1):
+define abundance vs survival by the animals' state (relaxed-field share, pooled across arms,
+windows and seeds, as a dose-response) with the food arms as a secondary contrast, or keep the
+food arms as preregistered and report the reversed manipulation.
+
 ## 2026-11-07 — H-d, preregistered test of a learned arm: not preserved; the learned colony runs the Universe 25 arc about 70–100 days early
 
 **Test as preregistered** (`PLAN.md` §15.1, H-d amended 2026-11-06): the frozen pre-trained

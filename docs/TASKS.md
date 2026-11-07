@@ -397,6 +397,12 @@ bit-identical.
 
 ## P4-9 — Detector rules v4: phase-preserving trigger null, template minimum support
 
+> **Done 2026-11-08:** v4 (phase-preserving shifts, decision-counted trigger
+> window, template support) passes 14 / 14 preregistered checks on seeds 40,000+. On simulator
+> traces criterion 2 now reads "locked" in every arm because self-caused cell entries count as
+> triggers: rules v5 must separate them (synthetic classes that move between cells, fresh
+> split) before any sweep reads criterion 2. NOTES 2026-11-08.
+
 > **Status 2026-11-06:** not started. Found by P4-5 / P4-8 on simulator traces
 > (never used to tune): (a) with sub-steps, criterion 2's circular-shift null shifts triggers by
 > arbitrary rows, while density and wound triggers update once per decision and continue-mode
@@ -416,6 +422,9 @@ with no trigger dependence (must pass criterion 2).
 ---
 
 ## P4-6 — Phase 4 sweep harness
+
+> **Blocked 2026-11-08:** needs the survival-condition decision (PLAN §15.1) and detector rules
+> v5 for criterion 2 (P4-9 note).
 
 **Goal:** `scripts/sweep_phase4.py`: policy kind × resources (ABUND / SCARCE) × playground
 (ON / OFF) × seeds 8000–8011, 1600 d at 24 ticks/day, parquet + `run.json` + detector vectors;
@@ -444,6 +453,13 @@ identifiers `play_reward`, `reward_play`, `playscore` / `play_score` inside `lea
 ---
 
 ## P1-1 — Scarcity arm config + smoke
+
+> **Status 2026-11-08: tools built, manipulation check failed.**
+> `resources.scarce_supply: capacity` (food-limited carrying capacity, shared by weaned
+> occupancy, two-day cap), optional famine pulses, scramble sharing at hoppers (abundant arm
+> bit-identical), `configs/scarce.yaml`, `tests/test_scarcity.py`. Under every design tried the
+> scarce colony is smaller and *more* relaxed than the abundant one (crowding dominates the
+> relaxed field). How abundance vs survival is defined for H-e is pending (PLAN §15.1).
 
 **Goal:** Add `TRACK-E-U25-SCARCE-PG` config (seed 7002) with finite food refill; smoke 30–100 days; log aggression proxy vs abundant.
 

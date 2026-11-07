@@ -541,6 +541,10 @@ plateau moved by less than its seed se. Caveats in full in `NOTES.md` → "Phase
   (N@315 +77 %, peak day −69 d, surviving births cease −103 d, decline band missed; peak N,
   N@736, conceptions hold). H-d is falsified: the curve is biology plus behaviour. The play
   hypotheses compare conditions within a policy and can run on the learned colony.
+- **P4-9 + survival condition (2026-11-08)**: detector rules v4 pass 14 / 14 synthetic checks,
+  but on simulator traces criterion 2 reads locked everywhere (self-caused cell entries count
+  as triggers; v5 needed). Scarcity tools built; food scarcity makes the colony smaller and
+  more relaxed, so abundance vs survival must be redefined for H-e (pending, PLAN §15.1).
 
 ---
 
