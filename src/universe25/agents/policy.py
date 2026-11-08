@@ -33,6 +33,7 @@ from universe25.agents.state import (
     ACT_SOCIAL,
     ACT_WITHDRAW,
     N_ACTIONS,
+    N_BASE_ACTIONS,
     ROLE_NURSING,
     ROLE_WITHDRAWN,
 )
@@ -63,7 +64,9 @@ def sample_masked(weights: np.ndarray, allowed: np.ndarray, r: np.ndarray) -> np
 
 
 class NeedDrivenPolicy:
-    """Utility softmax over the drives (phase 1/2 behaviour). No play utility term."""
+    """Utility softmax over the drives (phase 1/2 behaviour). No play utility term. Chooses
+    among the 11 base actions only (action space v1), with the arithmetic and draws of phase 1/2,
+    so action space v2 leaves its trajectories bit-identical."""
 
     name = "need_driven"
 
@@ -75,7 +78,7 @@ class NeedDrivenPolicy:
         d = sim.cfg.drives
         scarce = sim.cfg.resources.mode == "scarce"
         m = idx.size
-        U = np.zeros((m, N_ACTIONS), dtype=np.float64)
+        U = np.zeros((m, N_BASE_ACTIONS), dtype=np.float64)
         hung = a.hunger[idx]
         th = a.thirst[idx]
         fat = a.fatigue[idx]
@@ -103,7 +106,8 @@ class NeedDrivenPolicy:
         U -= U.max(axis=1, keepdims=True)
         # one draw per deciding agent from the simulation stream (bit-identity with phase 1/2)
         r = sim.rng if rng is None else rng
-        return sample_masked(np.exp(np.clip(U, -20, 20)), allowed, r.random(m))
+        return sample_masked(np.exp(np.clip(U, -20, 20)), allowed[:, :N_BASE_ACTIONS],
+                             r.random(m))
 
 
 POLICY_SEED_OFFSET = 1_000_003  # the policy stream is seed + offset: never the biology stream
@@ -120,20 +124,26 @@ def _orthogonal(rng: np.random.Generator, n_in: int, n_out: int, gain: float) ->
 
 
 class MlpFrozenPolicy:
-    """obs -> hidden tanh -> hidden tanh -> N_ACTIONS logits; weights fixed for the run (no
+    """obs -> hidden tanh -> hidden tanh -> action logits; weights fixed for the run (no
     learning). Inference is pure NumPy float32 on the reference path; sampling is inverse-CDF
-    on the masked softmax with one uniform per deciding agent from the policy's own stream."""
+    on the masked softmax with one uniform per deciding agent from the policy's own stream.
+    The layout follows the weights: observation v3 with 15 actions (action space v2), or v2's
+    49 inputs and 11 actions, which keeps the v2 builder and samples the base actions with v2's
+    arithmetic (bit-identical with runs made before action space v2)."""
 
     name = "mlp_frozen"
 
     def __init__(self, params: dict[str, np.ndarray], seed: int):
-        from universe25.agents.observation import OBS_DIM, ObservationBuilder
+        from universe25.agents.observation import OBS_DIM, OBS_DIM_V2, ObservationBuilder
 
         self._builder_cls = ObservationBuilder
         self.params = {k: np.asarray(params[k], dtype=np.float32) for k in PARAM_KEYS}
         W1, W2, W3 = self.params["W1"], self.params["W2"], self.params["W3"]
-        if W1.shape[0] != OBS_DIM or W3.shape[1] != N_ACTIONS or W1.shape[1] != W2.shape[0]:
+        layouts = {(OBS_DIM, N_ACTIONS): 3, (OBS_DIM_V2, N_BASE_ACTIONS): 2}
+        self.obs_version = layouts.get((W1.shape[0], W3.shape[1]))
+        if self.obs_version is None or W1.shape[1] != W2.shape[0]:
             raise ValueError(f"bad MLP shapes {W1.shape} {W2.shape} {W3.shape}")
+        self.n_out = int(W3.shape[1])
         self.rng = make_rng(int(seed) + POLICY_SEED_OFFSET)
         self.builder = None
 
@@ -169,11 +179,12 @@ class MlpFrozenPolicy:
 
     def observe(self, sim: Universe25Sim, idx: np.ndarray) -> np.ndarray:
         if self.builder is None or self.builder.world is not sim.world:
-            self.builder = self._builder_cls(sim.world)
+            self.builder = self._builder_cls(sim.world, version=self.obs_version)
         return self.builder.build(sim, idx)
 
     def choose(self, sim: Universe25Sim, idx: np.ndarray, allowed: np.ndarray,
                rng: np.random.Generator | None = None) -> np.ndarray:
+        allowed = allowed[:, :self.n_out]  # a v2 net chooses among the base actions only
         z = self.logits(self.observe(sim, idx)).astype(np.float64)
         z = np.where(allowed, z, -1e8)  # invalid-action mask on the logits
         z -= z.max(axis=1, keepdims=True)

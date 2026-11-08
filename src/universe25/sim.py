@@ -12,6 +12,8 @@ import numpy as np
 
 from universe25.agents.state import (
     ACT_AGGRESS,
+    ACT_BACK_OFF,
+    ACT_CIRCLE,
     ACT_DRINK,
     ACT_EXPLORE,
     ACT_FORAGE,
@@ -20,9 +22,12 @@ from universe25.agents.state import (
     ACT_NEST,
     ACT_NURSE,
     ACT_REST,
+    ACT_RUN_ON,
     ACT_SOCIAL,
+    ACT_TURN_BACK,
     ACT_WITHDRAW,
     N_ACTIONS,
+    OBJECT_FAMILY,
     ROLE_BREEDING_FEMALE,
     ROLE_DEAD,
     ROLE_JUVENILE,
@@ -184,6 +189,7 @@ class Universe25Sim:
         a.curiosity[slot] = 0.35
         a.boredom[slot] = 0.1
         a.last_action[slot] = ACT_REST
+        a.recent_action[slot] = ACT_REST
         a.in_playground[slot] = self.world.in_playground(a.x[slot], a.y[slot])
         a.competence[slot] = 1.0  # shaped during development (see _density_stress)
         a.maternal_cap[slot] = 1.0  # eroded in adulthood (see _daily_maternal_erosion)
@@ -399,6 +405,12 @@ class Universe25Sim:
         allowed[:, ACT_NURSE] &= (sex == SEX_F) & (mat > 0.0)
         if not self.world.playground_enabled:
             allowed[:, ACT_MANIPULATE] = False
+        # Action space v2: the movement primitives are allowed wherever their family is (the
+        # heuristic and v2 networks never choose them; their columns are not read).
+        allowed[:, ACT_RUN_ON] = allowed[:, ACT_EXPLORE]
+        allowed[:, ACT_TURN_BACK] = allowed[:, ACT_EXPLORE]
+        allowed[:, ACT_BACK_OFF] = allowed[:, ACT_MANIPULATE]
+        allowed[:, ACT_CIRCLE] = allowed[:, ACT_MANIPULATE]
 
         # Critical physiological needs override the policy (dt-invariant need drive); pups
         # cannot use hoppers, their hunger/thirst are relieved only by nursing. The forced
@@ -434,6 +446,8 @@ class Universe25Sim:
             return
         act = actions[idx].astype(np.int16)
         a.last_action[idx] = act.astype(np.int8)
+        a.recent_action[idx] = act.astype(np.int8)
+        x_before, y_before = a.x[idx].copy(), a.y[idx].copy()  # for the heading (no draws)
         for code in range(N_ACTIONS):
             self._action_hist[code] += int(np.sum(act == code))
         decision = self._decision_tick()
@@ -550,6 +564,23 @@ class Universe25Sim:
             a.boredom[ii] = np.maximum(0.0, a.boredom[ii] - d.boredom_decay_on_vary * k)
             a.fatigue[ii] = np.minimum(1.5, a.fatigue[ii] + 0.5 * d.fatigue_gain_active * dt)
 
+        # Action space v2 (PHASE4_DESIGN.md 1.8): the relief of the family, deterministic moves
+        m_run = (act == ACT_RUN_ON) | (act == ACT_TURN_BACK)
+        if m_run.any():
+            ii = idx[m_run]
+            a.curiosity[ii] = np.maximum(0.0, a.curiosity[ii] - d.curiosity_decay_on_novel * k)
+            a.boredom[ii] = np.maximum(0.0, a.boredom[ii] - d.boredom_decay_on_vary * 0.5 * k)
+            if decision:
+                self._heading_moves(ii, act[m_run], 10.0 * dtr * 10 * math.sqrt(math.pi / 2))
+        m_obj = (act == ACT_BACK_OFF) | (act == ACT_CIRCLE)
+        if m_obj.any() and self.world.play_objects:
+            ii = idx[m_obj]
+            if decision:
+                self._object_moves(ii, act[m_obj], 0.6 * 7.0 * self.reach)
+            a.curiosity[ii] = np.maximum(0.0, a.curiosity[ii] - d.curiosity_decay_on_novel * k)
+            a.boredom[ii] = np.maximum(0.0, a.boredom[ii] - d.boredom_decay_on_vary * k)
+            a.fatigue[ii] = np.minimum(1.5, a.fatigue[ii] + 0.5 * d.fatigue_gain_active * dt)
+
         m_agg = act == ACT_AGGRESS
         if m_agg.any():
             ii = idx[m_agg]
@@ -603,8 +634,45 @@ class Universe25Sim:
             a.in_playground[idx] = (a.x[idx] >= x0) & (a.x[idx] <= x1) & (a.y[idx] >= y0) & (a.y[idx] <= y1)
         else:
             a.in_playground[idx] = False
+        self._update_heading(idx, x_before, y_before)
 
         self.playscore.observe_actions(actions[alive])
+
+    def _update_heading(self, idx: np.ndarray, x0: np.ndarray, y0: np.ndarray) -> None:
+        """Heading = direction of the last move of more than 1e-6 in (no random draw)."""
+        a = self.agents
+        dx = a.x[idx].astype(np.float64) - x0
+        dy = a.y[idx].astype(np.float64) - y0
+        moved = np.hypot(dx, dy) > 1e-6
+        if moved.any():
+            a.heading[idx[moved]] = np.arctan2(dy[moved], dx[moved]).astype(np.float32)
+
+    def _heading_moves(self, ii: np.ndarray, act: np.ndarray, length: float) -> None:
+        """RUN_ON along the agent's heading, TURN_BACK against it, `length` inches."""
+        a = self.agents
+        h = a.heading[ii].astype(np.float64) + np.where(act == ACT_TURN_BACK, math.pi, 0.0)
+        a.x[ii] = np.clip(a.x[ii] + length * np.cos(h), 0.5, self.world.width - 0.5)
+        a.y[ii] = np.clip(a.y[ii] + length * np.sin(h), 0.5, self.world.height - 0.5)
+
+    def _object_moves(self, ii: np.ndarray, act: np.ndarray, length: float) -> None:
+        """BACK_OFF: radially away from the nearest object; CIRCLE: counter-clockwise around it
+        at the current radius (at least 1 in), `length` inches of path."""
+        a = self.agents
+        objs = self.world.play_objects
+        ox = np.array([o.x for o in objs], dtype=np.float64)
+        oy = np.array([o.y for o in objs], dtype=np.float64)
+        x = a.x[ii].astype(np.float64)
+        y = a.y[ii].astype(np.float64)
+        j = np.argmin((x[:, None] - ox[None, :]) ** 2 + (y[:, None] - oy[None, :]) ** 2, axis=1)
+        vx, vy = x - ox[j], y - oy[j]
+        r = np.hypot(vx, vy)
+        ang = np.where(r > 1e-6, np.arctan2(vy, vx), 0.0)
+        rad = np.maximum(r, 1.0)
+        back = act == ACT_BACK_OFF
+        nx = np.where(back, x + length * np.cos(ang), ox[j] + rad * np.cos(ang + length / rad))
+        ny = np.where(back, y + length * np.sin(ang), oy[j] + rad * np.sin(ang + length / rad))
+        a.x[ii] = np.clip(nx, 0.5, self.world.width - 0.5).astype(np.float32)
+        a.y[ii] = np.clip(ny, 0.5, self.world.height - 0.5).astype(np.float32)
 
 
     def _free_pre(self, alive: np.ndarray, actions: np.ndarray) -> dict[str, np.ndarray]:
@@ -612,13 +680,13 @@ class Universe25Sim:
         a = self.agents
         idx = np.flatnonzero(alive)
         act = actions[idx]
-        free = np.isin(act, (ACT_EXPLORE, ACT_SOCIAL))
+        free = np.isin(act, (ACT_EXPLORE, ACT_SOCIAL, ACT_RUN_ON, ACT_TURN_BACK))
         if self.world.playground_enabled and self.world.play_objects:
-            free |= act == ACT_MANIPULATE
+            free |= np.isin(act, OBJECT_FAMILY)
         F = idx[free]
         return {"F": F, "act": act[free].copy(), "x": a.x[F].copy(), "y": a.y[F].copy(),
                 "curiosity": a.curiosity[F].copy(), "boredom": a.boredom[F].copy(),
-                "social_drive": a.social_drive[F].copy()}
+                "social_drive": a.social_drive[F].copy(), "heading": a.heading[F].copy()}
 
     def _run_free_substeps(self, pre: dict[str, np.ndarray]) -> None:
         """Replay the free agents' decision as K sub-steps (P4-8). The decision-level move and
@@ -635,14 +703,18 @@ class Universe25Sim:
         d = self.cfg.drives
         K = self.free_substeps
         r = self._sub_rng
-        for k in ("x", "y", "curiosity", "boredom", "social_drive"):
+        for k in ("x", "y", "curiosity", "boredom", "social_drive", "heading"):
             getattr(a, k)[F] = pre[k]
         allowed = np.zeros((F.size, N_ACTIONS), dtype=bool)
         allowed[:, ACT_EXPLORE] = True
         allowed[:, ACT_SOCIAL] = True
+        allowed[:, ACT_RUN_ON] = True  # action space v2 (never read by the heuristic)
+        allowed[:, ACT_TURN_BACK] = True
         objs = self.world.play_objects if self.world.playground_enabled else []
         if objs:
             allowed[:, ACT_MANIPULATE] = True
+            allowed[:, ACT_BACK_OFF] = True
+            allowed[:, ACT_CIRCLE] = True
         ox = np.array([o.x for o in objs], dtype=np.float64)
         oy = np.array([o.y for o in objs], dtype=np.float64)
         sq = math.sqrt(K)
@@ -668,6 +740,8 @@ class Universe25Sim:
                 act = pre["act"].astype(np.int8)
             else:  # the policy re-chooses among the free actions
                 act = self.policy.choose(self, F, allowed, rng=r)
+            xs, ys = a.x[F].copy(), a.y[F].copy()  # for the heading (no draws)
+            a.recent_action[F] = act  # what observation v3 shows at the next call
             ii = F[act == ACT_EXPLORE]
             if ii.size:
                 a.x[ii] = np.clip(a.x[ii] + r.normal(0, sd_e, ii.size), 0.5, xmax)
@@ -691,6 +765,19 @@ class Universe25Sim:
                 a.y[ii] = np.clip(a.y[ii] + dy / dist * stp, 0.5, ymax)
                 a.curiosity[ii] = np.maximum(0.0, a.curiosity[ii] - cur_rel)
                 a.boredom[ii] = np.maximum(0.0, a.boredom[ii] - bor_rel)
+            run = (act == ACT_RUN_ON) | (act == ACT_TURN_BACK)  # action space v2
+            if run.any():
+                ii = F[run]
+                self._heading_moves(ii, act[run], sd_e * math.sqrt(math.pi / 2))
+                a.curiosity[ii] = np.maximum(0.0, a.curiosity[ii] - cur_rel)
+                a.boredom[ii] = np.maximum(0.0, a.boredom[ii] - 0.5 * bor_rel)
+            obj = (act == ACT_BACK_OFF) | (act == ACT_CIRCLE)
+            if obj.any():
+                ii = F[obj]
+                self._object_moves(ii, act[obj], 0.6 * step_m)
+                a.curiosity[ii] = np.maximum(0.0, a.curiosity[ii] - cur_rel)
+                a.boredom[ii] = np.maximum(0.0, a.boredom[ii] - bor_rel)
+            self._update_heading(F, xs, ys)
             ix = np.clip((a.x[F] / cw).astype(int), 0, nx - 1)
             iy = np.clip((a.y[F] / ch).astype(int), 0, ny - 1)
             a.cell_id[F] = (iy * nx + ix).astype(np.int16)

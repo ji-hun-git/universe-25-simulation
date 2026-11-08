@@ -25,7 +25,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from universe25.agents.state import ACT_MANIPULATE
+from universe25.agents.state import OBJECT_FAMILY
 
 if TYPE_CHECKING:  # pragma: no cover
     from universe25.sim import Universe25Sim
@@ -189,7 +189,7 @@ class TraceRecorder:
         y = a.y[free].astype(np.float64)
         ox, oy, orad = self._objects(sim)
         oid, odist, orr = nearest_object(x, y, ox, oy, orad)
-        contact = (act == ACT_MANIPULATE) & (odist <= orr + CONTACT_SLACK)
+        contact = np.isin(act, OBJECT_FAMILY) & (odist <= orr + CONTACT_SLACK)
         self.cum_contacts[free] += contact.astype(np.int32)
         if not cur["in_window"]:
             return
@@ -231,7 +231,7 @@ class TraceRecorder:
         y1 = a.y[ii].astype(np.float64)
         if self.K == 1:  # contacts for decision-level manipulation (no sub-steps)
             _, d1, r1 = nearest_object(x1, y1, ox, oy, orad)
-            c1 = (a.last_action[ii] == ACT_MANIPULATE) & (d1 <= r1 + CONTACT_SLACK)
+            c1 = np.isin(a.last_action[ii], OBJECT_FAMILY) & (d1 <= r1 + CONTACT_SLACK)
             self.cum_contacts[ii] += c1.astype(np.int32)
         if not cur["in_window"]:
             return
@@ -247,7 +247,7 @@ class TraceRecorder:
         prev_y = y0[rep] + (y1 - y0)[rep] * (jj / K)
         oid, odist, orr = nearest_object(x, y, ox, oy, orad)
         act = cur["action"][rest][rep]
-        contact = (act == ACT_MANIPULATE) & (odist <= orr + CONTACT_SLACK) & (jj == K - 1)
+        contact = np.isin(act, OBJECT_FAMILY) & (odist <= orr + CONTACT_SLACK) & (jj == K - 1)
         last = jj == K - 1
         rows: dict[str, Any] = {
             "uid": self.slot_uid[ii][rep],

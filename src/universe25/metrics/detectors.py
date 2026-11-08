@@ -11,6 +11,9 @@ Episodes ("kinds"):
   object     MANIPULATE decisions that end in contact with an object
   locomotor  EXPLORE decisions whose displacement exceeds the 90th percentile of the
              displacement of serious moves (FORAGE / DRINK / NEST) in the same trace
+With action space v2 (PHASE4_DESIGN.md 1.8) the kinds cover the action families: object =
+MANIPULATE / BACK_OFF / CIRCLE in contact, locomotor = EXPLORE / RUN_ON / TURN_BACK; identical
+on traces without the new actions.
 Events of a kind are grouped into episodes with a gap criterion from the inter-event gaps: a
 maximum-likelihood mixture of two geometric processes that beats one process by BIC (Sibly,
 Nott & Fletcher 1990) gives the criterion minimising misassigned gaps (Slater & Lester 1982);
@@ -64,7 +67,13 @@ from typing import Any
 
 import numpy as np
 
-from universe25.agents.state import ACT_DRINK, ACT_EXPLORE, ACT_FORAGE, ACT_MANIPULATE, ACT_NEST
+from universe25.agents.state import (
+    ACT_DRINK,
+    ACT_FORAGE,
+    ACT_NEST,
+    LOCO_FAMILY,
+    OBJECT_FAMILY,
+)
 
 Z95 = 1.6448536269514722
 SURVIVAL = ("hunger", "thirst", "fatigue", "stress")
@@ -221,7 +230,7 @@ def _shift_index(S: Steps, rng: np.random.Generator) -> np.ndarray:
 
 def event_mask(S: Steps, kind: str) -> tuple[np.ndarray, float]:
     if kind == "object":
-        return (S.action == ACT_MANIPULATE) & S.contact, float("nan")
+        return np.isin(S.action, OBJECT_FAMILY) & S.contact, float("nan")
     if kind != "locomotor":
         raise ValueError(kind)
     serious = np.isin(S.action, (ACT_FORAGE, ACT_DRINK, ACT_NEST)) & np.isfinite(S.disp)
@@ -229,7 +238,7 @@ def event_mask(S: Steps, kind: str) -> tuple[np.ndarray, float]:
     if ref.size < 20:
         ref = S.disp[np.isfinite(S.disp) & (S.disp > 0.5)]
     thr = float(np.quantile(ref, 0.9)) if ref.size else float("inf")
-    ev = (S.action == ACT_EXPLORE) & np.isfinite(S.disp) & (S.disp > thr)
+    ev = np.isin(S.action, LOCO_FAMILY) & np.isfinite(S.disp) & (S.disp > thr)
     return ev, thr
 
 

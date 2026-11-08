@@ -24,7 +24,7 @@ class VecEnvSpec:
         "nearest_object",
         "nearest_conspecific",
     )
-    action_space: str = "discrete_11"  # matches N_ACTIONS; or continuous later
+    action_space: str = "discrete_15"  # matches N_ACTIONS (action space v2); or continuous
     reward_terms_allowed: tuple[str, ...] = (
         "survival",  # energy / not-dead
         "homeostasis",

@@ -28,7 +28,16 @@ ACT_AGGRESS = 7
 ACT_MATE = 8
 ACT_NURSE = 9
 ACT_WITHDRAW = 10
-N_ACTIONS = 11
+# Action space v2 (P4-12, PHASE4_DESIGN.md 1.8): generic movement primitives a policy controls.
+# Free-time actions with the relief of their family; no new reward, no play semantics.
+ACT_RUN_ON = 11  # locomotor: along the agent's own heading
+ACT_TURN_BACK = 12  # locomotor: against the agent's own heading
+ACT_BACK_OFF = 13  # object: radially away from the nearest object
+ACT_CIRCLE = 14  # object: counter-clockwise around the nearest object
+N_ACTIONS = 15
+N_BASE_ACTIONS = 11  # action space v1: what the heuristic and v2 weight files choose among
+LOCO_FAMILY = (ACT_EXPLORE, ACT_RUN_ON, ACT_TURN_BACK)
+OBJECT_FAMILY = (ACT_MANIPULATE, ACT_BACK_OFF, ACT_CIRCLE)
 
 SEX_F = 0
 SEX_M = 1
@@ -66,6 +75,8 @@ class AgentSoA:
     maternal_cap: np.ndarray  # adult maternal capacity 0..1; eroded irreversibly under stress
     courtship_cap: np.ndarray  # male courtship capacity 0..1; eroded irreversibly under stress
     lifespan: np.ndarray  # age (days) past which the old-age hazard applies; per individual
+    heading: np.ndarray  # radians, direction of the agent's last move (action space v2)
+    recent_action: np.ndarray  # most recent action, free-time sub-steps included (obs v3)
     # bookkeeping
     n_alive: int = 0
 
@@ -101,6 +112,8 @@ class AgentSoA:
             maternal_cap=z(np.float32, 1.0),
             courtship_cap=z(np.float32, 1.0),
             lifespan=z(np.float32, 1.0e9),
+            heading=z(np.float32),
+            recent_action=z(np.int8, ACT_REST),
             n_alive=0,
         )
 

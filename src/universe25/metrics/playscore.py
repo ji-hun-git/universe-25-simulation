@@ -11,13 +11,13 @@ from typing import Any
 
 import numpy as np
 
-from universe25.agents.state import N_ACTIONS
+from universe25.agents.state import N_BASE_ACTIONS
 
 
 class PlayScoreAccumulator:
     def __init__(self) -> None:
         self._actions: list[np.ndarray] = []
-        self._baseline_entropy = np.log(N_ACTIONS)
+        self._baseline_entropy = np.log(N_BASE_ACTIONS)  # action space v1 (comparability)
 
     def observe_actions(self, actions: np.ndarray) -> None:
         self._actions.append(np.asarray(actions, dtype=np.int8).copy())
@@ -36,7 +36,7 @@ class PlayScoreAccumulator:
         if self._actions:
             acts = np.concatenate(self._actions)
             serious = {0, 1, 2, 3, 7, 8, 9, 10}  # rest,forage,drink,nest,aggress,mate,nurse,withdraw
-            playful_like = {5, 6}  # explore, manipulate
+            playful_like = {5, 6, 11, 12, 13, 14}  # explore, manipulate and their v2 families
             p_play = float(np.mean(np.isin(acts, list(playful_like)))) if len(acts) else 0.0
             D = p_play  # provisional, not true JS divergence
         else:

@@ -136,9 +136,11 @@ def test_disabled_learner_never_updates() -> None:
     _, out, sim = _run(days=4.0, enabled=False, out="u25noupd_")
     assert sim.policy.learner.n_updates == 0
     assert not (out / "learn_log.jsonl").exists()
+    from universe25.agents.observation import OBS_DIM
+    from universe25.agents.state import N_ACTIONS
     from universe25.learn.ppo import PPOLearner
 
-    fresh = PPOLearner(49, 11, 128, sim.cfg.policy.ppo, seed=7100).actor_params()
+    fresh = PPOLearner(OBS_DIM, N_ACTIONS, 128, sim.cfg.policy.ppo, seed=7100).actor_params()
     with np.load(out / "policy_final.npz") as z:
         for k, v in fresh.items():
             assert np.array_equal(z[k], v), k

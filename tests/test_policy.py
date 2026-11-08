@@ -86,7 +86,7 @@ def test_mlp_frozen_is_deterministic_masked_and_seed_sensitive() -> None:
     obs = sim1.policy.observe(sim1, idx)
     assert obs.shape == (m, OBS_DIM) and obs.dtype == np.float32
     assert np.isfinite(obs).all()
-    assert obs[:, 37:48].sum(axis=1).tolist() == [1.0] * m, "last-action one-hot"
+    assert obs[:, 37:37 + N_ACTIONS].sum(axis=1).tolist() == [1.0] * m, "last-action one-hot"
     # weights round-trip through npz and load back as the same policy
     path = Path(tempfile.mkdtemp(prefix="u25_w_")) / "w.npz"
     sim1.policy.save_npz(str(path))
@@ -97,7 +97,7 @@ def test_mlp_frozen_is_deterministic_masked_and_seed_sensitive() -> None:
 
 
 def test_observation_names_have_no_forbidden_feature_or_hidden_information() -> None:
-    assert len(OBS_NAMES) == OBS_DIM == 49
+    assert len(OBS_NAMES) == OBS_DIM == 55  # observation v3 (action space v2)
     assert "lifespan" not in OBS_NAMES and "competence" not in OBS_NAMES
     joined = " ".join(OBS_NAMES).lower().replace("playground", "")
     for bad in ("play", "bout", "motif", "exagger", "score", "reward"):

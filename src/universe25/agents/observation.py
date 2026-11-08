@@ -5,8 +5,10 @@ PlayScore field, no play-named feature (the playground box is geometry, like a c
 not the agent's own `lifespan` (hidden information). Pure NumPy, no RNG, so the reference path
 stays deterministic and the builder can be timed and audited on its own.
 
-Blocks (49 floats; v2 2026-11-06 appended maternal_need — v1 weight files with 48 inputs no
-longer load):
+Blocks (v3, 55 floats, action space v2 2026-11-09: the last-action one-hot covers 15 actions,
+the heading is appended, and the object block reads the objects' current positions. v2, 49
+floats, 2026-11-06, is kept exactly for v2 weight files: 11-action one-hot, the object positions
+at world creation. v1 weight files with 48 inputs no longer load):
   interoception 7   hunger, thirst, fatigue, social_drive, curiosity, boredom, stress   (/ 1.5)
   body 6            energy, age / max_age_days, sex, gestating, maternal, wounds (/ 1.5)
   role 7            one-hot of ROLE_PUP .. ROLE_WITHDRAWN
@@ -14,8 +16,10 @@ longer load):
                     capacity, in_playground, food and water stock in the cell (/ FOOD_NORM)
   targets 12        for food, water, own nest, nearest object: capped distance (/ DIST_CAP) and
                     unit direction (dx, dy); a missing target reads (1, 0, 0)
-  last action 11    one-hot of the previous action
+  last action 15    one-hot of the most recent action, free-time sub-steps included (v2: 11,
+                    the decision action)
   maternal 1        maternal_need / 1.5 (agents/drives.py; a drive of the learner's reward)
+  heading 2         cos, sin of the direction of the agent's last move (v3 only)
 """
 from __future__ import annotations
 
@@ -24,7 +28,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from universe25.agents.drives import maternal_need
-from universe25.agents.state import N_ACTIONS
+from universe25.agents.state import N_ACTIONS, N_BASE_ACTIONS
 
 if TYPE_CHECKING:  # pragma: no cover
     from universe25.sim import Universe25Sim
@@ -35,7 +39,7 @@ DIST_CAP = 50.0  # inches; the pen is 101 x 101
 DRIVE_SCALE = 1.5  # drives are clipped to [0, 1.5]
 FOOD_NORM = 10.0  # stock covering ten full meals reads as 1.0 (abundant mode is always 1.0)
 
-OBS_NAMES: tuple[str, ...] = (
+_BASE_NAMES: tuple[str, ...] = (
     "hunger", "thirst", "fatigue", "social_drive", "curiosity", "boredom", "stress",
     "energy", "age_frac", "sex", "gestating", "maternal", "wounds",
     "role_pup", "role_juvenile", "role_territorial_m", "role_subordinate_m",
@@ -45,10 +49,16 @@ OBS_NAMES: tuple[str, ...] = (
     "nest_dist", "nest_dx", "nest_dy", "object_dist", "object_dx", "object_dy",
     "last_rest", "last_forage", "last_drink", "last_nest", "last_social", "last_explore",
     "last_manipulate", "last_aggress", "last_mate", "last_nurse", "last_withdraw",
-    "maternal_need",
 )
+OBS_NAMES_V2: tuple[str, ...] = _BASE_NAMES + ("maternal_need",)
+OBS_NAMES: tuple[str, ...] = _BASE_NAMES + (
+    "last_run_on", "last_turn_back", "last_back_off", "last_circle",
+    "maternal_need", "heading_cos", "heading_sin",
+)
+OBS_DIM_V2 = len(OBS_NAMES_V2)
 OBS_DIM = len(OBS_NAMES)
-assert OBS_DIM == 7 + 6 + N_ROLES + 5 + 12 + N_ACTIONS + 1 == 49
+assert OBS_DIM_V2 == 7 + 6 + N_ROLES + 5 + 12 + N_BASE_ACTIONS + 1 == 49
+assert OBS_DIM == 7 + 6 + N_ROLES + 5 + 12 + N_ACTIONS + 1 + 2 == 55
 
 
 def _target_block(x: np.ndarray, y: np.ndarray, tx: np.ndarray, ty: np.ndarray,
@@ -66,9 +76,15 @@ def _target_block(x: np.ndarray, y: np.ndarray, tx: np.ndarray, ty: np.ndarray,
 
 
 class ObservationBuilder:
-    """Caches the per-world constants; `build` is vectorised over the deciding agents."""
+    """Caches the per-world constants; `build` is vectorised over the deciding agents.
+    `version` 3 (default) or 2 (the layout of v2 weight files, kept exactly)."""
 
-    def __init__(self, world: World):
+    def __init__(self, world: World, version: int = 3):
+        if version not in (2, 3):
+            raise ValueError(f"observation version {version}")
+        self.version = version
+        self.dim = OBS_DIM if version == 3 else OBS_DIM_V2
+        self.n_act = N_ACTIONS if version == 3 else N_BASE_ACTIONS
         self.world = world
         self.food_xy = np.array([c.food_xy for c in world.cells], dtype=np.float64)
         self.water_xy = np.array([c.water_xy for c in world.cells], dtype=np.float64)
@@ -78,13 +94,13 @@ class ObservationBuilder:
         self.obj_xy = np.array(objs, dtype=np.float64).reshape(-1, 2)
         self.cap_cell = max(1.0, world.capacity_design / world.n_cells)
         self._role_eye = np.eye(N_ROLES, dtype=np.float32)
-        self._act_eye = np.eye(N_ACTIONS, dtype=np.float32)
+        self._act_eye = np.eye(self.n_act, dtype=np.float32)
 
     def build(self, sim: Universe25Sim, idx: np.ndarray) -> np.ndarray:
         a = sim.agents
         bio = sim.cfg.biology
         m = int(idx.size)
-        obs = np.empty((m, OBS_DIM), dtype=np.float32)
+        obs = np.empty((m, self.dim), dtype=np.float32)
         if m == 0:
             return obs
         # interoception
@@ -132,16 +148,25 @@ class ObservationBuilder:
         obs[:, 31:34] = _target_block(
             x, y, self.nest_xy[nclip, 0], self.nest_xy[nclip, 1], nid >= 0
         )
-        if self.obj_xy.shape[0] > 0:
-            d2 = (x[:, None] - self.obj_xy[None, :, 0]) ** 2 + (
-                y[:, None] - self.obj_xy[None, :, 1]
+        obj_xy = self.obj_xy
+        if self.version == 3 and obj_xy.shape[0] > 0:  # v3: where the objects are now
+            obj_xy = np.array([(o.x, o.y) for o in self.world.play_objects], dtype=np.float64)
+        if obj_xy.shape[0] > 0:
+            d2 = (x[:, None] - obj_xy[None, :, 0]) ** 2 + (
+                y[:, None] - obj_xy[None, :, 1]
             ) ** 2
             j = np.argmin(d2, axis=1)
-            obs[:, 34:37] = _target_block(x, y, self.obj_xy[j, 0], self.obj_xy[j, 1], present)
+            obs[:, 34:37] = _target_block(x, y, obj_xy[j, 0], obj_xy[j, 1], present)
         else:
             obs[:, 34:37] = _target_block(x, y, x, y, np.zeros(m, dtype=bool))
         # last action one-hot
-        act = np.clip(a.last_action[idx].astype(int), 0, N_ACTIONS - 1)
-        obs[:, 37:48] = self._act_eye[act]
-        obs[:, 48] = np.clip(maternal_need(a, idx) / DRIVE_SCALE, 0.0, 1.0)
+        n = self.n_act
+        last = a.recent_action if self.version == 3 else a.last_action
+        act = np.clip(last[idx].astype(int), 0, n - 1)
+        obs[:, 37:37 + n] = self._act_eye[act]
+        obs[:, 37 + n] = np.clip(maternal_need(a, idx) / DRIVE_SCALE, 0.0, 1.0)
+        if self.version == 3:
+            h = a.heading[idx].astype(np.float64)
+            obs[:, 38 + n] = np.cos(h)
+            obs[:, 39 + n] = np.sin(h)
         return obs

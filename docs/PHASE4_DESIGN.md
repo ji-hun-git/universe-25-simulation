@@ -190,7 +190,10 @@ carry no play semantics, no new reward and no new drive (Jason's choice of 2026-
   heading (cos, sin) appended. The object block reads the objects' current positions; v2 read
   the positions at world creation, which go stale as MANIPULATE nudges objects. A weight file
   with v2's shapes (49 inputs, 11 outputs) keeps the v2 builder and samples the 11 base actions
-  with v2's arithmetic.
+  with v2's arithmetic. Added during implementation, before training: v3's last-action one-hot
+  shows the most recent action, free-time sub-steps included (SoA field `recent_action`).
+  Without it a network re-choosing at sub-steps would not see its previous primitive. v2's
+  one-hot shows the decision action, as before.
 - *Unchanged and bit-identical.* The heuristic never chooses a new action. It samples the 11
   base actions with the same arithmetic and draws, and so do v2 networks. Biology, calibration,
   the reward and every existing arm's trajectory are unchanged. PlayScore keeps its baseline
