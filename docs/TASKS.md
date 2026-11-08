@@ -423,6 +423,11 @@ with no trigger dependence (must pass criterion 2).
 
 ## P4-10 — Detector rules v5: exogenous triggers only (criterion 2)
 
+> **Done 2026-11-08:** v5 passes 16 / 16 preregistered checks on seeds 50,000+
+> (every AUC 1.000); the v4 trigger set falsely locks the mobile class in 30 / 30 colonies.
+> On the P4-8 simulator traces criterion 2 now reads "not locked" in every arm; exogenous
+> triggers are rare, so this is weak evidence. NOTES 2026-11-08.
+
 **Goal:** criterion 2's trigger set keeps aggression received and density jumps in a cell the
 individual already occupied; self-caused cell entries (and the density jumps that come with
 them) no longer count. Rules written into `docs/PHASE4_DESIGN.md` §2 (v5) before the test.
@@ -438,7 +443,8 @@ on seeds 50,000 + …; then re-read the P4-8 simulator traces.
 ## P4-6 — Phase 4 sweep harness
 
 > **2026-11-08:** survival condition decided (H-e amended to a state-based dose-response, PLAN
-> §15.1, ADOPTED); first sweep = the H-e design there. Needs detector rules v5 (P4-10) first.
+> §15.1, ADOPTED); first sweep = the H-e design there. v5 done (P4-10). Harness for H-e:
+> `scripts/sweep_he.py` + `scripts/analyse_he.py`.
 
 **Goal:** `scripts/sweep_phase4.py`: policy kind × resources (ABUND / SCARCE) × playground
 (ON / OFF) × seeds 8000–8011, 1600 d at 24 ticks/day, parquet + `run.json` + detector vectors;

@@ -545,6 +545,9 @@ plateau moved by less than its seed se. Caveats in full in `NOTES.md` → "Phase
   but on simulator traces criterion 2 reads locked everywhere (self-caused cell entries count
   as triggers; v5 needed). Scarcity tools built; food scarcity makes the colony smaller and
   more relaxed, so abundance vs survival must be redefined for H-e (pending, PLAN §15.1).
+- **H-e amended + rules v5 (2026-11-08)**: H-e is now a state-based dose-response (adopted).
+  Detector rules v5 count only exogenous triggers for criterion 2 (16 / 16 synthetic checks).
+  H-e harness: `scripts/sweep_he.py`, `scripts/analyse_he.py`.
 
 ---
 

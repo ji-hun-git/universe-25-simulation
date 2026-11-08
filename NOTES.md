@@ -1,5 +1,57 @@
 # Universe25 Play — NOTES
 
+## 2026-11-08 — Detector rules v5 (exogenous triggers only); H-e amended; sweep harness
+
+**H-e amended — ADOPTED by Jason (state-based dose-response).** Written into PLAN §15.1 and
+committed (dd33dbe) before any code for it ran: per episode kind, the number of criteria met
+in a window should rise with that window's relaxed share; Kendall τ-b within window strata
+(policy × window, 24 units each: 2 food arms × 12 evaluation seeds), mean over the three strata,
+dose permuted within strata; learned net primary (one-sided α 0.025 per kind), heuristic and a
+random net of the same architecture as controls; food contrast and episode-count checks reported
+beside it.
+
+**Rules v5** (written into `docs/PHASE4_DESIGN.md` §2 and committed before the test): criterion
+2 counts exogenous triggers only — aggression received, or a density jump in the cell the
+individual occupied at its previous decision's start. Its own cell entries no longer count
+(`self_entries=True` keeps the v4 set for diagnostics). New synthetic classes
+`all_criteria_mobile_k12` / `triggered_mobile_k12`: 2 × 2 cells, objects in a denser cell of
+their own, each row recording the cell of its start position as the recorder does. Development
+look on seeds 101–103 only. **Test on a fresh split (seeds 50,000 + …, 30 colonies per class,
+1,000 surrogates): 16 of 16 checks pass, every AUC 1.000, TPR 1.00, FPR 0.00.** Diagnostic:
+under the v4 trigger set, `all_criteria_mobile_k12` object onsets read locked in 30 of 30
+colonies. The mobile world reproduces the simulator's false locking, and v5 removes it.
+
+**v5 on the P4-8 simulator traces** (training seeds 7000–7002, windows at days 400 / 700 / 1000,
+flag rate over 9 window-seeds, c1…c5):
+
+| arm | kind | v4 | v5 |
+|---|---|---|---|
+| heuristic, continue | object | 1.00 0.00 0.00 0.00 0.00 | 1.00 **1.00** 0.00 0.00 0.00 |
+| heuristic, continue | locomotor | 1.00 0.00 1.00 1.00 0.11 | 1.00 **1.00** 1.00 1.00 0.11 |
+| heuristic, rechoose | object | 1.00 0.00 0.00 1.00 0.00 | 1.00 **1.00** 0.00 1.00 0.00 |
+| heuristic, rechoose | locomotor | 1.00 0.22 1.00 1.00 0.11 | 1.00 **1.00** 1.00 1.00 0.11 |
+| random network | object | 1.00 0.00 0.00 1.00 0.00 | 1.00 **1.00** 0.00 1.00 0.00 |
+| random network | locomotor | 1.00 0.00 1.00 1.00 0.00 | 1.00 **1.00** 1.00 1.00 0.00 |
+
+Criterion 2 now reads "not locked" everywhere, but this is weak evidence. Exogenous triggers
+are rare in the simulator: 0.86–0.97 of onsets are trigger-free, the same as under the shifted
+null. So criterion 2 says only that onsets are not time-locked to aggression or crowding.
+
+Read honestly, the full table shows that the criteria discriminate little on simulator
+locomotion. The random network and the heuristic, neither of which learns or has any reason to
+play, meet criteria 1–4 in every locomotor window. Only criterion 5 (onsets gated by the relaxed
+field) separates them, and it is rarely met (0.11 and 0.00). The synthetic `random_walk` class
+also meets 1–3 (P4-5). So a locomotor criteria count near 4 means "random-like movement outside
+serious tasks", not play. For the H-e test, the count can only vary through criteria 3–5 for
+object episodes and through criterion 5 for locomotor episodes, and the controls show what that
+variation looks like without learning. No hypothesis has been tested yet.
+
+**Harness** (P4-6 for H-e): `scripts/sweep_he.py` (runs, traces and v5 detection; resumable),
+`scripts/analyse_he.py` (preregistered test and reported-beside tables),
+`metrics/dose_response.py` (stratified τ-b permutation test; tests against scipy). The detector
+output now carries the dose (`relaxed_share_weaned`) and the rule version. Smoke-tested on 68-day
+runs of training seed 7000.
+
 ## 2026-11-08 — P4-9 detector rules v4; the survival condition fails its manipulation check
 
 **Detector rules v4** (written into `docs/PHASE4_DESIGN.md` §2 before the test). With K

@@ -304,6 +304,16 @@ row's start position the way the trace recorder does. Diagnostic, not a pass cri
 v4 trigger set on `all_criteria_mobile_k12`, which should reproduce the simulator's false
 locking. Everything else is v4.
 
+**v5 test result (2026-11-08, seeds 50,000 + …, 30 colonies per class, 1,000 surrogates):
+16 of 16 checks pass**, every AUC 1.000, TPR 1.00, FPR 0.00 — the 14 v4 checks and both mobile
+criterion-2 checks (`_output/detector_validation_v5.json`). Development look before the test:
+seeds 101–103 only, which confirmed that the old classes' trigger series are identical under v4
+and v5. Diagnostic: with the v4 trigger set, `all_criteria_mobile_k12` object onsets read
+locked in 30 of 30 colonies (AUC 0.71 against `triggered_mobile_k12`); locomotor onsets were
+not affected (a run starts where the individual stands). So the synthetic mobile world
+reproduces the simulator's false locking, and v5 removes it without losing true locking. v5 is
+the frozen rule set.
+
 **First simulator reading (training seeds 7000–7002, 4 windows).** Need-driven and random
 policies: object and locomotor episodes are non-functional (c1) and spontaneous (c2) but last
 one decision (mean 1.00–1.04 events), so c3 / c4 are not evaluable (≤ 21 direction pairs, ≤ 2
