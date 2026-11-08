@@ -21,6 +21,11 @@ Rules v4 (2026-11-07): surrogate shifts move series by whole decisions when the 
 free-time sub-steps (K rows per decision); the serious template's reversal fraction needs 20
 direction pairs, else counts as 0. With K = 1 the shifts and their draws are v3's.
 
+Rules v5 (2026-11-08): criterion 2 counts exogenous triggers only - aggression received, or a
+local density jump in the cell the individual occupied at the start of its previous decision
+(others arrived). Its own cell entries, and density jumps that come with them, no longer
+count; `self_entries=True` restores the v4 trigger set (diagnostics only).
+
 Criteria (decision rules v3, preregistered in PHASE4_DESIGN.md section 2; form
 statistics use only the episode's own event decisions; the gap criterion is a
 maximum-likelihood one- vs two-process fit, Sibly et al. 1990):
@@ -28,8 +33,9 @@ maximum-likelihood one- vs two-process fit, Sibly et al. 1990):
                           thirst, fatigue, stress; curiosity / boredom excluded) that do not end
                           at a hopper or the own nest; null = circular shift of the per-step
                           relief / at-target series within individual.          flag: z > 1.645
-  2 spontaneous           onset_trigger_free: fraction of onsets with no exogenous trigger (cell
-                          entry, local density jump, wound received) at or one step before onset;
+  2 spontaneous           onset_trigger_free: fraction of onsets with no exogenous trigger (v5:
+                          wound received, or a density jump in an already occupied cell) from
+                          the start of the previous decision to the onset (v4 window);
                           null = circular shift of the trigger series. A spontaneous behaviour is
                           not time-locked below chance.                          flag: z >= -1.645
   3 structurally different seq_struct_js: Jensen-Shannon divergence between the movement-symbol
@@ -107,6 +113,7 @@ class Steps:
     yprev: np.ndarray
     ddobj: np.ndarray  # change of the nearest-object distance since the previous decision
     win_lo: np.ndarray  # v4: first row of the trigger window (start of the previous decision)
+    age: np.ndarray  # days
 
 
 def _prev(v: np.ndarray, ok: np.ndarray, fill: float = np.nan) -> np.ndarray:
@@ -117,7 +124,7 @@ def _prev(v: np.ndarray, ok: np.ndarray, fill: float = np.nan) -> np.ndarray:
 
 
 def prepare(trace: dict[str, Any], max_individuals: int | None = None,
-            rng: np.random.Generator | None = None) -> Steps:
+            rng: np.random.Generator | None = None, self_entries: bool = False) -> Steps:
     uid_all = np.asarray(trace["uid"]).astype(np.int64)
     keep = np.ones(uid_all.size, dtype=bool)
     if max_individuals is not None:
@@ -154,20 +161,23 @@ def prepare(trace: dict[str, Any], max_individuals: int | None = None,
     cell = col("cell", np.int64)
     dens = col("cell_density")
     wounds = col("wounds")
+    dpd = int(np.asarray(trace.get("meta", {}).get("decisions_per_day", 6)))
+    k_sub = max(1, int(np.asarray(trace.get("meta", {}).get("free_substeps", 1))))
     hit = same_prev & ((wounds - _prev(wounds, same_prev, 0.0)) > WOUND_HIT)
-    trigger = same_prev & (
-        (cell != _prev(cell.astype(np.float64), same_prev, -1).astype(np.int64))
-        | ((dens - _prev(dens, same_prev, 0.0)) > DENSITY_JUMP)
-        | hit
-    )
+    jump = (dens - _prev(dens, same_prev, 0.0)) > DENSITY_JUMP
+    if self_entries:  # v4 trigger set (diagnostics): the individual's own cell entries count
+        entry = cell != _prev(cell.astype(np.float64), same_prev, -1).astype(np.int64)
+        trigger = same_prev & (entry | jump | hit)
+    else:  # v5: a density jump counts only in the cell occupied at the previous decision start
+        cell_dec = cell[_decision_start(uid, step, k_sub)]
+        stayed = cell_dec == _prev(cell_dec.astype(np.float64), same_prev, -1).astype(np.int64)
+        trigger = same_prev & ((jump & stayed) | hit)
     recent_hit = _rolling_any(hit, gid, gstart, RECENT_HIT_STEPS)
     conds = np.stack([
         col("hunger") < 0.5, col("thirst") < 0.5, col("energy") > 0.5, col("stress") < 0.4,
         wounds < 0.3, ~recent_hit, dens < 1.0,
     ])
     relaxed = conds.all(axis=0)
-    dpd = int(np.asarray(trace.get("meta", {}).get("decisions_per_day", 6)))
-    k_sub = max(1, int(np.asarray(trace.get("meta", {}).get("free_substeps", 1))))
     return Steps(
         n=n, K=k_sub,
         uid=uid, step=step, gid=gid, gstart=gstart, glen=glen, prev_ok=same_prev,
@@ -178,6 +188,7 @@ def prepare(trace: dict[str, Any], max_individuals: int | None = None,
         day=step // max(1, dpd), x=x, y=y, xprev=_prev(x, same_prev), yprev=_prev(y, same_prev),
         win_lo=_window_start(uid, step, same_prev, k_sub),
         ddobj=col("obj_dist") - _prev(col("obj_dist"), same_prev),
+        age=col("age"),
     )
 
 
@@ -311,6 +322,17 @@ def crit1(S: Steps, s: np.ndarray, e: np.ndarray, B: int, rng: np.random.Generat
 
 
 # ---------------------------------------------------------------- criterion 2
+def _decision_start(uid: np.ndarray, step: np.ndarray, K: int) -> np.ndarray:
+    """Per row (sorted by uid, step), the first row of its own decision (K rows each)."""
+    n = uid.size
+    if n == 0:
+        return np.zeros(0, dtype=np.int64)
+    blk = step // K
+    new = np.ones(n, dtype=bool)
+    new[1:] = (uid[1:] != uid[:-1]) | (blk[1:] != blk[:-1])
+    return np.maximum.accumulate(np.where(new, np.arange(n), 0))
+
+
 def _window_start(uid: np.ndarray, step: np.ndarray, prev_ok: np.ndarray, K: int) -> np.ndarray:
     """v4 trigger window: per row, the first row of the previous decision of the same individual
     when it directly precedes (else the first row of the row's own decision). With K = 1 this is
@@ -319,10 +341,7 @@ def _window_start(uid: np.ndarray, step: np.ndarray, prev_ok: np.ndarray, K: int
     if n == 0:
         return np.zeros(0, dtype=np.int64)
     blk = step // K
-    i = np.arange(n)
-    new = np.ones(n, dtype=bool)
-    new[1:] = (uid[1:] != uid[:-1]) | (blk[1:] != blk[:-1])
-    start = np.maximum.accumulate(np.where(new, i, 0))
+    start = _decision_start(uid, step, K)
     before = start - 1
     ok = before >= 0
     bb = np.where(ok, before, 0)
@@ -780,11 +799,21 @@ def detect_kind(S: Steps, kind: str, n_surrogates: int = 1000, seed: int = 0,
 
 
 def detect_trace(trace: dict[str, Any], kinds: tuple[str, ...] = KINDS, n_surrogates: int = 1000,
-                 seed: int = 0, max_individuals: int | None = None) -> dict[str, Any]:
+                 seed: int = 0, max_individuals: int | None = None, self_entries: bool = False,
+                 weaned_age: float = 21.0) -> dict[str, Any]:
+    """Both episode kinds of one trace window, plus the relaxed share of weaned rows (age >=
+    `weaned_age`, the config's biology.weaning_days) of the individuals read: the dose of H-e."""
     meta = trace.get("meta", {})
     dpd = int(np.asarray(meta.get("decisions_per_day", 6)))
-    S = prepare(trace, max_individuals=max_individuals, rng=np.random.default_rng(seed + 17))
-    out: dict[str, Any] = {"n_rows": int(S.n), "n_individuals": int(S.gstart.size)}
+    S = prepare(trace, max_individuals=max_individuals, rng=np.random.default_rng(seed + 17),
+                self_entries=self_entries)
+    weaned = S.age >= weaned_age
+    out: dict[str, Any] = {
+        "n_rows": int(S.n), "n_individuals": int(S.gstart.size),
+        "rules": "v4_self_entries" if self_entries else "v5",
+        "n_rows_weaned": int(weaned.sum()),
+        "relaxed_share_weaned": float(S.relaxed[weaned].mean()) if weaned.any() else float("nan"),
+    }
     for k in kinds:
         out[k] = detect_kind(S, k, n_surrogates=n_surrogates, seed=seed, decisions_per_day=dpd)
     return out

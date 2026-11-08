@@ -3,7 +3,8 @@
 
 For every synthetic class (metrics/synthetic_traces.py) it builds M colonies on test seeds
 (seed_base + 1000 * class index + colony; development used seeds 100-106, the v1 rules were
-tested on seed_base 10_000, v2 on 20_000, v3 on 30_000, v4 on 40_000, the default), runs the
+tested on seed_base 10_000, v2 on 20_000, v3 on 30_000, v4 on 40_000, v5 on 50_000, the
+default), runs the
 detectors for both episode kinds with n surrogates, and scores each criterion against the class
 built to violate it:
 
@@ -48,7 +49,11 @@ SCORES = (  # (criterion flag, statistic key, transform, target negative class)
     # v4: criterion 2 with 12 sub-steps per decision (onsets on decision boundaries)
     ("c2_spontaneous", "onset_trigger_free_z_unvalidated", 1.0, "triggered_k12",
      "all_criteria_k12"),
+    # v5: criterion 2 when individuals move between cells (own entries are not triggers)
+    ("c2_spontaneous", "onset_trigger_free_z_unvalidated", 1.0, "triggered_mobile_k12",
+     "all_criteria_mobile_k12"),
 )
+MOBILE = ("all_criteria_mobile_k12", "triggered_mobile_k12")  # also read with v4 (diagnostic)
 
 
 def _one(args: tuple[str, int, int, int, int, int]) -> dict:
@@ -58,7 +63,9 @@ def _one(args: tuple[str, int, int, int, int, int]) -> dict:
 
     tr = make_colony(cls, n_individuals=n_ind, days=days, seed=seed)
     res = detect_trace(tr, n_surrogates=n_sur, seed=det_seed)
-    return {"class": cls, "seed": seed, "result": res}
+    v4 = (detect_trace(tr, n_surrogates=n_sur, seed=det_seed, self_entries=True)
+          if cls in MOBILE else None)
+    return {"class": cls, "seed": seed, "result": res, "v4": v4}
 
 
 def auc(pos: np.ndarray, neg: np.ndarray) -> float:
@@ -79,7 +86,7 @@ def main() -> int:
     p.add_argument("--days", type=int, default=20)
     p.add_argument("--surrogates", type=int, default=1000)
     p.add_argument("--workers", type=int, default=6)
-    p.add_argument("--seed-base", type=int, default=40_000)
+    p.add_argument("--seed-base", type=int, default=50_000)
     p.add_argument("--out", type=str, default=str(ROOT / "_output" / "detector_validation.json"))
     a = p.parse_args()
     all_classes = tuple(CLASSES) + tuple(SUBSTEP_CLASSES)
@@ -129,6 +136,20 @@ def main() -> int:
             print(f"  {c:12s} " + " ".join(f"{v:5.2f}" for v in fr) + f"   {five:5.2f}"
                   f"   (episodes {eps:.0f})")
         report["flag_rates"][kind] = rates
+    print("\ndiagnostic (not a pass criterion): criterion 2 with the v4 trigger set (own cell"
+          " entries count) on the mobile classes")
+    report["v4_diagnostic"] = {}
+    for kind in ("object", "locomotor"):
+        v4p = [r["v4"][kind] for r in results if r["class"] == MOBILE[0]]
+        v4n = [r["v4"][kind] for r in results if r["class"] == MOBILE[1]]
+        key = "onset_trigger_free_z_unvalidated"
+        tpr = float(np.mean([r["decisions_unvalidated"]["c2_spontaneous"] for r in v4p]))
+        fpr = float(np.mean([r["decisions_unvalidated"]["c2_spontaneous"] for r in v4n]))
+        au = auc(np.array([r.get(key, np.nan) for r in v4p], float),
+                 np.array([r.get(key, np.nan) for r in v4n], float))
+        report["v4_diagnostic"][kind] = {"auc": au, "tpr": tpr, "fpr": fpr}
+        print(f"  {kind:9s} v4: AUC {au:.3f}  spontaneous on {MOBILE[0]} {tpr:.2f}, "
+              f"on {MOBILE[1]} {fpr:.2f}")
     report["all_pass"] = bool(all_pass)
     print(f"\npreregistered validation: {'ALL PASS' if all_pass else 'NOT ALL PASS'}")
     out = Path(a.out)

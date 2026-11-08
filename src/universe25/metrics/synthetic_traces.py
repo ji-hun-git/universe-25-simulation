@@ -24,6 +24,12 @@ hopper or the nest when a drive is high) and differs only in its free-time episo
 
 Traces use the schema of `metrics/trace.py`; cell is constant (the only exogenous triggers are
 density jumps and wounds).
+
+Mobile sub-step classes (rules v5): the same individuals in an arena split into 2 x 2 cells
+(nest, hoppers and objects in different cells; the object cell denser), each row recording the
+cell of its start position as the trace recorder does, so an object onset usually follows the
+individual's own entry into the object cell a few sub-steps earlier. Exogenous density jumps
+add to the occupied cell's base density.
 """
 from __future__ import annotations
 
@@ -43,14 +49,25 @@ from universe25.metrics.trace import FIELDS, nearest_object
 
 CLASSES = ("all_criteria", "serious", "rigid_loop", "novelty", "triggered", "stressed",
            "random_walk")
-# Sub-step classes (rules v4): a base class expanded to K rows per decision
-SUBSTEP_CLASSES = {"all_criteria_k12": ("all_criteria", 12), "triggered_k12": ("triggered", 12)}
+# Sub-step classes: a base class expanded to K rows per decision (rules v4), optionally in the
+# 2 x 2-cell arena (rules v5): name -> (base class, K, mobile)
+SUBSTEP_CLASSES = {"all_criteria_k12": ("all_criteria", 12, False),
+                   "triggered_k12": ("triggered", 12, False),
+                   "all_criteria_mobile_k12": ("all_criteria", 12, True),
+                   "triggered_mobile_k12": ("triggered", 12, True)}
 FOOD = np.array([8.0, 8.0])
 WATER = np.array([8.0, 12.0])
 OBJECTS = np.array([[32.0, 32.0], [36.0, 28.0], [28.0, 36.0], [8.0, 8.0]])  # last: at the food
 OBJ_RADIUS = 1.5
 PG_BOX = (24.0, 24.0, 40.0, 40.0)
 W = 40.0
+CELL_BASE = np.array([0.3, 0.3, 0.3, 0.6])  # mobile arena: hoppers 0, nest 2, objects 3
+
+
+def _cells(x: Any, y: Any) -> np.ndarray:
+    """Cell of points in the mobile arena's 2 x 2 grid (row-major, like the simulator's)."""
+    return ((np.asarray(x) >= W / 2).astype(np.int64)
+            + 2 * (np.asarray(y) >= W / 2).astype(np.int64))
 
 
 def _relaxed(st: dict[str, float]) -> bool:
@@ -96,7 +113,7 @@ def _free_loco_plan(r: np.random.Generator) -> list[tuple[int, Any]]:
 
 
 def _simulate_individual(cls: str, uid: int, days: int, dpd: int,
-                         r: np.random.Generator) -> dict[str, list]:
+                         r: np.random.Generator, mobile: bool = False) -> dict[str, list]:
     rows: dict[str, list] = {k: [] for k in FIELDS}
     nest = np.array([4.0 + r.uniform(-1, 1), 36.0 + r.uniform(-1, 1)])
     pos = nest.copy()
@@ -105,6 +122,7 @@ def _simulate_individual(cls: str, uid: int, days: int, dpd: int,
           "density": 0.3, "since_hit": 10.0}
     cum_contacts = 0
     cum_loco = 0
+    excess = 0.0  # mobile arena: density above the occupied cell's base
     plan: list[tuple[int, Any]] = []
     plan_kind = ""
     trig_prev = False
@@ -120,10 +138,17 @@ def _simulate_individual(cls: str, uid: int, days: int, dpd: int,
         day = t // dpd
         # environment: density jumps and wounds are the exogenous triggers
         trig = False
-        st["density"] = 0.3 + (st["density"] - 0.3) * 0.7
-        if r.random() < 0.12:
-            st["density"] += 0.2
-            trig = True
+        if mobile:
+            excess *= 0.7
+            if r.random() < 0.12:
+                excess += 0.2
+                trig = True
+            st["density"] = float(CELL_BASE[_cells(pos[0], pos[1])]) + excess
+        else:
+            st["density"] = 0.3 + (st["density"] - 0.3) * 0.7
+            if r.random() < 0.12:
+                st["density"] += 0.2
+                trig = True
         st["since_hit"] += 1.0
         st["wounds"] = max(0.0, st["wounds"] - 0.01)
         if r.random() < 0.02:
@@ -161,6 +186,7 @@ def _simulate_individual(cls: str, uid: int, days: int, dpd: int,
             act = ACT_REST
         else:
             act = ACT_NEST if r.random() < 0.5 else ACT_REST
+        cell_pre = int(_cells(pos[0], pos[1])) if mobile else 0
         # execute
         if act == ACT_DRINK:
             pos = _toward(pos, WATER, 15.0)
@@ -209,7 +235,7 @@ def _simulate_individual(cls: str, uid: int, days: int, dpd: int,
             "age": 100.0 + t / dpd, "sex": uid % 2, "role": 4,
             "hunger": pre["hunger"], "thirst": pre["thirst"], "fatigue": pre["fatigue"],
             "stress": pre["stress"], "curiosity": 0.3, "boredom": 0.3, "social_drive": 0.3,
-            "energy": pre["energy"], "wounds": pre["wounds"], "cell": 0,
+            "energy": pre["energy"], "wounds": pre["wounds"], "cell": cell_pre,
             "cell_density": pre["density"],
             "x": pos[0], "y": pos[1], "hunger_post": st["hunger"], "thirst_post": st["thirst"],
             "fatigue_post": st["fatigue"], "stress_post": st["stress"], "obj_id": int(oid[0]),
@@ -304,6 +330,11 @@ def expand_substeps(trace: dict[str, Any], K: int) -> dict[str, Any]:
     out["x"] = xp[rep] + (t["x"] - xp)[rep] * f
     out["y"] = yp[rep] + (t["y"] - yp)[rep] * f
     out["nest_dist"] = ndp[rep] + (t["nest_dist"] - ndp)[rep] * f
+    if trace.get("meta", {}).get("cell_grid"):  # mobile arena: cell of each row's start
+        g = j / K
+        out["cell"] = np.where(j == 0, t["cell"][rep],
+                               _cells(xp[rep] + (t["x"] - xp)[rep] * g,
+                                      yp[rep] + (t["y"] - yp)[rep] * g))
     last = j == K - 1
     for k in ("hunger", "thirst", "fatigue", "stress"):
         out[f"{k}_post"] = np.where(last, t[f"{k}_post"][rep], t[k][rep])
@@ -329,11 +360,11 @@ def expand_substeps(trace: dict[str, Any], K: int) -> dict[str, Any]:
 
 
 def make_colony(cls: str, n_individuals: int = 30, days: int = 20, dpd: int = 6,
-                seed: int = 0) -> dict[str, Any]:
+                seed: int = 0, mobile: bool = False) -> dict[str, Any]:
     """One synthetic colony of a class, as a trace dict (schema of metrics/trace.py)."""
     if cls in SUBSTEP_CLASSES:
-        base, K = SUBSTEP_CLASSES[cls]
-        out = expand_substeps(make_colony(base, n_individuals, days, dpd, seed), K)
+        base, K, mob = SUBSTEP_CLASSES[cls]
+        out = expand_substeps(make_colony(base, n_individuals, days, dpd, seed, mobile=mob), K)
         out["meta"]["synthetic_class"] = cls
         return out
     if cls not in CLASSES:
@@ -341,9 +372,11 @@ def make_colony(cls: str, n_individuals: int = 30, days: int = 20, dpd: int = 6,
     r = np.random.default_rng(seed)
     cols: dict[str, list] = {k: [] for k in FIELDS}
     for u in range(n_individuals):
-        rows = _simulate_individual(cls, u, days, dpd, r)
+        rows = _simulate_individual(cls, u, days, dpd, r, mobile)
         for k in FIELDS:
             cols[k].extend(rows[k])
     out: dict[str, Any] = {k: np.asarray(v) for k, v in cols.items()}
     out["meta"] = {"decisions_per_day": dpd, "synthetic_class": cls, "seed": seed}
+    if mobile:
+        out["meta"]["cell_grid"] = 2
     return out

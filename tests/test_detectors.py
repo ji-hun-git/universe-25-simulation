@@ -102,6 +102,49 @@ def test_v4_substep_rules() -> None:
         assert not neg[kind]["decisions_unvalidated"]["c2_spontaneous"], (kind, neg[kind])
 
 
+def _hand_trace(cells: list[int], dens: list[float], wounds: list[float], K: int = 1) -> dict:
+    n = len(cells)
+    tr: dict = {k: np.zeros(n) for k in FIELDS}
+    tr["uid"] = np.zeros(n, dtype=np.int64)
+    tr["step"] = np.arange(n)
+    tr["cell"] = np.asarray(cells)
+    tr["cell_density"] = np.asarray(dens, dtype=np.float64)
+    tr["wounds"] = np.asarray(wounds, dtype=np.float64)
+    tr["age"] = np.full(n, 100.0)
+    tr["energy"] = np.ones(n)
+    tr["meta"] = {"decisions_per_day": 6 * K, "free_substeps": K}
+    return tr
+
+
+def test_v5_counts_only_exogenous_triggers() -> None:
+    """Rules v5: aggression received and density jumps in a cell occupied at the previous
+    decision's start are triggers; the individual's own cell entry, and a density jump that
+    comes with it, are not (v4 counted both). On the mobile synthetic classes, v4 reads
+    onsets that follow the individual's own entry as locked; v5 reads them spontaneous and still
+    reads onsets after exogenous triggers as locked."""
+    # K = 1: own entry into a denser cell; stays while others arrive; wounded; quiet
+    tr = _hand_trace([0, 1, 1, 1, 1], [0.3, 0.8, 1.0, 1.0, 1.0], [0, 0, 0, 0.2, 0.2])
+    assert D.prepare(tr).trigger.tolist() == [False, False, True, True, False]
+    assert D.prepare(tr, self_entries=True).trigger.tolist() == [False, True, True, True, False]
+    # K = 2: the entry happens inside decision 1; decision 2 starts in the new, denser cell
+    # (not a trigger in v5); decision 3 stays there while others arrive (a trigger)
+    tr = _hand_trace([0, 0, 0, 1, 1, 1, 1, 1], [.3, .3, .3, .3, .9, .9, 1.1, 1.1], [0] * 8, K=2)
+    assert D.prepare(tr).trigger.tolist() == [False] * 6 + [True, False]
+    assert D.prepare(tr, self_entries=True).trigger.tolist() == \
+        [False, False, False, True, True, False, True, False]
+    pos = make_colony("all_criteria_mobile_k12", seed=71)
+    neg = make_colony("triggered_mobile_k12", seed=72)
+    assert np.unique(pos["cell"]).size == 4
+    r5 = D.detect_trace(pos, kinds=("object",), n_surrogates=200, seed=3)
+    r4 = D.detect_trace(pos, kinds=("object",), n_surrogates=200, seed=3, self_entries=True)
+    rn = D.detect_trace(neg, kinds=("object",), n_surrogates=200, seed=3)
+    assert r5["rules"] == "v5" and r4["rules"] == "v4_self_entries"
+    assert r5["object"]["decisions_unvalidated"]["c2_spontaneous"], r5["object"]
+    assert not r4["object"]["decisions_unvalidated"]["c2_spontaneous"], r4["object"]
+    assert not rn["object"]["decisions_unvalidated"]["c2_spontaneous"], rn["object"]
+    assert 0.0 <= r5["relaxed_share_weaned"] <= 1.0 and r5["n_rows_weaned"] == r5["n_rows"]
+
+
 def test_gap_criterion_finds_no_structure_in_memoryless_gaps() -> None:
     rng = np.random.default_rng(5)
     n_ind, T = 40, 600
@@ -174,6 +217,7 @@ if __name__ == "__main__":
     test_trace_off_by_default_and_recorder_does_not_perturb()
     test_each_synthetic_class_fails_the_criterion_it_violates()
     test_v4_substep_rules()
+    test_v5_counts_only_exogenous_triggers()
     test_gap_criterion_finds_no_structure_in_memoryless_gaps()
     test_free_choice_v_excluding_hoppers_is_logged()
     test_no_policy_or_learner_imports_a_detector()

@@ -25,18 +25,21 @@ SHOW = (("n_episodes", "eps", "{:.0f}"), ("nf_index_unvalidated", "nf", "{:.2f}"
 
 
 def detect_run(run_dir: Path, surrogates: int, max_individuals: int | None,
-               seed: int) -> dict:
+               seed: int, self_entries: bool = False) -> dict:
     from universe25.metrics.detectors import detect_trace
     from universe25.metrics.trace import load_trace
 
     out: dict = {"run_dir": str(run_dir), "surrogates": surrogates,
-                 "max_individuals": max_individuals, "windows": {}}
+                 "max_individuals": max_individuals, "windows": {},
+                 "rules": "v4_self_entries" if self_entries else "v5"}
     for path in sorted(run_dir.glob("trace_*.npz"),
                        key=lambda p: float(p.stem.split("_")[1])):
         tr = load_trace(path)
         out["windows"][path.stem] = detect_trace(tr, n_surrogates=surrogates, seed=seed,
-                                                 max_individuals=max_individuals)
-    (run_dir / "detectors_unvalidated.json").write_text(
+                                                 max_individuals=max_individuals,
+                                                 self_entries=self_entries)
+    name = "detectors_v4_unvalidated.json" if self_entries else "detectors_unvalidated.json"
+    (run_dir / name).write_text(
         json.dumps(out, indent=1, default=float), encoding="utf-8")
     return out
 
@@ -61,8 +64,11 @@ def main() -> int:
     p.add_argument("--surrogates", type=int, default=1000)
     p.add_argument("--max-individuals", type=int, default=400)
     p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--self-entries", action="store_true",
+                   help="v4 trigger set (own cell entries count); diagnostics only")
     a = p.parse_args()
-    out = detect_run(Path(a.run_dir), a.surrogates, a.max_individuals or None, a.seed)
+    out = detect_run(Path(a.run_dir), a.surrogates, a.max_individuals or None, a.seed,
+                     self_entries=a.self_entries)
     print(format_run(out))
     return 0
 
