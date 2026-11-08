@@ -421,10 +421,24 @@ with no trigger dependence (must pass criterion 2).
 
 ---
 
+## P4-10 — Detector rules v5: exogenous triggers only (criterion 2)
+
+**Goal:** criterion 2's trigger set keeps aggression received and density jumps in a cell the
+individual already occupied; self-caused cell entries (and the density jumps that come with
+them) no longer count. Rules written into `docs/PHASE4_DESIGN.md` §2 (v5) before the test.
+Synthetic mobile classes (2 × 2 cells, objects in their own denser cell) at K = 12; fresh split
+on seeds 50,000 + …; then re-read the P4-8 simulator traces.
+
+**Acceptance criteria:**
+- the 14 v4 checks and both mobile criterion-2 checks pass the preregistered AUC / TPR / FPR
+- v4 reading kept reproducible (diagnostic switch); `tests/run_tests.py` green
+
+---
+
 ## P4-6 — Phase 4 sweep harness
 
-> **Blocked 2026-11-08:** needs the survival-condition decision (PLAN §15.1) and detector rules
-> v5 for criterion 2 (P4-9 note).
+> **2026-11-08:** survival condition decided (H-e amended to a state-based dose-response, PLAN
+> §15.1, ADOPTED); first sweep = the H-e design there. Needs detector rules v5 (P4-10) first.
 
 **Goal:** `scripts/sweep_phase4.py`: policy kind × resources (ABUND / SCARCE) × playground
 (ON / OFF) × seeds 8000–8011, 1600 d at 24 ticks/day, parquet + `run.json` + detector vectors;
@@ -459,7 +473,8 @@ identifiers `play_reward`, `reward_play`, `playscore` / `play_score` inside `lea
 > occupancy, two-day cap), optional famine pulses, scramble sharing at hoppers (abundant arm
 > bit-identical), `configs/scarce.yaml`, `tests/test_scarcity.py`. Under every design tried the
 > scarce colony is smaller and *more* relaxed than the abundant one (crowding dominates the
-> relaxed field). How abundance vs survival is defined for H-e is pending (PLAN §15.1).
+> relaxed field). H-e amended to test the animals' state, with SCARCE-PG (capacity 1,000) as
+> the food contrast (PLAN §15.1, adopted 2026-11-08).
 
 **Goal:** Add `TRACK-E-U25-SCARCE-PG` config (seed 7002) with finite food refill; smoke 30–100 days; log aggression proxy vs abundant.
 

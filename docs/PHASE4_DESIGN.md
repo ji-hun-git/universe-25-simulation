@@ -284,6 +284,26 @@ interpolated rows becomes 12-row runs in one direction), so at the sub-step grai
 detects alternation only when it happens between sub-steps — which a learner at that grain
 can produce and stretched decision-level behaviour cannot.
 
+**v5 (fixed 2026-11-08 after the v4 simulator reading, before the v5 test; card P4-10).** One
+change, to criterion 2's trigger set: a trigger is an exogenous event only — aggression
+received (wounds rise between decisions), or a local density jump in the cell the individual
+occupied at the start of its previous decision (others arrived). Entering a new cell, and a
+density jump that comes with it, is the individual's own doing — in the simulator every cell
+change is the agent's own movement, the WITHDRAW drift, or a mother's return to her nest at a
+birth — and no longer counts. Under v4, an object episode's approach crosses into a playground
+cell a few sub-steps before first contact, inside the trigger window, so every arm read
+"locked" (NOTES 2026-11-08). The synthetic classes never change cell, so their trigger series
+and every v4 check are unchanged. Test on a fresh split (seeds 50,000 + 1,000 × class +
+colony): the 14 v4 checks plus two mobile checks for criterion 2 at K = 12 —
+`all_criteria_mobile_k12` (onsets independent of exogenous triggers, in an arena split into
+2 × 2 cells with the objects in a denser cell of their own, so most object onsets follow the
+individual's own entry into that cell inside the trigger window) must be flagged spontaneous
+in ≥ 80 % of colonies and `triggered_mobile_k12` (same world, onsets after an exogenous
+trigger) in ≤ 10 %, with AUC ≥ 0.80 between them. Mobile classes record the cell of each
+row's start position the way the trace recorder does. Diagnostic, not a pass criterion: the
+v4 trigger set on `all_criteria_mobile_k12`, which should reproduce the simulator's false
+locking. Everything else is v4.
+
 **First simulator reading (training seeds 7000–7002, 4 windows).** Need-driven and random
 policies: object and locomotor episodes are non-functional (c1) and spontaneous (c2) but last
 one decision (mean 1.00–1.04 events), so c3 / c4 are not evaluable (≤ 21 direction pairs, ≤ 2

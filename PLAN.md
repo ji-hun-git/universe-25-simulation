@@ -204,7 +204,7 @@ Environment schema frozen after first successful long run + NOTES entry; learnin
 | ID | Hypothesis | Prediction | Measured by | Falsified if |
 |---|---|---|---|---|
 | H-d | Policy invariance: the calibrated curve is a property of the biology, not of the heuristic policy | 12-seed canonical landmarks of `mlp_frozen`, `mlp_ppo`, `evo` within 10 % of `need_driven` or within 2 paired se of it; decline band met at 1200 | calibration guard (`PHASE4_DESIGN.md` §4) | any canonical landmark > 10 % off the control **and** > 2 paired se (amended 2026-11-06), or the decline band missed at day 1200 |
-| H-e | Relaxed-field dependence: object / locomotor detector rates are higher under abundance than under scarcity for learned policies | criterion 1, 3, 4, 5 detector rates higher in ABUND-PG than SCARCE-PG at matched phase | per-criterion detectors (`PHASE4_DESIGN.md` §2) with surrogate controls | rates equal or higher under scarcity |
+| H-e | Surplus-resource dependence by state (amended 2026-11-08): the learned policy's play-likeness rises with the share of animals in the relaxed field | per episode kind, the number of criteria met in a window (0–5, detector rules v5) rises with that window's relaxed share at matched phase | stratified permutation test (amendment below) | pooled within-stratum Kendall τ ≤ 0 for both kinds (τ > 0 without one-sided p < 0.025 = not supported) |
 | H-f | Structure, not frequency: learned policies' object interactions differ from the heuristic's in sequence statistics (criteria 3 / 4), not only in rate | criterion 3 / 4 detectors differ from `need_driven` at matched free-choice V | time-shuffled and drive-shuffled surrogate bands | no difference beyond the surrogate band |
 | H-g | Breakdown suppresses play-likeness: detector rates fall in phases C / D (stress, withdrawal) under every policy | monotone decline after the plateau | detectors by phase | rates rise in phase D |
 | H-c (kept) | No play reward: any playground use is drive spillover unless criteria 3 / 4 show structure | code audit; H2 string audit over policy, observation and reward code | | any play-named term |
@@ -236,11 +236,43 @@ early. H-e … H-g compare conditions within a policy and are unaffected (NOTES 
 Food scarcity shrinks the colony until its survivors are fed; the smaller colony escapes the
 crowding stress that dominates the relaxed field, so the scarce arm is *more* relaxed than the
 abundant one in the later phases (day 900: 0.33–0.38 vs 0.13–0.16). H-e as written cannot test
-surplus-resource theory in this world. **Proposed amendment (pending Jason, not applied):**
-H-e tests the surplus prediction by the animals' state — detector rates as a function of the
-relaxed-field share, pooled over arms, windows and seeds (dose-response, preregistered slope
-sign) — with ABUND-PG vs SCARCE-PG (capacity 1,000) reported as a secondary contrast and its
-manipulation check stated. Criterion 2 also needs rules v5 before any sweep (NOTES 2026-11-08).
+surplus-resource theory in this world.
+
+**Amendment to H-e — ADOPTED 2026-11-08 (Jason; proposed the same day, before
+any evaluation-seed detector reading).** Original wording: object / locomotor detector rates
+are higher under abundance than under scarcity for learned policies — criteria 1, 3, 4, 5
+higher in ABUND-PG than SCARCE-PG at matched phase; falsified if equal or higher under
+scarcity. Reason: the manipulation check above. The amended test, fixed before the sweep:
+
+- *Arms.* Policy: the learned net (`mlp_frozen`, `_output/pretrain/pretrain_v2/policy_final.npz`;
+  primary), `need_driven` (control), and a random frozen net of the same architecture
+  (`MlpFrozenPolicy.random_init(7000)`, control) × food: ABUND-PG (`configs/default.yaml`) and
+  SCARCE-PG (`configs/scarce.yaml`, carrying capacity 1,000 animals) × evaluation seeds
+  8000–8011. 12 free-time sub-steps (sub-step mode `auto`), 1,010 days, traced windows
+  [400, 410), [700, 710) and [1000, 1010) days, every fourth individual; detector rules v5,
+  1,000 surrogates, at most 400 individuals per window, detector seed 0.
+- *Unit.* One window of one run: 2 food arms × 12 seeds × 3 windows = 72 per policy.
+- *Dose.* Relaxed share: the fraction of traced rows of weaned individuals (age ≥ 21 d) inside
+  the detectors' relaxed field, in that window.
+- *Response.* Per episode kind (object, locomotor): the criteria count C, the number of the five
+  v5 decision flags met (a kind with fewer than 10 episodes scores 0, as the detectors flag it).
+- *Statistic.* Kendall τ-b between dose and C within each stratum (policy × window, 24 units);
+  T = the mean τ over the policy's three strata (a stratum where C or the dose is constant
+  contributes 0). Null: dose permuted within strata, 10,000 permutations (seed 0); one-sided
+  p = (1 + #{T* ≥ T}) / 10,001. Strata by window because the relaxed share also changes with
+  phase (H-g): pooling windows would read phase as dose. Within a window the dose varies with
+  the food regime and the seed.
+- *Decision (learned net).* Per kind: supported if T > 0 and p < 0.025 (Bonferroni over the two
+  kinds); not supported if T > 0 and p ≥ 0.025; falsified if T ≤ 0. H-e is supported if either
+  kind is supported and falsified if both kinds are falsified.
+- *Reported beside it, not decisive.* The same test for both control policies (a dose-response
+  the heuristic and the random net show as well is free-time spillover, not something learned);
+  each flag and its statistic against dose; episodes per weaned individual-decision against
+  dose; Kendall τ between dose and episode count (z-based flags gain power with episodes, so a
+  dose-response that only follows episode count is read as a power effect); and the food
+  contrast ABUND-PG − SCARCE-PG in C, paired by seed and window, with the relaxed-share
+  difference (the manipulation check) beside it.
+- *Before the sweep.* Criterion 2 needs detector rules v5 (`PHASE4_DESIGN.md` §2, card P4-10).
 
 ### 15.2 Arms
 
