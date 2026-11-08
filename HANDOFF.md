@@ -548,6 +548,11 @@ plateau moved by less than its seed se. Caveats in full in `NOTES.md` → "Phase
 - **H-e amended + rules v5 (2026-11-08)**: H-e is now a state-based dose-response (adopted).
   Detector rules v5 count only exogenous triggers for criterion 2 (16 / 16 synthetic checks).
   H-e harness: `scripts/sweep_he.py`, `scripts/analyse_he.py`.
+- **H-e tested (2026-11-08)**: supported by the preregistered rule (learned net, object
+  T +0.33, locomotor T +0.23; heuristic falsified; random net object also positive, via
+  criteria 1/4). All of the variation in C comes from criterion 5, so the result is
+  state-gating that scales with relaxed share, not play. Object robust; locomotor rests on two
+  near-empty crisis windows (T +0.10, p 0.043 without them). NOTES 2026-11-08.
 
 ---
 

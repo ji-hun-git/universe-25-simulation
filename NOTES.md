@@ -1,5 +1,97 @@
 # Universe25 Play — NOTES
 
+## 2026-11-08 — H-e result: supported by the preregistered rule; the object part is robust, the locomotor part is not
+
+**Design** (PLAN §15.1 amendment, fixed before the run): 3 policies × 2 food arms × evaluation
+seeds 8000–8011, 1,010 days, 12 sub-steps, traced windows at days 400 / 700 / 1000, detector
+rules v5 (1,000 surrogates). 72 runs, 216 window units, 6,760 s at 6 workers.
+`scripts/sweep_he.py`, then `scripts/analyse_he.py`; outputs in `_output/he_sweep/`
+(`he_analysis.json`), log in `_output/he_analysis_log.txt`.
+
+**Dose** (relaxed share of weaned rows, mean ± se over 12 seeds):
+
+| policy | food | day 400 | day 700 | day 1000 |
+|---|---|---:|---:|---:|
+| learned | abund | 0.172 ± 0.022 | 0.012 ± 0.002 | 0.246 ± 0.009 |
+| learned | scarce | 0.229 ± 0.013 | 0.188 ± 0.020 | 0.229 ± 0.013 |
+| heuristic | abund | 0.110 ± 0.004 | 0.031 ± 0.001 | 0.087 ± 0.004 |
+| heuristic | scarce | 0.111 ± 0.005 | 0.062 ± 0.009 | 0.084 ± 0.011 |
+| random net | abund | 0.135 ± 0.002 | 0.062 ± 0.009 | 0.060 ± 0.003 |
+| random net | scarce | 0.136 ± 0.002 | 0.083 ± 0.008 | 0.086 ± 0.011 |
+
+The learned colony runs its arc early (H-d). At day 700 the abundant colony is in its crowding
+crisis and almost no weaned animal is relaxed (0.012). The scarce colony stays small and
+relaxed (0.19–0.23). The dose therefore varies most at day 700, and there it mostly separates
+the two food arms.
+
+**Primary test** (criteria count C on dose, Kendall τ-b within window strata, 10,000
+permutations):
+
+| policy | kind | T | τ at 400 / 700 / 1000 | p (one-sided) | preregistered reading |
+|---|---|---:|---|---:|---|
+| learned (primary) | object | +0.328 | +0.40 / +0.40 / +0.18 | 0.0004 | supported |
+| learned (primary) | locomotor | +0.229 | +0.40 / +0.29 / +0.00 | 0.0002 | supported |
+| heuristic (control) | object | −0.182 | +0.00 / −0.31 / −0.24 | 0.990 | falsified |
+| heuristic (control) | locomotor | −0.024 | +0.00 / −0.13 / +0.05 | 0.629 | falsified |
+| random net (control) | object | +0.118 | +0.35 / +0.00 / +0.00 | 0.0215 | supported |
+| random net (control) | locomotor | +0.000 | constant C | 1.000 | falsified |
+
+**H-e, by the preregistered rule: supported** (object supported, locomotor supported).
+
+**What the result rests on.** For the learned net, criteria 1, 2 and 4 are met in every window
+but one (one object window misses criterion 1). Criterion 3 is never met for object episodes
+and always met for locomotor episodes. So C varies only through criterion 5, onsets gated by
+the relaxed field: object C is 3 or 4 (17 of 72 windows meet criterion 5), and locomotor C
+is 4 or 5 (69 of 72 meet it). The finding is
+therefore narrower than "more play-like where animals are relaxed". In windows where more of
+the colony is relaxed, the learned net's onsets concentrate more strongly in the relaxed state,
+enough to cross the 2× gating threshold. The dose and criterion 5 are both defined by the
+relaxed field, so the test sits close to its own definition. Read it as state-gating that
+scales with the state's prevalence, not as evidence of play.
+
+**Reported beside it** (preregistered, not decisive):
+- Not an episode-count power effect: episode counts *fall* with dose (learned T = −0.11
+  object, −0.23 locomotor).
+- Gating statistic against dose (learned): log ratio T = +0.36 (object) and +0.53 (locomotor),
+  both p < 0.001. Criterion 2's trigger-free share rises too (+0.21, +0.31), but its flag does
+  not change.
+- Controls: the heuristic shows no dose-response in C (both kinds T ≤ 0). The random net's
+  object C reads "supported" (p 0.0215) through criteria 1 and 4, not 5. So a positive reading
+  of this test does not by itself point to learning.
+- Food contrast, abundant − scarce (learned): Δ dose −0.072 ± 0.018, Δ C object −0.33 ± 0.09,
+  locomotor −0.08 ± 0.05. Scarcity made the learned colony *more* relaxed and its object
+  episodes *more* gated. Surplus-resource theory read by food runs backwards here, as the
+  manipulation check predicted. Read by state, it agrees.
+
+**Exploratory checks** (not preregistered; scratchpad scripts `he_c5_diag.py`,
+`he_robust.py`, `he_floor.py`):
+- *Criterion 5 is limited by effect size, not power.* No window failed criterion 5 with a
+  ratio ≥ 2 and a low z. Relaxed rows number in the thousands and z values are large.
+- *The gating–dose coupling is partly structural.* The random net's log ratio also rises with
+  dose (object T = +0.51, locomotor +0.17; heuristic object z +0.33). Its onsets are not gated
+  above 2× anywhere. What sets the learned net apart is the *level* of gating (locomotor log
+  ratio 1.0–1.8, that is 3–6× more onsets when relaxed). Some of its *dependence on dose* is
+  shared by policies that do not learn.
+- *Object result is robust.* T = +0.199, p 0.0096 with strata split by food arm too, so it is
+  positive within a food arm. Leave-one-window-out T ranges over [+0.30, +0.36], max p 0.002.
+  It holds unchanged when near-empty windows are dropped.
+- *Locomotor result is not robust.* It rests on the 3 windows that fail criterion 5, all in
+  the abundant colony's crisis: doses 0.0002, 0.0014 and 0.045. Two of them have only 60 and 372
+  relaxed rows, so criterion 5 can barely be measured there (a floor). Without those two
+  windows, locomotor T = +0.098, p 0.043, which would read *not supported*. Leave-one-out alone
+  does not show this (T ≥ +0.13, max p 0.003), because the floor takes two windows.
+- *A duplicate unit.* `random_abund_8002` and `random_scarce_8002` give identical day-400
+  windows. That random colony stayed below the carrying capacity up to day 400, so the two food
+  arms had not diverged yet. It is one of 72 random-net units and does not change any reading.
+
+**Honest summary.** The preregistered test supports H-e. The robust part is narrow: the learned
+net's object onsets are more strongly gated by the relaxed field in windows where more animals
+are relaxed. This holds across seeds, within food arms and in every window stratum. The
+locomotor part depends on two crisis windows where the criterion can hardly be measured.
+Nothing here shows play. Criteria 1–4 do not discriminate on simulator movement (the random net
+meets 1–4 for locomotion everywhere). The response is criterion 5 and the dose is the relaxed
+share, so the test is near-definitional. PlayScore stays unvalidated.
+
 ## 2026-11-08 — Detector rules v5 (exogenous triggers only); H-e amended; sweep harness
 
 **H-e amended — ADOPTED by Jason (state-based dose-response).** Written into PLAN §15.1 and

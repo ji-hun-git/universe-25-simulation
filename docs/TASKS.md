@@ -445,6 +445,12 @@ on seeds 50,000 + …; then re-read the P4-8 simulator traces.
 > **2026-11-08:** survival condition decided (H-e amended to a state-based dose-response, PLAN
 > §15.1, ADOPTED); first sweep = the H-e design there. v5 done (P4-10). Harness for H-e:
 > `scripts/sweep_he.py` + `scripts/analyse_he.py`.
+>
+> **H-e answered 2026-11-08:** supported by the preregistered rule (learned net, both kinds).
+> The robust part is narrow: object onsets are more strongly gated by the relaxed field where
+> more animals are relaxed. The locomotor part rests on two near-empty crisis windows. NOTES
+> 2026-11-08. Still open for this card: H-f, H-g, the playground-off arm and the full
+> `sweep_phase4.py` grid.
 
 **Goal:** `scripts/sweep_phase4.py`: policy kind × resources (ABUND / SCARCE) × playground
 (ON / OFF) × seeds 8000–8011, 1600 d at 24 ticks/day, parquet + `run.json` + detector vectors;

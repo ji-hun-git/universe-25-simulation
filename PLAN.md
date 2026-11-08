@@ -274,6 +274,17 @@ scarcity. Reason: the manipulation check above. The amended test, fixed before t
   difference (the manipulation check) beside it.
 - *Before the sweep.* Criterion 2 needs detector rules v5 (`PHASE4_DESIGN.md` §2, card P4-10).
 
+**H-e result (2026-11-08, evaluation seeds 8000–8011, 216 window units): supported by the
+preregistered rule.** Learned net: object T = +0.328 (p 0.0004), locomotor T = +0.229
+(p 0.0002). Controls: heuristic falsified for both kinds; random net object T = +0.118
+(p 0.0215, via criteria 1 and 4), locomotor constant. C varies only through criterion 5
+(relaxed-field gating), so the finding is that onsets are more strongly gated by the relaxed
+field in windows where more animals are relaxed. This is close to definitional, and it is not
+evidence of play. Exploratory checks: the object part is robust (positive within food arms,
+and to leave-one-out). The locomotor part rests on two crisis windows with 60 and 372 relaxed
+rows; without them T = +0.098, p 0.043. Food contrast: scarcity made the learned colony more
+relaxed (Δ dose −0.072) and its object onsets more gated (Δ C −0.33). NOTES 2026-11-08.
+
 ### 15.2 Arms
 
 Policy kind × resources × playground: `need_driven` (control), `mlp_frozen`, `mlp_ppo`, `evo`;
