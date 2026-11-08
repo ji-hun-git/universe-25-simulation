@@ -468,6 +468,28 @@ split on seeds 60,000 + …, plus a simulator negative control (random-init netw
 
 ---
 
+## P4-12 — Action space v2: movement form the policy controls
+
+**Goal:** add four generic free-time movement primitives (`ACT_RUN_ON`, `ACT_TURN_BACK`,
+`ACT_BACK_OFF`, `ACT_CIRCLE`) and an agent heading. Policies can then shape how a move unfolds,
+not only when it starts; under detector rules v6 no policy can express form today. Observation
+v3 (55 floats), with v2 weight files kept bit-identical. Detector event definitions cover the
+action families. Retrain the nursery learner as `pretrain_v3`, then read it on training seeds.
+Design and checks: `docs/PHASE4_DESIGN.md` §1.8.
+
+**Files:** `agents/state.py`, `agents/policy.py`, `agents/observation.py`, `sim.py`,
+`metrics/trace.py`, `metrics/detectors.py`, `metrics/playscore.py`, `tests/test_actions_v2.py`,
+`NOTES.md`
+
+**Acceptance criteria:**
+- heuristic (K = 1, K = 12 traced) and v2-net trajectories hash identically before and after
+- a scripted alternation passes the v6 form test in both kinds; a random v3 net does not
+- `pretrain_v3` trained and read on training seeds 7000–7002 next to the random v3 net (no pass
+  condition); H-f amendment proposed to Jason before any evaluation seed
+- `tests/run_tests.py` green; H2 audit clean (no play-named identifier)
+
+---
+
 ## P4-6 — Phase 4 sweep harness
 
 > **2026-11-08:** survival condition decided (H-e amended to a state-based dose-response, PLAN

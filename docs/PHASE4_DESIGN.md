@@ -157,6 +157,70 @@ coupled to the calibrated demography (fecundity-related behaviour can drift; mon
 generation). This is the arm closest to Auerbach, Kanarek & Burghardt 2015, who evolved rather
 than trained.
 
+### 1.8 Action space v2: movement form (P4-12, fixed 2026-11-09 before implementation)
+
+**Why.** Under detector rules v6 no simulator policy meets criterion 3 or 4 anywhere, the
+learned net included (NOTES 2026-11-09). The cause is the action space, not the detectors.
+EXPLORE is an isotropic Gaussian step and MANIPULATE a straight approach to the nearest object,
+so a policy can choose *when* to move but never *how* the move unfolds. No learner could express
+a play form, whatever it learned. Action space v2 adds four generic movement primitives. They
+carry no play semantics, no new reward and no new drive (Jason's choice of 2026-11-09:
+"richer action space").
+
+**New actions** (free-time actions, like EXPLORE and MANIPULATE; codes 11–14, `N_ACTIONS` 15):
+
+| code | name | family | move (per sub-step at K = 12; × K at K = 1) |
+|---|---|---|---|
+| 11 | `ACT_RUN_ON` | locomotor | along the agent's own heading, at EXPLORE's mean step (σ_e·√(π/2), 6.0 in) |
+| 12 | `ACT_TURN_BACK` | locomotor | against the agent's own heading, same length |
+| 13 | `ACT_BACK_OFF` | object | radially away from the nearest object, 0.6 × MANIPULATE's step (1.4 in) |
+| 14 | `ACT_CIRCLE` | object | counter-clockwise around the nearest object at the current radius (at least 1 in), 0.6 × MANIPULATE's step of arc |
+
+- *Heading.* A new SoA field `heading` (radians) is set from every move of more than 1e-6 in
+  (decision moves and sub-step moves). It uses no random draw. Walls clip as for every move.
+- *Drives.* Each new action relieves exactly what its family relieves: the locomotor ones as
+  EXPLORE, the object ones as MANIPULATE (curiosity, boredom, the same fatigue). Unlike
+  MANIPULATE, they do not nudge the object. No relief depends on form, variety, switching or
+  novelty, so no particular form pays (H2).
+- *Eligibility.* As the family: the locomotor ones wherever EXPLORE is allowed; the object ones
+  wherever MANIPULATE is allowed (playground open). All four are free-time actions for the
+  sub-step layer (P4-8). In rechoose mode a network picks among all seven free actions each
+  sub-step; in continue mode the decision action repeats.
+- *Observation v3* (55 floats): v2's 49, with the last-action one-hot grown to 15 and the
+  heading (cos, sin) appended. The object block reads the objects' current positions; v2 read
+  the positions at world creation, which go stale as MANIPULATE nudges objects. A weight file
+  with v2's shapes (49 inputs, 11 outputs) keeps the v2 builder and samples the 11 base actions
+  with v2's arithmetic.
+- *Unchanged and bit-identical.* The heuristic never chooses a new action. It samples the 11
+  base actions with the same arithmetic and draws, and so do v2 networks. Biology, calibration,
+  the reward and every existing arm's trajectory are unchanged. PlayScore keeps its baseline
+  entropy over the 11 base actions and counts the new actions with explore / manipulate.
+- *Trace and detectors (event definitions only).* Object events are object-family actions
+  (MANIPULATE, BACK_OFF, CIRCLE) in contact. Locomotor events are locomotor-family actions
+  (EXPLORE, RUN_ON, TURN_BACK) above the displacement threshold. The trace's `contact` uses the
+  object family. On traces without the new actions this is identical to v6. Every rule and
+  threshold stays v6.
+- *Learner.* `pretrain_v3` = the `pretrain_v2` recipe (nursery v2 worlds, the same PPO
+  settings, 1e8 transitions, seed 7000, K = 12 rechoose) with observation v3 and 15 actions.
+
+**Acceptance checks (preregistered):**
+1. *Bit-identity.* These trajectories hash identically before and after the change: the
+   heuristic at K = 1 (300 d) and at K = 12 (200 d, with a traced window), the `pretrain_v2`
+   net (150 d) and the random v2 net (120 d), all at seed 7000, 6 ticks per day.
+2. *Form is expressible and seen.* A scripted test policy (in the tests only, never a teacher)
+   alternates MANIPULATE / BACK_OFF and RUN_ON / TURN_BACK in free time. Its object and
+   locomotor episodes must pass the v6 form test (excess ≥ 0.10, z > 1.645). A random v3
+   network (`MlpFrozenPolicy.random_init`), which mixes the primitives at random, must not, in
+   the same short run.
+3. *Learned reading* (development, training seeds 7000–7002, windows at days 400 / 700 / 1000,
+   v6 detectors): reported with the random v3 net beside it, with no pass condition. This is
+   the question the substrate now allows. The P4-1-style curve guard for the v3 learner is
+   reported too; H-d already found the learned arm not preserved.
+
+**What this does not settle.** H-f compares the learned policy with the heuristic, which cannot
+use the new primitives. Once the learned reading exists, an amendment to H-f (learned v3 vs the
+random v3 net, at matched V) goes to Jason before any evaluation seed is read.
+
 ## 2. Measurement: detectors per Burghardt criterion (eval-only, unvalidated)
 
 Principles. Every detector is computed after the fact from logs (position, action, drives, cell,
