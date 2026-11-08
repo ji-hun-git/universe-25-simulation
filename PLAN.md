@@ -285,6 +285,14 @@ and to leave-one-out). The locomotor part rests on two crisis windows with 60 an
 rows; without them T = +0.098, p 0.043. Food contrast: scarcity made the learned colony more
 relaxed (Δ dose −0.072) and its object onsets more gated (Δ C −0.33). NOTES 2026-11-08.
 
+**Detector rules v6 (2026-11-09, card P4-11; not an amendment of any hypothesis).** Criteria 3
+and 4 now need a form beyond chance (all preregistered checks pass). Re-read with v6 flags,
+the H-e numbers for the learned net are unchanged; the random control's object reading falls
+to not supported (p 0.047). Under v6 no policy meets criterion 3 or 4 in any window, so H-f as
+written would compare zeros: no policy controls the path of a move (EXPLORE is a Gaussian
+step, MANIPULATE a straight approach). H-f is untested pending a decision on the action space
+or on measuring structure in action sequences. NOTES 2026-11-09.
+
 ### 15.2 Arms
 
 Policy kind × resources × playground: `need_driven` (control), `mlp_frozen`, `mlp_ppo`, `evo`;

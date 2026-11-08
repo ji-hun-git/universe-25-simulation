@@ -442,6 +442,12 @@ on seeds 50,000 + …; then re-read the P4-8 simulator traces.
 
 ## P4-11 — Detector rules v6: a form beyond chance (criteria 3 and 4)
 
+> **Done 2026-11-09:** 18 / 18 synthetic checks on seeds 60,000+ (every AUC
+> 1.000); simulator negative control: criteria 3 / 4 met in 0 of 18 windows per kind (v5: 18
+> of 18). Re-reading the H-e sweep: no policy, the learned net included, meets criterion 3 or
+> 4 in any window — the simulator gives policies no control over movement form. NOTES
+> 2026-11-09.
+
 **Goal:** under v5 a random-init network meets criteria 1–4 for locomotion everywhere, because
 the simulator's EXPLORE moves are isotropic random walks and neither criterion 3 nor criterion 4
 asked for structure beyond chance. v6 adds one form test to both: the episodes' approach–withdraw
@@ -473,6 +479,11 @@ split on seeds 60,000 + …, plus a simulator negative control (random-init netw
 > more animals are relaxed. The locomotor part rests on two near-empty crisis windows. NOTES
 > 2026-11-08. Still open for this card: H-f, H-g, the playground-off arm and the full
 > `sweep_phase4.py` grid.
+>
+> **2026-11-09 (rules v6, P4-11):** H-f is not testable in the current action space — under v6
+> no policy meets criterion 3 or 4 anywhere, because no policy controls the path of a move.
+> Needs a decision (richer action space under the calibration guard, or structure measured on
+> action sequences) before H-f.
 
 **Goal:** `scripts/sweep_phase4.py`: policy kind × resources (ABUND / SCARCE) × playground
 (ON / OFF) × seeds 8000–8011, 1600 d at 24 ticks/day, parquet + `run.json` + detector vectors;

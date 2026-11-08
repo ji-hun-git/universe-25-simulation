@@ -368,6 +368,17 @@ Known limits, recorded before the test:
   MANIPULATE a straight approach to the nearest object. Path-form criteria can therefore reflect
   a policy only through the order in which it chooses actions.
 
+**v6 test result (2026-11-09): every preregistered check passes.** Synthetic split (seeds
+60,000 + …, 30 colonies per class, 1,000 surrogates): 18 of 18 — the 16 v5 checks scored with
+v6 flags and both random-walk checks — every AUC 1.000, TPR 1.00, FPR 0.00
+(`_output/detector_validation_v6.json`); `random_walk` now meets criteria 1 and 2 only.
+Simulator negative control (`_output/negcontrol_v6/summary.json`): criteria 3 and 4 met in 0
+of 18 windows per kind (v5 on the same windows: locomotor criteria 3 and 4 in 18 of 18, object
+criterion 4 in 18 of 18). v6 is the frozen rule set. Re-reading the H-e sweep with v6
+(exploratory): no policy — learned, heuristic or random — meets criterion 3 or 4 in any of
+216 windows per kind; the learned net's object episodes approach and hold (reversal fraction
+0.008), its locomotor episodes are the simulator's random walk (NOTES 2026-11-09).
+
 **First simulator reading (training seeds 7000–7002, 4 windows).** Need-driven and random
 policies: object and locomotor episodes are non-functional (c1) and spontaneous (c2) but last
 one decision (mean 1.00–1.04 events), so c3 / c4 are not evaluable (≤ 21 direction pairs, ≤ 2

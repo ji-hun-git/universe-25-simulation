@@ -1,5 +1,75 @@
 # Universe25 Play — NOTES
 
+## 2026-11-09 — Detector rules v6: criteria 3 and 4 need a form beyond chance; no simulator policy has one
+
+**Why.** Under v5 a random-init network met criteria 1–4 for locomotion in every window. The
+development look (synthetic seeds 101–103; P4-8 traces of training seeds 7000–7002) found the
+cause in the simulator itself. Every EXPLORE sub-step is an isotropic Gaussian step. For the
+random net and the heuristic alike, the turn classes of locomotor events come out at
+0.25 / 0.25 / 0.25 / 0.25 (straight / left / right / reverse), and the entropy rate equals that
+of the order-shuffled sequence. Locomotor "episodes" are random walks, and a random walk meets
+v5's criterion 3 (about half its direction pairs reverse relative to the end point; serious
+runs have none) and criterion 4 (never rigid, never habituates).
+
+**Rules v6** (preregistered in `docs/PHASE4_DESIGN.md` §2, commit f156624, before any test):
+- Criteria 3 and 4 also need a *form test*: the episodes' approach–withdraw reversal fraction
+  must beat a within-episode order shuffle of the same labels (excess ≥ 0.10, z > 1.645).
+- The form test draws from its own random stream, so every v5 statistic is unchanged.
+- The v5 flags stay in the output.
+
+Development values of the excess: `all_criteria` 0.17–0.21, `random_walk` ≤ 0.05, simulator
+random net and heuristic ≤ 0.03. Entropy-rate and turn-coding variants were tried in
+development and dropped. With end-point coding a random walk reads more predictable than its
+own shuffle (end effects). With turn coding the synthetic positive class has no order to
+detect.
+
+**Test results (all preregistered checks pass):**
+- *Synthetic split* (seeds 60,000 + …, 30 colonies per class, 1,000 surrogates): **18 of 18**,
+  every AUC 1.000, TPR 1.00, FPR 0.00. These are the 16 v5 checks scored with v6 flags plus
+  both random-walk checks (`_output/detector_validation_v6.json`). `random_walk` now meets
+  criteria 1 and 2 only.
+- *Simulator negative control* (`scripts/negcontrol_v6.py`; random-init networks with init
+  seeds 7001 / 7002 on training seeds 7003–7005, never used before; 18 windows per kind):
+  criteria 3 and 4 are met in **0 of 18** windows per kind. Under v5, the same windows met
+  locomotor criteria 3 and 4 in 18 of 18 and object criterion 4 in 18 of 18. The random nets'
+  form excess is −0.09 to −0.03 for object episodes (approach-and-hold has fewer reversals than
+  chance order) and −0.02 to +0.05 for locomotor episodes.
+
+**v6 re-reading of the H-e sweep** (exploratory: 216 windows per kind, evaluation seeds already
+read under v5; v5 files kept as `detectors_v5_unvalidated.json`). The v5 analysis reproduces
+exactly from the v6 files.
+
+| policy | kind | c1..c5, v5 | c1..c5, v6 | form excess median [range] | reversal median |
+|---|---|---|---|---|---:|
+| learned | object | 0.99 1.00 0.00 1.00 0.24 | 0.99 1.00 0.00 0.00 0.24 | −0.051 [−0.111, −0.011] | 0.008 |
+| learned | locomotor | 1.00 1.00 1.00 1.00 0.96 | 1.00 1.00 0.00 0.00 0.96 | +0.009 [−0.010, +0.030] | 0.445 |
+| heuristic | object | 0.96 1.00 0.00 0.00 0.00 | 0.96 1.00 0.00 0.00 0.00 | +0.000 [−0.004, +0.006] | 0.000 |
+| heuristic | locomotor | 1.00 1.00 1.00 1.00 0.06 | 1.00 1.00 0.00 0.00 0.06 | +0.019 [+0.004, +0.036] | 0.486 |
+| random net | object | 0.94 1.00 0.00 0.99 0.00 | 0.94 1.00 0.00 0.00 0.00 | −0.048 [−0.201, −0.002] | 0.007 |
+| random net | locomotor | 1.00 1.00 1.00 1.00 0.00 | 1.00 1.00 0.00 0.00 0.00 | +0.012 [−0.072, +0.049] | 0.448 |
+
+- **No policy meets criterion 3 or 4 in any window, the learned net included.** The learned
+  net's object episodes approach and hold (reversal fraction 0.008). Its locomotor episodes are
+  the simulator's random walk (excess +0.01). This holds in every food arm and window.
+- The H-e test with v6 flags (`he_analysis_v6flags.json`) leaves the learned net unchanged:
+  object T +0.328, locomotor T +0.229, because C already varied only through criterion 5. The
+  random control's object reading drops from "supported" (p 0.0215, via criteria 1 and 4) to
+  not supported (T +0.099, p 0.047, criterion 1 only). v6 removes the control's false positive.
+
+**What this means.**
+- The criteria now discriminate random behaviour. What remains play-relevant in the simulator is
+  criterion 1 (non-functional), criterion 2 (untriggered) and criterion 5 (relaxed gating). A
+  random network meets the first two by nature.
+- The deeper limit is the substrate, not the detectors. No policy controls the path of a move:
+  EXPLORE is a Gaussian step and MANIPULATE a straight approach to the nearest object. A policy
+  can shape only *when* it chooses an action, never *how* the move unfolds. So a learner cannot
+  express a play form here, whatever it learns.
+- H-f ("learned object interactions differ from the heuristic's in sequence statistics,
+  criteria 3 / 4") would compare zeros. It is not tested; it needs either a richer action space
+  (movement relative to objects and conspecifics, under the calibration guard) or structure
+  measured at the level of action sequences. That is Jason's decision.
+- Nothing here shows play, and nothing rules it out in a substrate that allows form.
+
 ## 2026-11-08 — H-e result: supported by the preregistered rule; the object part is robust, the locomotor part is not
 
 **Design** (PLAN §15.1 amendment, fixed before the run): 3 policies × 2 food arms × evaluation

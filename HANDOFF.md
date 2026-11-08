@@ -553,6 +553,11 @@ plateau moved by less than its seed se. Caveats in full in `NOTES.md` → "Phase
   criteria 1/4). All of the variation in C comes from criterion 5, so the result is
   state-gating that scales with relaxed share, not play. Object robust; locomotor rests on two
   near-empty crisis windows (T +0.10, p 0.043 without them). NOTES 2026-11-08.
+- **Detector rules v6 (2026-11-09)**: criteria 3 / 4 need a form beyond chance (order-shuffle
+  test); 18 / 18 synthetic checks, simulator negative control 0 / 18 windows. No simulator
+  policy, the learned net included, meets criterion 3 or 4 anywhere: EXPLORE is a Gaussian
+  step and MANIPULATE a straight approach, so no policy controls movement form. H-f untested;
+  next decision: richer action space (under the calibration guard) or action-sequence form.
 
 ---
 
