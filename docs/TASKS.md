@@ -440,6 +440,28 @@ on seeds 50,000 + …; then re-read the P4-8 simulator traces.
 
 ---
 
+## P4-11 — Detector rules v6: a form beyond chance (criteria 3 and 4)
+
+**Goal:** under v5 a random-init network meets criteria 1–4 for locomotion everywhere, because
+the simulator's EXPLORE moves are isotropic random walks and neither criterion 3 nor criterion 4
+asked for structure beyond chance. v6 adds one form test to both: the episodes' approach–withdraw
+reversal fraction must beat a within-episode order shuffle of the same labels (excess ≥ 0.10,
+z > 1.645). Rules written into `docs/PHASE4_DESIGN.md` §2 (v6) before the test. Fresh synthetic
+split on seeds 60,000 + …, plus a simulator negative control (random-init networks, init seeds
+7001 / 7002, training seeds 7003–7005).
+
+**Files:** `src/universe25/metrics/detectors.py`, `scripts/validate_detectors.py`,
+`scripts/negcontrol_v6.py`, `tests/test_detectors.py`, `NOTES.md`
+
+**Acceptance criteria:**
+- the 16 v5 checks (with v6 flags) and both random-walk checks pass the preregistered
+  AUC / TPR / FPR
+- the simulator negative control meets criterion 3 and criterion 4 in ≤ 10 % of windows per kind
+- every v5 statistic unchanged (the form test draws from its own random stream); v5 flags kept in
+  the output; `tests/run_tests.py` green
+
+---
+
 ## P4-6 — Phase 4 sweep harness
 
 > **2026-11-08:** survival condition decided (H-e amended to a state-based dose-response, PLAN

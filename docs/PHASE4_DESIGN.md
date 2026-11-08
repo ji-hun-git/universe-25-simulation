@@ -314,6 +314,60 @@ not affected (a run starts where the individual stands). So the synthetic mobile
 reproduces the simulator's false locking, and v5 removes it without losing true locking. v5 is
 the frozen rule set.
 
+**v6 (fixed 2026-11-09 after the H-e reading, before the v6 test; card P4-11).** One change:
+criteria 3 and 4 both require a form beyond chance. Under v5 the random-init network and the
+heuristic met criteria 1–4 for locomotion in every window (NOTES 2026-11-08). The development
+look (synthetic seeds 101–103 and the P4-8 traces of training seeds 7000–7002, never an
+evaluation seed) found why. In the simulator every EXPLORE sub-step is an isotropic Gaussian
+step, so turn classes come out at 0.25 / 0.25 / 0.25 / 0.25 with no sequential structure, for
+every policy. Locomotor "episodes" are therefore random walks. A random walk meets v5's
+criterion 3 (about half of its direction pairs reverse relative to the end point, against none
+for direct serious runs) and criterion 4 (never rigid, no habituation). Neither criterion asked
+for structure beyond chance, although item 2 of the validation plan below says a
+within-individual time shuffle should collapse both.
+- *Form test.* The episodes' approach–withdraw reversal fraction (criterion 3's statistic)
+  against a within-episode order shuffle of the same direction labels. Each episode's own event
+  decisions keep their positions, and their approach / withdraw / neutral labels are permuted,
+  1,000 shuffles on a random stream of their own, so every v5 statistic is unchanged. Excess =
+  observed − shuffle mean, and z is taken against the shuffles. The form test is met when the
+  excess is ≥ 0.10 and z > 1.645 (floor: a tenth of the direction pairs more reversals than the
+  same moves in chance order).
+- *Criterion 3* = v5 criterion 3 and the form test. *Criterion 4* = v5 criterion 4 and the
+  form test: a behaviour repeated "in a similar form" must have a form, and an order-shuffled
+  copy of a random walk is the same random walk.
+- Criteria 1, 2 and 5 are unchanged. They are absence or gating criteria, which random
+  behaviour meets or fails on its own merits (it is non-functional and untriggered). This is
+  recorded, not changed. The output keeps the v5 flags (`decisions_v5_unvalidated`) for
+  continuity.
+
+Development values of the excess:
+- `all_criteria`: 0.17–0.21 (both kinds, z 5–8).
+- `random_walk`: −0.03 to +0.05.
+- Simulator random network and heuristic, both kinds: ≤ 0.03, with z up to 4.8 at thousands of
+  pairs (hence the floor).
+
+Test on a fresh split (seeds 60,000 + 1,000 × class + colony, 30 colonies per class, 1,000
+surrogates). Pass conditions:
+- The 16 v5 checks, scored with v6 flags.
+- Two random-walk checks, locomotor episodes only (`random_walk` has no object episodes). AUC
+  ≥ 0.80 of the form excess between `all_criteria` and `random_walk`, and criterion 3 and
+  criterion 4 flags each met in ≥ 80 % of `all_criteria` colonies and ≤ 10 % of `random_walk`
+  colonies.
+- A simulator negative control (`scripts/negcontrol_v6.py`): random-init networks of the learned
+  net's architecture (`MlpFrozenPolicy.random_init`, init seeds 7001 and 7002, never used) on
+  training seeds 7003–7005 (never traced). K = 12, 1,010 days, windows at days
+  400 / 700 / 1000, every fourth individual, ≤ 400 individuals, 1,000 surrogates. Criterion 3
+  and criterion 4 flags must each be met in ≤ 10 % of the 18 windows per kind.
+
+Diagnostic, not a pass condition: v5 flags on the same traces.
+
+Known limits, recorded before the test:
+- The form test detects one kind of form, approach–withdraw alternation. A play form without
+  alternation (a stereotyped circuit, repeated straight dashes) fails it.
+- In this simulator no policy controls the path of a move: EXPLORE is a Gaussian step and
+  MANIPULATE a straight approach to the nearest object. Path-form criteria can therefore reflect
+  a policy only through the order in which it chooses actions.
+
 **First simulator reading (training seeds 7000–7002, 4 windows).** Need-driven and random
 policies: object and locomotor episodes are non-functional (c1) and spontaneous (c2) but last
 one decision (mean 1.00–1.04 events), so c3 / c4 are not evaluable (≤ 21 direction pairs, ≤ 2
