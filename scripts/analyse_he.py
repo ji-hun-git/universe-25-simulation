@@ -12,7 +12,11 @@ statistic against dose; episodes per weaned individual-decision and the episode 
 dose (a dose-response that only follows episode count reads as a power effect); and the food
 contrast abund - scarce in C, paired by seed and window, with the dose difference beside it.
 
-usage: python scripts/analyse_he.py [--sweep _output/he_sweep] [--perm 10000]
+The preregistered test reads the v5 flags (from a v6 detector file, its decisions_v5 copy, whose
+statistics are identical); --flags v6 re-reads the same units with the v6 flags (exploratory,
+written to he_analysis_v6flags.json).
+
+usage: python scripts/analyse_he.py [--sweep _output/he_sweep] [--perm 10000] [--flags v5|v6]
 Writes <sweep>/he_analysis.json and prints the tables.
 """
 from __future__ import annotations
@@ -40,15 +44,18 @@ STATS = ("nf_index_unvalidated", "onset_trigger_free_unvalidated",
          "rep_exposure_slope_unvalidated", "gate_relaxed_log_ratio_unvalidated")
 
 
-def load_units(sweep: Path) -> list[dict]:
+def load_units(sweep: Path, flag_set: str = "v5") -> list[dict]:
     units = []
+    key = {"v5": {"v5": "decisions_unvalidated", "v6": "decisions_v5_unvalidated"},
+           "v6": {"v6": "decisions_unvalidated"}}[flag_set]
     for d in sorted(p for p in sweep.iterdir() if p.is_dir()):
         f = d / "detectors_unvalidated.json"
         if not f.exists():
             continue
         det = json.loads(f.read_text(encoding="utf-8"))
-        if det.get("rules") != "v5":
-            raise SystemExit(f"{f}: not read with detector rules v5")
+        if det.get("rules") not in key:
+            raise SystemExit(f"{f}: rules {det.get('rules')!r} carry no {flag_set} flags")
+        fkey = key[det["rules"]]
         policy, food, seed = d.name.rsplit("_", 2)
         for wkey, res in det["windows"].items():
             u = {"policy": policy, "food": food, "seed": int(seed),
@@ -57,7 +64,7 @@ def load_units(sweep: Path) -> list[dict]:
             dec = max(1.0, res["n_rows_weaned"] / K)
             for kind in KINDS:
                 r = res[kind]
-                flags = r["decisions_unvalidated"]
+                flags = r[fkey]
                 u[f"{kind}:C"] = int(sum(bool(flags[k]) for k in FLAGS))
                 u[f"{kind}:n_episodes"] = int(r["n_episodes"])
                 u[f"{kind}:rate"] = float(r["n_episodes"]) / dec
@@ -87,10 +94,11 @@ def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--sweep", type=str, default=str(ROOT / "_output" / "he_sweep"))
     p.add_argument("--perm", type=int, default=10_000)
+    p.add_argument("--flags", choices=("v5", "v6"), default="v5")
     a = p.parse_args()
     sweep = Path(a.sweep)
-    units = load_units(sweep)
-    report: dict = {"n_units": len(units), "alpha_one_sided": ALPHA, "doses": {},
+    units = load_units(sweep, a.flags)
+    report: dict = {"n_units": len(units), "alpha_one_sided": ALPHA, "flags": a.flags, "doses": {},
                     "primary": {}, "secondary": {}, "food_contrast": {}}
     print(f"{len(units)} window units from {sweep}")
 
@@ -172,7 +180,7 @@ def main() -> int:
                   f"{dc['mean']:+.2f} ± {dc['se']:.2f} | {dr['mean']:+.4f} ± {dr['se']:.4f} | "
                   + " ".join(f"{v:.2f}" for v in fa) + " / " + " ".join(f"{v:.2f}" for v in fs)
                   + " |")
-    out = sweep / "he_analysis.json"
+    out = sweep / ("he_analysis.json" if a.flags == "v5" else "he_analysis_v6flags.json")
     out.write_text(json.dumps({"report": report, "units": units}, indent=1, default=float),
                    encoding="utf-8")
     print(f"\nwritten {out}")

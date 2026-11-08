@@ -6,10 +6,12 @@ frozen net of the same architecture, MlpFrozenPolicy.random_init(7000)} x food {
 configs/default.yaml (ABUND-PG), scarce: configs/scarce.yaml (SCARCE-PG, capacity 1,000)} x
 evaluation seeds 8000-8011. 12 free-time sub-steps (sub-step mode auto), 1,010 days at the
 reference 6 ticks/day; traced windows [400, 410), [700, 710), [1000, 1010) days, every fourth
-individual; then detector rules v5 (1,000 surrogates, at most 400 individuals per window, seed 0).
+individual; then the detectors (preregistered with rules v5; the current rule set is read too,
+1,000 surrogates, at most 400 individuals per window, seed 0).
 
 Resumable: a run whose run.json and three traces exist is not rerun; a run whose detector file
-is present with rules v5 is not re-detected. Writes _output/he_sweep/<policy>_<food>_<seed>/.
+is present with the current rules is not re-detected (a file of an older rule set is kept as
+detectors_<rules>_unvalidated.json). Writes _output/he_sweep/<policy>_<food>_<seed>/.
 
 usage: python scripts/sweep_he.py [--workers 6] [--seeds 8000-8011] [--policies ...] [--foods ...]
 then:  python scripts/analyse_he.py
@@ -77,7 +79,9 @@ def detect_one(path: str) -> tuple[str, float]:
     f = d / "detectors_unvalidated.json"
     if f.exists():
         try:
-            if json.loads(f.read_text(encoding="utf-8")).get("rules") == "v5":
+            from universe25.metrics.detectors import RULES
+
+            if json.loads(f.read_text(encoding="utf-8")).get("rules") == RULES:
                 return path, 0.0
         except json.JSONDecodeError:
             pass

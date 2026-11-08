@@ -83,6 +83,34 @@ def test_each_synthetic_class_fails_the_criterion_it_violates() -> None:
     assert not rw["locomotor"]["decisions_unvalidated"]["c5_relaxed_field"]
 
 
+def test_v6_form_test_needs_structure_beyond_chance() -> None:
+    """Rules v6: a random walk meets v5 criteria 3 and 4 for locomotion but not the form test
+    (its reversal fraction is that of its own order shuffle); all_criteria passes it in both
+    kinds; the form test draws from its own stream, so no v5 statistic depends on it."""
+    rw = D.detect_trace(make_colony("random_walk", seed=33), n_surrogates=200, seed=3)
+    loc = rw["locomotor"]
+    assert loc["seq_struct_form_excess_unvalidated"] < D.FORM_MIN_EXCESS, loc
+    assert loc["decisions_v5_unvalidated"]["c3_structurally_different"], loc  # what v6 fixes
+    assert not loc["decisions_unvalidated"]["c3_structurally_different"]
+    assert not loc["decisions_unvalidated"]["c4_repeated_not_rigid"]
+    pos = D.detect_trace(make_colony("all_criteria", seed=31), n_surrogates=200, seed=3)
+    for kind in ("object", "locomotor"):
+        assert pos[kind]["seq_struct_form_excess_unvalidated"] >= D.FORM_MIN_EXCESS, kind
+        assert pos[kind]["decisions_unvalidated"] == pos[kind]["decisions_v5_unvalidated"]
+    S = D.prepare(make_colony("all_criteria", seed=31))
+    a = D.detect_kind(S, "locomotor", n_surrogates=50, seed=3)
+    orig = D.form_test
+    try:
+        D.form_test = lambda *args, **kw: {}
+        b = D.detect_kind(S, "locomotor", n_surrogates=50, seed=3)
+    finally:
+        D.form_test = orig
+    assert b["decisions_v5_unvalidated"] == a["decisions_v5_unvalidated"]
+    for k, v in b.items():
+        if k.endswith("_unvalidated") and not k.startswith("decisions"):
+            assert np.array_equal(np.asarray(v), np.asarray(a[k]), equal_nan=True), k
+
+
 def test_v4_substep_rules() -> None:
     """Rules v4: with K = 1 the trigger window is v3's (the onset row or the consecutive row
     before); with 12 sub-steps per decision, onsets independent of triggers read spontaneous and
@@ -138,7 +166,7 @@ def test_v5_counts_only_exogenous_triggers() -> None:
     r5 = D.detect_trace(pos, kinds=("object",), n_surrogates=200, seed=3)
     r4 = D.detect_trace(pos, kinds=("object",), n_surrogates=200, seed=3, self_entries=True)
     rn = D.detect_trace(neg, kinds=("object",), n_surrogates=200, seed=3)
-    assert r5["rules"] == "v5" and r4["rules"] == "v4_self_entries"
+    assert r5["rules"] == D.RULES and r4["rules"] == "v4_self_entries"
     assert r5["object"]["decisions_unvalidated"]["c2_spontaneous"], r5["object"]
     assert not r4["object"]["decisions_unvalidated"]["c2_spontaneous"], r4["object"]
     assert not rn["object"]["decisions_unvalidated"]["c2_spontaneous"], rn["object"]
@@ -216,6 +244,7 @@ def test_detector_code_has_no_play_named_identifier() -> None:
 if __name__ == "__main__":
     test_trace_off_by_default_and_recorder_does_not_perturb()
     test_each_synthetic_class_fails_the_criterion_it_violates()
+    test_v6_form_test_needs_structure_beyond_chance()
     test_v4_substep_rules()
     test_v5_counts_only_exogenous_triggers()
     test_gap_criterion_finds_no_structure_in_memoryless_gaps()

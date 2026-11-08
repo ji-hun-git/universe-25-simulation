@@ -26,6 +26,12 @@ local density jump in the cell the individual occupied at the start of its previ
 (others arrived). Its own cell entries, and density jumps that come with them, no longer
 count; `self_entries=True` restores the v4 trigger set (diagnostics only).
 
+Rules v6 (2026-11-09): criteria 3 and 4 also need a form beyond chance - the episodes'
+approach-withdraw reversal fraction must beat a within-episode order shuffle of the same
+direction labels (excess >= 0.10 and z > 1.645; own random stream, so every v5 statistic is
+unchanged). A random walk has the reversal fraction of its own shuffle. The v5 flags stay in the
+output as `decisions_v5_unvalidated`.
+
 Criteria (decision rules v3, preregistered in PHASE4_DESIGN.md section 2; form
 statistics use only the episode's own event decisions; the gap criterion is a
 maximum-likelihood one- vs two-process fit, Sibly et al. 1990):
@@ -38,14 +44,16 @@ maximum-likelihood one- vs two-process fit, Sibly et al. 1990):
                           the start of the previous decision to the onset (v4 window);
                           null = circular shift of the trigger series. A spontaneous behaviour is
                           not time-locked below chance.                          flag: z >= -1.645
-  3 structurally different seq_struct_js: Jensen-Shannon divergence between the movement-symbol
-                          transitions inside episodes and inside serious approaches (FORAGE /
-                          DRINK runs); null = label permutation over sequences.  flag: z > 1.645
-                          (approach-withdraw reversals and amplitude are reported alongside)
+  3 structurally different seq_struct_reversal: approach-withdraw reversal fraction of the
+                          episodes (radial direction to each sequence's own end point), its
+                          excess over serious FORAGE / DRINK runs; null = label permutation over
+                          sequences. flag: reversal >= 0.25, excess >= 0.2, z > 1.645, and (v6)
+                          the form test (JS divergence and amplitude are reported alongside)
   4 repeated, not rigid   rep_rigid_loop_frac: fraction of same-individual episode pairs (length
                           >= 2) with normalised edit distance < 0.2; rep_exposure_slope: slope of
-                          log onset rate on log(1 + cumulative exposure). flag: rigid <= 0.2 and
-                          slope > -0.5 (entropy rate and recurrence are reported alongside)
+                          log onset rate on log(1 + cumulative exposure). flag: rigid <= 0.2,
+                          slope > -0.5 and (v6) the form test (entropy rate and recurrence are
+                          reported alongside)
   5 relaxed field         gate_relaxed_log_ratio: log P(onset | relaxed) / P(onset | not relaxed);
                           null = circular shift of the relaxed flag.             flag: z > 1.645
 """
@@ -77,9 +85,11 @@ EXPOSURE_SLOPE_MIN = -0.5
 MIN_EPISODES = 10
 GAP_BIC_MARGIN = 10.0  # v3: two-process model must beat one process by this much
 REV_TEMPLATE_MIN_PAIRS = 20  # v4: serious reversal fraction below this support counts as 0
+FORM_MIN_EXCESS = 0.10  # v6: reversal fraction >= order-shuffle mean + 0.10 (and z > 1.645)
 MAX_RIGID_PAIRS = 4000
 N_SYM = 9  # movement symbols: 3 displacement bins x 3 radial directions
 KINDS = ("object", "locomotor")
+RULES = "v6"  # rule-set label written into every detector output
 
 
 @dataclass
@@ -550,6 +560,46 @@ def crit3(S: Steps, ev: np.ndarray, s: np.ndarray, e: np.ndarray, B: int,
     return res
 
 
+def form_test(S: Steps, ev: np.ndarray, s: np.ndarray, e: np.ndarray, B: int,
+              rng: np.random.Generator) -> dict:
+    """Rules v6: the episodes' approach-withdraw reversal fraction (criterion 3's statistic:
+    own event decisions, radial direction to each episode's end point) against a within-episode
+    order shuffle of the same direction labels. The own rows keep their positions and their
+    labels are permuted, so the pairs that can form are those of the observed episodes. A random
+    walk has the reversal fraction of its own shuffle; an alternating form exceeds it."""
+    nan = float("nan")
+    out = {"seq_struct_form_excess_unvalidated": nan, "seq_struct_form_z_unvalidated": nan,
+           "seq_struct_form_null_mean_unvalidated": nan}
+    rows, seq, _, delta = _seq_symbols(S, s, e)
+    if rows.size < 2:
+        return out
+    own = ev[rows]
+    d = np.where(own, np.where(delta < -1.0, -1, np.where(delta > 1.0, 1, 0)), 0)
+    link = seq[:-1] == seq[1:]
+
+    def frac(dd: np.ndarray) -> float:
+        ok = link & (dd[:-1] != 0) & (dd[1:] != 0)
+        n = int(ok.sum())
+        return float((ok & (dd[:-1] != dd[1:])).sum() / n) if n >= 10 else nan
+
+    obs = frac(d)
+    if not np.isfinite(obs):
+        return out
+    idx = np.flatnonzero(own)
+    null = np.empty(B)
+    dd = d.copy()
+    for b in range(B):
+        dd[idx] = d[idx[np.lexsort((rng.random(idx.size), seq[idx]))]]
+        null[b] = frac(dd)
+    fin = null[np.isfinite(null)]
+    if fin.size < 2:
+        return out
+    out["seq_struct_form_excess_unvalidated"] = float(obs - fin.mean())
+    out["seq_struct_form_z_unvalidated"] = _z(obs, fin)
+    out["seq_struct_form_null_mean_unvalidated"] = float(fin.mean())
+    return out
+
+
 # ---------------------------------------------------------------- criterion 4
 def _levenshtein(a: list[int], b: list[int]) -> int:
     if len(a) < len(b):
@@ -728,7 +778,19 @@ def crit5(S: Steps, cand: np.ndarray, onset: np.ndarray, B: int,
 
 # ---------------------------------------------------------------- driver
 def decisions(r: dict[str, float]) -> dict[str, bool]:
-    """Preregistered per-criterion flags (PHASE4_DESIGN.md section 2); NaN reads as False."""
+    """Preregistered per-criterion flags, rules v6 (PHASE4_DESIGN.md section 2): the v5 flags,
+    with criteria 3 and 4 also requiring the form test; NaN reads as False."""
+    out = decisions_v5(r)
+    ex = r.get("seq_struct_form_excess_unvalidated", float("nan"))
+    z = r.get("seq_struct_form_z_unvalidated", float("nan"))
+    form = bool(np.isfinite(ex) and np.isfinite(z) and ex >= FORM_MIN_EXCESS and z > Z95)
+    out["c3_structurally_different"] = out["c3_structurally_different"] and form
+    out["c4_repeated_not_rigid"] = out["c4_repeated_not_rigid"] and form
+    return out
+
+
+def decisions_v5(r: dict[str, float]) -> dict[str, bool]:
+    """Per-criterion flags of rules v5 (kept for continuity); NaN reads as False."""
     def gt(k: str, v: float) -> bool:
         x = r.get(k, float("nan"))
         return bool(np.isfinite(x) and x > v)
@@ -788,13 +850,17 @@ def detect_kind(S: Steps, kind: str, n_surrogates: int = 1000, seed: int = 0,
     if s.size < MIN_EPISODES:
         base["note"] = f"fewer than {MIN_EPISODES} episodes: criteria not evaluated"
         base["decisions_unvalidated"] = {k: False for k in decisions({})}
+        base["decisions_v5_unvalidated"] = dict(base["decisions_unvalidated"])
         return base
     base.update(crit1(S, s, e, n_surrogates, rng))
     base.update(crit2(S, s, n_surrogates, rng, horizon=decisions_per_day))
     base.update(crit3(S, ev, s, e, n_surrogates, rng))
     base.update(crit4(S, kind, ev, s, e, cand, onset, n_surrogates, rng))
     base.update(crit5(S, cand, onset, n_surrogates, rng))
+    # v6 form test: a random stream of its own, so every v5 statistic above is unchanged
+    base.update(form_test(S, ev, s, e, n_surrogates, np.random.default_rng([seed, 6])))
     base["decisions_unvalidated"] = decisions(base)
+    base["decisions_v5_unvalidated"] = decisions_v5(base)
     return base
 
 
@@ -810,7 +876,7 @@ def detect_trace(trace: dict[str, Any], kinds: tuple[str, ...] = KINDS, n_surrog
     weaned = S.age >= weaned_age
     out: dict[str, Any] = {
         "n_rows": int(S.n), "n_individuals": int(S.gstart.size),
-        "rules": "v4_self_entries" if self_entries else "v5",
+        "rules": "v4_self_entries" if self_entries else RULES,
         "n_rows_weaned": int(weaned.sum()),
         "relaxed_share_weaned": float(S.relaxed[weaned].mean()) if weaned.any() else float("nan"),
     }

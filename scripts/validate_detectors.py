@@ -3,10 +3,9 @@
 
 For every synthetic class (metrics/synthetic_traces.py) it builds M colonies on test seeds
 (seed_base + 1000 * class index + colony; development used seeds 100-106, the v1 rules were
-tested on seed_base 10_000, v2 on 20_000, v3 on 30_000, v4 on 40_000, v5 on 50_000, the
-default), runs the
-detectors for both episode kinds with n surrogates, and scores each criterion against the class
-built to violate it:
+tested on seed_base 10_000, v2 on 20_000, v3 on 30_000, v4 on 40_000, v5 on 50_000, v6 on
+60_000, the default), runs the detectors for both episode kinds with n surrogates, and scores
+each criterion against the class built to violate it:
 
   criterion                    statistic (higher = more play-like)        target negative
   c1 not fully functional      nf_index_z                                 serious
@@ -14,6 +13,7 @@ built to violate it:
   c3 structurally different    seq_struct_reversal_diff                   serious
   c4 repeated, not rigid       1 - rep_rigid_loop_frac  /  exposure slope rigid_loop / novelty
   c5 relaxed field             gate_relaxed_z                             stressed
+  c3 / c4 form beyond chance   seq_struct_form_excess (v6, locomotor)     random_walk
 
 Preregistered pass (written before this script was first run on test seeds): AUC >= 0.80 of the
 statistic between all_criteria and the target negative, TPR >= 0.80 of the decision flag on
@@ -52,6 +52,11 @@ SCORES = (  # (criterion flag, statistic key, transform, target negative class)
     # v5: criterion 2 when individuals move between cells (own entries are not triggers)
     ("c2_spontaneous", "onset_trigger_free_z_unvalidated", 1.0, "triggered_mobile_k12",
      "all_criteria_mobile_k12"),
+    # v6: criteria 3 and 4 need a form beyond chance; random_walk has locomotor episodes only
+    ("c3_structurally_different", "seq_struct_form_excess_unvalidated", 1.0, "random_walk",
+     "all_criteria", ("locomotor",)),
+    ("c4_repeated_not_rigid", "seq_struct_form_excess_unvalidated", 1.0, "random_walk",
+     "all_criteria", ("locomotor",)),
 )
 MOBILE = ("all_criteria_mobile_k12", "triggered_mobile_k12")  # also read with v4 (diagnostic)
 
@@ -86,7 +91,7 @@ def main() -> int:
     p.add_argument("--days", type=int, default=20)
     p.add_argument("--surrogates", type=int, default=1000)
     p.add_argument("--workers", type=int, default=6)
-    p.add_argument("--seed-base", type=int, default=50_000)
+    p.add_argument("--seed-base", type=int, default=60_000)
     p.add_argument("--out", type=str, default=str(ROOT / "_output" / "detector_validation.json"))
     a = p.parse_args()
     all_classes = tuple(CLASSES) + tuple(SUBSTEP_CLASSES)
@@ -107,8 +112,10 @@ def main() -> int:
         print(f"{'criterion':28s} {'statistic':38s} {'negative':11s} {'AUC':>6s} {'TPR':>6s} "
               f"{'FPR':>6s}  pass")
         rows = []
-        for flag, key, sign, neg, *pos_cls in SCORES:
-            pc = pos_cls[0] if pos_cls else "all_criteria"
+        for flag, key, sign, neg, *extra in SCORES:
+            pc = extra[0] if extra else "all_criteria"
+            if len(extra) > 1 and kind not in extra[1]:
+                continue
             pos_v = np.array([r[kind].get(key, np.nan) for r in by[pc]], float) * sign
             neg_v = np.array([r[kind].get(key, np.nan) for r in by[neg]], float) * sign
             pos_r = by[pc]
