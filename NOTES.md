@@ -1,5 +1,123 @@
 # Universe25 Play — NOTES
 
+## 2026-11-09 — Action space v2 (P4-12): form is now expressible; the learner mixes the new moves like a random net
+
+**What changed** (commit 0514a10, design `docs/PHASE4_DESIGN.md` §1.8, fixed before the code).
+Four generic free-time movement primitives were added: `RUN_ON` and `TURN_BACK` along or
+against the agent's own heading, and `BACK_OFF` and `CIRCLE` relative to the nearest object.
+- Each relieves what its family relieves; no new reward, drive or play-named field (H2).
+- Observation v3 has 55 floats.
+- `pretrain_v3` is the `pretrain_v2` recipe with 15 actions.
+
+**Acceptance checks (preregistered).**
+1. *Bit-identity: passes.* Four reference trajectories hash identically before and after:
+   - heuristic K = 1, 300 d: `bcc13721a9144040`
+   - heuristic K = 12 traced, 200 d: `90b681913b578ae7`
+   - `pretrain_v2` net, 150 d: `36d412cc465fb164`
+   - random v2 net, 120 d: `fb4d16b048dd4a8c`
+2. *Form is expressible and seen: passes* (`tests/test_actions_v2.py`, seed 7100, 260 d,
+   window [250, 260)).
+   - A scripted test policy meets the v6 form test in both kinds: excess +0.46, z 24 (object)
+     and z 97 (locomotor).
+   - The random v3 net does not (locomotor excess +0.080, z 2.6; object too few pairs).
+   - Wording deviation: the prereg says the scripted policy alternates RUN_ON / TURN_BACK. The
+     test uses TURN_BACK after every locomotor action, a one-step shuttle. The object half is
+     MANIPULATE / BACK_OFF as written.
+3. *Learned reading* (training seeds 7000–7002, ABUND-PG, K = 12 rechoose, windows 400 / 700 /
+   1000 d, rules v6, 1,000 surrogates; `scripts/read_as2.py`, `_output/as2_reading/`). No pass
+   condition.
+
+| arm | kind | c1..c5 rates (9 windows) | form excess median [range] | reversal median | form test met |
+|---|---|---|---|---:|---:|
+| learned v3 | object | 1.00 1.00 0.00 0.00 0.00 | +0.008 [−0.060, +0.084] | 0.206 | 0 / 9 |
+| learned v3 | locomotor | 1.00 1.00 0.00 0.00 0.78 | +0.090 [+0.080, +0.097] | 0.561 | 0 / 9 |
+| random v3 | object | 0.78 0.89 0.33 0.33 0.00 | +0.032 [−0.026, +0.254] | 0.279 | 3 / 9 |
+| random v3 | locomotor | 1.00 1.00 0.22 0.22 0.00 | +0.090 [+0.082, +0.116] | 0.560 | 2 / 9 |
+
+Free-time shares in the traced windows:
+
+| arm | explore | run_on | turn_back | social | manipulate | back_off | circle |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| learned v3 | 0.15 | 0.11 | 0.13 | 0.29 | 0.10 | 0.11 | 0.11 |
+| random v3 | 0.14 | 0.14 | 0.14 | 0.14 | 0.14 | 0.14 | 0.14 |
+
+These are the same on all three seeds to two decimals.
+
+**Reading.**
+- **The learner did not learn a form.** Within each family it spreads its free time evenly
+  over the primitives. It differs from the random net only in choosing SOCIAL twice as often.
+  Its form excess is the random net's: +0.090 vs +0.090 median for locomotion, and nothing
+  beyond chance for objects.
+  - This is what the design predicts. The reward cannot tell the primitives of a family apart,
+    since no relief depends on form (H2). PPO's entropy bonus (0.05) then pushes actions of
+    equal value toward equal probability.
+  - So with a form-blind reward, an entropy-regularised learner should converge to the random
+    net's mixing within a family. Training seeds show exactly that.
+- **The v6 form test has a mechanical baseline under action space v2.**
+  - The random v3 net chooses near-uniformly and nearly i.i.d. (last-layer gain 0.01). Yet its
+    locomotor excess is +0.08 to +0.12, with z 2–17.
+  - Reason: the primitives are defined relative to the agent's last move, so random mixing of
+    RUN_ON / TURN_BACK already orders the end-point labels. The within-episode label shuffle
+    removes that order; it was the right null when every locomotor step was isotropic.
+  - Object episodes in small, early random colonies (41–152 episodes) reach +0.15 to +0.25.
+    The likely cause is contact gating after BACK_OFF; this is not isolated.
+  - Net effect: the random v3 net meets criteria 3 and 4 in 5 of 18 windows (3 of 9 object,
+    2 of 9 locomotor). The v6 negative control allowed at most 10 % per kind, and that control
+    was run in action space v1. **v6's validation does not carry over to action space v2.**
+    Absolute c3 / c4 flags are unreliable there until the null is rebuilt. A comparison of
+    learned against random at matched composition is still valid.
+- **Colonies on the canonical start.**
+  - The learned v3 colony is viable: peak N 2281–2326 at days 601–714.
+  - The random v3 colony grows slowly: peak N 736–1329, still at days 974–1005, the end of the
+    run.
+
+**Curve guard** (P4-1 style, training seeds 7000–7002, 1,600 d, K = 12, against the need-driven
+control; `_output/dev_guard_pretrain_v3_train7000-7002.json`):
+
+| landmark | control | learned v3 | paired diff |
+|---|---:|---:|---:|
+| first litters day | 103.0 | 103.0 | +0.0 ± 1.5 |
+| N@315 | 367 | 486 | +119 ± 54 |
+| peak N | 2255 | 2280 | +25 ± 16 |
+| peak day | 535 | 669 | +134 ± 55 |
+| last young day | 606 | 941 | +336 ± 44 |
+| N@736 | 1971 | 2180 | +209 ± 16 |
+| N@1200 | 897 | 1158 | +261 ± 75 |
+| N@1444 | 139 | 361 | +222 ± 57 |
+| N@1588 | 19 | 126 | +107 ± 26 |
+
+- Verdict (amended H-d rule): **not preserved**. Failures: N@315, peak day, last young day.
+- The decline band at day 1200 holds.
+- The `pretrain_v2` net ran the arc about 80–120 d *early*; the v3 net runs it about 130–340 d
+  *late*, with a long tail, a milder version of the random net's (+410 d, N@1588 ×20).
+
+**Pre-training (`pretrain_v3`).**
+- Run: 46 nursery episodes, 1.0e8 transitions, 7,398 s at 13.7k transitions/s (v2: 3,008 s at
+  34k/s). The slowdown was not isolated, and other jobs shared the CPU.
+- On the same 45 nursery episodes (same seeds and worlds), v3 learned less than v2:
+  - Drive at episode end: +0.10 above v2 in episodes 0–9, +0.08 in the last ten.
+  - Surviving-birth fraction: −0.10 vs v2 early and −0.39 late. v3 stayed near 0.11, while v2
+    rose from 0.21 to 0.50.
+  - Entropy: 1.3–1.5 through training, up to 1.65 in the last 100 updates (v2 0.85–0.9). Mean
+    reward worsened again over the last fifth.
+- Probe: on identical colony states (heuristic run, seed 7000, days 120 / 250 / 400), the v3
+  net puts 12–17 % of its mass on the new primitives and 8–10 % on WITHDRAW (v2 ≈ 0). The same
+  holds for nursing mothers, and WITHDRAW drifts an animal toward the corner, away from the nest.
+- The evaluated net is `policy_final`, as fixed; no checkpoint was picked.
+
+**What this means.**
+- The substrate now lets a policy shape how a move unfolds, and a scripted policy shows the
+  detectors can see it. The H2-clean learner has no reason to use that freedom: nothing it
+  feels depends on form, so it mixes the primitives at chance.
+- H-f as amended in the design (learned v3 vs random v3 at matched V) is predicted to be null
+  by construction. On training seeds it already reads as null.
+- Two separate gaps follow:
+  - Detectors: the form test's null must include the movement mechanics, for example a
+    composition-matched random policy run in the same colony.
+  - Substrate: form will only matter to a homeostatic learner if some consequence depends on
+    it, for example objects or conspecifics that respond to how they are approached.
+- Both are Jason's decisions. No evaluation seed was read.
+
 ## 2026-11-09 — Detector rules v6: criteria 3 and 4 need a form beyond chance; no simulator policy has one
 
 **Why.** Under v5 a random-init network met criteria 1–4 for locomotion in every window. The

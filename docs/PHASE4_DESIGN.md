@@ -224,6 +224,20 @@ carry no play semantics, no new reward and no new drive (Jason's choice of 2026-
 use the new primitives. Once the learned reading exists, an amendment to H-f (learned v3 vs the
 random v3 net, at matched V) goes to Jason before any evaluation seed is read.
 
+**Result (2026-11-09, NOTES).**
+- Checks 1 and 2 pass. In check 2 the scripted locomotor half is a TURN_BACK shuttle, not
+  RUN_ON / TURN_BACK alternation.
+- Check 3: `pretrain_v3` spreads its free time evenly over each family's primitives (0.10–0.15
+  each). Its form excess equals the random v3 net's: locomotor +0.090 vs +0.090; object
+  +0.008 vs +0.032.
+  - With a form-blind reward and an entropy bonus, actions of equal value converge to equal
+    probability, so this is expected.
+- The random v3 net meets criteria 3 and 4 in 5 of 18 windows. Under action space v2 the
+  label-shuffle null misses the order that the heading-relative primitives create, so v6's
+  negative control does not carry over.
+- Curve guard: not preserved (peak day +134, last young day +336, decline band held).
+- The proposed H-f amendment is in PLAN §15.1.
+
 ## 2. Measurement: detectors per Burghardt criterion (eval-only, unvalidated)
 
 Principles. Every detector is computed after the fact from logs (position, action, drives, cell,

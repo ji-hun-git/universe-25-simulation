@@ -470,6 +470,16 @@ split on seeds 60,000 + …, plus a simulator negative control (random-init netw
 
 ## P4-12 — Action space v2: movement form the policy controls
 
+> **Done 2026-11-09:** checks 1 and 2 pass: the four reference hashes are
+> identical; a scripted policy meets the v6 form test in both kinds and the random v3 net does
+> not. Check 3 reading (training seeds): `pretrain_v3` spreads its free time evenly over each
+> family's primitives, and its form excess equals the random v3 net's (locomotor +0.090 vs
+> +0.090). Form test met in 0 of 18 windows (random net: 5 of 18). Under v2 the form test has
+> a mechanical baseline, so v6's validation does not carry over. Curve guard: not preserved
+> (arc 130–340 d late). Pre-training learned less than v2 (pup survival about 0.11 vs 0.50,
+> entropy 1.65). NOTES 2026-11-09. The H-f amendment is proposed in PLAN §15.1 and waits for
+> Jason.
+
 **Goal:** add four generic free-time movement primitives (`ACT_RUN_ON`, `ACT_TURN_BACK`,
 `ACT_BACK_OFF`, `ACT_CIRCLE`) and an agent heading. Policies can then shape how a move unfolds,
 not only when it starts; under detector rules v6 no policy can express form today. Observation
@@ -506,6 +516,11 @@ Design and checks: `docs/PHASE4_DESIGN.md` §1.8.
 > no policy meets criterion 3 or 4 anywhere, because no policy controls the path of a move.
 > Needs a decision (richer action space under the calibration guard, or structure measured on
 > action sequences) before H-f.
+>
+> **2026-11-09 (action space v2, P4-12):** the richer action space exists. On training seeds the
+> learned v3 net mixes the primitives like the random v3 net, so the amended H-f (learned v3 vs
+> random v3 at matched V) is predicted null. The form test also needs a null that includes the
+> movement mechanics. Both decisions belong to Jason before any evaluation seed (PLAN §15.1).
 
 **Goal:** `scripts/sweep_phase4.py`: policy kind × resources (ABUND / SCARCE) × playground
 (ON / OFF) × seeds 8000–8011, 1600 d at 24 ticks/day, parquet + `run.json` + detector vectors;

@@ -558,6 +558,17 @@ plateau moved by less than its seed se. Caveats in full in `NOTES.md` → "Phase
   policy, the learned net included, meets criterion 3 or 4 anywhere: EXPLORE is a Gaussian
   step and MANIPULATE a straight approach, so no policy controls movement form. H-f untested;
   next decision: richer action space (under the calibration guard) or action-sequence form.
+- **Action space v2 (2026-11-09, P4-12)**: new actions RUN_ON / TURN_BACK (along / against the
+  heading) and BACK_OFF / CIRCLE (relative to the nearest object). Observation v3 has 55
+  floats; existing arms are bit-identical. A scripted policy shows form, and the v6 detectors
+  see it.
+  - `pretrain_v3` spreads its free time evenly over the primitives. Its form excess equals the
+    random v3 net's, as a form-blind reward predicts.
+  - Under v2 the form test has a mechanical baseline: the random net meets c3 / c4 in 5 of 18
+    windows.
+  - The v3 colony runs the arc 130–340 d late (guard not preserved).
+  - H-f amendment proposed in PLAN §15.1 (learned v3 vs random v3), expected null. Jason
+    decides; no evaluation seed read.
 
 ---
 
@@ -775,6 +786,8 @@ in the peak count (N@736 3–4 % low) and the slow realisations' late tail (N@14
 - [x] Finer decision grain for free-time behaviour (P4-8, 2026-11-06: `free_substeps`, `policy.substep_mode`; heuristic continue mode within 2 % of the control on every resolvable landmark, N@315 +13 % at one paired se; detectors have support; no arm meets all five criteria)
 - [x] H-d amendment adopted 2026-11-06 (drift > 10 % and > 2 paired se; heuristic with 12 sub-steps in continue mode preserved, random MLP not)
 - [ ] Detector rules v4 (P4-9: phase-preserving trigger null, template minimum support)
+- [x] Detector rules v6 (P4-11, 2026-11-09: criteria 3 / 4 need a form beyond chance; 18 / 18 synthetic checks; no simulator policy in action space v1 meets c3 / c4)
+- [x] Action space v2 (P4-12, 2026-11-09: four movement primitives plus heading, observation v3; bit-identical arms; `pretrain_v3` mixes the primitives like the random v3 net; the form test has a mechanical baseline under v2; guard not preserved, arc late)
 - [ ] Sweep: policy kind × abundance / scarcity × playground on / off × 12 seeds (P4-6); H-d … H-g answered or marked untested in NOTES
 - [ ] H2 audit extended to observation, learner and detector code with a negative test (P4-7); no ICM / RND bonus; the heuristic is never distilled
 

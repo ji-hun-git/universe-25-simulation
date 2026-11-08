@@ -293,6 +293,30 @@ written would compare zeros: no policy controls the path of a move (EXPLORE is a
 step, MANIPULATE a straight approach). H-f is untested pending a decision on the action space
 or on measuring structure in action sequences. NOTES 2026-11-09.
 
+**Action space v2 and a proposed H-f amendment (2026-11-09, card P4-12; PROPOSED, NOT
+ADOPTED).** The heuristic cannot use the new movement primitives, so the comparison for H-f
+moves to the random v3 net, which uses the same action space and has the same mechanical
+baseline.
+
+*Proposed H-f:* learned v3 object and locomotor episodes have more form than the random v3
+net's at matched free-choice V.
+- *Statistic:* per evaluation seed and window (the same days in both arms), the difference in
+  v6 form excess, learned v3 minus random v3, in windows where both arms have at least 10
+  reversal pairs. The form excess is a per-pair fraction against its own shuffle, so it does
+  not scale with the event rate. Each arm's free-choice V is reported beside it.
+- *Test:* sign-flip permutation over the 12 seeds (window means per seed), one-sided p < 0.025
+  per kind.
+- *Falsifier:* mean difference ≤ 0, or p ≥ 0.025, in both kinds.
+- The absolute c3 / c4 flags are not used: under action space v2 the random net meets them in
+  5 of 18 development windows.
+
+*Development reading* (training seeds 7000–7002, NOTES 2026-11-09): the difference is about 0
+for locomotion (+0.090 vs +0.090) and negative for objects (+0.008 vs +0.032). The learner
+spreads its free time evenly over each family's primitives, as a form-blind reward predicts.
+So the amended H-f is expected to be null. Jason may instead hold H-f until the substrate gives
+form a consequence (objects or conspecifics that respond to how they are approached), or until
+the form test's null includes the movement mechanics.
+
 ### 15.2 Arms
 
 Policy kind × resources × playground: `need_driven` (control), `mlp_frozen`, `mlp_ppo`, `evo`;
