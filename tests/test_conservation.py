@@ -78,8 +78,27 @@ def test_strict_config_and_reference_backend() -> None:
     assert pick_backend("auto", "auto") == ("numpy", "cpu")
 
 
+def test_removal_event_takes_adults_once_and_is_off_by_default() -> None:
+    """biology.removal_day / removal_n (ported from the 2n branch for the posterior predictive
+    check): once, on the first day-aligned tick at or after the day, that many alive adults
+    leave; counted as removed, not deaths; the accounting invariant includes them."""
+    import tempfile
+
+    cfg = load_config(ROOT / "configs" / "default.yaml", {
+        "seed": 7100, "days": 12.0, "ticks_per_day": 6, "backend": "numpy", "device": "cpu",
+        "log_every_ticks": 6, "snapshot_every_days": 0, "debug_invariants": True,
+        "biology": {"removal_day": 5.0, "removal_n": 3}})
+    sim = Universe25Sim(cfg, Path(tempfile.mkdtemp(prefix="u25rem_")))
+    n0 = sim.agents.n_alive
+    s = sim.run()
+    assert s["removed"] == 3 and s["final_n"] == n0 + s["births"] - s["deaths"] - 3, s
+    off = load_config(ROOT / "configs" / "default.yaml")
+    assert off.biology.removal_n == 0 and off.biology.removal_day == 0.0
+
+
 if __name__ == "__main__":
     test_no_play_reward_in_config()
+    test_removal_event_takes_adults_once_and_is_off_by_default()
     test_population_accounting()
     test_invariants_hold_past_the_first_births()
     test_strict_config_and_reference_backend()

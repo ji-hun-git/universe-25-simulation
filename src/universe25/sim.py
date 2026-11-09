@@ -153,6 +153,8 @@ class Universe25Sim:
         self._peak_day = 0.0
         self._nan_count = 0
         self._litters_dropped = 0  # litters lost because max_agents was reached
+        self._removed = 0  # adults taken out by the removal event (not deaths)
+        self._removal_done = False
         self._seed_initial()
         self._n_initial = int(self.agents.n_alive)
         # provenance (review 2026-11-09): the resolved config and a manifest in every run
@@ -279,6 +281,7 @@ class Universe25Sim:
                 if record:
                     self.trace.record_post(self)
             with nvtx_range("life"):
+                self._removal_event(alive)
                 self._passive_nurse(alive)
                 self._daily_breeding_pass(alive)
                 self._daily_maternal_erosion(alive)
@@ -1231,6 +1234,29 @@ class Universe25Sim:
             0.0, a.courtship_cap[am] - float(bio.courtship_erosion_rate) * excess
         )
 
+    def _removal_event(self, alive: np.ndarray) -> None:
+        """Once, on the first day-aligned tick at or after biology.removal_day: take
+        biology.removal_n alive adults (age >= maturity_days), chosen uniformly at random from
+        the simulation RNG stream, out of the universe. Calhoun 1973 (Fig 2 caption): about 150
+        mice were removed for other studies after day 1000, so 122 at day 1444 and 27 at day
+        1588 are post-removal counts. Counted in `removed`, not in deaths; no scheduled
+        biology. Off (removal_n 0 or removal_day 0) = no RNG draw, bit-identical."""
+        bio = self.cfg.biology
+        if self._removal_done or bio.removal_n <= 0 or bio.removal_day <= 0.0:
+            return
+        if self.day < bio.removal_day or (self.tick % self.cfg.ticks_per_day) != 0:
+            return
+        a = self.agents
+        adults = np.flatnonzero(alive & (a.age_days >= bio.maturity_days))
+        n = min(int(bio.removal_n), int(adults.size))
+        if n > 0:
+            take = self.rng.choice(adults, size=n, replace=False)
+            a.alive[take] = False
+            a.role[take] = ROLE_DEAD
+            self._removed += n
+            a.n_alive = int(a.alive.sum())
+        self._removal_done = True
+
     def _daily_litter_abandonment(self, alive: np.ndarray) -> None:
         """Once per day: a nursing mother above the neglect stress threshold abandons her box's
         litter with probability litter_abandon_p; those pups lose their nest box (nest_id = -1)
@@ -1581,6 +1607,7 @@ class Universe25Sim:
             "surv_births_cum": self._surv_births_cum,
             "last_conception_day": self._last_conception_day,
             "abandoned_cum": self._abandoned,
+            "removed_cum": self._removed,
             "n_adult": int(np.sum(alive & (a.age_days >= self.cfg.biology.maturity_days))),
             "mean_competence_adult": float(
                 a.competence[alive & (a.age_days >= self.cfg.biology.maturity_days)].mean()
@@ -1654,6 +1681,7 @@ class Universe25Sim:
             "last_conception_day": self._last_conception_day,
             "conception_cessation_day": rate_cessation_day(self._conc_by_day),
             "abandoned_pups": self._abandoned,
+            "removed": self._removed,
             "litters_dropped_at_capacity": self._litters_dropped,
             "nan_count": self._nan_count,
             "playground_enabled": self.world.playground_enabled,

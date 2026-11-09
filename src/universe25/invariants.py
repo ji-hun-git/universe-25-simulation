@@ -35,9 +35,10 @@ def check(sim: Universe25Sim) -> list[str]:
     if a.n_alive != idx.size:
         bad.append(f"n_alive {a.n_alive} != alive count {idx.size}")
     n0 = getattr(sim, "_n_initial", None)
-    if n0 is not None and idx.size != n0 + sim._births - sim._deaths:
+    removed = getattr(sim, "_removed", 0)
+    if n0 is not None and idx.size != n0 + sim._births - sim._deaths - removed:
         bad.append(f"population accounting: alive {idx.size} != initial {n0} + births "
-                   f"{sim._births} - deaths {sim._deaths}")
+                   f"{sim._births} - deaths {sim._deaths} - removed {removed}")
     if np.any(a.role[idx] == ROLE_DEAD):
         bad.append("a living animal has the dead role")
     if idx.size == 0:

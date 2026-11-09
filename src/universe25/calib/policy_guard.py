@@ -169,6 +169,94 @@ def verdict(table: dict[str, dict[str, float]], band_ok: bool | None, tol: float
             "decline_band_checked": band_ok is not None}
 
 
+# ---------------------------------------------------------------- guard v2 (Tier 1, 2026-11-09)
+# Equivalence margins (arm - control), preregistered in PHASE4_DESIGN.md 4.1: ("rel", f) is a
+# fraction of the control mean, ("abs", v) an absolute difference in the landmark's units.
+EQ_MARGINS: dict[str, tuple[str, float]] = {
+    "peak_n": ("rel", 0.05),
+    "n_at_day_736": ("rel", 0.05),
+    "peak_day": ("abs", 30.0),
+    "last_young_day": ("abs", 30.0),  # rate-based cessation of surviving births
+    "last_conception_day": ("abs", 40.0),  # rate-based cessation of conceptions
+    "doubling_time_phase_b_days": ("rel", 0.15),
+    "decline_ratio_1200": ("abs", 0.07),  # N@1200 / peak N, per seed
+}
+EQ_REPORTED = ("first_litters_day", "n_at_day_315", "n_at_day_1444", "n_at_day_1588")
+EQ_LEVEL = 0.90
+EQ_BOOT = 10_000
+
+
+def _with_ratio(rows: dict[int, dict[str, float]]) -> dict[int, dict[str, float]]:
+    out = {}
+    for s, r in rows.items():
+        r = dict(r)
+        p, n = r.get("peak_n", np.nan), r.get("n_at_day_1200", np.nan)
+        r["decline_ratio_1200"] = float(n / p) if np.isfinite(p) and p > 0 and np.isfinite(n) \
+            else float("nan")
+        out[s] = r
+    return out
+
+
+def equivalence(control: dict[int, dict[str, float]], arm: dict[int, dict[str, float]],
+                seed: int = 0, n_boot: int = EQ_BOOT, level: float = EQ_LEVEL) -> dict[str, Any]:
+    """Guard v2 (PHASE4_DESIGN.md 4.1): per primary landmark, the difference of the means
+    (arm - control) with a percentile bootstrap CI (seeds resampled within each arm on their own
+    stream); equivalent iff every CI lies inside its margin, not equivalent iff any CI lies wholly
+    outside, else inconclusive. Arms need not share seeds."""
+    rng = np.random.default_rng([int(seed), 4_100_001])
+    c_rows, a_rows = _with_ratio(control), _with_ratio(arm)
+    lo_q, hi_q = (1.0 - level) / 2.0, 1.0 - (1.0 - level) / 2.0
+    table: dict[str, dict[str, Any]] = {}
+    status = []
+    for k in tuple(EQ_MARGINS) + EQ_REPORTED:
+        c = np.array([r.get(k, np.nan) for r in c_rows.values()], float)
+        a = np.array([r.get(k, np.nan) for r in a_rows.values()], float)
+        c, a = c[np.isfinite(c)], a[np.isfinite(a)]
+        row: dict[str, Any] = {"n_control": int(c.size), "n_arm": int(a.size)}
+        if c.size < 2 or a.size < 2:
+            row.update(diff=float("nan"), ci=[float("nan"), float("nan")], status="undefined")
+        else:
+            diff = float(a.mean() - c.mean())
+            bc = c[rng.integers(0, c.size, (n_boot, c.size))].mean(axis=1)
+            ba = a[rng.integers(0, a.size, (n_boot, a.size))].mean(axis=1)
+            lo, hi = np.quantile(ba - bc, [lo_q, hi_q])
+            row.update(diff=diff, ci=[float(lo), float(hi)], control_mean=float(c.mean()),
+                       arm_mean=float(a.mean()))
+            if k in EQ_MARGINS:
+                kind, m = EQ_MARGINS[k]
+                margin = m * abs(float(c.mean())) if kind == "rel" else m
+                row["margin"] = float(margin)
+                if -margin <= lo and hi <= margin:
+                    row["status"] = "inside"
+                elif hi < -margin or lo > margin:
+                    row["status"] = "outside"
+                else:
+                    row["status"] = "overlaps"
+            else:
+                row["status"] = "reported"
+        table[k] = row
+        if k in EQ_MARGINS:
+            status.append(row["status"])
+    if any(s == "outside" for s in status):
+        verdict = "not equivalent"
+    elif all(s == "inside" for s in status):
+        verdict = "equivalent"
+    else:
+        verdict = "inconclusive"
+    return {"verdict": verdict, "level": level, "n_boot": n_boot, "table": table,
+            "margins": {k: list(v) for k, v in EQ_MARGINS.items()}}
+
+
+def format_equivalence(eq: dict[str, Any]) -> str:
+    lines = [f"guard v2 (equivalence, {eq['level']:.0%} bootstrap CI): {eq['verdict'].upper()}",
+             f"{'landmark':28s} {'diff':>9s} {'CI':>21s} {'margin':>9s}  status"]
+    for k, r in eq["table"].items():
+        m = r.get("margin")
+        lines.append(f"{k:28s} {r['diff']:+9.3f} [{r['ci'][0]:+9.3f}, {r['ci'][1]:+9.3f}] "
+                     f"{'' if m is None else f'±{m:.3f}':>9s}  {r['status']}")
+    return "\n".join(lines)
+
+
 def guard(
     kind: str,
     seeds: list[int],
@@ -192,6 +280,7 @@ def guard(
         "decline_band_arm": band, "decline_band_control": decline_band_ok(control),
         "verdict": verdict(table, band),
         "verdict_10pct_rule": verdict(table, band, se_mult=None),
+        "equivalence_v2": equivalence(control, arm, seed=seeds[0]),
     }
 
 
@@ -224,6 +313,9 @@ def format_table(report: dict[str, Any]) -> str:
     if v0 is not None:
         lines.append(f"original 10 % rule: {'PRESERVED' if v0['preserved'] else 'NOT PRESERVED'}"
                      f" (failures: {', '.join(v0['failures']) or 'none'})")
+    eq = report.get("equivalence_v2")
+    if eq is not None:
+        lines.append(format_equivalence(eq))
     return "\n".join(lines)
 
 

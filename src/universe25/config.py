@@ -130,6 +130,15 @@ class BiologyConfig(_Strict):
     # Daily chance that a nursing mother above maternal_neglect_stress abandons her nest box's
     # litter (Calhoun phase C: litters abandoned, young expelled pre-weaning). 0 = off.
     litter_abandon_p: float = 0.0
+    # Removal event (ported 2026-11-09 from the unmerged phase 2n branch, commit cd09878, for the
+    # posterior predictive check). Calhoun 1973 Fig 2 caption: about 150 mice were removed for
+    # other studies after day 1000, so the censuses of 122 at day 1444 and 27 at day 1588 are
+    # post-removal counts. Once, on the first day-aligned tick at or after removal_day,
+    # removal_n alive adults chosen uniformly at random from the simulation RNG stream are taken
+    # out of the universe; they are counted as `removed`, not as deaths. Both 0 = off (no RNG
+    # draw, bit-identical). Not part of the calibrated biology (e.g. 1014 / 150).
+    removal_day: float = Field(default=0.0, ge=0.0)
+    removal_n: int = Field(default=0, ge=0)
 
     def breakdown_threshold(self) -> float:
         if self.breakdown_density_threshold is not None:
