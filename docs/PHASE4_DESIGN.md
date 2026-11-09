@@ -411,6 +411,16 @@ H-f stays held. Any amendment goes to Jason before an evaluation seed is read.
 - How to go on is Jason's decision: the guard at g = 8 as a deviation, or a re-preregistered
   matching.
 
+**Deviation (Jason, 2026-11-09: "Guard at g = 8 anyway").** Recorded before the guard runs.
+- g = 8, the scan's closest value, is used although it misses the 10 % rule (curiosity +23 %).
+- The heuristic guard (training seeds 7000–7002, 1,600 d, physics and novelty on, against the
+  physics-off control, amended H-d rule) now decides on its own whether the arm counts as
+  calibration-matched.
+- If it is preserved, check 3 continues as written (`pretrain_v5`, the reading, its guard). If
+  not, the work stops and goes back to Jason.
+- `pretrain_v5` (g = 8) trains in parallel to save time. It is only read if the guard is
+  preserved.
+
 ## 2. Measurement: detectors per Burghardt criterion (eval-only, unvalidated)
 
 Principles. Every detector is computed after the fact from logs (position, action, drives, cell,
