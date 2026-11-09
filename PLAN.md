@@ -326,6 +326,16 @@ the form test's null includes the movement mechanics.
 A revised H-f amendment (learned v4 vs random v4, rules v7) goes to Jason after the
 development reading, before any evaluation seed.
 
+**P4-13 result (2026-11-09).**
+- Rules v7 pass every preregistered check and are frozen.
+- The v4 learner ignores the balls: free-time shares as v3, 3 % of object rows touch a ball.
+  No window meets the form test in either arm.
+- Ball physics moves the heuristic's curve: N@315 −50 %, peak day +159.
+- The revised amendment would read about 0, so it is not proposed. H-f stays held.
+- Open (Jason): whether to make the intrinsic drives consequence-based in every family, for
+  example spatial novelty for locomotion. That reopens the frozen calibration. The alternative
+  is to turn to H-g and the playground-off arm, which need no form. NOTES 2026-11-09.
+
 ### 15.2 Arms
 
 Policy kind × resources × playground: `need_driven` (control), `mlp_frozen`, `mlp_ppo`, `evo`;

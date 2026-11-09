@@ -502,6 +502,18 @@ Design and checks: `docs/PHASE4_DESIGN.md` §1.8.
 
 ## P4-13 — Playground physics and detector rules v7
 
+> **Done 2026-11-09:**
+> - Physics off is bit-identical (six hashes); the mechanics tests pass.
+> - Rules v7 pass every preregistered check: 18 / 18 synthetic, negative control 0 of 18
+>   windows per kind in both substrates (v6 11–17 %), scripted alternation seen. v7 is frozen.
+> - Development reading: `pretrain_v4` ignores the balls. Its free-time shares equal v3's, only
+>   3 % of its object rows touch a ball, and near a ball it acts as near a fixed object. No
+>   window meets the form test in either arm.
+> - Physics moves the heuristic's curve (N@315 −50 %, peak day +159; curiosity 0.73 vs 0.29).
+>   The v4 guard is not preserved (early arc).
+> - Likely reason: curiosity and boredom have consequence-free routes.
+> - Next step is Jason's (NOTES 2026-11-09). H-f stays held.
+
 **Goal:** give movement form a consequence (Jason, 2026-11-09: hold H-f, fix the substrate).
 - Balls respond to how they are approached: a push of κ·u along the approach, roll with
   friction, bounce at the bounds.

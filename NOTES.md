@@ -1,5 +1,119 @@
 # Universe25 Play — NOTES
 
+## 2026-11-09 — Ball physics and rules v7 (P4-13): v7 passes; the learner ignores the balls; physics moves the heuristic's curve
+
+**Context.** Jason held H-f and chose to fix the substrate. Design: `docs/PHASE4_DESIGN.md` §1.9
+and §2 v7, commit 9ad08f1, before the code (b8f0db5).
+- Balls are pushed by contact (κ·u along the approach), roll with friction and bounce at the
+  bounds.
+- Object-family curiosity and boredom relief scales with the speed a contact gave a ball.
+- Observation v4 (57 floats) adds the nearest object's mobility and speed.
+- Rules v7 replace the form test's label shuffle with a re-simulation of an even family mix.
+
+**Checks.**
+1. *Bit-identity with physics off: passes.* Six trajectories hash identically before and after:
+   - heuristic K = 1: `bcc13721a9144040`
+   - heuristic K = 12 traced: `90b681913b578ae7`
+   - `pretrain_v2`: `36d412cc465fb164`
+   - random v2: `fb4d16b048dd4a8c`
+   - `pretrain_v3` traced: `df06b41bee4daf96`
+   - random v3: `14776dd64758a9a2`
+2. *Mechanics: pass* (`tests/test_physics.py`): push, roll, bounce, fixed tunnels and ramps,
+   relief scaling, no random draw, observation v4. Every test file passes.
+
+**Rules v7: every preregistered check passes; v7 is the frozen rule set.**
+- *Synthetic split* (seeds 70,000 + …, 30 colonies per class, 1,000 surrogates): 18 of 18,
+  every AUC ≥ 0.998 (`_output/detector_validation_v7.json`).
+  - Object c3 / c4 TPR is 0.93 (v6: 1.00): 2 of 30 `all_criteria` colonies miss the object
+    form floor.
+- *Simulator negative control* (`scripts/negcontrol_v7.py`; random v4 nets, init seeds 7003 /
+  7004, training seeds 7006–7008, never used): criteria 3 and 4 are met in 0 of 18 windows per
+  kind, without and with ball physics.
+  - On the same windows v6 meets them in 11–17 % (object without physics 0.17; locomotor 0.11
+    in both substrates).
+- *Scripted alternation:* passes v7 in both kinds; the random net does not
+  (`tests/test_actions_v2.py`).
+- *Known property, seen here first.* Random mixers' object excess sits at −0.10 to −0.13. Object
+  events are rows in contact, and contact favours approach moves; the even-mix reference is not
+  conditioned on contact. The object form test is therefore conservative: a form must beat a
+  random mixer by about 0.2.
+- *Diagnostic: the action-space-v2 reading re-read with v7.*
+  - Locomotor excess: learned v3 +0.015, random v3 +0.014.
+  - No window meets the form test (v6: the random net met it in 5 of 18).
+  - The object kind reads n/a, because those traces predate `obj_x`.
+
+**Heuristic with ball physics** (K = 12 continue, training seeds 7000–7002, 1,600 d, against the
+physics-off control; `_output/dev_guard_heuristic_phys_k12_train7000-7002.json`): **not
+preserved.**
+
+| landmark | control | heuristic + physics | paired diff |
+|---|---:|---:|---:|
+| N@315 | 367 | 183 | −184 ± 62 |
+| peak N | 2255 | 2126 | −129 ± 51 |
+| peak day | 535 | 694 | +159 ± 42 |
+| last young day | 606 | 1011 | +406 ± 301 |
+| N@1200 | 897 | 1194 | +297 ± 64 |
+| N@1588 | 19 | 223 | +204 ± 126 |
+
+- Seed 7000 resumes surviving births until day 1577 (final N 517). The decline band at day
+  1200 holds.
+- Mechanism (seed 7000, days 100–320): adult curiosity averages 0.73 with physics and 0.29
+  without. In continue mode the heuristic's MANIPULATE approaches and holds, which now earns
+  little relief. Curiosity stays high and the colony grows more slowly.
+- **The object-relief channel carries weight in the calibrated curve.** The physics substrate
+  is not calibration-neutral.
+
+**`pretrain_v4`** (the v3 recipe with physics in every nursery world and observation v4; the
+same 40 nursery worlds as v3):
+- Run: 1.02e8 transitions, 3,162 s at 32k/s.
+- Late surviving-birth fraction 0.30 (v3 0.11, v2 0.50); drive at episode end 0.46 (v3 0.50).
+  Entropy 1.4–1.7, as v3.
+
+**Development reading** (training seeds 7000–7002, ball physics, K = 12 rechoose, windows 400 /
+700 / 1000 d, rules v7; `scripts/read_p413.py`, `_output/p413_reading/`):
+
+| arm | kind | c1..c5 rates (9 windows) | form excess v7 median [range] | v6 shuffle excess | form test met |
+|---|---|---|---|---:|---:|
+| learned v4 | object | 0.44 1.00 0.00 0.00 0.00 | −0.104 [−0.178, −0.044] | −0.018 | 0 / 9 |
+| learned v4 | locomotor | 1.00 1.00 0.00 0.00 0.56 | −0.006 [−0.008, +0.004] | +0.072 | 0 / 9 |
+| random v4 | object | 0.44 0.89 0.00 0.00 0.00 | −0.123 [−0.185, +0.041] | −0.007 | 0 / 9 |
+| random v4 | locomotor | 1.00 1.00 0.00 0.00 0.00 | +0.009 [−0.012, +0.074] | +0.083 | 0 / 9 |
+
+- **The learner does not use the balls.**
+  - Its free-time shares are v3's: explore 0.13, run_on 0.13, turn_back 0.12, social 0.29,
+    manipulate 0.11, back_off 0.10, circle 0.12.
+  - Only 3 % of its object-family rows are in contact with a ball (random v4: 3 %).
+  - It does not tell balls from fixed objects. Within 5 in of a ball it picks MANIPULATE 17.4 %
+    of the time; within 5 in of a tunnel or ramp, 17.6 %. The observation carries
+    `object_mobile`.
+  - About 8 % of its free-time rows are within 5 in of a ball.
+- Colonies: learned v4 peaks at 2,302–2,398 on days 419–523. The random v4 colonies grow
+  slowly: peak 263–1,871, still rising at the end of the run.
+- Not examined: the object criterion-1 rate is 0.44 in both arms. Without physics it was 0.78
+  (random v3) and 1.00 (learned v3).
+
+**Curve guard, `pretrain_v4` with physics** (training seeds;
+`_output/dev_guard_pretrain_v4_phys_train7000-7002.json`): **not preserved.**
+- Amended-rule failures: last young day (−89 ± 28) and the decline band at 1200.
+- It is v2's pattern, an early arc: peak day −55, N@315 +335 ± 171.
+- Peak N (+4 %), N@736 and the last conception day hold.
+
+**What this means.**
+- Rules v7 work: the form test no longer credits the mechanics of the primitives. On every
+  reading so far, no policy has a form beyond an even mix.
+- Giving objects a consequence did not give the learner a reason to use them. The most likely
+  reason, not yet tested: curiosity and boredom have consequence-free routes. Every locomotor
+  move relieves curiosity at a fixed rate anywhere, and SOCIAL relieves boredom. The sparse ball
+  relief therefore adds little the learner cannot get without objects.
+- Making form matter would need the intrinsic drives to be relieved by consequences in every
+  family. For example, locomotor curiosity would be relieved only by moving into places not
+  recently visited (spatial novelty), so that the families compete on what they produce.
+- That changes the heuristic's drives as well. Physics alone already moved its curve, so either
+  path reopens the frozen calibration, or the physics arm stays an uncalibrated variant.
+- Nothing here shows play. H-f stays held. The revised amendment (learned v4 vs random v4)
+  would read about 0 on the development seeds, so it is not proposed for testing. No
+  evaluation seed was read.
+
 ## 2026-11-09 — Action space v2 (P4-12): form is now expressible; the learner mixes the new moves like a random net
 
 **What changed** (commit 0514a10, design `docs/PHASE4_DESIGN.md` §1.8, fixed before the code).

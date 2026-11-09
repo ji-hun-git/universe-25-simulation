@@ -308,6 +308,20 @@ approached.
 (learned v4 vs random v4 at matched V, rules v7) goes to Jason before any evaluation seed is
 read.
 
+**Result (2026-11-09, NOTES).**
+- Checks 1 and 2 pass (six hashes identical; mechanics tests green).
+- Check 3:
+  - *Heuristic with physics: not preserved.* N@315 −50 %, peak day +159; one seed resumes
+    surviving births to day 1577. Adult curiosity is 0.73 vs 0.29, because MANIPULATE now
+    earns little relief. The substrate is not calibration-neutral.
+  - *`pretrain_v4`* spreads its free time over the primitives exactly as v3 does. Only 3 % of
+    its object-family rows touch a ball. It does not tell balls from fixed objects.
+  - *Form:* no window meets the form test in either arm.
+  - *Curve guard:* not preserved (early arc, decline band failed).
+- Likely reason, untested: curiosity and boredom have consequence-free routes (locomotion,
+  SOCIAL).
+- The revised H-f amendment is not proposed for testing; H-f stays held.
+
 ## 2. Measurement: detectors per Burghardt criterion (eval-only, unvalidated)
 
 Principles. Every detector is computed after the fact from logs (position, action, drives, cell,
@@ -586,6 +600,18 @@ Known limits, recorded before the test:
   own pushes would have moved the ball differently.
 - The reference is one fixed mix. A policy that just prefers TURN_BACK, in any order, exceeds
   it. That is a movement form (shuttling), not necessarily a sequential plan.
+
+**v7 test result (2026-11-09): every preregistered check passes.**
+- Synthetic split (seeds 70,000 + …): 18 of 18, every AUC ≥ 0.998; object c3 / c4 TPR 0.93
+  (`_output/detector_validation_v7.json`).
+- Simulator negative control (`_output/negcontrol_v7/summary.json`): criteria 3 and 4 met in 0
+  of 18 windows per kind, without and with ball physics. On the same windows v6 meets them in
+  11–17 %.
+- The scripted alternation passes and the random net does not.
+- v7 is the frozen rule set.
+- Seen for the first time here: random mixers' object excess sits at −0.10 to −0.13. Contact
+  gating favours approach moves and the reference is not conditioned on contact, so the object
+  test is conservative.
 
 **First simulator reading (training seeds 7000–7002, 4 windows).** Need-driven and random
 policies: object and locomotor episodes are non-functional (c1) and spontaneous (c2) but last

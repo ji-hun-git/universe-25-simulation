@@ -569,6 +569,15 @@ plateau moved by less than its seed se. Caveats in full in `NOTES.md` → "Phase
   - The v3 colony runs the arc 130–340 d late (guard not preserved).
   - H-f amendment proposed in PLAN §15.1 (learned v3 vs random v3), expected null. Jason
     decides; no evaluation seed read.
+- **Ball physics + rules v7 (2026-11-09, P4-13; Jason: hold H-f, fix the substrate)**: balls are
+  pushed by contact and roll; object relief follows the push (`playground.ball_physics`, default
+  off, bit-identical); observation v4 has 57 floats.
+  - Rules v7 (form test against a re-simulated even mix) pass every check and are frozen.
+  - `pretrain_v4` ignores the balls (3 % ball contact, no form).
+  - Physics moves the heuristic's curve (N@315 −50 %): not calibration-neutral.
+  - Likely reason the balls don't matter: curiosity and boredom have consequence-free routes.
+  - Next decision (Jason): consequence-based intrinsic drives in every family (reopens
+    calibration), or H-g and the playground-off arm.
 
 ---
 
@@ -788,6 +797,7 @@ in the peak count (N@736 3–4 % low) and the slow realisations' late tail (N@14
 - [ ] Detector rules v4 (P4-9: phase-preserving trigger null, template minimum support)
 - [x] Detector rules v6 (P4-11, 2026-11-09: criteria 3 / 4 need a form beyond chance; 18 / 18 synthetic checks; no simulator policy in action space v1 meets c3 / c4)
 - [x] Action space v2 (P4-12, 2026-11-09: four movement primitives plus heading, observation v3; bit-identical arms; `pretrain_v3` mixes the primitives like the random v3 net; the form test has a mechanical baseline under v2; guard not preserved, arc late)
+- [x] Ball physics + detector rules v7 (P4-13, 2026-11-09: v7 passes every check and is frozen; `pretrain_v4` ignores the balls, no form; physics is not calibration-neutral for the heuristic)
 - [ ] Sweep: policy kind × abundance / scarcity × playground on / off × 12 seeds (P4-6); H-d … H-g answered or marked untested in NOTES
 - [ ] H2 audit extended to observation, learner and detector code with a negative test (P4-7); no ICM / RND bonus; the heuristic is never distilled
 
