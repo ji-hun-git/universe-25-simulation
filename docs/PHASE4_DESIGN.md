@@ -775,6 +775,21 @@ surrogates). Pass conditions:
   and the random net does not. The locomotor half becomes a true RUN_ON / TURN_BACK
   alternation, the preregistered wording of §1.8.
 
+*Amendment, written before any v8 test (2026-11-09, found while implementing):*
+- **The scripted locomotor test keeps the TURN_BACK shuttle.** The "true RUN_ON / TURN_BACK
+  alternation" above cannot pass a reversal test. With heading-relative primitives, alternating
+  the two reverses direction on every other step, a reversal fraction of about 0.5, which is
+  chance. The shuttle reverses on every step, and the test already uses it. The object half
+  stays MANIPULATE / BACK_OFF.
+- **The order diagnostic is blind to locomotor order.** For the same reason, a locomotor
+  episode's reversal fraction depends only on the share of TURN_BACK, not on the order of the
+  primitives. The diagnostic is informative for object primitives and for EXPLORE step
+  vectors.
+- **Eligibility applies to criterion 5 alone, as written.** Criterion 4's exposure statistics
+  keep every candidate row.
+- **The v7, v6 and v5 flags** come from a second pass with the v7 definitions in the same run
+  (threshold, candidate rows, null without re-gating, the v6 shuffle).
+
 *Diagnostic, not a pass condition:* the H-e sweep (evaluation seeds, already read) re-read with
 v8, exploratory. The preregistered H-e statistic is recomputed with v8 flags, and criterion 5 is
 reported per policy and food arm.
