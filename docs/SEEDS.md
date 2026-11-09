@@ -21,7 +21,10 @@ passed to the generator, not simulation seeds.
 | 7100 | unit tests | `tests/` |
 | 8000–8002 | evaluation, **used for calibration** | `scripts/calibrate_optuna.py --heldout` default; held-out losses informed calibration choices (phases 2b–2h, e.g. NOTES "held-out 8000–8002"). Not fresh for any claim about fit to the record |
 | 8000–8011 | evaluation (arm comparisons only, PLAN §15.3) | P4-1 guard (random MLP, 2026-11-04); H-d guard of `pretrain_v2` (2026-11-07); heuristic K = 12 guards (P4-8); H-e sweep (2026-11-08, rules v5, re-read under v6) |
-| 9000–9999 | **reserved, fresh**: calibration reference and substrate-variant confirmation | proposed by the calibration review (equivalence guard, posterior predictive check); not yet used |
+| 9000–9047 | calibration reference (Tier 1, preregistered 2026-11-09) | A/A check of guard v2 and the posterior predictive check, frozen K = 1 colony |
+| 9048–9095 | calibration reference (Tier 1) | posterior predictive check with the removal event |
+| 9500–9504 | detector negative control (Tier 1) | rules v8 simulator negative control (random v5 nets, init 7005 / 7006) |
+| 9096–9499, 9505–9999 | **reserved, fresh** | substrate-variant confirmation (24 seeds per variant) and future references |
 
 ## Random-network init seeds (`MlpFrozenPolicy.random_init(s)`)
 
@@ -30,6 +33,7 @@ passed to the generator, not simulation seeds.
 | 7000 | the random comparison nets of every reading (v2 … v5) |
 | 7001, 7002 | v6 negative control |
 | 7003, 7004 | v7 negative control |
+| 7005, 7006 | v8 negative control (Tier 1) |
 | 7100 | unit tests |
 
 Known stream collision, kept for bit-identity: `random_init(s)` draws its weights from

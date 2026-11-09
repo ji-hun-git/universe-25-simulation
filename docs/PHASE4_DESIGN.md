@@ -712,6 +712,73 @@ Known limits, recorded before the test:
   gating favours approach moves and the reference is not conditioned on contact, so the object
   test is conservative.
 
+**v8 (fixed 2026-11-09 after the five-way review, before any v8 test; Tier 1 of
+`docs/REVIEW_2026-11-09.md`).**
+
+*Changes:*
+1. **Criterion 5 on eligible rows.**
+   - *Rule.* The candidate rows of the relaxed-field test are restricted to rows where a free
+     action was eligible at the decision: the animal was weaned (age ≥ 21 d), and no reflex was
+     in force. The reflexes are the simulator's own mask: thirst > 0.85, or hunger > 0.85, or
+     fatigue > 1.2 with hunger and thirst < 0.7. They are read from the row's pre-decision
+     drives, which every trace and synthetic trace already carries.
+   - *Why.* v7 counted rows where only the reflex action was possible, and those rows are
+     never relaxed. That made gating partly mechanical (review: the learned net's locomotor log
+     ratio fell from +0.82–1.07 to +0.09–0.41 on eligible rows).
+   - Onsets are free actions, so they are eligible by construction.
+2. **Contact re-gating in the form test's null.**
+   - In the even-mix re-simulation, an object row counts as an event only if the re-simulated
+     position is in contact: distance to that row's object ≤ its radius + 1 in.
+   - The radius comes from a new trace field `obj_r`; the synthetic generator writes it too.
+   - Traces without `obj_r` are re-simulated without re-gating, as in v7, and say so
+     (`seq_struct_form_regated_unvalidated` false).
+   - The pass rule is unchanged: excess ≥ 0.10 and z > 1.645.
+3. **Order diagnostic, not a flag.**
+   - The episode's own actions are permuted within the episode, re-simulated under the same
+     mechanics and re-gated (`seq_struct_order_excess` / `_z`). EXPLORE rows keep their observed
+     step vector.
+   - It needs a primitive-mechanics trace (simulator traces with a move model and `obj_r`);
+     otherwise NaN.
+   - It separates "the moves come in an ordered sequence" from "the move mix differs from an
+     even mix".
+   - Composition alone (e.g. shuttling by preferring TURN_BACK) still counts as form for
+     criteria 3 and 4, because Burghardt's criterion 3 includes "modified form".
+4. **Fixed locomotor threshold.** A locomotor event is a locomotor-family action whose row
+   displacement exceeds the movement model's EXPLORE σ per row (trace meta; the K default
+   otherwise). Before, it was the 90th percentile of the same trace's serious moves, which
+   changed with the policy and confounded comparisons between arms.
+5. **The criteria count C is no longer a response variable.** Analyses report each criterion
+   against a matched random policy. The flags themselves are unchanged apart from items 1, 2
+   and 4.
+
+*Kept:* v7 flags as `decisions_v7_unvalidated`, and v6 flags as before.
+
+*Test on a fresh split* (seeds 80,000 + 1,000 × class + colony, 30 colonies per class, 1,000
+surrogates). Pass conditions:
+- **The v7 battery** scored with v8 flags: the 16 v5 checks and both random-walk checks.
+- **A new hard negative, `forced_gating`.** Free-time episodes occur at one constant rate
+  whenever a free action is eligible. Individuals spend reflex-forced spells (hunger > 0.85,
+  foraging only), which are never relaxed. It is the negative for criterion 5:
+  - AUC ≥ 0.80 of `gate_relaxed_z` between `all_criteria` and `forced_gating`;
+  - criterion 5 met in ≤ 10 % of `forced_gating` colonies;
+  - diagnostic: the same check with v7 flags, which is expected to fail.
+- **A simulator negative control** (`scripts/negcontrol_v8.py`):
+  - random v5 nets, init seeds 7005 and 7006 (never used), on simulation seeds 9500–9504 (from
+    the reserved band, recorded in `docs/SEEDS.md`);
+  - two substrates: action space v2, and ball physics plus novelty at g = 8;
+  - K = 12, 1,010 days, windows at days 400 / 700 / 1000, every fourth individual, ≤ 400
+    individuals;
+  - that gives 30 windows per kind and substrate (the review asked for ≥ 30);
+  - criterion 3, criterion 4 and criterion 5 flags must each be met in ≤ 10 % of windows per
+    kind and substrate.
+- **The scripted test of `tests/test_actions_v2.py`** meets the v8 form test in both kinds,
+  and the random net does not. The locomotor half becomes a true RUN_ON / TURN_BACK
+  alternation, the preregistered wording of §1.8.
+
+*Diagnostic, not a pass condition:* the H-e sweep (evaluation seeds, already read) re-read with
+v8, exploratory. The preregistered H-e statistic is recomputed with v8 flags, and criterion 5 is
+reported per policy and food arm.
+
 **First simulator reading (training seeds 7000–7002, 4 windows).** Need-driven and random
 policies: object and locomotor episodes are non-functional (c1) and spontaneous (c2) but last
 one decision (mean 1.00–1.04 events), so c3 / c4 are not evaluable (≤ 21 direction pairs, ≤ 2
@@ -832,6 +899,76 @@ hoppers, nests and partners; spread uniformly the colony never concentrates enou
 breakdown to complete. So the calibration is "biology + heuristic behaviour", H-d is
 falsified for an arbitrary policy, and the random arm is the baseline bounding what a learned
 policy may do (`NOTES.md` 2026-11-04 → P4-1).
+
+### 4.1 Guard v2, posterior predictive check and screening (fixed 2026-11-09 before any run; Tier 1)
+
+**Why.** The H-d guard is a difference test (review 2026-11-09):
+- At n = 3, an identical arm reads "not preserved" about 30 % of the time.
+- At n = 12 it is effectively a fixed 10 % threshold, nearly blind on N@315.
+- A "preserved" verdict is therefore weak evidence.
+
+Guard v2 is an equivalence test. It is used for arms and substrate variants judged from now on.
+H-d and the verdicts already reported keep their rule.
+
+**Guard v2 — the rule.**
+- *Primary landmarks and margins (arm − control):*
+  - peak N ±5 %;
+  - N@736 ±5 %;
+  - peak day ±30 d;
+  - cessation of surviving births ±30 d;
+  - cessation of conceptions ±40 d;
+  - phase-B doubling time ±15 %;
+  - decline ratio N@1200 / peak ±0.07.
+- *Reported, not decisive:* first litters, N@315 (CV about 0.35), N@1444, N@1588.
+- *Statistic.* For each landmark, the difference of the means, with a 90 % confidence interval
+  from 10,000 bootstrap resamples of the seeds, each arm resampled on its own. The resampling
+  uses a stream of its own, seeded by the guard. Percentage margins are taken relative to the
+  control mean.
+- *Verdict:*
+  - **equivalent** if every primary CI lies inside its margin (an intersection–union test, so
+    no multiplicity correction);
+  - **not equivalent** if any primary CI lies wholly outside its margin;
+  - **inconclusive** otherwise.
+- *Sample sizes:*
+  - substrate-variant confirmation: 24 fresh seeds;
+  - development screens: 6 seeds, never decisive;
+  - arm comparisons on 8000–8011 only by an amendment written before reading.
+
+**A/A check of the rule** (`scripts/calib_reference.py`).
+- *Runs:* the frozen K = 1 colony (`configs/default.yaml`) on seeds 9000–9047, 1,600 d.
+- *Procedure:* 1,000 random splits into two arms of 24 seeds each, with the guard v2 verdict on
+  every split.
+- *Pass:*
+  - "not equivalent" in ≤ 5 % of splits;
+  - "inconclusive" reported as the rule's cost at n = 24.
+- If the check fails, the margins are not changed here. The result goes to Jason.
+
+**Posterior predictive check of the frozen model.**
+- *Runs:* the same 48 runs, plus 48 more on seeds 9048–9095 with the removal event on (150
+  adults on day 1014; Calhoun 1973 Fig 2 caption). The event is ported from the unmerged 2n
+  branch, off by default and bit-identical.
+- *Report, for every landmark and record value:* median, 90 % prediction interval, and the
+  percentile rank of Calhoun's value. This covers:
+  - the canonical landmarks;
+  - N@736 / 811 / 960 / 1444 / 1471 / 1588;
+  - both doubling times;
+  - first litters.
+- *Preregistered reading:* a record value outside the model's 90 % interval is a **miss**.
+  Expected misses, from the review: both doubling times (phase B 44.5 d vs 55; phase C 99 vs
+  145) and N@736.
+
+**Morris screening** (`scripts/morris_screen.py`).
+- *Parameters:* the 35 searched parameters of `calib/priors.py` on their prior boxes, plus the
+  biology and drive values set by hand in `configs/default.yaml` that have no prior, on ±30 %
+  of their frozen value.
+- *Design:* r = 10 trajectories, 4 levels.
+- *Runs:* 2 common seeds (7003, 7004), 1,600 d, K = 1.
+- *Output, per landmark:*
+  - μ* and σ for each parameter;
+  - the effective rank of the matrix of elementary effects (landmarks × parameters), counting
+    singular values above 5 % of the largest.
+- *Purpose:* identifiability — how many directions the landmarks actually constrain. No pass
+  condition, and no parameter changes.
 
 ## 5. Determinism (two tiers, never cross-tier identity)
 
