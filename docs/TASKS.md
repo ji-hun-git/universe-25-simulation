@@ -545,6 +545,14 @@ Design and checks: `docs/PHASE4_DESIGN.md` §1.9 and §2 (v7).
 
 ## P4-14 — Novelty-based curiosity (place memory)
 
+> **Stopped at the matching gate 2026-11-09:**
+> - Built and bit-identical when off (seven hashes); mechanics tests green.
+> - Relief matching: no g within 10 % of the target curiosity. The best is g = 8 at +23 %;
+>   curiosity flattens near 0.3.
+> - Heuristic guard, `pretrain_v5` and the reading not run, per the preregistered stop.
+> - Next: Jason chooses between the guard at g = 8 as a deviation and a re-preregistered
+>   matching. NOTES 2026-11-09.
+
 **Goal:** curiosity is relieved by consequences in every family (Jason, 2026-11-09).
 - Locomotor curiosity relief scales with the novelty of the bin entered: 10 × 10 grid,
   1 − exp(−Δt / 1 day), per-animal memory.

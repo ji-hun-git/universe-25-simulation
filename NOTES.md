@@ -1,5 +1,60 @@
 # Universe25 Play — NOTES
 
+## 2026-11-09 — Novelty-based curiosity (P4-14): built; relief matching misses its 10 % rule, stopped as preregistered
+
+**Context.** Jason chose consequence-based curiosity in every family. Design:
+`docs/PHASE4_DESIGN.md` §1.10, commit f0ff667, before the code (dbbfe86).
+- *Place memory:* each animal keeps the last visit time of each bin of a 10 × 10 grid.
+- *Locomotor relief:* the per-sub-step amount × g × the novelty of the bin entered,
+  1 − exp(−Δt / 1 day).
+- *Consequence gain:* g also scales the ball-push relief.
+- *Observation v5* adds the novelty of the bins ahead and behind.
+- *Gate:* g is chosen by matching the heuristic's adult mean curiosity to the frozen substrate.
+
+**Checks.**
+1. *Bit-identity with novelty off and g = 1: passes.* Seven trajectories hash identically
+   before and after: the six of P4-13 and the `pretrain_v4` net with physics,
+   `e9463fb1f65925c4`.
+2. *Mechanics: pass* (`tests/test_novelty.py`): full relief on a new bin, none for staying,
+   1 − exp(−Δt/τ) on a revisit, a spawned slot forgets, no relief for non-locomotor actions,
+   the gain scales pushes, no random draw, observation v5. Every test file passes.
+
+**Relief matching** (`scripts/scan_novelty_gain.py`; heuristic K = 12 continue, training seeds
+7000–7002, adult mean curiosity sampled daily over days 100–700): **no g meets the preregistered
+10 % rule.**
+
+| g | adult curiosity (target 0.250) | rel. diff | boredom (target 0.064) | N@315 (target 367) | N@700 (target 2029) |
+|---:|---:|---:|---:|---:|---:|
+| 1 | 1.410 | +464 % | 0.075 | 72 | 831 |
+| 2 | 0.938 | +275 % | 0.082 | 85 | 1758 |
+| 3 | 0.548 | +119 % | 0.088 | 266 | 2104 |
+| 4 | 0.433 | +73 % | 0.091 | 197 | 2120 |
+| 6 | 0.326 | +30 % | 0.091 | 390 | 2017 |
+| 8 | 0.308 | +23 % | 0.091 | 341 | 2038 |
+
+- The best g, 8, leaves adult curiosity 23 % above the target, so the rule says stop. The
+  heuristic guard, `pretrain_v5` and the reading were **not run**.
+- Curiosity flattens near 0.3 as g grows. Relief now comes only when an animal enters a bin it
+  has not been in recently. The heuristic's continue-mode EXPLORE is a random walk that mostly
+  stays in or near bins it has just visited, so larger relief per entry cannot pull the mean
+  down much further (curiosity is floored at 0 per entry).
+- Seen, not tested: at g = 6 and 8 the colony-size landmarks of the first 700 days are close to
+  the target (N@315 390 and 341 vs 367; N@700 2017 and 2038 vs 2029), though curiosity is still
+  higher. The proxy may be stricter than the curve. Only the guard would show it, and the guard
+  was not run.
+- Boredom rises by 0.03 at every g (locomotor boredom relief is unchanged; the heuristic spends
+  less time in boredom-relieving actions).
+
+**What this means.** The novelty substrate is implemented and bit-identical when off. Under the
+preregistered gate it is not calibration-matched for the heuristic. Two ways on, both
+deviations that need Jason:
+- Run the heuristic guard at g = 8 anyway: the guard is the real test, and the early
+  landmarks look matched.
+- Re-preregister the matching: a wider g grid, a shorter τ, or matching on landmarks instead of
+  mean curiosity.
+
+No evaluation seed was read.
+
 ## 2026-11-09 — Ball physics and rules v7 (P4-13): v7 passes; the learner ignores the balls; physics moves the heuristic's curve
 
 **Context.** Jason held H-f and chose to fix the substrate. Design: `docs/PHASE4_DESIGN.md` §1.9

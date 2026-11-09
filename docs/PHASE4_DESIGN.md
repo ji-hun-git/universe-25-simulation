@@ -401,6 +401,16 @@ observation v5. Nothing else changes.
 
 H-f stays held. Any amendment goes to Jason before an evaluation seed is read.
 
+**Result (2026-11-09, NOTES).**
+- Checks 1 and 2 pass: seven hashes identical; mechanics tests green.
+- Relief matching misses its rule. The target is 0.250. Curiosity falls with g (1.41 at g = 1,
+  0.31 at g = 8) and flattens near 0.3, so the best g = 8 stays +23 % above the target.
+- As preregistered, the work stopped: no heuristic guard, no `pretrain_v5`, no reading.
+- At g = 6–8 the colony-size landmarks of the first 700 days look close to the target (seen,
+  not tested).
+- How to go on is Jason's decision: the guard at g = 8 as a deviation, or a re-preregistered
+  matching.
+
 ## 2. Measurement: detectors per Burghardt criterion (eval-only, unvalidated)
 
 Principles. Every detector is computed after the fact from logs (position, action, drives, cell,

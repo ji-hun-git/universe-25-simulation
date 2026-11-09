@@ -578,6 +578,12 @@ plateau moved by less than its seed se. Caveats in full in `NOTES.md` → "Phase
   - Likely reason the balls don't matter: curiosity and boredom have consequence-free routes.
   - Next decision (Jason): consequence-based intrinsic drives in every family (reopens
     calibration), or H-g and the playground-off arm.
+- **Novelty-based curiosity (2026-11-09, P4-14; Jason chose it)**: place memory on a 10 × 10
+  grid; locomotor curiosity relief = g × the novelty of the bin entered; g also scales the push
+  relief; observation v5 has 59 floats. Off = bit-identical (seven hashes).
+  - Relief matching misses its preregistered 10 % rule (best g = 8, curiosity +23 %), so the
+    work stopped before the guard and `pretrain_v5`.
+  - Jason decides: the guard at g = 8 as a deviation, or re-preregister the matching.
 
 ---
 
@@ -798,6 +804,7 @@ in the peak count (N@736 3–4 % low) and the slow realisations' late tail (N@14
 - [x] Detector rules v6 (P4-11, 2026-11-09: criteria 3 / 4 need a form beyond chance; 18 / 18 synthetic checks; no simulator policy in action space v1 meets c3 / c4)
 - [x] Action space v2 (P4-12, 2026-11-09: four movement primitives plus heading, observation v3; bit-identical arms; `pretrain_v3` mixes the primitives like the random v3 net; the form test has a mechanical baseline under v2; guard not preserved, arc late)
 - [x] Ball physics + detector rules v7 (P4-13, 2026-11-09: v7 passes every check and is frozen; `pretrain_v4` ignores the balls, no form; physics is not calibration-neutral for the heuristic)
+- [ ] Novelty-based curiosity (P4-14, 2026-11-09: built, bit-identical when off; relief matching missed its 10 % rule (best g = 8, +23 %), stopped before the guard and `pretrain_v5` - Jason's call)
 - [ ] Sweep: policy kind × abundance / scarcity × playground on / off × 12 seeds (P4-6); H-d … H-g answered or marked untested in NOTES
 - [ ] H2 audit extended to observation, learner and detector code with a negative test (P4-7); no ICM / RND bonus; the heuristic is never distilled
 
