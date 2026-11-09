@@ -804,7 +804,32 @@ surrogates). Pass conditions:
     - the K = 12 classes behave as under v7.
 
 *Diagnostic, not a pass condition:* the H-e sweep (evaluation seeds, already read) re-read with
-v8, exploratory. The preregistered H-e statistic is recomputed with v8 flags, and criterion 5 is
+v8, exploratory.
+
+**v8 test result (2026-11-09): 19 of 20 preregistered synthetic checks pass; v8 is not
+adopted.** Synthetic split, seeds 80,000 + …; `_output/detector_validation_v8.json`.
+- *The failure:* locomotor criterion 3 against `random_walk` has FPR 0.13 (4 of 30 colonies;
+  AUC 0.986, TPR 0.93).
+- *At the limit:* locomotor criterion 4 against `random_walk` has FPR 0.10, and object criterion 5
+  against `forced_gating` has FPR 0.10.
+- *Every other check passes,* including the new criterion-5 check against `forced_gating`
+  (AUC 1.000 in both kinds; locomotor FPR 0.00).
+- *Likely cause.* Under v7 `random_walk` met the form test in 0 of 30 colonies. The only v8 change
+  that touches locomotor events is item 4, the fixed threshold. At σ per row it admits the
+  smaller random-walk steps, so more random walks clear the form floor by chance.
+
+**v9 (fixed 2026-11-09 after the v8 synthetic result, before seeing any v8 simulator result).**
+- *Rule.* v9 is v8 without item 4: locomotor events go back to v7's threshold, the 90th
+  percentile of the same trace's serious moves.
+- *Open limitation.* The review's concern stays open and recorded: that threshold changes with
+  the policy, which can confound comparisons between arms.
+- *Unchanged:* items 1–3 and 5, the pre-test amendments, and the pass rules.
+- *Synthetic test:* a fresh split, seeds 90,000 + …, with the same battery including
+  `forced_gating`.
+- *Simulator negative control:* the `scripts/negcontrol_v8.py` runs (seeds 9500–9504, init seeds
+  7005 / 7006, both substrates) re-detected under v9, with the same pass rule.
+  - Those runs were started for v8, and their v8 detection was still running when v9 was fixed.
+  - Their v8 summary is reported, but v9 was not chosen on it. The preregistered H-e statistic is recomputed with v8 flags, and criterion 5 is
 reported per policy and food arm.
 
 **First simulator reading (training seeds 7000–7002, 4 windows).** Need-driven and random
