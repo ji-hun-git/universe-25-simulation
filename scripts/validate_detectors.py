@@ -4,7 +4,7 @@
 For every synthetic class (metrics/synthetic_traces.py) it builds M colonies on test seeds
 (seed_base + 1000 * class index + colony; development used seeds 100-106, the v1 rules were
 tested on seed_base 10_000, v2 on 20_000, v3 on 30_000, v4 on 40_000, v5 on 50_000, v6 on
-60_000, v7 on 70_000, v8 on 80_000, the default), runs the detectors for both episode kinds with n
+60_000, v7 on 70_000, v8 on 80_000, v9 on 90_000, the default), runs the detectors for both episode kinds with n
 surrogates, and scores each criterion against the class built to violate it:
 
   criterion                    statistic (higher = more play-like)        target negative
@@ -95,7 +95,7 @@ def main() -> int:
     p.add_argument("--days", type=int, default=20)
     p.add_argument("--surrogates", type=int, default=1000)
     p.add_argument("--workers", type=int, default=6)
-    p.add_argument("--seed-base", type=int, default=80_000)
+    p.add_argument("--seed-base", type=int, default=90_000)
     p.add_argument("--out", type=str, default=str(ROOT / "_output" / "detector_validation.json"))
     a = p.parse_args()
     all_classes = tuple(CLASSES) + tuple(SUBSTEP_CLASSES)

@@ -35,7 +35,11 @@ direction labels (excess >= 0.10 and z > 1.645; own random stream, so every v5 s
 unchanged). A random walk has the reversal fraction of its own shuffle. The v5 flags stay in the
 output as `decisions_v5_unvalidated`.
 
-Rules v8 (2026-11-09, Tier 1, PHASE4_DESIGN.md section 2): criterion 5's candidate rows are
+Rules v9 (2026-11-09): v8 with v7's locomotor threshold restored (v8 failed one synthetic
+check: its fixed threshold let random walks meet the form test in 4 of 30 colonies).
+
+Rules v8 (2026-11-09, Tier 1, PHASE4_DESIGN.md section 2; not adopted): criterion 5's
+candidate rows are
 only rows where a free action was eligible (weaned, no reflex in force: the simulator's mask read
 from the row's pre-decision drives); the even-mix re-simulation re-gates object rows on contact
 (trace field `obj_r`); an own-action permutation re-simulation is reported as an order
@@ -123,7 +127,7 @@ RESIM_CHUNK = 50  # v7: replays computed together (memory: rows x chunk floats p
 MAX_RIGID_PAIRS = 4000
 N_SYM = 9  # movement symbols: 3 displacement bins x 3 radial directions
 KINDS = ("object", "locomotor")
-RULES = "v8"  # rule-set label written into every detector output
+RULES = "v9"  # rule-set label written into every detector output
 # v8 eligibility: the simulator's reflex mask (sim._select_actions) and the weaning age
 REFLEX_DRIVE = 0.85  # thirst or hunger above this forces DRINK / FORAGE
 REFLEX_FATIGUE = 1.2  # fatigue above this, with hunger and thirst below REFLEX_CLEAR, forces REST
@@ -1103,11 +1107,12 @@ def decisions_v5(r: dict[str, float]) -> dict[str, bool]:
 
 def detect_kind(S: Steps, kind: str, n_surrogates: int = 1000, seed: int = 0,
                 decisions_per_day: int = 6, rules: str = RULES) -> dict[str, Any]:
-    """One episode kind. `rules` "v8" (default) or "v7" (the v7 event threshold, criterion 5 on
-    every row, the even-mix null without contact re-gating, plus the v6 shuffle)."""
-    v8 = rules == "v8"
+    """One episode kind. `rules` "v9" (default), "v8" (v9 with the fixed locomotor threshold;
+    not adopted) or "v7" (criterion 5 on every row, the even-mix null without contact
+    re-gating, plus the v6 shuffle)."""
+    v8 = rules != "v7"  # the v8 / v9 definitions
     rng = np.random.default_rng(seed)
-    ev, thr = event_mask(S, kind, fixed=v8)
+    ev, thr = event_mask(S, kind, fixed=rules == "v8")
     c, has_break = gap_criterion(S, ev, max_gap=decisions_per_day)
     s, e, n_ev = segment(S, ev, c)
     in_ep = np.zeros(S.n + 1, dtype=np.int64)

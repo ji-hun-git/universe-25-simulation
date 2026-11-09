@@ -112,7 +112,7 @@ def test_v6_form_test_needs_structure_beyond_chance() -> None:
             assert np.array_equal(np.asarray(v), np.asarray(a[k]), equal_nan=True), k
 
 
-def test_v8_rules() -> None:
+def test_v9_rules() -> None:
     """Rules v8: criterion 5 counts only rows where a free action was eligible, so the
     forced_gating class (onsets at one rate whenever eligible, long reflex-forced spells) is not
     gated under v8 although v7 flags it; the even-mix null re-gates object rows on contact; the
@@ -120,7 +120,7 @@ def test_v8_rules() -> None:
     floor and all_criteria above it; a trace without object positions cannot re-simulate object
     episodes; the form nulls draw from their own streams, so no other statistic depends on
     them; the v7 / v6 / v5 flags come from the second pass."""
-    assert D.RULES == "v8"
+    assert D.RULES == "v9"
     elig = D._eligible(np.array([30.0, 30.0, 30.0, 10.0, 30.0]),
                        np.array([0.9, 0.2, 0.2, 0.2, 0.75]), np.array([0.2, 0.2, 0.9, 0.2, 0.2]),
                        np.array([0.1, 1.3, 0.1, 0.1, 1.3]))
@@ -293,7 +293,7 @@ if __name__ == "__main__":
     test_trace_off_by_default_and_recorder_does_not_perturb()
     test_each_synthetic_class_fails_the_criterion_it_violates()
     test_v6_form_test_needs_structure_beyond_chance()
-    test_v8_rules()
+    test_v9_rules()
     test_v4_substep_rules()
     test_v5_counts_only_exogenous_triggers()
     test_gap_criterion_finds_no_structure_in_memoryless_gaps()
