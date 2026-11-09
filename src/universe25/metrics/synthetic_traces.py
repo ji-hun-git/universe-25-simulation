@@ -48,7 +48,13 @@ from universe25.agents.state import (
 from universe25.metrics.trace import FIELDS, nearest_object
 
 CLASSES = ("all_criteria", "serious", "rigid_loop", "novelty", "triggered", "stressed",
-           "random_walk")
+           "random_walk", "forced_gating")
+# forced_gating (rules v8 hard negative for criterion 5): free-time onsets at one constant rate
+# whenever a free action is eligible, relaxed or not; long reflex-forced foraging and drinking
+# spells (hunger or thirst above 0.85, slow trips) that are never relaxed. Without the
+# eligibility restriction those forced rows make onsets look gated by the relaxed field.
+FORCED = 0.85
+FORCED_SPEED = 3.0
 # Sub-step classes: a base class expanded to K rows per decision (rules v4), optionally in the
 # 2 x 2-cell arena (rules v5): name -> (base class, K, mobile)
 SUBSTEP_CLASSES = {"all_criteria_k12": ("all_criteria", 12, False),
@@ -64,7 +70,11 @@ W = 40.0
 # rules v7 replay null: movement model per decision in this arena (the random walk's sigma, its
 # mean step, the serious approach speed); per sub-step as the simulator scales it
 MOVE_EXPLORE_SD = 14.0
-MOVE_MANIP_STEP = 30.0
+# v8 (amended before the v8 test): the generator's own object scales - approach at its "at"
+# speed (60 in per decision) and withdraw 2.25 in (v7 used the serious approach speed, 30 in,
+# for both, which made every re-simulated BACK_OFF leave contact)
+MOVE_MANIP_STEP = 60.0
+MOVE_BACK_OFF = 2.25
 CELL_BASE = np.array([0.3, 0.3, 0.3, 0.6])  # mobile arena: hoppers 0, nest 2, objects 3
 
 
@@ -172,7 +182,10 @@ def _simulate_individual(cls: str, uid: int, days: int, dpd: int,
         act = ACT_REST
         target = None
         if not plan:
-            free = not (st["thirst"] > 0.6 or st["hunger"] > 0.6 or st["fatigue"] > 0.8)
+            if cls == "forced_gating":  # eligible = no reflex in force (the simulator's mask)
+                free = not (st["thirst"] > FORCED or st["hunger"] > FORCED)
+            else:
+                free = not (st["thirst"] > 0.6 or st["hunger"] > 0.6 or st["fatigue"] > 0.8)
             if free:
                 at_nest = bool(np.hypot(*(pos - nest)) < 1.0)
                 plan, plan_kind = _onset(cls, r, relaxed, triggered_now, st, cum_contacts,
@@ -182,6 +195,12 @@ def _simulate_individual(cls: str, uid: int, days: int, dpd: int,
                     rigid_done_day = day
         if plan:
             act, target = plan.pop(0)
+        elif cls == "forced_gating" and st["thirst"] > FORCED:
+            act = ACT_DRINK
+        elif cls == "forced_gating" and st["hunger"] > FORCED:
+            act = ACT_FORAGE
+        elif cls == "forced_gating":
+            act = ACT_REST if st["fatigue"] > 0.8 or r.random() < 0.5 else ACT_NEST
         elif st["thirst"] > 0.6:
             act = ACT_DRINK
         elif st["hunger"] > 0.6:
@@ -192,12 +211,13 @@ def _simulate_individual(cls: str, uid: int, days: int, dpd: int,
             act = ACT_NEST if r.random() < 0.5 else ACT_REST
         cell_pre = int(_cells(pos[0], pos[1])) if mobile else 0
         # execute
+        speed = FORCED_SPEED if cls == "forced_gating" else 15.0
         if act == ACT_DRINK:
-            pos = _toward(pos, WATER, 15.0)
+            pos = _toward(pos, WATER, speed)
             if np.hypot(*(pos - WATER)) < 0.5:
                 st["thirst"] = 0.0
         elif act == ACT_FORAGE:
-            pos = _toward(pos, FOOD, 15.0)
+            pos = _toward(pos, FOOD, speed)
             if np.hypot(*(pos - FOOD)) < 0.5:
                 st["hunger"] = 0.0
         elif act == ACT_REST:
@@ -249,6 +269,7 @@ def _simulate_individual(cls: str, uid: int, days: int, dpd: int,
             "water_dist": float(np.hypot(*(pos - WATER))),
             "nest_dist": float(np.hypot(*(pos - nest))), "cum_contacts": cum_contacts,
             "obj_x": float(OBJECTS[int(oid[0]), 0]), "obj_y": float(OBJECTS[int(oid[0]), 1]),
+            "obj_r": OBJ_RADIUS,
         }
         for k in FIELDS:
             rows[k].append(vals[k])
@@ -266,6 +287,8 @@ def _onset(cls: str, r: np.random.Generator, relaxed: bool, triggered: bool,
         go = relaxed and triggered and r.random() < 0.8
     elif cls == "stressed":
         go = (not relaxed) and r.random() < 0.3
+    elif cls == "forced_gating":
+        go = r.random() < 0.12  # one rate whenever eligible, relaxed or not
     elif cls == "random_walk":
         if r.random() < 0.12:
             plan = []
@@ -347,6 +370,7 @@ def expand_substeps(trace: dict[str, Any], K: int) -> dict[str, Any]:
                                   np.full(len(OBJECTS), OBJ_RADIUS))
     out["obj_id"], out["obj_dist"] = oid, od
     out["obj_x"], out["obj_y"] = OBJECTS[oid, 0], OBJECTS[oid, 1]
+    out["obj_r"] = np.full(out["obj_x"].shape, OBJ_RADIUS)
     out["contact"] = ((out["action"] == ACT_MANIPULATE) & (od <= orr + 1.0)).astype(np.int8)
     x0, y0, x1, y1 = PG_BOX
     out["in_playground"] = ((out["x"] >= x0) & (out["x"] <= x1) & (out["y"] >= y0)
@@ -367,10 +391,14 @@ def expand_substeps(trace: dict[str, Any], K: int) -> dict[str, Any]:
 
 
 def _move_meta(K: int) -> dict[str, float]:
-    """Trace meta of the movement model per row at K rows per decision (rules v7)."""
-    sd = MOVE_EXPLORE_SD / np.sqrt(K)
+    """Trace meta of the movement model per row at K rows per decision (rules v7). The K rows
+    of a synthetic decision are a linear interpolation of it (expand_substeps), so every step
+    scales with 1/K (v8, amended before the test; v7 used 1/sqrt(K) for EXPLORE, which is the
+    simulator's independent sub-steps, not this generator's interpolation)."""
+    sd = MOVE_EXPLORE_SD / K
     return {"move_explore_sd": float(sd), "move_run_len": float(sd * np.sqrt(np.pi / 2)),
-            "move_manip_step": MOVE_MANIP_STEP / K, "world_width": W, "world_height": W}
+            "move_manip_step": MOVE_MANIP_STEP / K, "move_back_off": MOVE_BACK_OFF / K,
+            "world_width": W, "world_height": W}
 
 
 def make_colony(cls: str, n_individuals: int = 30, days: int = 20, dpd: int = 6,

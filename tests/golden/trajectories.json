@@ -23,7 +23,7 @@
     "n_alive": 21,
     "births": 26,
     "deaths": 13,
-    "trace": "aeaa25b0e890007615c7e4c0bb79c1d2905dbeb5d97149e525dc5cb7bbc87f44"
+    "trace": "ed17eb1a3e0c6cb49cc587d57393642674d12dd800b49cfa4b83efe832021fdf"
    },
    "k12_rechoose_mlp": {
     "trajectory": "886067d7714dc890c4d8e4464ad49123566fe7a8c3ef9e285cb3e3f443859ac6",
@@ -75,7 +75,7 @@
     "n_alive": 356,
     "births": 646,
     "deaths": 298,
-    "trace": "aeaa25b0e890007615c7e4c0bb79c1d2905dbeb5d97149e525dc5cb7bbc87f44"
+    "trace": "ed17eb1a3e0c6cb49cc587d57393642674d12dd800b49cfa4b83efe832021fdf"
    },
    "k12_rechoose_mlp": {
     "trajectory": "2576939af9244ba0b0bdda84df516b1d7e65c2fcb45bdb35e42ce6a49ec783cb",

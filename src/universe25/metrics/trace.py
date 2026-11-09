@@ -17,7 +17,8 @@ Each window is written to `trace_<start>_<end>.npz` when it closes; `sample_ever
 individuals whose uid is a multiple of it.
 
 Rules v7 (P4-13): rows also carry the nearest object's position (`obj_x`, `obj_y`, NaN without
-objects) and the meta carries the movement model per row (EXPLORE sigma, RUN_ON length,
+objects; v8 adds its radius `obj_r`) and the meta carries the movement model per row
+(EXPLORE sigma, RUN_ON length,
 MANIPULATE step, world size, ball physics), which the form test's replay null uses.
 
 Nothing here is read by a policy or learner (tests/test_detectors.py import audit).
@@ -42,7 +43,7 @@ PRE_FIELDS = ("uid", "step", "tick", "day", "slot", "action", "age", "sex", "rol
               "wounds", "cell", "cell_density")
 POST_FIELDS = ("x", "y", "hunger_post", "thirst_post", "fatigue_post", "stress_post", "obj_id",
                "obj_dist", "contact", "in_playground", "food_dist", "water_dist", "nest_dist",
-               "cum_contacts", "obj_x", "obj_y")
+               "cum_contacts", "obj_x", "obj_y", "obj_r")
 FIELDS = PRE_FIELDS + POST_FIELDS
 SURV = ("hunger", "thirst", "fatigue", "stress")
 
@@ -96,6 +97,7 @@ class TraceRecorder:
             "move_explore_sd": 10.0 * sim.dt_ref * 10 / math.sqrt(self.K),
             "move_run_len": 10.0 * sim.dt_ref * 10 / math.sqrt(self.K) * math.sqrt(math.pi / 2),
             "move_manip_step": 7.0 * sim.reach / self.K,
+            "move_back_off": 0.6 * 7.0 * sim.reach / self.K,  # BACK_OFF length, CIRCLE arc
             "world_width": float(w.width),
             "world_height": float(w.height),
             "ball_physics": bool(getattr(sim, "ball_physics", False)),
@@ -152,6 +154,9 @@ class TraceRecorder:
         rows["obj_x"] = (np.where(has, ox[jc], np.nan) if ox.size
                          else np.full(oid.size, np.nan)).astype(np.float32)
         rows["obj_y"] = (np.where(has, oy[jc], np.nan) if oy.size
+                         else np.full(oid.size, np.nan)).astype(np.float32)
+        _, _, orad = self._objects(sim)
+        rows["obj_r"] = (np.where(has, orad[jc], np.nan) if orad.size
                          else np.full(oid.size, np.nan)).astype(np.float32)
         rows["contact"] = contact.astype(np.int8)
         rows["in_playground"] = self._in_pg(x, y)

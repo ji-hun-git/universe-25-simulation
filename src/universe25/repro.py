@@ -36,7 +36,7 @@ ROOT = Path(__file__).resolve().parents[2]
 SCHEMAS: dict[str, Any] = {
     "run_json": 2,  # 2: manifest embedded (2026-11-09)
     "metrics_parquet": 2,  # 2: removed_cum column (2026-11-09)
-    "trace": 2,  # 2: obj_x / obj_y and the movement model in meta (rules v7)
+    "trace": 3,  # 2: obj_x / obj_y, movement model (v7); 3: obj_r, move_back_off (v8)
     "observation": 5,  # builder default; v2-v4 weight files keep their layouts
     "action_space": 2,  # 15 actions (P4-12)
 }

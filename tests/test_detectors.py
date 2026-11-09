@@ -95,14 +95,15 @@ def test_v6_form_test_needs_structure_beyond_chance() -> None:
     assert not loc["decisions_unvalidated"]["c4_repeated_not_rigid"]
     pos = D.detect_trace(make_colony("all_criteria", seed=31), n_surrogates=200, seed=3)
     for kind in ("object", "locomotor"):
-        assert pos[kind]["seq_struct_form_excess_unvalidated"] >= D.FORM_MIN_EXCESS, kind
-        assert pos[kind]["decisions_unvalidated"] == pos[kind]["decisions_v5_unvalidated"]
+        assert pos[kind]["legacy_v7"]["seq_struct_form_shuffle_excess_unvalidated"] \
+            >= D.FORM_MIN_EXCESS, kind
+        assert pos[kind]["decisions_v6_unvalidated"] == pos[kind]["decisions_v5_unvalidated"]
     S = D.prepare(make_colony("all_criteria", seed=31))
-    a = D.detect_kind(S, "locomotor", n_surrogates=50, seed=3)
+    a = D.detect_kind(S, "locomotor", n_surrogates=50, seed=3, rules="v7")
     orig = D.form_test
     try:
         D.form_test = lambda *args, **kw: {}
-        b = D.detect_kind(S, "locomotor", n_surrogates=50, seed=3)
+        b = D.detect_kind(S, "locomotor", n_surrogates=50, seed=3, rules="v7")
     finally:
         D.form_test = orig
     assert b["decisions_v5_unvalidated"] == a["decisions_v5_unvalidated"]
@@ -111,27 +112,39 @@ def test_v6_form_test_needs_structure_beyond_chance() -> None:
             assert np.array_equal(np.asarray(v), np.asarray(a[k]), equal_nan=True), k
 
 
-def test_v7_resim_null() -> None:
-    """Rules v7: the form test's null is a replay of an even family mix under the simulator's
-    mechanics. A random walk stays below the floor and all_criteria above it; a trace without
-    object positions cannot replay object episodes (NaN, c3 / c4 not met) while its locomotor
-    replay uses the move model; the v6 shuffle statistics and flags are kept; the replay draws
-    from its own stream, so no v5 or v6 statistic depends on it."""
-    assert D.RULES == "v7"
+def test_v8_rules() -> None:
+    """Rules v8: criterion 5 counts only rows where a free action was eligible, so the
+    forced_gating class (onsets at one rate whenever eligible, long reflex-forced spells) is not
+    gated under v8 although v7 flags it; the even-mix null re-gates object rows on contact; the
+    locomotor threshold is the movement model's step sigma; a random walk stays below the form
+    floor and all_criteria above it; a trace without object positions cannot re-simulate object
+    episodes; the form nulls draw from their own streams, so no other statistic depends on
+    them; the v7 / v6 / v5 flags come from the second pass."""
+    assert D.RULES == "v8"
+    elig = D._eligible(np.array([30.0, 30.0, 30.0, 10.0, 30.0]),
+                       np.array([0.9, 0.2, 0.2, 0.2, 0.75]), np.array([0.2, 0.2, 0.9, 0.2, 0.2]),
+                       np.array([0.1, 1.3, 0.1, 0.1, 1.3]))
+    assert elig.tolist() == [False, False, False, False, True]
+    fg = D.detect_trace(make_colony("forced_gating", seed=35), n_surrogates=200, seed=3)
+    for kind in ("object", "locomotor"):
+        assert not fg[kind]["decisions_unvalidated"]["c5_relaxed_field"], kind
+        assert fg[kind]["decisions_v7_unvalidated"]["c5_relaxed_field"], kind  # what v8 fixes
+        assert fg[kind]["c5_candidate_rows"] < fg[kind]["legacy_v7"]["c5_candidate_rows"]
     rw = D.detect_trace(make_colony("random_walk", seed=33), n_surrogates=200, seed=3)
     loc = rw["locomotor"]
     assert loc["seq_struct_form_excess_unvalidated"] < D.FORM_MIN_EXCESS, loc
-    assert "seq_struct_form_shuffle_excess_unvalidated" in loc and "decisions_v6_unvalidated" in loc
+    assert loc["locomotor_disp_threshold"] == rw["locomotor"]["locomotor_disp_threshold"]
     tr = make_colony("all_criteria", seed=31)
     pos = D.detect_trace(tr, n_surrogates=200, seed=3)
+    assert pos["object"]["seq_struct_form_regated_unvalidated"]
     for kind in ("object", "locomotor"):
         assert pos[kind]["seq_struct_form_excess_unvalidated"] >= D.FORM_MIN_EXCESS, kind
-    old = {k: v for k, v in tr.items() if k not in ("obj_x", "obj_y")}
+        assert all(pos[kind]["decisions_unvalidated"].values()), kind
+    old = {k: v for k, v in tr.items() if k not in ("obj_x", "obj_y", "obj_r")}
     old["meta"] = {k: v for k, v in tr["meta"].items() if not k.startswith(("move_", "world_"))}
-    r_old = D.detect_trace(old, n_surrogates=100, seed=3)
+    r_old = D.detect_trace(old, n_surrogates=100, seed=3, legacy=False)
     assert np.isnan(r_old["object"]["seq_struct_form_excess_unvalidated"])
     assert not r_old["object"]["decisions_unvalidated"]["c3_structurally_different"]
-    assert np.isfinite(r_old["locomotor"]["seq_struct_form_excess_unvalidated"])
     S = D.prepare(tr)
     a = D.detect_kind(S, "object", n_surrogates=50, seed=3)
     orig = D.form_resim
@@ -140,9 +153,9 @@ def test_v7_resim_null() -> None:
         b = D.detect_kind(S, "object", n_surrogates=50, seed=3)
     finally:
         D.form_resim = orig
-    assert b["decisions_v6_unvalidated"] == a["decisions_v6_unvalidated"]
     for k, v in b.items():
-        if k.endswith("_unvalidated") and not k.startswith("decisions"):
+        if k.endswith("_unvalidated") and not k.startswith(("decisions", "seq_struct_form",
+                                                             "seq_struct_order")):
             assert np.array_equal(np.asarray(v), np.asarray(a[k]), equal_nan=True), k
 
 
@@ -280,7 +293,7 @@ if __name__ == "__main__":
     test_trace_off_by_default_and_recorder_does_not_perturb()
     test_each_synthetic_class_fails_the_criterion_it_violates()
     test_v6_form_test_needs_structure_beyond_chance()
-    test_v7_resim_null()
+    test_v8_rules()
     test_v4_substep_rules()
     test_v5_counts_only_exogenous_triggers()
     test_gap_criterion_finds_no_structure_in_memoryless_gaps()

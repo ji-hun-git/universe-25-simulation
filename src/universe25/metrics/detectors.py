@@ -35,6 +35,14 @@ direction labels (excess >= 0.10 and z > 1.645; own random stream, so every v5 s
 unchanged). A random walk has the reversal fraction of its own shuffle. The v5 flags stay in the
 output as `decisions_v5_unvalidated`.
 
+Rules v8 (2026-11-09, Tier 1, PHASE4_DESIGN.md section 2): criterion 5's candidate rows are
+only rows where a free action was eligible (weaned, no reflex in force: the simulator's mask read
+from the row's pre-decision drives); the even-mix re-simulation re-gates object rows on contact
+(trace field `obj_r`); an own-action permutation re-simulation is reported as an order
+diagnostic (`seq_struct_order_*`, not a flag); locomotor events are locomotor-family rows whose
+displacement exceeds the movement model's EXPLORE sigma per row. The v7, v6 and v5 flags come
+from a second pass with the v7 definitions (`decisions_v7/v6/v5_unvalidated`).
+
 Rules v7 (2026-11-09, P4-13): the form test's null is a replay of a reference policy. Each
 episode is replayed 1,000 times from its start position and heading; its own event rows get an
 action drawn uniformly from the kind's family (locomotor EXPLORE / RUN_ON / TURN_BACK, object
@@ -78,9 +86,15 @@ from typing import Any
 import numpy as np
 
 from universe25.agents.state import (
+    ACT_BACK_OFF,
+    ACT_CIRCLE,
     ACT_DRINK,
+    ACT_EXPLORE,
     ACT_FORAGE,
+    ACT_MANIPULATE,
     ACT_NEST,
+    ACT_RUN_ON,
+    ACT_TURN_BACK,
     LOCO_FAMILY,
     OBJECT_FAMILY,
 )
@@ -109,7 +123,15 @@ RESIM_CHUNK = 50  # v7: replays computed together (memory: rows x chunk floats p
 MAX_RIGID_PAIRS = 4000
 N_SYM = 9  # movement symbols: 3 displacement bins x 3 radial directions
 KINDS = ("object", "locomotor")
-RULES = "v7"  # rule-set label written into every detector output
+RULES = "v8"  # rule-set label written into every detector output
+# v8 eligibility: the simulator's reflex mask (sim._select_actions) and the weaning age
+REFLEX_DRIVE = 0.85  # thirst or hunger above this forces DRINK / FORAGE
+REFLEX_FATIGUE = 1.2  # fatigue above this, with hunger and thirst below REFLEX_CLEAR, forces REST
+REFLEX_CLEAR = 0.7
+WEANED_AGE = 21.0  # biology.weaning_days of the calibrated colony
+CONTACT_SLACK_IN = 1.0  # the trace's contact rule (metrics/trace.py CONTACT_SLACK)
+LOCO_CODES = (ACT_EXPLORE, ACT_RUN_ON, ACT_TURN_BACK)
+OBJ_CODES = (ACT_MANIPULATE, ACT_BACK_OFF, ACT_CIRCLE)
 
 
 @dataclass
@@ -147,6 +169,9 @@ class Steps:
     obj_x: np.ndarray  # v7: nearest object's position at the row (NaN if not recorded)
     obj_y: np.ndarray
     move: dict  # v7: movement model per row (trace meta, else defaults from K)
+    obj_r: np.ndarray  # v8: nearest object's radius (NaN if not recorded)
+    eligible: np.ndarray  # v8: a free action was eligible at the row's decision
+    sim_trace: bool  # v8: a simulator trace (primitive mechanics), not a synthetic one
 
 
 def _prev(v: np.ndarray, ok: np.ndarray, fill: float = np.nan) -> np.ndarray:
@@ -225,7 +250,19 @@ def prepare(trace: dict[str, Any], max_individuals: int | None = None,
         obj_x=col("obj_x") if "obj_x" in trace else np.full(n, np.nan),
         obj_y=col("obj_y") if "obj_y" in trace else np.full(n, np.nan),
         move=move_model(trace.get("meta", {}), k_sub),
+        obj_r=col("obj_r") if "obj_r" in trace else np.full(n, np.nan),
+        eligible=_eligible(col("age"), col("hunger"), col("thirst"), col("fatigue"))[
+            _decision_start(uid, step, k_sub)],
+        sim_trace="synthetic_class" not in trace.get("meta", {}),
     )
+
+
+def _eligible(age: np.ndarray, hunger: np.ndarray, thirst: np.ndarray,
+              fatigue: np.ndarray) -> np.ndarray:
+    """v8: weaned and no reflex in force (the simulator's mask), from pre-decision drives."""
+    forced = ((thirst > REFLEX_DRIVE) | (hunger > REFLEX_DRIVE)
+              | ((fatigue > REFLEX_FATIGUE) & (hunger < REFLEX_CLEAR) & (thirst < REFLEX_CLEAR)))
+    return (age >= WEANED_AGE) & ~forced
 
 
 def move_model(meta: dict[str, Any], K: int) -> dict[str, float]:
@@ -239,6 +276,7 @@ def move_model(meta: dict[str, Any], K: int) -> dict[str, float]:
     return {"explore_sd": g("move_explore_sd", sd),
             "run_len": g("move_run_len", sd * np.sqrt(np.pi / 2)),
             "manip_step": g("move_manip_step", 7.0 * 4.0 / K),
+            "back_off": g("move_back_off", 0.6 * g("move_manip_step", 7.0 * 4.0 / K)),
             "width": g("world_width", 101.0), "height": g("world_height", 101.0)}
 
 
@@ -259,11 +297,17 @@ def _shift_index(S: Steps, rng: np.random.Generator) -> np.ndarray:
     return o + (np.arange(S.n) - o + k[S.gid]) % S.glen[S.gid]
 
 
-def event_mask(S: Steps, kind: str) -> tuple[np.ndarray, float]:
+def event_mask(S: Steps, kind: str, fixed: bool = True) -> tuple[np.ndarray, float]:
+    """Object events: object-family rows in contact. Locomotor events: locomotor-family rows
+    above a displacement threshold, v8 the movement model's EXPLORE sigma per row (`fixed`);
+    v7 and earlier the 90th percentile of the same trace's serious moves."""
     if kind == "object":
         return np.isin(S.action, OBJECT_FAMILY) & S.contact, float("nan")
     if kind != "locomotor":
         raise ValueError(kind)
+    if fixed:
+        thr = float(S.move["explore_sd"])
+        return np.isin(S.action, LOCO_FAMILY) & np.isfinite(S.disp) & (S.disp > thr), thr
     serious = np.isin(S.action, (ACT_FORAGE, ACT_DRINK, ACT_NEST)) & np.isfinite(S.disp)
     ref = S.disp[serious & (S.disp > 0.5)]
     if ref.size < 20:
@@ -650,17 +694,23 @@ def form_test(S: Steps, ev: np.ndarray, s: np.ndarray, e: np.ndarray, B: int,
 
 
 def form_resim(S: Steps, kind: str, ev: np.ndarray, s: np.ndarray, e: np.ndarray, B: int,
-                rng: np.random.Generator) -> dict:
-    """Rules v7: the episodes' reversal fraction against B replays of a reference policy that
-    mixes the kind's family evenly (locomotor EXPLORE / RUN_ON / TURN_BACK, object MANIPULATE /
-    BACK_OFF / CIRCLE) under the simulator's mechanics. A replay starts from the position before
-    the episode's first row, with the heading of the move into it (uniform if unknown); own event
-    rows get a uniform family action, other rows keep their observed displacement; walls clip.
-    Labels and pairs are computed on the replayed path exactly as on the observed one. Object
-    replays need the rows' object positions (`obj_x`, `obj_y`); without them the result is NaN."""
+               rng: np.random.Generator, regate: bool = True, mode: str = "even",
+               prefix: str = "seq_struct_form") -> dict:
+    """The episodes' reversal fraction against B re-simulations of each episode under the
+    simulator's mechanics, starting from the position before the episode's first row with the
+    heading of the move into it (uniform if unknown); rows that are not own events keep their
+    observed displacement; walls clip; labels and pairs as on the observed path.
+    - mode "even" (rules v7 / v8 form test): own event rows get an action drawn uniformly from
+      the kind's family (locomotor EXPLORE / RUN_ON / TURN_BACK, object MANIPULATE / BACK_OFF /
+      CIRCLE); EXPLORE steps are drawn from the movement model.
+    - mode "perm" (v8 order diagnostic): the episode's own actions in a random order, each
+      EXPLORE keeping its observed step vector. Needs a simulator trace (`sim_trace`).
+    - regate (v8): an object row of the re-simulated path counts as an event only in contact
+      (distance to its object <= obj_r + 1 in); needs `obj_r`, else no re-gating (reported).
+    Object re-simulations need `obj_x` / `obj_y`; without them the result is NaN."""
     nan = float("nan")
-    out = {"seq_struct_form_excess_unvalidated": nan, "seq_struct_form_z_unvalidated": nan,
-           "seq_struct_form_null_mean_unvalidated": nan}
+    out = {f"{prefix}_excess_unvalidated": nan, f"{prefix}_z_unvalidated": nan,
+           f"{prefix}_null_mean_unvalidated": nan, f"{prefix}_regated_unvalidated": False}
     rows, seq, own, d = _form_labels(S, ev, s, e)
     if rows.size < 2:
         return out
@@ -668,8 +718,13 @@ def form_resim(S: Steps, kind: str, ev: np.ndarray, s: np.ndarray, e: np.ndarray
     obs = _reversal_frac(d, link)
     if not np.isfinite(obs):
         return out
-    if kind == "object" and not np.all(np.isfinite(S.obj_x[rows[own]])):
+    obj = kind == "object"
+    if obj and not np.all(np.isfinite(S.obj_x[rows[own]])):
         return out
+    if mode == "perm" and not S.sim_trace:
+        return out
+    regate = bool(regate and obj and np.all(np.isfinite(S.obj_r[rows[own]])))
+    out[f"{prefix}_regated_unvalidated"] = regate
     mv = S.move
     W, H = mv["width"], mv["height"]
     n_seq = s.size
@@ -683,15 +738,13 @@ def form_resim(S: Steps, kind: str, ev: np.ndarray, s: np.ndarray, e: np.ndarray
     no_start = ~np.isfinite(sx)
     sx = np.where(no_start, S.x[ss], sx)
     sy = np.where(no_start, S.y[ss], sy)
-    # heading of the move into the start position (row s-1), NaN if unknown
-    h0 = np.full(n_seq, np.nan)
+    h0 = np.full(n_seq, np.nan)  # heading of the move into the start position
     pm = ~no_start & (ss >= 1)
     if pm.any():
         r1 = ss[pm] - 1
         dx1, dy1 = S.x[r1] - S.xprev[r1], S.y[r1] - S.yprev[r1]
         okh = np.isfinite(dx1) & (np.hypot(dx1, dy1) > 1e-6)
         h0[np.flatnonzero(pm)[okh]] = np.arctan2(dy1[okh], dx1[okh])
-    # per (episode, position) tables in the sorted order
     tab_row = np.full((n_seq, maxL), -1, dtype=np.int64)
     for k in range(maxL):
         act = Ls > k
@@ -701,24 +754,46 @@ def form_resim(S: Steps, kind: str, ev: np.ndarray, s: np.ndarray, e: np.ndarray
     own_t = valid & ev[rr]
     lab_ok = valid & np.isfinite(S.xprev[rr])
     lab_ok[:, 0] &= ~no_start
-    odx = np.where(valid & ~own_t, np.nan_to_num(S.x[rr] - S.xprev[rr]), 0.0)
-    ody = np.where(valid & ~own_t, np.nan_to_num(S.y[rr] - S.yprev[rr]), 0.0)
-    if no_start.any():  # the first row has no observed previous position: no move replayed
+    ddx = np.nan_to_num(S.x[rr] - S.xprev[rr])
+    ddy = np.nan_to_num(S.y[rr] - S.yprev[rr])
+    odx = np.where(valid & ~own_t, ddx, 0.0)
+    ody = np.where(valid & ~own_t, ddy, 0.0)
+    if no_start.any():  # the first row has no observed previous position: no move re-simulated
         odx[no_start, 0] = 0.0
         ody[no_start, 0] = 0.0
         own_t[no_start, 0] = False
-    ox_t, oy_t = S.obj_x[rr], S.obj_y[rr]
+    ox_t, oy_t = np.nan_to_num(S.obj_x[rr]), np.nan_to_num(S.obj_y[rr])
+    r_t = np.nan_to_num(S.obj_r[rr])
     n_act = np.array([int((Ls > k).sum()) for k in range(maxL)])
+    codes = np.array(OBJ_CODES if obj else LOCO_CODES)
+    if mode == "perm":
+        act_t = S.action[rr].astype(np.int64)
+        oi = np.flatnonzero(own_t.ravel())  # own slots, ordered by (episode, position)
+        seq_of = oi // maxL
     null = []
     done = 0
     while done < B:
         nb = min(RESIM_CHUNK, B - done)
+        if mode == "perm":  # the own actions (and EXPLORE step vectors) of each episode, shuffled
+            keys = rng.random((oi.size, nb))
+            AC = np.zeros((n_seq * maxL, nb), dtype=np.int64)
+            AX = np.zeros((n_seq * maxL, nb))
+            AY = np.zeros((n_seq * maxL, nb))
+            for b in range(nb):
+                src = oi[np.lexsort((keys[:, b], seq_of))]
+                AC[oi, b] = act_t.ravel()[src]
+                AX[oi, b] = ddx.ravel()[src]
+                AY[oi, b] = ddy.ravel()[src]
+            AC = AC.reshape(n_seq, maxL, nb)
+            AX = AX.reshape(n_seq, maxL, nb)
+            AY = AY.reshape(n_seq, maxL, nb)
         px = np.repeat(sx[:, None], nb, axis=1)
         py = np.repeat(sy[:, None], nb, axis=1)
         h = np.where(np.isfinite(h0)[:, None], np.nan_to_num(h0)[:, None],
                      rng.uniform(-np.pi, np.pi, (n_seq, nb)))
         PX = np.empty((n_seq, maxL, nb))
         PY = np.empty((n_seq, maxL, nb))
+        CT = np.ones((n_seq, maxL, nb), dtype=bool)
         for k in range(maxL):
             m = n_act[k]
             x, y, hh = px[:m], py[:m], h[:m]
@@ -726,38 +801,50 @@ def form_resim(S: Steps, kind: str, ev: np.ndarray, s: np.ndarray, e: np.ndarray
             ny = y + ody[:m, k, None]
             o = own_t[:m, k]
             if o.any():
-                a = rng.integers(0, 3, (m, nb))
-                if kind == "locomotor":
-                    g = rng.standard_normal((2, m, nb)) * mv["explore_sd"]
-                    lr = mv["run_len"]
-                    sgn = np.where(a == 2, -1.0, 1.0)
-                    mx = np.where(a == 0, g[0], sgn * lr * np.cos(hh))
-                    my = np.where(a == 0, g[1], sgn * lr * np.sin(hh))
+                if mode == "perm":
+                    c = AC[:m, k]
+                    gx, gy = AX[:m, k], AY[:m, k]
                 else:
-                    cx, cy = ox_t[:m, k, None], oy_t[:m, k, None]
-                    vx, vy = x - cx, y - cy
-                    r = np.hypot(vx, vy)
-                    st = mv["manip_step"]
-                    safe = np.maximum(r, 1e-12)
-                    ux = np.where(r > 1e-6, vx / safe, 1.0)
-                    uy = np.where(r > 1e-6, vy / safe, 0.0)
-                    app = np.minimum(st, r)
-                    rad = np.maximum(r, 1.0)
-                    ang = np.arctan2(uy, ux) + 0.6 * st / rad
-                    mx = np.where(a == 0, -ux * app, np.where(a == 1, ux * 0.6 * st,
-                                                               cx + rad * np.cos(ang) - x))
-                    my = np.where(a == 0, -uy * app, np.where(a == 1, uy * 0.6 * st,
-                                                               cy + rad * np.sin(ang) - y))
+                    c = codes[rng.integers(0, 3, (m, nb))]
+                    if obj:
+                        gx = gy = 0.0
+                    else:
+                        g = rng.standard_normal((2, m, nb)) * mv["explore_sd"]
+                        gx, gy = g[0], g[1]
+                lr = mv["run_len"]
+                cx, cy = ox_t[:m, k, None], oy_t[:m, k, None]
+                vx, vy = x - cx, y - cy
+                r = np.hypot(vx, vy)
+                st = mv["manip_step"]
+                safe = np.maximum(r, 1e-12)
+                ux = np.where(r > 1e-6, vx / safe, 1.0)
+                uy = np.where(r > 1e-6, vy / safe, 0.0)
+                app = np.minimum(st, r)
+                rad = np.maximum(r, 1.0)
+                bo = mv["back_off"]  # BACK_OFF length and CIRCLE arc
+                ang = np.arctan2(uy, ux) + bo / rad
+                mx = np.select(
+                    [c == ACT_EXPLORE, c == ACT_RUN_ON, c == ACT_TURN_BACK, c == ACT_MANIPULATE,
+                     c == ACT_BACK_OFF, c == ACT_CIRCLE],
+                    [gx + 0.0 * x, lr * np.cos(hh), -lr * np.cos(hh), -ux * app,
+                     ux * bo, cx + rad * np.cos(ang) - x], 0.0)
+                my = np.select(
+                    [c == ACT_EXPLORE, c == ACT_RUN_ON, c == ACT_TURN_BACK, c == ACT_MANIPULATE,
+                     c == ACT_BACK_OFF, c == ACT_CIRCLE],
+                    [gy + 0.0 * y, lr * np.sin(hh), -lr * np.sin(hh), -uy * app,
+                     uy * bo, cy + rad * np.sin(ang) - y], 0.0)
                 nx = np.where(o[:, None], x + mx, nx)
                 ny = np.where(o[:, None], y + my, ny)
             nx = np.clip(nx, 0.5, W - 0.5)
             ny = np.clip(ny, 0.5, H - 0.5)
+            if regate:
+                CT[:m, k] = (np.hypot(nx - ox_t[:m, k, None], ny - oy_t[:m, k, None])
+                             <= r_t[:m, k, None] + CONTACT_SLACK_IN)
             dxm, dym = nx - x, ny - y
             moved = np.hypot(dxm, dym) > 1e-6
             h[:m] = np.where(moved, np.arctan2(dym, dxm), hh)
             px[:m], py[:m] = nx, ny
             PX[:m, k], PY[:m, k] = nx, ny
-        # labels relative to each replayed path's own end point
         ends = Ls - 1
         ex = PX[np.arange(n_seq), ends]
         ey = PY[np.arange(n_seq), ends]
@@ -766,7 +853,7 @@ def form_resim(S: Steps, kind: str, ev: np.ndarray, s: np.ndarray, e: np.ndarray
         delta = (np.hypot(PX - ex[:, None], PY - ey[:, None])
                  - np.hypot(prevx - ex[:, None], prevy - ey[:, None]))
         lab = np.where(delta < -1.0, -1, np.where(delta > 1.0, 1, 0))
-        lab = np.where((own_t & lab_ok)[:, :, None], lab, 0)
+        lab = np.where((own_t & lab_ok)[:, :, None] & CT, lab, 0)
         both = (lab[:, :-1] != 0) & (lab[:, 1:] != 0) & valid[:, 1:, None]
         npair = both.sum(axis=(0, 1))
         nrev = (both & (lab[:, :-1] != lab[:, 1:])).sum(axis=(0, 1))
@@ -776,9 +863,9 @@ def form_resim(S: Steps, kind: str, ev: np.ndarray, s: np.ndarray, e: np.ndarray
     fin = nullv[np.isfinite(nullv)]
     if fin.size < 2:
         return out
-    out["seq_struct_form_excess_unvalidated"] = float(obs - fin.mean())
-    out["seq_struct_form_z_unvalidated"] = _z(obs, fin)
-    out["seq_struct_form_null_mean_unvalidated"] = float(fin.mean())
+    out[f"{prefix}_excess_unvalidated"] = float(obs - fin.mean())
+    out[f"{prefix}_z_unvalidated"] = _z(obs, fin)
+    out[f"{prefix}_null_mean_unvalidated"] = float(fin.mean())
     return out
 
 
@@ -1015,9 +1102,12 @@ def decisions_v5(r: dict[str, float]) -> dict[str, bool]:
 
 
 def detect_kind(S: Steps, kind: str, n_surrogates: int = 1000, seed: int = 0,
-                decisions_per_day: int = 6) -> dict[str, Any]:
+                decisions_per_day: int = 6, rules: str = RULES) -> dict[str, Any]:
+    """One episode kind. `rules` "v8" (default) or "v7" (the v7 event threshold, criterion 5 on
+    every row, the even-mix null without contact re-gating, plus the v6 shuffle)."""
+    v8 = rules == "v8"
     rng = np.random.default_rng(seed)
-    ev, thr = event_mask(S, kind)
+    ev, thr = event_mask(S, kind, fixed=v8)
     c, has_break = gap_criterion(S, ev, max_gap=decisions_per_day)
     s, e, n_ev = segment(S, ev, c)
     in_ep = np.zeros(S.n + 1, dtype=np.int64)
@@ -1042,27 +1132,36 @@ def detect_kind(S: Steps, kind: str, n_surrogates: int = 1000, seed: int = 0,
     if s.size < MIN_EPISODES:
         base["note"] = f"fewer than {MIN_EPISODES} episodes: criteria not evaluated"
         base["decisions_unvalidated"] = {k: False for k in decisions({})}
-        base["decisions_v6_unvalidated"] = dict(base["decisions_unvalidated"])
-        base["decisions_v5_unvalidated"] = dict(base["decisions_unvalidated"])
+        if not v8:
+            base["decisions_v6_unvalidated"] = dict(base["decisions_unvalidated"])
+            base["decisions_v5_unvalidated"] = dict(base["decisions_unvalidated"])
         return base
     base.update(crit1(S, s, e, n_surrogates, rng))
     base.update(crit2(S, s, n_surrogates, rng, horizon=decisions_per_day))
     base.update(crit3(S, ev, s, e, n_surrogates, rng))
     base.update(crit4(S, kind, ev, s, e, cand, onset, n_surrogates, rng))
-    base.update(crit5(S, cand, onset, n_surrogates, rng))
-    # v6 form test (label shuffle, kept) and the v7 replay null: random streams of their own,
-    # so every v5 statistic above is unchanged
-    base.update(form_test(S, ev, s, e, n_surrogates, np.random.default_rng([seed, 6])))
-    base.update(form_resim(S, kind, ev, s, e, n_surrogates, np.random.default_rng([seed, 7])))
-    base["decisions_unvalidated"] = decisions(base)
-    base["decisions_v6_unvalidated"] = decisions_v6(base)
-    base["decisions_v5_unvalidated"] = decisions_v5(base)
+    # v8: criterion 5 only on rows where a free action was eligible
+    base.update(crit5(S, cand & S.eligible if v8 else cand, onset, n_surrogates, rng))
+    base["c5_candidate_rows"] = int((cand & S.eligible).sum() if v8 else cand.sum())
+    # form nulls on random streams of their own, so no statistic above depends on them
+    base.update(form_resim(S, kind, ev, s, e, n_surrogates, np.random.default_rng([seed, 7]),
+                           regate=v8))
+    if v8:
+        base.update(form_resim(S, kind, ev, s, e, n_surrogates,
+                               np.random.default_rng([seed, 8]), regate=True, mode="perm",
+                               prefix="seq_struct_order"))
+        base["decisions_unvalidated"] = decisions(base)
+    else:
+        base.update(form_test(S, ev, s, e, n_surrogates, np.random.default_rng([seed, 6])))
+        base["decisions_unvalidated"] = decisions(base)
+        base["decisions_v6_unvalidated"] = decisions_v6(base)
+        base["decisions_v5_unvalidated"] = decisions_v5(base)
     return base
 
 
 def detect_trace(trace: dict[str, Any], kinds: tuple[str, ...] = KINDS, n_surrogates: int = 1000,
                  seed: int = 0, max_individuals: int | None = None, self_entries: bool = False,
-                 weaned_age: float = 21.0) -> dict[str, Any]:
+                 weaned_age: float = 21.0, legacy: bool = True) -> dict[str, Any]:
     """Both episode kinds of one trace window, plus the relaxed share of weaned rows (age >=
     `weaned_age`, the config's biology.weaning_days) of the individuals read: the dose of H-e."""
     meta = trace.get("meta", {})
@@ -1077,5 +1176,18 @@ def detect_trace(trace: dict[str, Any], kinds: tuple[str, ...] = KINDS, n_surrog
         "relaxed_share_weaned": float(S.relaxed[weaned].mean()) if weaned.any() else float("nan"),
     }
     for k in kinds:
-        out[k] = detect_kind(S, k, n_surrogates=n_surrogates, seed=seed, decisions_per_day=dpd)
+        r8 = detect_kind(S, k, n_surrogates=n_surrogates, seed=seed, decisions_per_day=dpd)
+        if legacy:  # the v7 / v6 / v5 flags from a pass with the v7 definitions
+            r7 = detect_kind(S, k, n_surrogates=n_surrogates, seed=seed,
+                             decisions_per_day=dpd, rules="v7")
+            r8["decisions_v7_unvalidated"] = r7["decisions_unvalidated"]
+            for key in ("decisions_v6_unvalidated", "decisions_v5_unvalidated"):
+                if key in r7:
+                    r8[key] = r7[key]
+            r8["legacy_v7"] = {key: r7[key] for key in (
+                "n_episodes", "locomotor_disp_threshold", "c5_candidate_rows",
+                "gate_relaxed_log_ratio_unvalidated", "gate_relaxed_z_unvalidated",
+                "seq_struct_form_excess_unvalidated", "seq_struct_form_z_unvalidated",
+                "seq_struct_form_shuffle_excess_unvalidated") if key in r7}
+        out[k] = r8
     return out
