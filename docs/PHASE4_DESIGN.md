@@ -840,7 +840,19 @@ adopted.** Synthetic split, seeds 80,000 + …; `_output/detector_validation_v8.
 - *Simulator negative control:* the `scripts/negcontrol_v8.py` runs (seeds 9500–9504, init seeds
   7005 / 7006, both substrates) re-detected under v9, with the same pass rule.
   - Those runs were started for v8, and their v8 detection was still running when v9 was fixed.
-  - Their v8 summary is reported, but v9 was not chosen on it. The preregistered H-e statistic is recomputed with v8 flags, and criterion 5 is
+  - Their v8 summary is reported, but v9 was not chosen on it.
+
+**v9 test result (2026-11-09): every preregistered check passes; v9 is the frozen rule set.**
+- *Synthetic split* (seeds 90,000 + …, `_output/detector_validation_v9.json`): 20 of 20 checks.
+  - Every AUC ≥ 0.998.
+  - `forced_gating` criterion 5: FPR 0.03 (object) and 0.00 (locomotor).
+  - `random_walk` locomotor form test: FPR 0.07 (v7's split: 0.00; locomotor detection is
+    otherwise v7's).
+- *Simulator negative control* (the v8 runs re-detected; `_output/negcontrol_v8/
+  summary_v9rules.json`): criteria 3, 4 and 5 met in 0 of 30 windows per kind and substrate.
+  The v8 summary (`summary_v8rules.json`) also passed.
+- *Scripted test:* the scripted alternation meets the v9 form test in both kinds, and the random
+  net does not (`tests/test_actions_v2.py`). The preregistered H-e statistic is recomputed with v8 flags, and criterion 5 is
 reported per policy and food arm.
 
 **First simulator reading (training seeds 7000–7002, 4 windows).** Need-driven and random

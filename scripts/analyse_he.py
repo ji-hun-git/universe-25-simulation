@@ -47,11 +47,14 @@ STATS = ("nf_index_unvalidated", "onset_trigger_free_unvalidated",
 def load_units(sweep: Path, flag_set: str = "v5") -> list[dict]:
     units = []
     key = {"v5": {"v5": "decisions_unvalidated", "v6": "decisions_v5_unvalidated",
-                  "v7": "decisions_v5_unvalidated", "v8": "decisions_v5_unvalidated"},
+                  "v7": "decisions_v5_unvalidated", "v8": "decisions_v5_unvalidated",
+                  "v9": "decisions_v5_unvalidated"},
            "v6": {"v6": "decisions_unvalidated", "v7": "decisions_v6_unvalidated",
-                  "v8": "decisions_v6_unvalidated"},
-           "v7": {"v7": "decisions_unvalidated", "v8": "decisions_v7_unvalidated"},
-           "v8": {"v8": "decisions_unvalidated"}}[flag_set]
+                  "v8": "decisions_v6_unvalidated", "v9": "decisions_v6_unvalidated"},
+           "v7": {"v7": "decisions_unvalidated", "v8": "decisions_v7_unvalidated",
+                  "v9": "decisions_v7_unvalidated"},
+           "v8": {"v8": "decisions_unvalidated"},
+           "v9": {"v9": "decisions_unvalidated"}}[flag_set]
     for d in sorted(p for p in sweep.iterdir() if p.is_dir()):
         f = d / "detectors_unvalidated.json"
         if not f.exists():
@@ -98,7 +101,7 @@ def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--sweep", type=str, default=str(ROOT / "_output" / "he_sweep"))
     p.add_argument("--perm", type=int, default=10_000)
-    p.add_argument("--flags", choices=("v5", "v6", "v7", "v8"), default="v5")
+    p.add_argument("--flags", choices=("v5", "v6", "v7", "v8", "v9"), default="v5")
     a = p.parse_args()
     sweep = Path(a.sweep)
     units = load_units(sweep, a.flags)
