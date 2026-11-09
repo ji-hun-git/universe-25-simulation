@@ -1,5 +1,88 @@
 # Universe25 Play — NOTES
 
+## 2026-11-09 — Tier 1: detector rules v9 frozen; guard v2 checked; the frozen colony's predictive check; H-e re-read
+
+All preregistered in `docs/PHASE4_DESIGN.md` §2 (v8 / v9) and §4.1 before any run (324bbe0;
+pre-test amendments 2f509e3, fb1c82f; v9 9d2cda9).
+
+**Detector rules: v8 failed one check, and v9 passes all of them.**
+- *v8:*
+  - Changes: criterion 5 on eligible rows only, contact re-gating of the object null, an order
+    diagnostic, a fixed locomotor threshold.
+  - Synthetic result: 19 of 20 checks pass. Locomotor criterion 3 against `random_walk` fails
+    with FPR 0.13; v7 had 0.00.
+  - Cause: the only change to locomotor events is the fixed threshold.
+  - Its simulator negative control passed.
+- *v9:* v8 with v7's threshold restored.
+  - Synthetic split (90,000+): 20 of 20 checks.
+  - The new hard negative `forced_gating` (onsets at one rate whenever eligible, long
+    reflex-forced spells) meets criterion 5 in 0.03 / 0.00 of colonies under v9, against 6 of 6
+    development colonies under v7. The mechanical criterion-5 artefact the review found is real,
+    and v9 removes it.
+  - Simulator negative control (random v5 nets, seeds 9500–9504, init 7005 / 7006, both
+    substrates): criteria 3, 4 and 5 met in 0 of 30 windows per kind.
+  - The scripted alternation still passes.
+  - **v9 is the frozen rule set.**
+- *Development corrections,* recorded as pre-test amendments: the synthetic generator's movement
+  model now describes its own scales (object approach 60 in, withdrawal 2.25 in, per-row steps
+  / K for its interpolated sub-steps).
+
+**H-e re-read under v9** (exploratory; evaluation seeds 8000–8011 were already read under v5 /
+v6; `_output/he_sweep/he_analysis_v9flags.json`):
+
+| policy | kind | T, v5 (2026-11-08) | T, v9 | p, v9 | reading, v9 |
+|---|---|---:|---:|---:|---|
+| learned | object | +0.328 | +0.262 | 0.003 | supported |
+| learned | locomotor | +0.229 | +0.079 | 0.128 | not supported |
+| random | object | +0.099 (v6) | +0.099 | 0.047 | not supported |
+
+- Excluding reflex-forced and pup rows removes the locomotor half of H-e, which already rested
+  on two near-empty windows. The object half stands.
+- **The continuous gating statistic** (`gate_relaxed_log_ratio`) rises with the relaxed share
+  for every policy:
+  - learned: +0.33 (object), +0.50 (locomotor);
+  - random net: +0.49 / +0.22;
+  - heuristic: +0.26 (object).
+
+  The dose association is therefore not specific to learning. The learned net's object flags
+  cross the threshold more often, but a random network shows the same relation in its
+  continuous statistic.
+- As the review recommended, C is no longer read as a response. H-e's object result is
+  state-gating that grows with the relaxed share, found in every policy, and is not evidence of
+  learned play.
+
+**Guard v2: A/A check passes, but n = 24 is often inconclusive** (frozen K = 1 colony, seeds
+9000–9047, 1,000 random 24 + 24 splits; `_output/calib_reference/summary.json`).
+- "Not equivalent" in 0.0 % of splits; the bar is ≤ 5 %.
+- "Inconclusive" in 60.3 %, because the cessation landmarks' CIs are often wider than their
+  margins: last young day in 46 % of splits, last conception in 32 %, peak day in 25 %.
+- Resolving ±30–40 d at these seed variances needs about 48 seeds per arm, or wider margins.
+  Jason's call; the rule is not changed here.
+- On the n = 3 development guards the new rule reads:
+  - heuristic at g = 8: inconclusive;
+  - `pretrain_v5`: not equivalent (N@736 +225, phase-B doubling −12 d, both outside their
+    margins).
+
+**Posterior predictive check of the frozen colony** (48 runs on seeds 9000–9047; 48 with the
+removal of 150 adults on day 1014, seeds 9048–9095; 1,600 d):
+- *Inside the 90 % prediction interval:* first litters, N@315, peak N, peak day, surviving-birth
+  cessation, last conception, adults at 315, N@811, N@960, N@1444, N@1471, N@1588.
+- *Misses (the record lies outside the interval):*
+
+| landmark | Calhoun | frozen median [90 % PI] | with removal |
+|---|---:|---|---|
+| N@736 | 2056 | 1957 [1902, 2025] | 1950 [1898, 2047] |
+| phase-B doubling time | 55 d | 44 [37, 55] | 45 [39, 54] |
+| phase-C doubling time | 145 d | 97 [80, 137] | 99 [75, 135] |
+
+- The colony grows too fast in both phases. The late gate on first litters compensates, as the
+  review predicted.
+- The removal event moves the late counts little: N@1444 median 128 without it, 120 with it.
+
+**Not done in Tier 1, recorded:** the stale cell-count cache and slot-order fights (they change
+calibrated behaviour and need adjudication). Morris screening is still running and is reported
+below when done.
+
 ## 2026-11-09 — P4-14 result: the novelty learner reads neither novelty nor mobility; its colony grows too fast
 
 **What ran.**
