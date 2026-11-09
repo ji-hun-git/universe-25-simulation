@@ -4,8 +4,8 @@
 For every synthetic class (metrics/synthetic_traces.py) it builds M colonies on test seeds
 (seed_base + 1000 * class index + colony; development used seeds 100-106, the v1 rules were
 tested on seed_base 10_000, v2 on 20_000, v3 on 30_000, v4 on 40_000, v5 on 50_000, v6 on
-60_000, the default), runs the detectors for both episode kinds with n surrogates, and scores
-each criterion against the class built to violate it:
+60_000, v7 on 70_000, the default), runs the detectors for both episode kinds with n
+surrogates, and scores each criterion against the class built to violate it:
 
   criterion                    statistic (higher = more play-like)        target negative
   c1 not fully functional      nf_index_z                                 serious
@@ -13,7 +13,8 @@ each criterion against the class built to violate it:
   c3 structurally different    seq_struct_reversal_diff                   serious
   c4 repeated, not rigid       1 - rep_rigid_loop_frac  /  exposure slope rigid_loop / novelty
   c5 relaxed field             gate_relaxed_z                             stressed
-  c3 / c4 form beyond chance   seq_struct_form_excess (v6, locomotor)     random_walk
+  c3 / c4 form beyond chance   seq_struct_form_excess (v6; v7: against   random_walk
+                               the even-mix re-simulation), locomotor
 
 Preregistered pass (written before this script was first run on test seeds): AUC >= 0.80 of the
 statistic between all_criteria and the target negative, TPR >= 0.80 of the decision flag on
@@ -91,7 +92,7 @@ def main() -> int:
     p.add_argument("--days", type=int, default=20)
     p.add_argument("--surrogates", type=int, default=1000)
     p.add_argument("--workers", type=int, default=6)
-    p.add_argument("--seed-base", type=int, default=60_000)
+    p.add_argument("--seed-base", type=int, default=70_000)
     p.add_argument("--out", type=str, default=str(ROOT / "_output" / "detector_validation.json"))
     a = p.parse_args()
     all_classes = tuple(CLASSES) + tuple(SUBSTEP_CLASSES)

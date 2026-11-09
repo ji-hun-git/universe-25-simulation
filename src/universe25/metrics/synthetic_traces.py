@@ -61,6 +61,10 @@ OBJECTS = np.array([[32.0, 32.0], [36.0, 28.0], [28.0, 36.0], [8.0, 8.0]])  # la
 OBJ_RADIUS = 1.5
 PG_BOX = (24.0, 24.0, 40.0, 40.0)
 W = 40.0
+# rules v7 replay null: movement model per decision in this arena (the random walk's sigma, its
+# mean step, the serious approach speed); per sub-step as the simulator scales it
+MOVE_EXPLORE_SD = 14.0
+MOVE_MANIP_STEP = 30.0
 CELL_BASE = np.array([0.3, 0.3, 0.3, 0.6])  # mobile arena: hoppers 0, nest 2, objects 3
 
 
@@ -244,6 +248,7 @@ def _simulate_individual(cls: str, uid: int, days: int, dpd: int,
             "food_dist": float(np.hypot(*(pos - FOOD))),
             "water_dist": float(np.hypot(*(pos - WATER))),
             "nest_dist": float(np.hypot(*(pos - nest))), "cum_contacts": cum_contacts,
+            "obj_x": float(OBJECTS[int(oid[0]), 0]), "obj_y": float(OBJECTS[int(oid[0]), 1]),
         }
         for k in FIELDS:
             rows[k].append(vals[k])
@@ -341,6 +346,7 @@ def expand_substeps(trace: dict[str, Any], K: int) -> dict[str, Any]:
     oid, od, orr = nearest_object(out["x"], out["y"], OBJECTS[:, 0], OBJECTS[:, 1],
                                   np.full(len(OBJECTS), OBJ_RADIUS))
     out["obj_id"], out["obj_dist"] = oid, od
+    out["obj_x"], out["obj_y"] = OBJECTS[oid, 0], OBJECTS[oid, 1]
     out["contact"] = ((out["action"] == ACT_MANIPULATE) & (od <= orr + 1.0)).astype(np.int8)
     x0, y0, x1, y1 = PG_BOX
     out["in_playground"] = ((out["x"] >= x0) & (out["x"] <= x1) & (out["y"] >= y0)
@@ -355,8 +361,16 @@ def expand_substeps(trace: dict[str, Any], K: int) -> dict[str, Any]:
     meta = dict(trace.get("meta", {}))
     meta["decisions_per_day"] = int(meta.get("decisions_per_day", 6)) * K
     meta["free_substeps"] = K
+    meta.update(_move_meta(K))
     out["meta"] = meta
     return out
+
+
+def _move_meta(K: int) -> dict[str, float]:
+    """Trace meta of the movement model per row at K rows per decision (rules v7)."""
+    sd = MOVE_EXPLORE_SD / np.sqrt(K)
+    return {"move_explore_sd": float(sd), "move_run_len": float(sd * np.sqrt(np.pi / 2)),
+            "move_manip_step": MOVE_MANIP_STEP / K, "world_width": W, "world_height": W}
 
 
 def make_colony(cls: str, n_individuals: int = 30, days: int = 20, dpd: int = 6,
@@ -376,7 +390,8 @@ def make_colony(cls: str, n_individuals: int = 30, days: int = 20, dpd: int = 6,
         for k in FIELDS:
             cols[k].extend(rows[k])
     out: dict[str, Any] = {k: np.asarray(v) for k, v in cols.items()}
-    out["meta"] = {"decisions_per_day": dpd, "synthetic_class": cls, "seed": seed}
+    out["meta"] = {"decisions_per_day": dpd, "synthetic_class": cls, "seed": seed,
+                   **_move_meta(1)}
     if mobile:
         out["meta"]["cell_grid"] = 2
     return out

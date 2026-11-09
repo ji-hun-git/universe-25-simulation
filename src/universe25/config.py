@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 import yaml
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class GeometryConfig(BaseModel):
@@ -32,6 +32,11 @@ class PlaygroundConfig(BaseModel):
     n_balls: int = 8
     n_tunnels: int = 4
     n_ramps: int = 2
+    # Ball physics (P4-13, PHASE4_DESIGN.md 1.9): balls are pushed by free-time moves that end
+    # in contact (kappa x the approach), roll with friction and bounce at the bounds; object-
+    # family curiosity / boredom relief scales with the speed a contact gave a ball. Runs in the
+    # free-time sub-step loop (needs free_substeps > 1). False = off (bit-identical).
+    ball_physics: bool = False
 
 
 class ResourceConfig(BaseModel):
@@ -271,6 +276,12 @@ class SimConfig(BaseModel):
     # and relief per sub-step, its own RNG stream). Feeding, nursing, conception, stress and
     # mortality stay per decision. 1 = off (bit-identical).
     free_substeps: int = Field(1, ge=1)
+
+    @model_validator(mode="after")
+    def _physics_needs_substeps(self) -> SimConfig:
+        if self.playground.ball_physics and self.free_substeps < 2:
+            raise ValueError("playground.ball_physics needs free_substeps > 1")
+        return self
 
     @field_validator("seed")
     @classmethod

@@ -127,19 +127,26 @@ class MlpFrozenPolicy:
     """obs -> hidden tanh -> hidden tanh -> action logits; weights fixed for the run (no
     learning). Inference is pure NumPy float32 on the reference path; sampling is inverse-CDF
     on the masked softmax with one uniform per deciding agent from the policy's own stream.
-    The layout follows the weights: observation v3 with 15 actions (action space v2), or v2's
-    49 inputs and 11 actions, which keeps the v2 builder and samples the base actions with v2's
-    arithmetic (bit-identical with runs made before action space v2)."""
+    The layout follows the weights: observation v4 (57 inputs) or v3 (55) with 15 actions
+    (action space v2), or v2's 49 inputs and 11 actions, which keeps the v2 builder and samples
+    the base actions with v2's arithmetic (bit-identical with runs made before action space
+    v2). Each older layout keeps its builder exactly."""
 
     name = "mlp_frozen"
 
     def __init__(self, params: dict[str, np.ndarray], seed: int):
-        from universe25.agents.observation import OBS_DIM, OBS_DIM_V2, ObservationBuilder
+        from universe25.agents.observation import (
+            OBS_DIM,
+            OBS_DIM_V2,
+            OBS_DIM_V3,
+            ObservationBuilder,
+        )
 
         self._builder_cls = ObservationBuilder
         self.params = {k: np.asarray(params[k], dtype=np.float32) for k in PARAM_KEYS}
         W1, W2, W3 = self.params["W1"], self.params["W2"], self.params["W3"]
-        layouts = {(OBS_DIM, N_ACTIONS): 3, (OBS_DIM_V2, N_BASE_ACTIONS): 2}
+        layouts = {(OBS_DIM, N_ACTIONS): 4, (OBS_DIM_V3, N_ACTIONS): 3,
+                   (OBS_DIM_V2, N_BASE_ACTIONS): 2}
         self.obs_version = layouts.get((W1.shape[0], W3.shape[1]))
         if self.obs_version is None or W1.shape[1] != W2.shape[0]:
             raise ValueError(f"bad MLP shapes {W1.shape} {W2.shape} {W3.shape}")

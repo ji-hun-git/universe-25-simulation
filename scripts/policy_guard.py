@@ -32,6 +32,7 @@ def main() -> int:
     p.add_argument("--weights", type=str, default=None)
     p.add_argument("--label", type=str, default=None)
     p.add_argument("--substeps", type=int, default=1, help="free_substeps for the arm (P4-8)")
+    p.add_argument("--ball-physics", action="store_true", help="ball physics for the arm (P4-13)")
     a = p.parse_args()
     seeds = [a.first + i for i in range(a.seeds)]
     out_dir = ROOT / "_output"
@@ -46,7 +47,10 @@ def main() -> int:
         out_dir.mkdir(parents=True, exist_ok=True)
         cache.write_text(json.dumps({str(k): v for k, v in control.items()}, indent=1),
                          encoding="utf-8")
-    extra = {"free_substeps": a.substeps} if a.substeps > 1 else None
+    extra = {"free_substeps": a.substeps} if a.substeps > 1 else {}
+    if a.ball_physics:
+        extra["playground"] = {"ball_physics": True}
+    extra = extra or None
     report = guard(a.kind, seeds, a.days, a.workers, a.weights, control_rows=control,
                    progress=print, extra=extra)
     print()

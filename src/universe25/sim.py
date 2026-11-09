@@ -46,13 +46,20 @@ from universe25.config import SimConfig
 from universe25.metrics.calibration import rate_cessation_day, surviving_birth_cessation_day
 from universe25.metrics.logger import MetricsLogger
 from universe25.metrics.playscore import PlayScoreAccumulator
-from universe25.metrics.trace import TraceRecorder
+from universe25.metrics.trace import CONTACT_SLACK, TraceRecorder
 from universe25.io.snapshots import SnapshotWriter
 from universe25.rng import make_rng
 from universe25.world.geometry import World, build_world
 from universe25.nvidia.nvtx_ranges import nvtx_range
 from universe25.nvidia.cuda_graphs import CudaGraphTick
 from universe25.warp_kernels.engine import WarpTickEngine
+
+
+# Ball physics (P4-13, PHASE4_DESIGN.md 1.9), fixed before the first run
+BALL_KAPPA = 1.0  # ball speed gained per inch of approach at contact
+BALL_FRICTION_K12 = 0.7  # speed kept per sub-step at K = 12 (0.7 ** (12 / K) at other K)
+BALL_RESTITUTION = 0.5  # share of the normal speed kept at a playground bound
+BALL_STOP = 0.01  # inches per sub-step: slower balls stop
 
 
 class Universe25Sim:
@@ -109,6 +116,12 @@ class Universe25Sim:
         # free-time sub-steps (P4-8): 1 = off; their own stream, never the biology stream
         self.free_substeps = max(1, int(cfg.free_substeps))
         self._sub_rng = make_rng(cfg.seed + 2_000_003) if self.free_substeps > 1 else None
+        # ball physics (P4-13, PHASE4_DESIGN.md 1.9): pushes and rolling in the free-time
+        # sub-steps, deterministic (no random draw); off = bit-identical
+        self.ball_physics = bool(cfg.playground.ball_physics and self.world.playground_enabled)
+        self.ball_friction = BALL_FRICTION_K12 ** (12.0 / self.free_substeps)
+        self.ball_v_ref = BALL_KAPPA * 7.0 * self.reach / self.free_substeps  # full MANIPULATE
+        self._ball_stats = {"pushes": 0, "object_family_pushes": 0, "rolled_in": 0.0}
         # eval-only decision traces (off when no windows: no recorder, bit-identical tick)
         self.trace = (TraceRecorder(self, cfg.trace.windows, cfg.trace.sample_every)
                       if cfg.trace.windows else None)
@@ -555,6 +568,8 @@ class Universe25Sim:
                 d2 = (ox - a.x[i]) ** 2 + (oy - a.y[i]) ** 2
                 j = int(np.argmin(d2))
                 self._move_toward(int(i), float(ox[j]), float(oy[j]), 7.0)
+                if self.ball_physics:  # balls move only by physics (P4-13)
+                    continue
                 obj = self.world.play_objects[j]
                 pgb = self.world.playground_bounds
                 jig = 0.4  # per-decision nudge of the object
@@ -697,11 +712,15 @@ class Universe25Sim:
         else the decision did (fatigue, object nudges, biology draws) stands; feeding,
         nursing, conception, stress and mortality run per decision from where agents end."""
         F = pre["F"]
+        K = self.free_substeps
         if F.size == 0:
+            if self.ball_physics:  # balls keep rolling through the sub-steps
+                for _ in range(K):
+                    self._roll_balls()
             return
         a = self.agents
         d = self.cfg.drives
-        K = self.free_substeps
+        phys = self.ball_physics
         r = self._sub_rng
         for k in ("x", "y", "curiosity", "boredom", "social_drive", "heading"):
             getattr(a, k)[F] = pre[k]
@@ -731,6 +750,9 @@ class Universe25Sim:
         if mode == "auto":
             mode = "continue" if self.cfg.policy.kind == "need_driven" else "rechoose"
         for j in range(K):
+            if phys:  # balls moved in the previous sub-step
+                ox = np.array([o.x for o in objs], dtype=np.float64)
+                oy = np.array([o.y for o in objs], dtype=np.float64)
             pre_j = None
             if tracing:
                 pre_j = {"curiosity": a.curiosity[F].copy(), "boredom": a.boredom[F].copy(),
@@ -763,8 +785,9 @@ class Universe25Sim:
                 stp = np.minimum(step_m, dist)
                 a.x[ii] = np.clip(a.x[ii] + dx / dist * stp, 0.5, xmax)
                 a.y[ii] = np.clip(a.y[ii] + dy / dist * stp, 0.5, ymax)
-                a.curiosity[ii] = np.maximum(0.0, a.curiosity[ii] - cur_rel)
-                a.boredom[ii] = np.maximum(0.0, a.boredom[ii] - bor_rel)
+                if not phys:  # with physics the relief follows the ball (_ball_pushes)
+                    a.curiosity[ii] = np.maximum(0.0, a.curiosity[ii] - cur_rel)
+                    a.boredom[ii] = np.maximum(0.0, a.boredom[ii] - bor_rel)
             run = (act == ACT_RUN_ON) | (act == ACT_TURN_BACK)  # action space v2
             if run.any():
                 ii = F[run]
@@ -775,8 +798,11 @@ class Universe25Sim:
             if obj.any():
                 ii = F[obj]
                 self._object_moves(ii, act[obj], 0.6 * step_m)
-                a.curiosity[ii] = np.maximum(0.0, a.curiosity[ii] - cur_rel)
-                a.boredom[ii] = np.maximum(0.0, a.boredom[ii] - bor_rel)
+                if not phys:
+                    a.curiosity[ii] = np.maximum(0.0, a.curiosity[ii] - cur_rel)
+                    a.boredom[ii] = np.maximum(0.0, a.boredom[ii] - bor_rel)
+            if phys:
+                self._ball_pushes(F, act, xs, ys, cur_rel, bor_rel)
             self._update_heading(F, xs, ys)
             ix = np.clip((a.x[F] / cw).astype(int), 0, nx - 1)
             iy = np.clip((a.y[F] / ch).astype(int), 0, ny - 1)
@@ -787,6 +813,81 @@ class Universe25Sim:
                                       & (a.y[F] >= y0) & (a.y[F] <= y1))
             if tracing:
                 self.trace.micro(self, F, j, act, pre_j)
+            if phys:  # after the trace, which saw the contacts against these positions
+                self._roll_balls()
+
+    def _ball_pushes(self, F: np.ndarray, act: np.ndarray, x0: np.ndarray, y0: np.ndarray,
+                     cur_rel: float, bor_rel: float) -> None:
+        """Ball physics (P4-13): every free agent whose move ended in contact with its nearest
+        ball and brought it closer to the ball's centre by u > 0 pushes it by kappa * u along the
+        agent-to-ball direction. Object-family actions relieve curiosity / boredom in proportion
+        to the speed their contact gave the ball (full relief at a full-speed MANIPULATE contact,
+        none when holding still, at a tunnel or ramp, or without contact). No random draw."""
+        a = self.agents
+        balls = [o for o in self.world.play_objects if o.kind == "ball"]
+        scale = np.zeros(F.size)
+        if balls:
+            bx = np.array([o.x for o in balls], dtype=np.float64)
+            by = np.array([o.y for o in balls], dtype=np.float64)
+            br = np.array([o.radius for o in balls], dtype=np.float64)
+            x1 = a.x[F].astype(np.float64)
+            y1 = a.y[F].astype(np.float64)
+            d1 = np.hypot(x1[:, None] - bx[None, :], y1[:, None] - by[None, :])
+            j = np.argmin(d1, axis=1)
+            dj = d1[np.arange(F.size), j]
+            u = np.hypot(x0 - bx[j], y0 - by[j]) - dj
+            push = (dj <= br[j] + CONTACT_SLACK) & (u > 0.0)
+            if push.any():
+                k = np.flatnonzero(push)
+                jk = j[k]
+                ex, ey = bx[jk] - x1[k], by[jk] - y1[k]
+                n = np.hypot(ex, ey)
+                mx, my = x1[k] - x0[k], y1[k] - y0[k]  # at the centre: along the own move
+                mn = np.maximum(np.hypot(mx, my), 1e-12)
+                at_c = n < 1e-6
+                n = np.maximum(n, 1e-12)
+                ex = np.where(at_c, mx / mn, ex / n)
+                ey = np.where(at_c, my / mn, ey / n)
+                dv = BALL_KAPPA * u[k]
+                dvx = np.zeros(len(balls))
+                dvy = np.zeros(len(balls))
+                np.add.at(dvx, jk, dv * ex)
+                np.add.at(dvy, jk, dv * ey)
+                for b, o in enumerate(balls):
+                    if dvx[b] != 0.0 or dvy[b] != 0.0:
+                        o.vx = float(o.vx + dvx[b])
+                        o.vy = float(o.vy + dvy[b])
+                scale[k] = np.minimum(1.0, dv / self.ball_v_ref)
+                self._ball_stats["pushes"] += int(k.size)
+                self._ball_stats["object_family_pushes"] += int(
+                    np.isin(act[k], OBJECT_FAMILY).sum())
+        obj = np.isin(act, OBJECT_FAMILY)
+        ii = F[obj]
+        if ii.size:
+            sc = scale[obj]
+            a.curiosity[ii] = np.maximum(0.0, a.curiosity[ii] - cur_rel * sc)
+            a.boredom[ii] = np.maximum(0.0, a.boredom[ii] - bor_rel * sc)
+
+    def _roll_balls(self) -> None:
+        """One sub-step of rolling: move by the velocity, reflect at the playground bounds with
+        half the normal speed, decay by the friction factor, stop below BALL_STOP."""
+        x0, y0, x1, y1 = self.world.playground_bounds
+        f = self.ball_friction
+        for o in self.world.play_objects:
+            if o.kind != "ball" or (o.vx == 0.0 and o.vy == 0.0):
+                continue
+            nx, ny = o.x + o.vx, o.y + o.vy
+            if nx < x0 or nx > x1:
+                nx = min(max(nx, x0), x1)
+                o.vx = -BALL_RESTITUTION * o.vx
+            if ny < y0 or ny > y1:
+                ny = min(max(ny, y0), y1)
+                o.vy = -BALL_RESTITUTION * o.vy
+            self._ball_stats["rolled_in"] += math.hypot(nx - o.x, ny - o.y)
+            o.x, o.y = float(nx), float(ny)
+            o.vx, o.vy = o.vx * f, o.vy * f
+            if math.hypot(o.vx, o.vy) < BALL_STOP:
+                o.vx = o.vy = 0.0
 
     def _move_toward(self, i: int, tx: float, ty: float, speed: float) -> None:
         """Per-decision move (callers only move on decision ticks)."""
@@ -1483,6 +1584,8 @@ class Universe25Sim:
             "playground_enabled": self.world.playground_enabled,
             "n_nests": self.world.n_nests,
             "n_play_objects": len(self.world.play_objects),
+            "ball_physics": self.ball_physics,
+            "ball_stats": dict(self._ball_stats) if self.ball_physics else None,
             "cuda_graph": self.cuda_graph.status(),
             "warp": None if self.warp_engine is None else self.warp_engine.status(),
             "trace_files": trace_files,

@@ -35,6 +35,16 @@ direction labels (excess >= 0.10 and z > 1.645; own random stream, so every v5 s
 unchanged). A random walk has the reversal fraction of its own shuffle. The v5 flags stay in the
 output as `decisions_v5_unvalidated`.
 
+Rules v7 (2026-11-09, P4-13): the form test's null is a replay of a reference policy. Each
+episode is replayed 1,000 times from its start position and heading; its own event rows get an
+action drawn uniformly from the kind's family (locomotor EXPLORE / RUN_ON / TURN_BACK, object
+MANIPULATE / BACK_OFF / CIRCLE), moved by the simulator's mechanics (move model from the trace
+meta, objects held where the trace saw them); other rows keep their observed displacement. The
+reversal fraction is computed on each replayed path as on the observed one. Under action space
+v2 the heading-relative primitives order the labels of any random mixer, which a label shuffle
+removes; the replay keeps it. Own random stream ([seed, 7]). The v6 shuffle statistics are kept
+as `seq_struct_form_shuffle_*` and the v6 flags as `decisions_v6_unvalidated`.
+
 Criteria (decision rules v3, preregistered in PHASE4_DESIGN.md section 2; form
 statistics use only the episode's own event decisions; the gap criterion is a
 maximum-likelihood one- vs two-process fit, Sibly et al. 1990):
@@ -95,10 +105,11 @@ MIN_EPISODES = 10
 GAP_BIC_MARGIN = 10.0  # v3: two-process model must beat one process by this much
 REV_TEMPLATE_MIN_PAIRS = 20  # v4: serious reversal fraction below this support counts as 0
 FORM_MIN_EXCESS = 0.10  # v6: reversal fraction >= order-shuffle mean + 0.10 (and z > 1.645)
+RESIM_CHUNK = 50  # v7: replays computed together (memory: rows x chunk floats per array)
 MAX_RIGID_PAIRS = 4000
 N_SYM = 9  # movement symbols: 3 displacement bins x 3 radial directions
 KINDS = ("object", "locomotor")
-RULES = "v6"  # rule-set label written into every detector output
+RULES = "v7"  # rule-set label written into every detector output
 
 
 @dataclass
@@ -133,6 +144,9 @@ class Steps:
     ddobj: np.ndarray  # change of the nearest-object distance since the previous decision
     win_lo: np.ndarray  # v4: first row of the trigger window (start of the previous decision)
     age: np.ndarray  # days
+    obj_x: np.ndarray  # v7: nearest object's position at the row (NaN if not recorded)
+    obj_y: np.ndarray
+    move: dict  # v7: movement model per row (trace meta, else defaults from K)
 
 
 def _prev(v: np.ndarray, ok: np.ndarray, fill: float = np.nan) -> np.ndarray:
@@ -208,7 +222,24 @@ def prepare(trace: dict[str, Any], max_individuals: int | None = None,
         win_lo=_window_start(uid, step, same_prev, k_sub),
         ddobj=col("obj_dist") - _prev(col("obj_dist"), same_prev),
         age=col("age"),
+        obj_x=col("obj_x") if "obj_x" in trace else np.full(n, np.nan),
+        obj_y=col("obj_y") if "obj_y" in trace else np.full(n, np.nan),
+        move=move_model(trace.get("meta", {}), k_sub),
     )
+
+
+def move_model(meta: dict[str, Any], K: int) -> dict[str, float]:
+    """Per-row movement model for the v7 replay: the trace's meta entries, else the
+    simulator's defaults at K rows per decision (ticks_per_day_ref 6, 101-in pen)."""
+    sd = 10.0 * (1.0 / 6.0) * 10 / np.sqrt(K)
+
+    def g(k: str, v: float) -> float:
+        return float(np.asarray(meta.get(k, v)))
+
+    return {"explore_sd": g("move_explore_sd", sd),
+            "run_len": g("move_run_len", sd * np.sqrt(np.pi / 2)),
+            "manip_step": g("move_manip_step", 7.0 * 4.0 / K),
+            "width": g("world_width", 101.0), "height": g("world_height", 101.0)}
 
 
 def _rolling_any(flag: np.ndarray, gid: np.ndarray, gstart: np.ndarray, w: int) -> np.ndarray:
@@ -569,29 +600,38 @@ def crit3(S: Steps, ev: np.ndarray, s: np.ndarray, e: np.ndarray, B: int,
     return res
 
 
+def _form_labels(S: Steps, ev: np.ndarray, s: np.ndarray, e: np.ndarray):
+    """Rows, sequence ids, own flags and approach (-1) / withdraw (+1) / neutral (0) labels of
+    the episodes' own event rows (radial change relative to each episode's end point)."""
+    rows, seq, _, delta = _seq_symbols(S, s, e)
+    own = ev[rows] if rows.size else np.zeros(0, dtype=bool)
+    d = np.where(own, np.where(delta < -1.0, -1, np.where(delta > 1.0, 1, 0)), 0)
+    return rows, seq, own, d
+
+
+def _reversal_frac(d: np.ndarray, link: np.ndarray) -> float:
+    ok = link & (d[:-1] != 0) & (d[1:] != 0)
+    n = int(ok.sum())
+    return float((ok & (d[:-1] != d[1:])).sum() / n) if n >= 10 else float("nan")
+
+
 def form_test(S: Steps, ev: np.ndarray, s: np.ndarray, e: np.ndarray, B: int,
               rng: np.random.Generator) -> dict:
-    """Rules v6: the episodes' approach-withdraw reversal fraction (criterion 3's statistic:
+    """Rules v6 (kept as `seq_struct_form_shuffle_*`): the episodes' approach-withdraw reversal
+    fraction (criterion 3's statistic:
     own event decisions, radial direction to each episode's end point) against a within-episode
     order shuffle of the same direction labels. The own rows keep their positions and their
     labels are permuted, so the pairs that can form are those of the observed episodes. A random
     walk has the reversal fraction of its own shuffle; an alternating form exceeds it."""
     nan = float("nan")
-    out = {"seq_struct_form_excess_unvalidated": nan, "seq_struct_form_z_unvalidated": nan,
-           "seq_struct_form_null_mean_unvalidated": nan}
-    rows, seq, _, delta = _seq_symbols(S, s, e)
+    out = {"seq_struct_form_shuffle_excess_unvalidated": nan,
+           "seq_struct_form_shuffle_z_unvalidated": nan,
+           "seq_struct_form_shuffle_null_mean_unvalidated": nan}
+    rows, seq, own, d = _form_labels(S, ev, s, e)
     if rows.size < 2:
         return out
-    own = ev[rows]
-    d = np.where(own, np.where(delta < -1.0, -1, np.where(delta > 1.0, 1, 0)), 0)
     link = seq[:-1] == seq[1:]
-
-    def frac(dd: np.ndarray) -> float:
-        ok = link & (dd[:-1] != 0) & (dd[1:] != 0)
-        n = int(ok.sum())
-        return float((ok & (dd[:-1] != dd[1:])).sum() / n) if n >= 10 else nan
-
-    obs = frac(d)
+    obs = _reversal_frac(d, link)
     if not np.isfinite(obs):
         return out
     idx = np.flatnonzero(own)
@@ -599,8 +639,141 @@ def form_test(S: Steps, ev: np.ndarray, s: np.ndarray, e: np.ndarray, B: int,
     dd = d.copy()
     for b in range(B):
         dd[idx] = d[idx[np.lexsort((rng.random(idx.size), seq[idx]))]]
-        null[b] = frac(dd)
+        null[b] = _reversal_frac(dd, link)
     fin = null[np.isfinite(null)]
+    if fin.size < 2:
+        return out
+    out["seq_struct_form_shuffle_excess_unvalidated"] = float(obs - fin.mean())
+    out["seq_struct_form_shuffle_z_unvalidated"] = _z(obs, fin)
+    out["seq_struct_form_shuffle_null_mean_unvalidated"] = float(fin.mean())
+    return out
+
+
+def form_resim(S: Steps, kind: str, ev: np.ndarray, s: np.ndarray, e: np.ndarray, B: int,
+                rng: np.random.Generator) -> dict:
+    """Rules v7: the episodes' reversal fraction against B replays of a reference policy that
+    mixes the kind's family evenly (locomotor EXPLORE / RUN_ON / TURN_BACK, object MANIPULATE /
+    BACK_OFF / CIRCLE) under the simulator's mechanics. A replay starts from the position before
+    the episode's first row, with the heading of the move into it (uniform if unknown); own event
+    rows get a uniform family action, other rows keep their observed displacement; walls clip.
+    Labels and pairs are computed on the replayed path exactly as on the observed one. Object
+    replays need the rows' object positions (`obj_x`, `obj_y`); without them the result is NaN."""
+    nan = float("nan")
+    out = {"seq_struct_form_excess_unvalidated": nan, "seq_struct_form_z_unvalidated": nan,
+           "seq_struct_form_null_mean_unvalidated": nan}
+    rows, seq, own, d = _form_labels(S, ev, s, e)
+    if rows.size < 2:
+        return out
+    link = seq[:-1] == seq[1:]
+    obs = _reversal_frac(d, link)
+    if not np.isfinite(obs):
+        return out
+    if kind == "object" and not np.all(np.isfinite(S.obj_x[rows[own]])):
+        return out
+    mv = S.move
+    W, H = mv["width"], mv["height"]
+    n_seq = s.size
+    L = e - s + 1
+    order = np.argsort(-L, kind="stable")  # longest first: active episodes form a prefix
+    Ls = L[order]
+    ss = s[order]
+    maxL = int(Ls[0])
+    # start position (before the first row) and the first row's label availability
+    sx, sy = S.xprev[ss], S.yprev[ss]
+    no_start = ~np.isfinite(sx)
+    sx = np.where(no_start, S.x[ss], sx)
+    sy = np.where(no_start, S.y[ss], sy)
+    # heading of the move into the start position (row s-1), NaN if unknown
+    h0 = np.full(n_seq, np.nan)
+    pm = ~no_start & (ss >= 1)
+    if pm.any():
+        r1 = ss[pm] - 1
+        dx1, dy1 = S.x[r1] - S.xprev[r1], S.y[r1] - S.yprev[r1]
+        okh = np.isfinite(dx1) & (np.hypot(dx1, dy1) > 1e-6)
+        h0[np.flatnonzero(pm)[okh]] = np.arctan2(dy1[okh], dx1[okh])
+    # per (episode, position) tables in the sorted order
+    tab_row = np.full((n_seq, maxL), -1, dtype=np.int64)
+    for k in range(maxL):
+        act = Ls > k
+        tab_row[act, k] = ss[act] + k
+    valid = tab_row >= 0
+    rr = np.where(valid, tab_row, 0)
+    own_t = valid & ev[rr]
+    lab_ok = valid & np.isfinite(S.xprev[rr])
+    lab_ok[:, 0] &= ~no_start
+    odx = np.where(valid & ~own_t, np.nan_to_num(S.x[rr] - S.xprev[rr]), 0.0)
+    ody = np.where(valid & ~own_t, np.nan_to_num(S.y[rr] - S.yprev[rr]), 0.0)
+    if no_start.any():  # the first row has no observed previous position: no move replayed
+        odx[no_start, 0] = 0.0
+        ody[no_start, 0] = 0.0
+        own_t[no_start, 0] = False
+    ox_t, oy_t = S.obj_x[rr], S.obj_y[rr]
+    n_act = np.array([int((Ls > k).sum()) for k in range(maxL)])
+    null = []
+    done = 0
+    while done < B:
+        nb = min(RESIM_CHUNK, B - done)
+        px = np.repeat(sx[:, None], nb, axis=1)
+        py = np.repeat(sy[:, None], nb, axis=1)
+        h = np.where(np.isfinite(h0)[:, None], np.nan_to_num(h0)[:, None],
+                     rng.uniform(-np.pi, np.pi, (n_seq, nb)))
+        PX = np.empty((n_seq, maxL, nb))
+        PY = np.empty((n_seq, maxL, nb))
+        for k in range(maxL):
+            m = n_act[k]
+            x, y, hh = px[:m], py[:m], h[:m]
+            nx = x + odx[:m, k, None]
+            ny = y + ody[:m, k, None]
+            o = own_t[:m, k]
+            if o.any():
+                a = rng.integers(0, 3, (m, nb))
+                if kind == "locomotor":
+                    g = rng.standard_normal((2, m, nb)) * mv["explore_sd"]
+                    lr = mv["run_len"]
+                    sgn = np.where(a == 2, -1.0, 1.0)
+                    mx = np.where(a == 0, g[0], sgn * lr * np.cos(hh))
+                    my = np.where(a == 0, g[1], sgn * lr * np.sin(hh))
+                else:
+                    cx, cy = ox_t[:m, k, None], oy_t[:m, k, None]
+                    vx, vy = x - cx, y - cy
+                    r = np.hypot(vx, vy)
+                    st = mv["manip_step"]
+                    safe = np.maximum(r, 1e-12)
+                    ux = np.where(r > 1e-6, vx / safe, 1.0)
+                    uy = np.where(r > 1e-6, vy / safe, 0.0)
+                    app = np.minimum(st, r)
+                    rad = np.maximum(r, 1.0)
+                    ang = np.arctan2(uy, ux) + 0.6 * st / rad
+                    mx = np.where(a == 0, -ux * app, np.where(a == 1, ux * 0.6 * st,
+                                                               cx + rad * np.cos(ang) - x))
+                    my = np.where(a == 0, -uy * app, np.where(a == 1, uy * 0.6 * st,
+                                                               cy + rad * np.sin(ang) - y))
+                nx = np.where(o[:, None], x + mx, nx)
+                ny = np.where(o[:, None], y + my, ny)
+            nx = np.clip(nx, 0.5, W - 0.5)
+            ny = np.clip(ny, 0.5, H - 0.5)
+            dxm, dym = nx - x, ny - y
+            moved = np.hypot(dxm, dym) > 1e-6
+            h[:m] = np.where(moved, np.arctan2(dym, dxm), hh)
+            px[:m], py[:m] = nx, ny
+            PX[:m, k], PY[:m, k] = nx, ny
+        # labels relative to each replayed path's own end point
+        ends = Ls - 1
+        ex = PX[np.arange(n_seq), ends]
+        ey = PY[np.arange(n_seq), ends]
+        prevx = np.concatenate([sx[:, None, None].repeat(nb, axis=2), PX[:, :-1]], axis=1)
+        prevy = np.concatenate([sy[:, None, None].repeat(nb, axis=2), PY[:, :-1]], axis=1)
+        delta = (np.hypot(PX - ex[:, None], PY - ey[:, None])
+                 - np.hypot(prevx - ex[:, None], prevy - ey[:, None]))
+        lab = np.where(delta < -1.0, -1, np.where(delta > 1.0, 1, 0))
+        lab = np.where((own_t & lab_ok)[:, :, None], lab, 0)
+        both = (lab[:, :-1] != 0) & (lab[:, 1:] != 0) & valid[:, 1:, None]
+        npair = both.sum(axis=(0, 1))
+        nrev = (both & (lab[:, :-1] != lab[:, 1:])).sum(axis=(0, 1))
+        null.append(np.where(npair >= 10, nrev / np.maximum(npair, 1), np.nan))
+        done += nb
+    nullv = np.concatenate(null)
+    fin = nullv[np.isfinite(nullv)]
     if fin.size < 2:
         return out
     out["seq_struct_form_excess_unvalidated"] = float(obs - fin.mean())
@@ -786,16 +959,26 @@ def crit5(S: Steps, cand: np.ndarray, onset: np.ndarray, B: int,
 
 
 # ---------------------------------------------------------------- driver
-def decisions(r: dict[str, float]) -> dict[str, bool]:
-    """Preregistered per-criterion flags, rules v6 (PHASE4_DESIGN.md section 2): the v5 flags,
-    with criteria 3 and 4 also requiring the form test; NaN reads as False."""
+def _with_form(r: dict[str, float], prefix: str) -> dict[str, bool]:
     out = decisions_v5(r)
-    ex = r.get("seq_struct_form_excess_unvalidated", float("nan"))
-    z = r.get("seq_struct_form_z_unvalidated", float("nan"))
+    ex = r.get(f"{prefix}_excess_unvalidated", float("nan"))
+    z = r.get(f"{prefix}_z_unvalidated", float("nan"))
     form = bool(np.isfinite(ex) and np.isfinite(z) and ex >= FORM_MIN_EXCESS and z > Z95)
     out["c3_structurally_different"] = out["c3_structurally_different"] and form
     out["c4_repeated_not_rigid"] = out["c4_repeated_not_rigid"] and form
     return out
+
+
+def decisions(r: dict[str, float]) -> dict[str, bool]:
+    """Preregistered per-criterion flags, rules v7 (PHASE4_DESIGN.md section 2): the v5 flags,
+    with criteria 3 and 4 also requiring the form test against the replay null; NaN reads as
+    False."""
+    return _with_form(r, "seq_struct_form")
+
+
+def decisions_v6(r: dict[str, float]) -> dict[str, bool]:
+    """Rules v6 flags: criteria 3 and 4 with the form test against the label shuffle."""
+    return _with_form(r, "seq_struct_form_shuffle")
 
 
 def decisions_v5(r: dict[str, float]) -> dict[str, bool]:
@@ -859,6 +1042,7 @@ def detect_kind(S: Steps, kind: str, n_surrogates: int = 1000, seed: int = 0,
     if s.size < MIN_EPISODES:
         base["note"] = f"fewer than {MIN_EPISODES} episodes: criteria not evaluated"
         base["decisions_unvalidated"] = {k: False for k in decisions({})}
+        base["decisions_v6_unvalidated"] = dict(base["decisions_unvalidated"])
         base["decisions_v5_unvalidated"] = dict(base["decisions_unvalidated"])
         return base
     base.update(crit1(S, s, e, n_surrogates, rng))
@@ -866,9 +1050,12 @@ def detect_kind(S: Steps, kind: str, n_surrogates: int = 1000, seed: int = 0,
     base.update(crit3(S, ev, s, e, n_surrogates, rng))
     base.update(crit4(S, kind, ev, s, e, cand, onset, n_surrogates, rng))
     base.update(crit5(S, cand, onset, n_surrogates, rng))
-    # v6 form test: a random stream of its own, so every v5 statistic above is unchanged
+    # v6 form test (label shuffle, kept) and the v7 replay null: random streams of their own,
+    # so every v5 statistic above is unchanged
     base.update(form_test(S, ev, s, e, n_surrogates, np.random.default_rng([seed, 6])))
+    base.update(form_resim(S, kind, ev, s, e, n_surrogates, np.random.default_rng([seed, 7])))
     base["decisions_unvalidated"] = decisions(base)
+    base["decisions_v6_unvalidated"] = decisions_v6(base)
     base["decisions_v5_unvalidated"] = decisions_v5(base)
     return base
 

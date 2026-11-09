@@ -46,8 +46,10 @@ STATS = ("nf_index_unvalidated", "onset_trigger_free_unvalidated",
 
 def load_units(sweep: Path, flag_set: str = "v5") -> list[dict]:
     units = []
-    key = {"v5": {"v5": "decisions_unvalidated", "v6": "decisions_v5_unvalidated"},
-           "v6": {"v6": "decisions_unvalidated"}}[flag_set]
+    key = {"v5": {"v5": "decisions_unvalidated", "v6": "decisions_v5_unvalidated",
+                  "v7": "decisions_v5_unvalidated"},
+           "v6": {"v6": "decisions_unvalidated", "v7": "decisions_v6_unvalidated"},
+           "v7": {"v7": "decisions_unvalidated"}}[flag_set]
     for d in sorted(p for p in sweep.iterdir() if p.is_dir()):
         f = d / "detectors_unvalidated.json"
         if not f.exists():

@@ -38,6 +38,8 @@ class PlayObject:
     x: float
     y: float
     radius: float
+    vx: float = 0.0  # ball physics (P4-13): velocity, inches per free-time sub-step
+    vy: float = 0.0
 
 
 @dataclass

@@ -107,7 +107,8 @@ def sample_params(rng: np.random.Generator, episode: int, days: float = 60.0,
 
 
 def build_nursery(p: NurseryParams, out_dir: Path, rng: np.random.Generator,
-                  free_substeps: int = 12, base: Path | None = None) -> Universe25Sim:
+                  free_substeps: int = 12, base: Path | None = None,
+                  ball_physics: bool = False) -> Universe25Sim:
     """A nursery simulation with the seeded colony; its own policy is a placeholder (the caller
     attaches the learner). Sub-steps are re-chosen (the learner's mode)."""
     n_expected = int(p.n_adults * (1 + p.frac_juvenile + 0.5 * p.frac_nursing * 5.5))
@@ -120,7 +121,8 @@ def build_nursery(p: NurseryParams, out_dir: Path, rng: np.random.Generator,
                 max_agents=4096, initial_pairs=0, log_every_ticks=10**9, snapshot_every_days=0,
                 free_substeps=int(free_substeps), resources=res,
                 playground={"enabled": p.playground, "n_balls": p.n_balls,
-                            "n_tunnels": p.n_tunnels, "n_ramps": p.n_ramps},
+                            "n_tunnels": p.n_tunnels, "n_ramps": p.n_ramps,
+                            "ball_physics": bool(ball_physics)},
                 policy={"kind": "need_driven", "substep_mode": "rechoose"})
     if p.kind == "mixed":  # mature adults: no absolute-day conception gate
         over["biology"] = {"first_conception_min_day": 0.0}
@@ -243,7 +245,8 @@ def pretrain(out_dir: Path, steps: float = 1e8, max_episodes: int = 10**6,
              ckpt_every: int = 5, resume: Path | None = None,
              n_adults_range: tuple[int, int] | None = None,
              founding_days: float = 300.0, p_founding: float = 0.4,
-             ppo: dict[str, Any] | None = None, progress: Any = None) -> dict[str, Any]:
+             ppo: dict[str, Any] | None = None, progress: Any = None,
+             ball_physics: bool = False) -> dict[str, Any]:
     """Pre-train one shared learner over randomised nursery episodes until `steps` transitions
     (agent-steps: one per policy call) or `max_episodes`. Writes episodes.jsonl,
     learn_log.jsonl, checkpoints/ (ckpt_epNNNN.pt and latest.pt), policy_final.npz (the
@@ -279,6 +282,7 @@ def pretrain(out_dir: Path, steps: float = 1e8, max_episodes: int = 10**6,
     man.update({"steps_target": float(steps), "episode_days": float(episode_days),
                 "founding_days": float(founding_days), "p_founding": float(p_founding),
                 "free_substeps": int(free_substeps), "ppo": pcfg.ppo.model_dump(),
+                "ball_physics": bool(ball_physics),
                 "device": str(policy.learner.device),
                 "resumed_from": str(resume) if resume else None})
     (out_dir / "manifest.json").write_text(json.dumps(man, indent=1), encoding="utf-8")
@@ -299,7 +303,7 @@ def pretrain(out_dir: Path, steps: float = 1e8, max_episodes: int = 10**6,
         if n_adults_range is not None and p.kind == "mixed":  # tests: small colonies
             p = NurseryParams(**{**p.to_dict(), "n_adults": int(nrng.integers(*n_adults_range))})
         tmp = Path(tempfile.mkdtemp(prefix="u25nursery_"))
-        sim = build_nursery(p, tmp, nrng, free_substeps)
+        sim = build_nursery(p, tmp, nrng, free_substeps, ball_physics=ball_physics)
         policy.attach(sim)
         n0, tr0, t0 = int(sim.agents.n_alive), policy.n_transitions, time.perf_counter()
         for _ in range(int(p.days * 6)):

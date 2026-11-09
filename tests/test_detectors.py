@@ -111,6 +111,41 @@ def test_v6_form_test_needs_structure_beyond_chance() -> None:
             assert np.array_equal(np.asarray(v), np.asarray(a[k]), equal_nan=True), k
 
 
+def test_v7_resim_null() -> None:
+    """Rules v7: the form test's null is a replay of an even family mix under the simulator's
+    mechanics. A random walk stays below the floor and all_criteria above it; a trace without
+    object positions cannot replay object episodes (NaN, c3 / c4 not met) while its locomotor
+    replay uses the move model; the v6 shuffle statistics and flags are kept; the replay draws
+    from its own stream, so no v5 or v6 statistic depends on it."""
+    assert D.RULES == "v7"
+    rw = D.detect_trace(make_colony("random_walk", seed=33), n_surrogates=200, seed=3)
+    loc = rw["locomotor"]
+    assert loc["seq_struct_form_excess_unvalidated"] < D.FORM_MIN_EXCESS, loc
+    assert "seq_struct_form_shuffle_excess_unvalidated" in loc and "decisions_v6_unvalidated" in loc
+    tr = make_colony("all_criteria", seed=31)
+    pos = D.detect_trace(tr, n_surrogates=200, seed=3)
+    for kind in ("object", "locomotor"):
+        assert pos[kind]["seq_struct_form_excess_unvalidated"] >= D.FORM_MIN_EXCESS, kind
+    old = {k: v for k, v in tr.items() if k not in ("obj_x", "obj_y")}
+    old["meta"] = {k: v for k, v in tr["meta"].items() if not k.startswith(("move_", "world_"))}
+    r_old = D.detect_trace(old, n_surrogates=100, seed=3)
+    assert np.isnan(r_old["object"]["seq_struct_form_excess_unvalidated"])
+    assert not r_old["object"]["decisions_unvalidated"]["c3_structurally_different"]
+    assert np.isfinite(r_old["locomotor"]["seq_struct_form_excess_unvalidated"])
+    S = D.prepare(tr)
+    a = D.detect_kind(S, "object", n_surrogates=50, seed=3)
+    orig = D.form_resim
+    try:
+        D.form_resim = lambda *args, **kw: {}
+        b = D.detect_kind(S, "object", n_surrogates=50, seed=3)
+    finally:
+        D.form_resim = orig
+    assert b["decisions_v6_unvalidated"] == a["decisions_v6_unvalidated"]
+    for k, v in b.items():
+        if k.endswith("_unvalidated") and not k.startswith("decisions"):
+            assert np.array_equal(np.asarray(v), np.asarray(a[k]), equal_nan=True), k
+
+
 def test_v4_substep_rules() -> None:
     """Rules v4: with K = 1 the trigger window is v3's (the onset row or the consecutive row
     before); with 12 sub-steps per decision, onsets independent of triggers read spontaneous and
@@ -245,6 +280,7 @@ if __name__ == "__main__":
     test_trace_off_by_default_and_recorder_does_not_perturb()
     test_each_synthetic_class_fails_the_criterion_it_violates()
     test_v6_form_test_needs_structure_beyond_chance()
+    test_v7_resim_null()
     test_v4_substep_rules()
     test_v5_counts_only_exogenous_triggers()
     test_gap_criterion_finds_no_structure_in_memoryless_gaps()

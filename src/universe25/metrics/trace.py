@@ -16,10 +16,15 @@ survival-drive change on the last row. With K = 1 this is one row per decision, 
 Each window is written to `trace_<start>_<end>.npz` when it closes; `sample_every` keeps only
 individuals whose uid is a multiple of it.
 
+Rules v7 (P4-13): rows also carry the nearest object's position (`obj_x`, `obj_y`, NaN without
+objects) and the meta carries the movement model per row (EXPLORE sigma, RUN_ON length,
+MANIPULATE step, world size, ball physics), which the form test's replay null uses.
+
 Nothing here is read by a policy or learner (tests/test_detectors.py import audit).
 """
 from __future__ import annotations
 
+import math
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -37,7 +42,7 @@ PRE_FIELDS = ("uid", "step", "tick", "day", "slot", "action", "age", "sex", "rol
               "wounds", "cell", "cell_density")
 POST_FIELDS = ("x", "y", "hunger_post", "thirst_post", "fatigue_post", "stress_post", "obj_id",
                "obj_dist", "contact", "in_playground", "food_dist", "water_dist", "nest_dist",
-               "cum_contacts")
+               "cum_contacts", "obj_x", "obj_y")
 FIELDS = PRE_FIELDS + POST_FIELDS
 SURV = ("hunger", "thirst", "fatigue", "stress")
 
@@ -87,6 +92,13 @@ class TraceRecorder:
             "playground_enabled": self.pg_on,
             "playground_bounds": np.array(w.playground_bounds, dtype=np.float64),
             "policy_kind": str(sim.cfg.policy.kind),
+            # movement model per row (rules v7 replay null): a row is a sub-step at K > 1
+            "move_explore_sd": 10.0 * sim.dt_ref * 10 / math.sqrt(self.K),
+            "move_run_len": 10.0 * sim.dt_ref * 10 / math.sqrt(self.K) * math.sqrt(math.pi / 2),
+            "move_manip_step": 7.0 * sim.reach / self.K,
+            "world_width": float(w.width),
+            "world_height": float(w.height),
+            "ball_physics": bool(getattr(sim, "ball_physics", False)),
         }
         self._buf: dict[str, list[np.ndarray]] = {k: [] for k in FIELDS}
         self._win: int | None = None
@@ -134,6 +146,13 @@ class TraceRecorder:
         rows["y"] = y.astype(np.float32)
         rows["obj_id"] = oid
         rows["obj_dist"] = np.where(np.isfinite(odist), odist, 1e3).astype(np.float32)
+        ox, oy, _ = self._objects(sim)
+        has = oid >= 0
+        jc = np.clip(oid, 0, max(ox.size - 1, 0))
+        rows["obj_x"] = (np.where(has, ox[jc], np.nan) if ox.size
+                         else np.full(oid.size, np.nan)).astype(np.float32)
+        rows["obj_y"] = (np.where(has, oy[jc], np.nan) if oy.size
+                         else np.full(oid.size, np.nan)).astype(np.float32)
         rows["contact"] = contact.astype(np.int8)
         rows["in_playground"] = self._in_pg(x, y)
         rows["food_dist"] = np.hypot(x - self.food_xy[cell_now, 0],

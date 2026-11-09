@@ -41,9 +41,11 @@ TICKS_PER_DAY = 6
 def arm_config(kind: str, weights: str | None = None, base: Path | None = None,
                extra: dict[str, Any] | None = None) -> Path:
     """Write a temporary config: the base yaml with the policy block set to `kind` and the
-    top-level `extra` keys (e.g. free_substeps) set."""
+    `extra` keys (e.g. free_substeps, playground.ball_physics) merged in."""
+    from universe25.config import _deep_merge
+
     data = yaml.safe_load((base or DEFAULT_BASE).read_text(encoding="utf-8")) or {}
-    data.update(extra or {})
+    data = _deep_merge(data, extra or {})
     pol: dict[str, Any] = {"kind": kind}
     if weights:
         pol["weights"] = str(weights)
