@@ -1,5 +1,36 @@
 # Universe25 Play — NOTES
 
+## 2026-11-09 — Tier 0 integrity fixes (Jason: "Integrity fixes first")
+
+What `docs/REVIEW_2026-11-09.md` Tier 0 asked for, all without changing any trajectory:
+
+| change | where |
+|---|---|
+| every run writes `config.json` and `manifest.json` (commit, dirty flag, config sha256, library versions, platform, schema versions incl. detector rules); `run.json` embeds the manifest | `src/universe25/repro.py`, `sim.py` |
+| unknown config keys are errors (`extra="forbid"` on every model); `ticks_per_day` must be a multiple of `ticks_per_day_ref` | `config.py` |
+| `backend: auto` is the NumPy reference path (it picked Warp whenever CUDA worked, and the Warp path lacks three biology processes); Warp only when requested | `agents/state.py` |
+| litters lost at `max_agents` are counted (`litters_dropped_at_capacity` in run.json) with a warning (the loss itself is unchanged) | `sim.py` |
+| a spawned slot's `heading` is reset (it inherited the last occupant's) | `sim.py` |
+| opt-in runtime invariants (`debug_invariants`): population accounting, drive and capacity bounds, positions, pup actions, stocks; read-only | `src/universe25/invariants.py` |
+| golden trajectory hashes over the flag matrix, from committed inputs only (K = 1, K = 12 continue, traced, random-MLP rechoose, physics + novelty g = 8, scarce, 24 ticks/day), fast tier 115 d and slow tier 300 d, tagged with platform and NumPy version | `src/universe25/golden.py`, `scripts/golden_hashes.py`, `tests/golden/trajectories.json`, `tests/test_golden.py` |
+| test tiers with per-file timing (`--tier fast` 17–19 s); a conservation test past the first births with the invariants on; strict-config tests; a fast H2 audit file | `tests/run_tests.py`, `tests/test_conservation.py`, `tests/test_h2_audit.py` |
+| CI on push: ruff (error classes only) and the fast tier on Linux | `.github/workflows/ci.yml` |
+| NumPy pinned to major 2 (trajectories depend on it) | `pyproject.toml` |
+| seed ledger, including that 8000–8002 informed calibration and that the 12-seed adjudication block is not out-of-sample; wording corrected in HANDOFF, PHASE4_DESIGN and `seed_eval.py` | `docs/SEEDS.md` |
+| guard control caches keyed by the control's config hash (`--control-substeps`); the two existing caches renamed to their hashes (K = 1: `ccfd54bf39`, K = 12 continue: `d3945c79c4`) | `scripts/policy_guard.py` |
+
+**Bit-identity.** The seven reference trajectories hash exactly as before Tier 0 (after the
+observation fix): heuristic K = 1 `bcc13721…`, K = 12 traced `90b68191…`, `pretrain_v2`
+`36d412cc…`, random v2 `fb4d16b0…`, `pretrain_v3` `df06b41b…`, random v3 `14776dd6…`,
+`pretrain_v4` with physics `25acd497…`. The heading reset changed none of them (a reused slot's
+pup moves, and so rewrites its heading, before it ever chooses a free action). The golden table
+records the traced arm equal to the untraced one at both tiers. The invariants held through the
+first litters at K = 1 and with sub-steps, physics and novelty (seed 7100, 150 d).
+
+Not done in Tier 0 (Tier 1 or later, per the review): the stale cell-count cache and slot-order
+fights (change calibrated behaviour; flag plus adjudication), new random streams via
+`SeedSequence`, a `uid` field for rebirth detection, checkpoint/restore, the experiment harness.
+
 ## 2026-11-09 — Review of environment and methods; an observation bug; a mislabelled control; heuristic guard at g = 8
 
 **Review.** Five independent read-only reviews (fidelity, simulation methods, calibration and

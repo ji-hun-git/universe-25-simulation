@@ -6,6 +6,14 @@
 > **Owner:** Jason (ji-hun-git) · **Research partner:** gan  
 > **Date:** 2026-11-04 (Asia/Seoul) · **Phase:** 1 complete; **phase 2 calibration frozen at 2m (canonical landmark error 0.06 at seed 7000, 0.03–0.10 held-out; 12-seed plateau within 3–4 % of Calhoun; early phase a third low; emergent, irreversible collapse — caveats in `NOTES.md` → "Phase 2m")**; Warp parity partial; phase 3 (visuals) not started; **phase 4 (learning agents + play detectors) designed, preregistered and scaffolded 2026-11-04** (`docs/PHASE4_DESIGN.md`, `PLAN.md` §15, `docs/TASKS.md` P4-0…P4-7; policy hook landed, no learning run yet)
 
+> **Status 2026-11-09:**
+> - Phase 4 runs on action space v2 with detector rules v7 (frozen); P4-14 is in progress.
+> - Review of the environment and methods: `docs/REVIEW_2026-11-09.md`. Tier 0 (integrity) is
+>   done; the seed ledger is `docs/SEEDS.md`.
+> - Golden trajectory hashes: `scripts/golden_hashes.py`. Test tiers:
+>   `tests/run_tests.py --tier fast|slow|gpu`. CI: `.github/workflows/ci.yml`.
+> - The architecture map in §5 is updated for the 2026-11-09 modules.
+
 Read this file first. Then read `PLAN.md`, `NOTES.md`, `docs/NVIDIA_STACK.md`, `docs/TASKS.md`; for agents, policies, learning or play metrics also `docs/PHASE4_DESIGN.md` and `docs/RESEARCH_DIGEST.md`. Follow `CONTRIBUTING.md` for day-to-day rules.
 
 ---
@@ -396,7 +404,7 @@ Diagnoses, scan tables and open gaps in `NOTES.md` → "Phase 2i" (and 2h / 2g /
   the start on the three training seeds through N@315, but scored out of sample over 12 seeds it
   is worse on every plateau landmark (peak 2148 @ 595, cessation 639, N@736 1964; loss of the mean
   landmarks 0.024 vs 0.012) and its N@315 gain vanishes (496 vs 475). **Parameters unchanged from
-  2i**; the 12-seed out-of-sample score is the adjudicator for candidates from now on.
+  2i**; the 12-seed score (7000–7011, which includes the training seeds) is the adjudicator for candidates from now on.
 
 **Calibrated run (seed 7000, `configs/default.yaml`, 6 ticks/day, 1600 d):**
 
@@ -486,7 +494,7 @@ Scan, 12-seed rebound table and open gaps in `NOTES.md` → "Phase 2m".
 **Calibration frozen here.** The fit is a plausibility check, not mechanism validation (about
 ten tuned parameters against ten landmarks from one colony); every CMA-ES study since 2g returned
 the hand point or lost out of sample, so the method of record is hand scans + 12-seed
-out-of-sample scoring; the early phase was de-weighted (0.10 of 12), not fixed; since 2k the
+scoring (not out-of-sample: docs/SEEDS.md); the early phase was de-weighted (0.10 of 12), not fixed; since 2k the
 plateau moved by less than its seed se. Caveats in full in `NOTES.md` → "Phase 2m".
 
 ### Record review + phase 4 design and scaffold (2026-11-04)
@@ -623,7 +631,8 @@ universe25-play/
 ├── scripts/
 │   ├── calibrate.py
 │   ├── calibrate_optuna.py
-│   ├── seed_eval.py        ← out-of-sample scoring of a fragment over N seeds (adjudicator, 2k)
+│   ├── seed_eval.py        ← 12-seed scoring of a fragment (adjudicator, 2k; not out-of-sample)
+│   ├── golden_hashes.py    ← golden trajectory hashes: check, or --update (tests/golden/)
 │   ├── policy_guard.py     ← H-d calibration guard: a policy kind vs the need-driven control on the same seeds
 │   ├── nursery_smoke.py    ← learner vs no-update network vs heuristic in one nursery (P4-2)
 │   ├── pretrain_nursery.py ← nursery pre-training with checkpoints and a manifest (P4-3)
@@ -638,11 +647,14 @@ universe25-play/
 │   ├── config.py           ← pydantic: Geometry, Playground, Resource, Biology, Drive, Policy, SimConfig
 │   ├── sim.py              ← Universe25Sim (need-driven tick; density stress; breeding; logging)
 │   ├── rng.py
+│   ├── repro.py            ← run manifest (commit, config hash, versions, schemas), trajectory_hash
+│   ├── golden.py           ← golden-hash arms over the feature-flag matrix
+│   ├── invariants.py       ← runtime invariants (config debug_invariants; read-only)
 │   ├── agents/
-│   │   ├── state.py        ← AgentSoA, ROLE_*, ACT_* (11 actions; no PLAY)
+│   │   ├── state.py        ← AgentSoA, ROLE_*, ACT_* (15 actions since P4-12; no PLAY); auto → NumPy
 │   │   ├── policy.py       ← Policy protocol; NeedDrivenPolicy (bit-identical); MlpFrozenPolicy (NumPy, seeded stream)
 │   │   ├── drives.py       ← drive documentation; maternal_need (the learner's eighth drive)
-│   │   ├── observation.py  ← 48-float egocentric observation (OBS_NAMES; no lifespan / PlayScore field)
+│   │   ├── observation.py  ← egocentric observation v5, 59 floats (v2–v4 kept for old weights; no lifespan / PlayScore field)
 │   │   └── device.py       ← optional Warp mirror buffers
 │   ├── learn/
 │   │   ├── reward.py       ← homeostatic drive-reduction reward (the only training signal)
@@ -654,7 +666,7 @@ universe25-play/
 │   ├── metrics/
 │   │   ├── logger.py       ← parquet
 │   │   ├── trace.py        ← per-agent decision traces in day windows (eval-only; off = bit-identical)
-│   │   ├── detectors.py    ← Burghardt criterion detectors (rules v3; *_unvalidated; never read by policies)
+│   │   ├── detectors.py    ← Burghardt criterion detectors (rules v7; *_unvalidated; never read by policies)
 │   │   ├── synthetic_traces.py ← scripted ground-truth classes for detector validation (no dataset)
 │   │   ├── playscore.py    ← PlayScoreAccumulator (unvalidated)
 │   │   └── calibration.py  ← Calhoun landmarks + phase detect

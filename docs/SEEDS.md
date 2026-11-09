@@ -1,0 +1,53 @@
+# Seed ledger
+
+Which seeds exist for what, and which have already been read. Created 2026-11-09 (Tier 0 of
+`docs/REVIEW_2026-11-09.md`); add a line whenever a seed range is used for something new. A seed
+read once for a decision is no longer "fresh" for that kind of decision.
+
+The config refuses seeds outside [7000, 10000) and the reserved band 5000–5999
+(`SimConfig._seed_range`). Detector validation seeds (synthetic colonies) are separate numbers
+passed to the generator, not simulation seeds.
+
+## Simulation seeds
+
+| range | role | used so far |
+|---|---|---|
+| 7000–7002 | training / development | calibration objective (phases 2i–2m, CMA-ES `--train-seeds`); every phase-4 development reading and development guard (P4-8, P4-12 … P4-14); relief-matching scan (P4-14); golden hashes (7000) |
+| 7003–7005 | training / development | v6 simulator negative control (P4-11) |
+| 7006–7008 | training / development | v7 simulator negative control (P4-13) |
+| 7009 | training / development | nursery pre-training worlds only |
+| 7000–7009 | nursery worlds | every `pretrain_v*` run cycles nursery episodes over these sim seeds |
+| 7000–7011 | calibration adjudication | `scripts/seed_eval.py` 12-seed scoring since phase 2k. **7010 and 7011 lie outside the 7000–7009 training band**, and the block includes the training seeds 7000–7002, so this scoring is not out-of-sample |
+| 7100 | unit tests | `tests/` |
+| 8000–8002 | evaluation, **used for calibration** | `scripts/calibrate_optuna.py --heldout` default; held-out losses informed calibration choices (phases 2b–2h, e.g. NOTES "held-out 8000–8002"). Not fresh for any claim about fit to the record |
+| 8000–8011 | evaluation (arm comparisons only, PLAN §15.3) | P4-1 guard (random MLP, 2026-11-04); H-d guard of `pretrain_v2` (2026-11-07); heuristic K = 12 guards (P4-8); H-e sweep (2026-11-08, rules v5, re-read under v6) |
+| 9000–9999 | **reserved, fresh**: calibration reference and substrate-variant confirmation | proposed by the calibration review (equivalence guard, posterior predictive check); not yet used |
+
+## Random-network init seeds (`MlpFrozenPolicy.random_init(s)`)
+
+| seed | used for |
+|---|---|
+| 7000 | the random comparison nets of every reading (v2 … v5) |
+| 7001, 7002 | v6 negative control |
+| 7003, 7004 | v7 negative control |
+| 7100 | unit tests |
+
+Known stream collision, kept for bit-identity: `random_init(s)` draws its weights from
+`make_rng(s + 1_000_003 + 1)`, which is also the action-sampling stream of a frozen policy on
+simulation seed s + 1. So `random_init(7000)` run on seed 7001 samples actions with the stream
+that made its weights. With near-uniform random logits (last-layer gain 0.01) the effect should
+be negligible, but new streams should come from `np.random.SeedSequence([seed, stream_id])`.
+
+## Detector validation splits (synthetic colonies)
+
+| range | rule set |
+|---|---|
+| 100–106 | development (every version) |
+| 10,000+ | v1 |
+| 20,000+ | v2 |
+| 30,000+ | v3 |
+| 40,000+ | v4 |
+| 50,000+ | v5 |
+| 60,000+ | v6 |
+| 70,000+ | v7 |
+| 80,000+ | next (v8) |

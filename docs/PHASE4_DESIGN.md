@@ -823,7 +823,8 @@ frozen, phase 2m). A test (`tests/test_policy_calibration_guard.py`, P4-1) runs 
 
 **First measurement (2026-11-04, `scripts/policy_guard.py mlp_frozen --weights
 _output/policy_random_7000.npz`, seeds 8000–8011, 1600 d).** The need-driven control
-reproduces the record on seeds it had never seen (peak 2252 ± 13 at 534 ± 7, cessation 593 ± 8,
+reproduces the record on seeds 8000–8011 (8000–8002 had served as held-out seeds in the
+calibration studies, docs/SEEDS.md; peak 2252 ± 13 at 534 ± 7, cessation 593 ± 8,
 N@1444 127 ± 8, N@1588 19 ± 2). A fixed random MLP (near-uniform over the eligible actions) is
 **not preserved**: N@315 −61 %, peak −11 % and +240 d, surviving births +560 d, conceptions
 +410 d, N@1444 ×5, N@1588 ×20. The behavioural sink needs the heuristic's attraction to
