@@ -789,6 +789,19 @@ surrogates). Pass conditions:
   keep every candidate row.
 - **The v7, v6 and v5 flags** come from a second pass with the v7 definitions in the same run
   (threshold, candidate rows, null without re-gating, the v6 shuffle).
+- **The synthetic generator's movement model now describes its own scales.** Found on
+  development seeds 101–106 while implementing.
+  - *Object steps.* Object withdrawals are 2.25 in and approaches 60 in per decision. BACK_OFF
+    / CIRCLE get their own model entry (`move_back_off`; the simulator writes 0.6 × the
+    MANIPULATE step, as before). With the v7 value, every re-simulated BACK_OFF left contact.
+  - *Interpolated sub-steps.* The K rows of a synthetic sub-step decision are a linear
+    interpolation, so per-row steps scale with 1/K, not 1/√K. With 1/√K, the fixed threshold
+    removed every locomotor event of the K = 12 classes.
+  - *Development values after the correction:*
+    - `all_criteria` meets all five criteria in both kinds (object form z 1.9–2.8);
+    - `random_walk` meets no form test;
+    - `forced_gating` loses criterion 5 under v8 and keeps it under v7 in 6 of 6 colonies;
+    - the K = 12 classes behave as under v7.
 
 *Diagnostic, not a pass condition:* the H-e sweep (evaluation seeds, already read) re-read with
 v8, exploratory. The preregistered H-e statistic is recomputed with v8 flags, and criterion 5 is
