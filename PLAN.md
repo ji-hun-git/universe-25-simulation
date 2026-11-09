@@ -336,6 +336,20 @@ development reading, before any evaluation seed.
   example spatial novelty for locomotion. That reopens the frozen calibration. The alternative
   is to turn to H-g and the playground-off arm, which need no form. NOTES 2026-11-09.
 
+**P4-14 and Tier 1 (2026-11-09).**
+- Jason chose novelty-based curiosity, then a guard at g = 8 as a deviation.
+- The v5 learner reads neither novelty nor mobility inputs. Free time stays at chance, and its
+  colony grows too fast.
+- Detector rules v9 are frozen. Criterion 5 now counts only rows where a free action was
+  eligible.
+- **H-e re-read under v9** (exploratory; the evaluation seeds were already read):
+  - The learned net's object part stands: T +0.262, p 0.003.
+  - Its locomotor part does not: T +0.079, p 0.13.
+  - The continuous gating statistic rises with the relaxed share for every policy, the random
+    net included. H-e's preregistered "supported" is now read as state-gating found in every
+    policy, not as learned play.
+- H-f stays held; the next lever is the learner's signal (review Tier 2). NOTES 2026-11-09.
+
 ### 15.2 Arms
 
 Policy kind × resources × playground: `need_driven` (control), `mlp_frozen`, `mlp_ppo`, `evo`;
