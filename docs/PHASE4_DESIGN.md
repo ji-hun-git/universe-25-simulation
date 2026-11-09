@@ -322,6 +322,85 @@ read.
   SOCIAL).
 - The revised H-f amendment is not proposed for testing; H-f stays held.
 
+### 1.10 Novelty-based curiosity: relief from places not recently visited (P4-14, fixed 2026-11-09 before implementation)
+
+**Why.** With ball physics the learner still ignored the balls (§1.9 result). Every locomotor
+move relieved curiosity at a fixed rate anywhere, so pushes added little. Jason's decision
+(2026-11-09): curiosity is relieved by consequences in every family. Objects already relieve it
+by the speed a contact gives a ball (§1.9). Locomotion now relieves it by entering places the
+animal has not visited recently.
+
+**Place memory** (config `drives.curiosity_novelty`, default off: bit-identical; needs
+`free_substeps` > 1):
+- *Grid.* The pen is divided into G × G bins, G = 10 (`drives.novelty_grid`), about 10 in each.
+- *Memory.* Each animal keeps the last time it was in each bin (never = −∞). The memory resets
+  when a slot is spawned.
+- *Novelty.* The novelty of a bin at time t is 1 − exp(−(t − t_last) / τ), with τ = 1 day
+  (`drives.novelty_tau_days`). It is 1 for a bin never visited and about 0 for the bin the
+  animal has just been in.
+- *Updates.* Every free-time sub-step, after the move, each free animal reads the novelty of the
+  bin it ended in, then marks that bin visited at the sub-step's time (decision start +
+  (j + 1)/K of a decision). At the end of every decision, every living animal marks its current
+  bin, so foraging, drinking and nest trips count as visits too.
+- *Relief.* A locomotor-family action (EXPLORE, RUN_ON, TURN_BACK) relieves curiosity by
+  g × (per-sub-step amount) × the novelty it read. This replaces the fixed amount. Locomotor
+  boredom relief, SOCIAL, and all costs are unchanged.
+- *Consequence gain.* `drives.consequence_gain` = g also multiplies the ball-push relief of
+  §1.9, for curiosity and boredom. At g = 1 with novelty off, the physics arm is exactly
+  P4-13's.
+- No random draw anywhere.
+
+**Observation v5** (59 floats): v4's 57 plus `novelty_ahead` and `novelty_behind`, the novelty of
+the bin one bin-width ahead of and behind the animal along its heading (walls clip). These are
+what RUN_ON and TURN_BACK would lead into. v4, v3 and v2 weight files keep their builders.
+
+**H2 and the "no ICM / RND bonus" rule.**
+- Novelty enters only through the curiosity drive's relief, a fixed rule of the world applied
+  identically to every policy, the heuristic included. It is not a bonus added to the
+  learner's reward: the reward stays homeostatic drive reduction.
+- It is not learned and it is not a prediction error, so it is neither ICM nor RND. It is close
+  in spirit to count-based exploration, which is why this is recorded here.
+- Nothing reads movement form, reversals, variety or any detector statistic.
+- *Recorded before any run:* spatial novelty favours straight runs into new bins over shuttles,
+  which return to bins just visited. The learner's locomotor form, if any, should therefore
+  read as *fewer* approach–withdraw reversals than the even mix (a negative form excess). That
+  is a learned form, but not the play form the form test looks for. Object use may rise,
+  because pushes no longer compete with an unconditional curiosity route.
+
+**Relief matching** (a one-parameter adjustment of the new channel, preregistered; it does not
+reopen the frozen biology parameters):
+- *Target.* The heuristic's adult mean curiosity (age ≥ maturity) in the frozen substrate
+  (physics and novelty off, K = 12 continue), training seeds 7000–7002, sampled daily over
+  days 100–700. Its boredom is reported beside it.
+- *Scan.* Physics and novelty on, g ∈ {1, 2, 3, 4, 6, 8}, the same seeds, days and statistic.
+  Choose the g whose seed-mean curiosity is closest to the target. If none is within 10 % of
+  the target, report that and stop.
+- *Then* run the heuristic guard at the chosen g (training seeds, 1,600 d, against the
+  physics-off control; amended H-d rule). The arm counts as calibration-matched only if
+  preserved. Matching mean curiosity is a proxy, and the guard is the test.
+
+**Learner.** `pretrain_v5` = the `pretrain_v4` recipe with novelty on, the chosen g and
+observation v5. Nothing else changes.
+
+**Acceptance checks (preregistered):**
+1. *Bit-identity with novelty off and g = 1.* Seven trajectories hash identically before and
+   after: the six of §1.9 and the `pretrain_v4` net with physics (120 d, traced).
+2. *Mechanics* (unit tests):
+   - entering a never-visited bin gives full relief, and staying in it gives none;
+   - a bin revisited after Δt gives 1 − exp(−Δt/τ);
+   - a spawned slot forgets;
+   - non-locomotor actions get no novelty relief;
+   - no random draw;
+   - observation v5 reads the bins ahead and behind.
+3. *Development reading* (training seeds 7000–7002, physics and novelty on, rules v7), no pass
+   condition:
+   - the relief-matching scan and the heuristic guard;
+   - `pretrain_v5` read with the random v5 net beside it (form excess, family shares, RUN_ON
+     vs TURN_BACK, ball contacts);
+   - the `pretrain_v5` curve guard.
+
+H-f stays held. Any amendment goes to Jason before an evaluation seed is read.
+
 ## 2. Measurement: detectors per Burghardt criterion (eval-only, unvalidated)
 
 Principles. Every detector is computed after the fact from logs (position, action, drives, cell,

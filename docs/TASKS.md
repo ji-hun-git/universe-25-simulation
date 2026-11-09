@@ -543,6 +543,34 @@ Design and checks: `docs/PHASE4_DESIGN.md` §1.9 and §2 (v7).
 
 ---
 
+## P4-14 — Novelty-based curiosity (place memory)
+
+**Goal:** curiosity is relieved by consequences in every family (Jason, 2026-11-09).
+- Locomotor curiosity relief scales with the novelty of the bin entered: 10 × 10 grid,
+  1 − exp(−Δt / 1 day), per-animal memory.
+- `drives.consequence_gain` g also scales the ball-push relief.
+- Observation v5 adds the novelty of the bins ahead and behind.
+- g is chosen by matching the heuristic's adult mean curiosity to the frozen substrate, then the
+  heuristic guard runs.
+- Retrain as `pretrain_v5`, then read it on training seeds.
+
+Design and checks: `docs/PHASE4_DESIGN.md` §1.10.
+
+**Files:** `config.py`, `sim.py`, `agents/observation.py`, `agents/policy.py`,
+`learn/nursery.py`, `scripts/pretrain_nursery.py`, `scripts/policy_guard.py`,
+`scripts/scan_novelty_gain.py`, `scripts/read_p414.py`, `tests/test_novelty.py`, `NOTES.md`
+
+**Acceptance criteria:**
+- novelty off and g = 1: seven reference trajectories hash identically before and after
+- mechanics unit tests pass; no random draw
+- relief-matching scan reported, g chosen by the preregistered rule (or stop); heuristic guard
+  reported
+- `pretrain_v5` trained and read next to the random v5 net, with its curve guard; H-f stays
+  held
+- `tests/run_tests.py` green; H2 audit clean
+
+---
+
 ## P4-6 — Phase 4 sweep harness
 
 > **2026-11-08:** survival condition decided (H-e amended to a state-based dose-response, PLAN
