@@ -552,6 +552,13 @@ Design and checks: `docs/PHASE4_DESIGN.md` §1.9 and §2 (v7).
 > - Heuristic guard, `pretrain_v5` and the reading not run, per the preregistered stop.
 > - Next: Jason chooses between the guard at g = 8 as a deviation and a re-preregistered
 >   matching. NOTES 2026-11-09.
+>
+> **2026-11-09 later:**
+> - Jason chose the guard at g = 8 (deviation recorded in 2eb5e3f). It is preserved, with low
+>   power at n = 3.
+> - The observation bug (v4 / v5 showed the decision action) is fixed in f686968, and
+>   `pretrain_v5` was restarted on the fix.
+> - Reading and v5 guard pending.
 
 **Goal:** curiosity is relieved by consequences in every family (Jason, 2026-11-09).
 - Locomotor curiosity relief scales with the novelty of the bin entered: 10 × 10 grid,

@@ -584,6 +584,20 @@ plateau moved by less than its seed se. Caveats in full in `NOTES.md` → "Phase
   - Relief matching misses its preregistered 10 % rule (best g = 8, curiosity +23 %), so the
     work stopped before the guard and `pretrain_v5`.
   - Jason decides: the guard at g = 8 as a deviation, or re-preregister the matching.
+  - Jason chose the guard at g = 8: preserved (n = 3, low power). `pretrain_v5` restarted after
+    an observation fix: v4 / v5 had shown the decision action instead of the last sub-step.
+- **Review of environment and methods (2026-11-09)**: `docs/REVIEW_2026-11-09.md`.
+  - Five reviews and a tiered roadmap:
+    - Tier 0: integrity, bit-identical.
+    - Tier 1: measurement validity — rules v8, equivalence guard, posterior predictive check.
+    - Tier 2: learner signal and P4-15.
+    - Tier 3: replica v2 — Calhoun's pen without a playground, emergent phase A, territories;
+      reopens calibration.
+    - Tier 4: architecture and performance.
+  - Notable:
+    - The calibrated curve depends on the playground.
+    - H-e's criterion 5 is partly mechanical.
+    - `backend: auto` picks an incomplete Warp path.
 
 ---
 

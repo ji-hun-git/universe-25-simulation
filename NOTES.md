@@ -1,5 +1,71 @@
 # Universe25 Play — NOTES
 
+## 2026-11-09 — Review of environment and methods; an observation bug; a mislabelled control; heuristic guard at g = 8
+
+**Review.** Five independent read-only reviews (fidelity, simulation methods, calibration and
+statistics, learning and measurement, engineering) are merged in `docs/REVIEW_2026-11-09.md`,
+with a tiered roadmap and three decisions for Jason. Headline points:
+- **Fidelity.** The calibrated curve depends on the playground. With it off at seed 7000:
+  N@315 890, peak 2431 near day 449. Phase A is a calendar gate, and the pen is a 4 × 4 floor
+  grid, not Calhoun's 16 wall cells around an open centre.
+- **Criterion 5 is partly mechanical:**
+  - its candidate rows include reflex-forced and pup rows;
+  - on eligible rows the learned net's locomotor gating falls below the threshold (exploratory:
+    P4-13 traces);
+  - so H-e "supported" (which varied only through criterion 5) is probably an artefact.
+- **The learner.** Its free-time value differences sit below the entropy temperature, so
+  mixing at chance is forced by the training setup.
+- **Guard power.** At n = 3 an identical arm fails about 30 % of the time.
+- **A live methods issue in the calibrated model.** The nursing-disturbance term reads a stale
+  cell-count cache on 59 % of ticks.
+- **A safety issue.** `backend: auto` selects Warp, which lacks three biology processes. Every
+  run cited in NOTES since phase 4 forced NumPy.
+
+**Bug (mine, P4-13): observations v4 and v5 showed the decision action.**
+- The last-action one-hot read `recent_action` only for version 3. So v4 and v5 showed the
+  decision action, not the previous free-time sub-step, against §1.8.
+- Fixed in f686968, with a rechoose-mode test that fails without the fix.
+- v2, v3 and heuristic trajectories hash identically. The `pretrain_v4` arm changes
+  (`e9463fb1…` → `25acd497…`), as it must.
+- `pretrain_v4` was trained, and its P4-13 reading made, with the bug. Its "free-time shares as
+  v3" and "no form" are readings of a net that could not see its own last move. The
+  ball-versus-fixed-object result does not depend on the one-hot, but the net was trained on a
+  flawed input.
+- The `pretrain_v5` run was stopped at episode 10 (kept as `pretrain_v5_bugged_stopped`) and
+  restarted on the fix.
+
+**Mislabelled control (mine, P4-12 onward).**
+- `_output/policy_guard_control_7000_3_1600.json` was copied from the v2 development guard. It
+  is the heuristic at **K = 12 continue** (physics off), not the K = 1 reference: its N@315 rows
+  464 / 256 / 381 equal that arm's.
+- Every development guard since P4-12 (learned v3 and v4, heuristic with physics, heuristic at
+  g = 8) compared against it. NOTES called it "the need-driven / physics-off control". Read
+  those guards as "against the K = 12-continue heuristic, physics off".
+- P4-8 found that arm within 2 % of K = 1 on the landmarks it can resolve.
+- The file is renamed `policy_guard_control_k12continue_7000_3_1600.json`, so it cannot be
+  reused as a K = 1 control.
+
+**Heuristic guard at g = 8** (P4-14, Jason's deviation of 2026-11-09; physics and novelty on,
+K = 12 continue, training seeds 7000–7002, 1,600 d, against the K = 12-continue heuristic with
+physics off; `_output/dev_guard_heuristic_nov_g8_train7000-7002.json`): **preserved** under the
+amended H-d rule and the 10 % rule.
+
+| landmark | control | g = 8 | paired diff |
+|---|---:|---:|---:|
+| N@315 | 367 | 341 | −26 ± 83 |
+| peak N | 2255 | 2240 | −15 ± 25 |
+| peak day | 535 | 563 | +29 ± 17 |
+| last young day | 606 | 634 | +28 ± 7 |
+| last conception day | 923 | 994 | +70 ± 12 |
+| N@1588 | 19 | 37 | +18 ± 13 |
+
+- The decline band at day 1200 holds.
+- The calibration review's caveat applies: at n = 3 this rule has little power, so read it as
+  "not falsified, low power".
+- Last young day and last conception day shift later by 3.9 and 5.9 paired se: systematic
+  shifts under 10 %.
+- Confirming it would need an equivalence test on ≥ 24 fresh seeds (review, Tier 1).
+
 ## 2026-11-09 — Novelty-based curiosity (P4-14): built; relief matching misses its 10 % rule, stopped as preregistered
 
 **Context.** Jason chose consequence-based curiosity in every family. Design:
