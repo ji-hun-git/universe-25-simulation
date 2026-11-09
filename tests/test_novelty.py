@@ -27,12 +27,12 @@ from universe25.sim import Universe25Sim  # noqa: E402
 
 
 def _sim(novelty: bool = True, gain: float = 1.0, days: float = 5.0, K: int = 12,
-         physics: bool = True) -> Universe25Sim:
+         physics: bool = True, mode: str = "auto") -> Universe25Sim:
     over = dict(seed=7100, days=days, ticks_per_day=6, backend="numpy", device="cpu",
                 log_every_ticks=6, snapshot_every_days=0, free_substeps=K,
                 playground={"ball_physics": physics},
                 drives={"curiosity_novelty": novelty, "consequence_gain": gain},
-                policy={"kind": "need_driven"})
+                policy={"kind": "need_driven", "substep_mode": mode})
     return Universe25Sim(load_config(ROOT / "configs" / "default.yaml", over),
                          Path(tempfile.mkdtemp(prefix="u25_nov_")))
 
@@ -115,8 +115,32 @@ def test_colony_runs_and_observation_v5() -> None:
     assert off._visit_t is None
 
 
+def test_one_hot_shows_the_most_recent_action_in_rechoose_mode() -> None:
+    """Observations v3, v4 and v5 show the most recent action, free-time sub-steps included
+    (until 2026-11-09 v4 and v5 showed the decision action). Rechoose mode with a random v5 net,
+    where the two differ."""
+    from universe25.agents.observation import OBS_DIM_V3, OBS_DIM_V4
+    from universe25.agents.policy import MlpFrozenPolicy
+    from universe25.agents.state import N_ACTIONS
+
+    sim = _sim(days=10.0, gain=2.0, mode="rechoose")
+    sim.policy = MlpFrozenPolicy.random_init(7100)
+    for _ in range(10 * 6):
+        sim.step()
+    a = sim.agents
+    idx = np.flatnonzero(a.alive)
+    differ = a.recent_action[idx] != a.last_action[idx]
+    assert differ.any(), "rechoose mode should leave some recent actions unlike the decision"
+    for v, dim in ((3, OBS_DIM_V3), (4, OBS_DIM_V4), (5, OBS_DIM)):
+        o = ObservationBuilder(sim.world, version=v).build(sim, idx)
+        assert o.shape[1] == dim
+        shown = np.argmax(o[:, 37:37 + N_ACTIONS], axis=1)
+        assert np.array_equal(shown, a.recent_action[idx].astype(int)), v
+
+
 if __name__ == "__main__":
     test_config_needs_substeps()
+    test_one_hot_shows_the_most_recent_action_in_rechoose_mode()
     test_entry_stay_revisit_and_spawn()
     test_object_actions_get_no_place_relief_and_gain_scales_pushes()
     test_colony_runs_and_observation_v5()

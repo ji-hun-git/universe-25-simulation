@@ -179,7 +179,9 @@ class ObservationBuilder:
             obs[:, 34:37] = _target_block(x, y, x, y, np.zeros(m, dtype=bool))
         # last action one-hot
         n = self.n_act
-        last = a.recent_action if self.version == 3 else a.last_action
+        # v3+: the most recent action, free-time sub-steps included (fixed 2026-11-09: v4 and v5
+        # read the decision action until then); v2: the decision action
+        last = a.recent_action if self.version >= 3 else a.last_action
         act = np.clip(last[idx].astype(int), 0, n - 1)
         obs[:, 37:37 + n] = self._act_eye[act]
         obs[:, 37 + n] = np.clip(maternal_need(a, idx) / DRIVE_SCALE, 0.0, 1.0)
