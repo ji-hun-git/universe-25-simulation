@@ -5,8 +5,10 @@ PlayScore field, no play-named feature (the playground box is geometry, like a c
 not the agent's own `lifespan` (hidden information). Pure NumPy, no RNG, so the reference path
 stays deterministic and the builder can be timed and audited on its own.
 
-Blocks (v4, 57 floats, ball physics 2026-11-09: v3 plus the nearest object's mobility and
-speed. v3, 55 floats, action space v2 2026-11-09: the last-action one-hot covers 15 actions,
+Blocks (v5, 59 floats, novelty-based curiosity 2026-11-09: v4 plus the novelty of the place
+bins ahead of and behind the animal along its heading. v4, 57 floats, ball physics 2026-11-09:
+v3 plus the nearest object's mobility and speed; kept exactly for v4 weight files. v3, 55
+floats, action space v2 2026-11-09: the last-action one-hot covers 15 actions,
 the heading is appended, and the object block reads the objects' current positions; kept
 exactly for v3 weight files. v2, 49 floats, 2026-11-06, is kept exactly for v2 weight files:
 11-action one-hot, the object positions at world creation. v1 weight files with 48 inputs no
@@ -23,7 +25,10 @@ longer load):
   maternal 1        maternal_need / 1.5 (agents/drives.py; a drive of the learner's reward)
   heading 2         cos, sin of the direction of the agent's last move (v3, v4)
   object motion 2   nearest object: mobile (1 for a ball under ball physics, else 0) and its
-                    speed / a full-speed push (capped at 1) (v4 only)
+                    speed / a full-speed push (capped at 1) (v4, v5)
+  place novelty 2   novelty (1 - exp(-dt / tau) since the last visit) of the grid bin one bin
+                    width ahead of / behind the animal along its heading; 0 without
+                    novelty-based curiosity (v5 only)
 """
 from __future__ import annotations
 
@@ -59,14 +64,17 @@ OBS_NAMES_V3: tuple[str, ...] = _BASE_NAMES + (
     "last_run_on", "last_turn_back", "last_back_off", "last_circle",
     "maternal_need", "heading_cos", "heading_sin",
 )
-OBS_NAMES: tuple[str, ...] = OBS_NAMES_V3 + ("object_mobile", "object_speed")
+OBS_NAMES_V4: tuple[str, ...] = OBS_NAMES_V3 + ("object_mobile", "object_speed")
+OBS_NAMES: tuple[str, ...] = OBS_NAMES_V4 + ("novelty_ahead", "novelty_behind")
 OBS_DIM_V2 = len(OBS_NAMES_V2)
 OBS_DIM_V3 = len(OBS_NAMES_V3)
+OBS_DIM_V4 = len(OBS_NAMES_V4)
 OBS_DIM = len(OBS_NAMES)
 assert OBS_DIM_V2 == 7 + 6 + N_ROLES + 5 + 12 + N_BASE_ACTIONS + 1 == 49
 assert OBS_DIM_V3 == 7 + 6 + N_ROLES + 5 + 12 + N_ACTIONS + 1 + 2 == 55
-assert OBS_DIM == OBS_DIM_V3 + 2 == 57
-_DIMS = {2: OBS_DIM_V2, 3: OBS_DIM_V3, 4: OBS_DIM}
+assert OBS_DIM_V4 == OBS_DIM_V3 + 2 == 57
+assert OBS_DIM == OBS_DIM_V4 + 2 == 59
+_DIMS = {2: OBS_DIM_V2, 3: OBS_DIM_V3, 4: OBS_DIM_V4, 5: OBS_DIM}
 
 
 def _target_block(x: np.ndarray, y: np.ndarray, tx: np.ndarray, ty: np.ndarray,
@@ -85,9 +93,9 @@ def _target_block(x: np.ndarray, y: np.ndarray, tx: np.ndarray, ty: np.ndarray,
 
 class ObservationBuilder:
     """Caches the per-world constants; `build` is vectorised over the deciding agents.
-    `version` 4 (default), 3 or 2 (the layouts of v3 and v2 weight files, kept exactly)."""
+    `version` 5 (default), 4, 3 or 2 (the layouts of older weight files, kept exactly)."""
 
-    def __init__(self, world: World, version: int = 4):
+    def __init__(self, world: World, version: int = 5):
         if version not in _DIMS:
             raise ValueError(f"observation version {version}")
         self.version = version
@@ -179,7 +187,7 @@ class ObservationBuilder:
             h = a.heading[idx].astype(np.float64)
             obs[:, 38 + n] = np.cos(h)
             obs[:, 39 + n] = np.sin(h)
-        if self.version == 4:
+        if self.version >= 4:
             mob = np.zeros(m, dtype=np.float32)
             spd = np.zeros(m, dtype=np.float32)
             if j is not None and getattr(sim, "ball_physics", False):
@@ -189,4 +197,17 @@ class ObservationBuilder:
                 spd = np.where(self.ball[j], np.minimum(v[j] / sim.ball_v_ref, 1.0), 0.0)
             obs[:, 40 + n] = mob
             obs[:, 41 + n] = spd
+        if self.version == 5:
+            ahead = np.zeros(m, dtype=np.float32)
+            behind = np.zeros(m, dtype=np.float32)
+            if getattr(sim, "novelty", False):
+                h = a.heading[idx].astype(np.float64)
+                step = self.world.width / sim.nov_G
+                W, H = self.world.width, self.world.height
+                for sign, out in ((1.0, ahead), (-1.0, behind)):
+                    px = np.clip(x + sign * step * np.cos(h), 0.5, W - 0.5)
+                    py = np.clip(y + sign * step * np.sin(h), 0.5, H - 0.5)
+                    out[:] = sim.place_novelty(idx, sim.nov_bin(px, py), sim._nov_t)
+            obs[:, 42 + n] = ahead
+            obs[:, 43 + n] = behind
         return obs

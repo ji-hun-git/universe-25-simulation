@@ -44,13 +44,16 @@ def main() -> int:
     p.add_argument("--founding-days", type=float, default=300.0)
     p.add_argument("--p-founding", type=float, default=0.4)
     p.add_argument("--ball-physics", action="store_true", help="ball physics on (P4-13)")
+    p.add_argument("--novelty", action="store_true", help="novelty-based curiosity (P4-14)")
+    p.add_argument("--consequence-gain", type=float, default=1.0, help="P4-14 relief gain g")
     a = p.parse_args()
     out = ROOT / "_output" / "pretrain" / a.label
     summ = pretrain(out, steps=a.steps, episode_days=a.episode_days, seed=a.seed,
                     free_substeps=a.free_substeps, ckpt_every=a.ckpt_every,
                     resume=Path(a.resume) if a.resume else None, progress=show,
                     founding_days=a.founding_days, p_founding=a.p_founding,
-                    ball_physics=a.ball_physics)
+                    ball_physics=a.ball_physics, curiosity_novelty=a.novelty,
+                    consequence_gain=a.consequence_gain)
     print(json.dumps(summ, indent=1))
     return 0
 

@@ -16,7 +16,12 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from universe25.agents.observation import OBS_DIM, OBS_DIM_V3, ObservationBuilder  # noqa: E402
+from universe25.agents.observation import (  # noqa: E402
+    OBS_DIM,
+    OBS_DIM_V3,
+    OBS_DIM_V4,
+    ObservationBuilder,
+)
 from universe25.agents.state import (  # noqa: E402
     ACT_BACK_OFF,
     ACT_EXPLORE,
@@ -111,7 +116,7 @@ def test_holding_still_and_fixed_objects_give_nothing() -> None:
 
 
 def test_observation_v4_motion_fields() -> None:
-    assert OBS_DIM == 57 and OBS_DIM_V3 == 55
+    assert OBS_DIM_V4 == 57 and OBS_DIM_V3 == 55 and OBS_DIM == 59
     sim = _sim(days=20.0)
     for _ in range(20 * 6):
         sim.step()
@@ -119,7 +124,7 @@ def test_observation_v4_motion_fields() -> None:
     b.vx, b.vy = 1.0, 0.0
     idx = np.flatnonzero(sim.agents.alive)
     sim.agents.x[idx[:1]], sim.agents.y[idx[:1]] = b.x + 0.5, b.y
-    o4 = ObservationBuilder(sim.world).build(sim, idx)
+    o4 = ObservationBuilder(sim.world, version=4).build(sim, idx)
     o3 = ObservationBuilder(sim.world, version=3).build(sim, idx)
     assert o4.shape == (idx.size, 57) and np.array_equal(o4[:, :55], o3)
     assert o4[0, 55] == 1.0 and abs(o4[0, 56] - min(1.0, 1.0 / sim.ball_v_ref)) < 1e-6

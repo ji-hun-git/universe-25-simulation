@@ -191,6 +191,14 @@ class DriveConfig(BaseModel):
     curiosity_decay_on_novel: float = 0.35
     boredom_gain: float = 0.08
     boredom_decay_on_vary: float = 0.25
+    # Novelty-based curiosity (P4-14, PHASE4_DESIGN.md 1.10): locomotor curiosity relief scales
+    # with the novelty of the bin entered (per-animal last-visit memory on a grid,
+    # 1 - exp(-dt / tau)); consequence_gain also scales the ball-push relief (1.9). Needs
+    # free_substeps > 1. False = off (bit-identical); consequence_gain 1.0 = P4-13.
+    curiosity_novelty: bool = False
+    novelty_grid: int = Field(10, ge=1)
+    novelty_tau_days: float = Field(1.0, gt=0.0)
+    consequence_gain: float = Field(1.0, ge=0.0)
     aggression_baseline: float = 0.1
     aggression_scarce_boost: float = 0.5
 
@@ -281,6 +289,8 @@ class SimConfig(BaseModel):
     def _physics_needs_substeps(self) -> SimConfig:
         if self.playground.ball_physics and self.free_substeps < 2:
             raise ValueError("playground.ball_physics needs free_substeps > 1")
+        if self.drives.curiosity_novelty and self.free_substeps < 2:
+            raise ValueError("drives.curiosity_novelty needs free_substeps > 1")
         return self
 
     @field_validator("seed")

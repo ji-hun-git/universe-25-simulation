@@ -85,7 +85,7 @@ def test_heuristic_never_chooses_a_v2_action() -> None:
 
 
 def test_observation_v3_and_the_v2_layout() -> None:
-    assert OBS_DIM == 57 and OBS_DIM_V3 == 55 and OBS_DIM_V2 == 49
+    assert OBS_DIM == 59 and OBS_DIM_V3 == 55 and OBS_DIM_V2 == 49
     joined = " ".join(OBS_NAMES).lower().replace("playground", "")
     for bad in ("play", "bout", "motif", "exagger", "score", "reward"):
         assert bad not in joined, bad
@@ -100,8 +100,8 @@ def test_observation_v3_and_the_v2_layout() -> None:
     h = sim.agents.heading[idx].astype(np.float64)
     assert np.allclose(o3[:, 53], np.cos(h), atol=1e-6)
     assert np.allclose(o3[:, 54], np.sin(h), atol=1e-6)
-    p4 = MlpFrozenPolicy.random_init(7100)  # observation v4 since P4-13
-    assert p4.obs_version == 4 and p4.n_out == N_ACTIONS
+    p5 = MlpFrozenPolicy.random_init(7100)  # observation v5 since P4-14
+    assert p5.obs_version == 5 and p5.n_out == N_ACTIONS
     w3 = ROOT / "_output" / "as2_reading" / "policy_random_v3_7000.npz"
     if w3.exists():  # a v3 weight file keeps the v3 layout
         assert MlpFrozenPolicy.from_npz(str(w3), 7100).obs_version == 3

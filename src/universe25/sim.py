@@ -26,6 +26,7 @@ from universe25.agents.state import (
     ACT_SOCIAL,
     ACT_TURN_BACK,
     ACT_WITHDRAW,
+    LOCO_FAMILY,
     N_ACTIONS,
     OBJECT_FAMILY,
     ROLE_BREEDING_FEMALE,
@@ -122,6 +123,16 @@ class Universe25Sim:
         self.ball_friction = BALL_FRICTION_K12 ** (12.0 / self.free_substeps)
         self.ball_v_ref = BALL_KAPPA * 7.0 * self.reach / self.free_substeps  # full MANIPULATE
         self._ball_stats = {"pushes": 0, "object_family_pushes": 0, "rolled_in": 0.0}
+        # novelty-based curiosity (P4-14, PHASE4_DESIGN.md 1.10): per-animal last visit time of
+        # each grid bin (days, -inf = never); deterministic; off = bit-identical
+        dcfg = cfg.drives
+        self.novelty = bool(dcfg.curiosity_novelty)
+        self.consequence_gain = float(dcfg.consequence_gain)
+        self.nov_G = int(dcfg.novelty_grid)
+        self.nov_tau = float(dcfg.novelty_tau_days)
+        self._visit_t = (np.full((cfg.max_agents, self.nov_G * self.nov_G), -np.inf)
+                         if self.novelty else None)
+        self._nov_t = 0.0  # time the policy observes novelty at (decision or sub-step start)
         # eval-only decision traces (off when no windows: no recorder, bit-identical tick)
         self.trace = (TraceRecorder(self, cfg.trace.windows, cfg.trace.sample_every)
                       if cfg.trace.windows else None)
@@ -182,6 +193,8 @@ class Universe25Sim:
         a = self.agents
         a.alive[slot] = True
         a.sex[slot] = sex
+        if self._visit_t is not None:  # a new animal knows no place yet
+            self._visit_t[slot] = -np.inf
         a.age_days[slot] = age
         a.hunger[slot] = float(self.rng.uniform(0.1, 0.3))
         a.thirst[slot] = float(self.rng.uniform(0.1, 0.3))
@@ -237,6 +250,7 @@ class Universe25Sim:
             with nvtx_range("roles"):
                 self._assign_roles(alive)
             with nvtx_range("actions"):
+                self._nov_t = self.day
                 actions = self._select_actions(alive)
                 decision = self._decision_tick()
                 record = self.trace is not None and decision
@@ -247,6 +261,9 @@ class Universe25Sim:
                 self._execute_actions(alive, actions)
                 if free is not None:
                     self._run_free_substeps(free)
+                if self.novelty and decision:  # every animal marks where it ends the decision
+                    idx = np.flatnonzero(a.alive)
+                    self._visit_t[idx, self.nov_bin(a.x[idx], a.y[idx])] = self.day + self.dt_ref
                 if record:
                     self.trace.record_post(self)
             with nvtx_range("life"):
@@ -749,7 +766,9 @@ class Universe25Sim:
         mode = self.cfg.policy.substep_mode
         if mode == "auto":
             mode = "continue" if self.cfg.policy.kind == "need_driven" else "rechoose"
+        nov = self.novelty
         for j in range(K):
+            self._nov_t = self.day + j * self.dt_ref / K  # what the policy observes now
             if phys:  # balls moved in the previous sub-step
                 ox = np.array([o.x for o in objs], dtype=np.float64)
                 oy = np.array([o.y for o in objs], dtype=np.float64)
@@ -768,7 +787,8 @@ class Universe25Sim:
             if ii.size:
                 a.x[ii] = np.clip(a.x[ii] + r.normal(0, sd_e, ii.size), 0.5, xmax)
                 a.y[ii] = np.clip(a.y[ii] + r.normal(0, sd_e, ii.size), 0.5, ymax)
-                a.curiosity[ii] = np.maximum(0.0, a.curiosity[ii] - cur_rel)
+                if not nov:  # with novelty the relief follows the place (below)
+                    a.curiosity[ii] = np.maximum(0.0, a.curiosity[ii] - cur_rel)
                 a.boredom[ii] = np.maximum(0.0, a.boredom[ii] - 0.5 * bor_rel)
             ii = F[act == ACT_SOCIAL]
             if ii.size:
@@ -792,7 +812,8 @@ class Universe25Sim:
             if run.any():
                 ii = F[run]
                 self._heading_moves(ii, act[run], sd_e * math.sqrt(math.pi / 2))
-                a.curiosity[ii] = np.maximum(0.0, a.curiosity[ii] - cur_rel)
+                if not nov:
+                    a.curiosity[ii] = np.maximum(0.0, a.curiosity[ii] - cur_rel)
                 a.boredom[ii] = np.maximum(0.0, a.boredom[ii] - 0.5 * bor_rel)
             obj = (act == ACT_BACK_OFF) | (act == ACT_CIRCLE)
             if obj.any():
@@ -803,6 +824,8 @@ class Universe25Sim:
                     a.boredom[ii] = np.maximum(0.0, a.boredom[ii] - bor_rel)
             if phys:
                 self._ball_pushes(F, act, xs, ys, cur_rel, bor_rel)
+            if nov:
+                self._place_novelty(F, act, self.day + (j + 1) * self.dt_ref / K, cur_rel)
             self._update_heading(F, xs, ys)
             ix = np.clip((a.x[F] / cw).astype(int), 0, nx - 1)
             iy = np.clip((a.y[F] / ch).astype(int), 0, ny - 1)
@@ -857,7 +880,7 @@ class Universe25Sim:
                     if dvx[b] != 0.0 or dvy[b] != 0.0:
                         o.vx = float(o.vx + dvx[b])
                         o.vy = float(o.vy + dvy[b])
-                scale[k] = np.minimum(1.0, dv / self.ball_v_ref)
+                scale[k] = np.minimum(1.0, dv / self.ball_v_ref) * self.consequence_gain
                 self._ball_stats["pushes"] += int(k.size)
                 self._ball_stats["object_family_pushes"] += int(
                     np.isin(act[k], OBJECT_FAMILY).sum())
@@ -867,6 +890,33 @@ class Universe25Sim:
             sc = scale[obj]
             a.curiosity[ii] = np.maximum(0.0, a.curiosity[ii] - cur_rel * sc)
             a.boredom[ii] = np.maximum(0.0, a.boredom[ii] - bor_rel * sc)
+
+    def nov_bin(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
+        """Grid bin index of positions (novelty-based curiosity, P4-14)."""
+        G = self.nov_G
+        ix = np.clip((np.asarray(x, dtype=np.float64) / (self.world.width / G)).astype(int),
+                     0, G - 1)
+        iy = np.clip((np.asarray(y, dtype=np.float64) / (self.world.height / G)).astype(int),
+                     0, G - 1)
+        return iy * G + ix
+
+    def place_novelty(self, idx: np.ndarray, b: np.ndarray, t: float) -> np.ndarray:
+        """1 - exp(-(t - last visit) / tau) of bins `b` for animals `idx` (1 if never)."""
+        return 1.0 - np.exp(-(t - self._visit_t[idx, b]) / self.nov_tau)
+
+    def _place_novelty(self, F: np.ndarray, act: np.ndarray, t: float, cur_rel: float) -> None:
+        """Novelty-based curiosity (P4-14): each free animal reads the novelty of the bin it
+        ended this sub-step in and marks it visited at `t`; locomotor-family actions relieve
+        curiosity by consequence_gain x the per-sub-step amount x that novelty. No draw."""
+        a = self.agents
+        b = self.nov_bin(a.x[F], a.y[F])
+        n = self.place_novelty(F, b, t)
+        self._visit_t[F, b] = t
+        loco = np.isin(act, LOCO_FAMILY)
+        ii = F[loco]
+        if ii.size:
+            a.curiosity[ii] = np.maximum(
+                0.0, a.curiosity[ii] - self.consequence_gain * cur_rel * n[loco])
 
     def _roll_balls(self) -> None:
         """One sub-step of rolling: move by the velocity, reflect at the playground bounds with
