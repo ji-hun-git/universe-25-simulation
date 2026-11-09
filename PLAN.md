@@ -317,6 +317,15 @@ So the amended H-f is expected to be null. Jason may instead hold H-f until the 
 form a consequence (objects or conspecifics that respond to how they are approached), or until
 the form test's null includes the movement mechanics.
 
+**Decision (Jason, 2026-11-09): H-f held; fix the substrate.** Card P4-13 (`PHASE4_DESIGN.md`
+§1.9 and §2 v7):
+- Balls respond to how they are approached.
+- Object-family relief scales with the speed a contact gives a ball.
+- Rules v7 replay an even mix of the family's moves as the form test's null.
+
+A revised H-f amendment (learned v4 vs random v4, rules v7) goes to Jason after the
+development reading, before any evaluation seed.
+
 ### 15.2 Arms
 
 Policy kind × resources × playground: `need_driven` (control), `mlp_frozen`, `mlp_ppo`, `evo`;

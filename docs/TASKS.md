@@ -500,6 +500,37 @@ Design and checks: `docs/PHASE4_DESIGN.md` §1.8.
 
 ---
 
+## P4-13 — Playground physics and detector rules v7
+
+**Goal:** give movement form a consequence (Jason, 2026-11-09: hold H-f, fix the substrate).
+- Balls respond to how they are approached: a push of κ·u along the approach, roll with
+  friction, bounce at the bounds.
+- Object-family relief of curiosity and boredom scales with the speed a contact gave a ball
+  (`playground.ball_physics`, default off).
+- Observation v4 adds the nearest object's mobility and speed.
+- Detector rules v7 replace the form test's label shuffle with a replay of the reference policy
+  (an even mix of the family's moves, under the simulator's mechanics).
+- Retrain as `pretrain_v4`.
+
+Design and checks: `docs/PHASE4_DESIGN.md` §1.9 and §2 (v7).
+
+**Files:** `config.py`, `world/geometry.py`, `sim.py`, `agents/observation.py`,
+`agents/policy.py`, `metrics/trace.py`, `metrics/detectors.py`, `metrics/synthetic_traces.py`,
+`scripts/negcontrol_v7.py`, `tests/test_physics.py`, `NOTES.md`
+
+**Acceptance criteria:**
+- physics off: six reference trajectories hash identically before and after
+- mechanics unit tests pass; physics draws from no random stream
+- v7: the v6 battery passes with v7 flags on seeds 70,000+; the simulator negative control
+  (random nets, with and without physics) meets c3 / c4 in ≤ 10 % of windows per kind; the
+  scripted alternation passes and the random net does not
+- `pretrain_v4` trained and read on training seeds 7000–7002 next to the random v4 net, with
+  the curve guard and the heuristic-with-physics guard; revised H-f amendment proposed to Jason
+  before any evaluation seed
+- `tests/run_tests.py` green; H2 audit clean
+
+---
+
 ## P4-6 — Phase 4 sweep harness
 
 > **2026-11-08:** survival condition decided (H-e amended to a state-based dose-response, PLAN

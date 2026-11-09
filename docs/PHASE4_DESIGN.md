@@ -238,6 +238,76 @@ random v3 net, at matched V) goes to Jason before any evaluation seed is read.
 - Curve guard: not preserved (peak day +134, last young day +336, decline band held).
 - The proposed H-f amendment is in PLAN §15.1.
 
+### 1.9 Playground physics: objects that respond (P4-13, fixed 2026-11-09 before implementation)
+
+**Why.** Under action space v2 the learner mixes each family's primitives at chance, because
+nothing it feels depends on how it moves (§1.8 result). Jason's decision (2026-11-09): hold
+H-f and give form a consequence in the substrate. Here objects respond to how they are
+approached.
+
+**Ball physics** (config `playground.ball_physics`, default off: bit-identical; needs
+`free_substeps` > 1, since it runs in the free-time sub-step loop):
+- *State.* Balls get a velocity (vx, vy). Tunnels and ramps stay fixed.
+- *Push.* After each sub-step's moves, every free-time agent pushes a ball (any free action,
+  any family) if:
+  - its move ended in contact (distance ≤ ball radius + 1 in, the trace's contact rule), and
+  - the move brought it closer to the ball's centre by u > 0 inches.
+
+  Each push adds κ·u to the ball's velocity, along the unit vector from the agent's end
+  position to the ball, with κ = 1. Pushes from several agents add up.
+- *Roll.* Each sub-step the ball moves by its velocity. Then the velocity is multiplied by
+  f = 0.7^(12/K), which makes roll distance roughly independent of K: about 3.3·u at K = 12.
+  Speeds below 0.01 in per sub-step stop. At the playground bounds the ball reflects, keeping
+  half its normal speed. No random draw anywhere.
+- *No jiggle.* With physics on, MANIPULATE no longer nudges objects at random on decision ticks.
+  Balls move only by physics.
+- *Relief from the response.* An object-family action (MANIPULATE, BACK_OFF, CIRCLE) relieves
+  curiosity and boredom in proportion to the speed its contact gave a ball this sub-step: the
+  current per-sub-step amount × min(1, Δv / (κ·step_m)). Here step_m is MANIPULATE's
+  per-sub-step approach (7·reach / K).
+  - A full-speed contact gives today's relief. Holding still against a ball, touching a tunnel
+    or ramp, or acting without contact gives none.
+  - Fatigue costs, the locomotor family's relief and SOCIAL are unchanged.
+- *Observation v4* (57 floats): v3's 55 plus two fields for the nearest object:
+  - `object_mobile`: 1 for a ball with physics on, else 0.
+  - `object_speed`: its speed / (κ·step_m), capped at 1.
+
+  v3 weight files (55 inputs) keep the v3 builder exactly; v2 files keep v2.
+- *H2.* Relief reads only what the object does: the speed a contact gave a ball. It never reads
+  the agent's movement form, direction changes, reversals, variety, any detector statistic, or
+  anything named play. Curiosity and boredom stay outside criterion 1's survival relief, so
+  object episodes stay non-functional by the detectors' definition. This replaces §1.8's rule
+  that no relief depends on novelty, for the physics arm only. That replacement is the point:
+  form can now pay.
+- *What can pay, recorded before any run.* A ball rolls away when pushed, so where it is free,
+  following and pushing (dribbling) keeps up relief. A ball stopped at a wall or corner gives
+  relief again only after a run-up (back off, re-approach). That is an approach–withdraw
+  alternation, which the form test reads.
+  - If the learner learns run-ups, it has learned an instrumental form for an intrinsic drive.
+  - Whether that is play-like is not settled by criteria 3 / 4. It needs spontaneity (c2) and
+    relaxed-field gating (c5): the dose-response and phase tests (H-e, H-g).
+- *Learner.* `pretrain_v4` = the `pretrain_v3` recipe with ball physics on in every nursery
+  world and observation v4. Nothing else changes (entropy 0.05, 1e8 transitions, seed 7000,
+  K = 12 rechoose), so v3 vs v4 isolates physics plus the two observation fields.
+
+**Acceptance checks (preregistered):**
+1. *Bit-identity with physics off.* Six trajectories at seed 7000, 6 ticks per day, hash
+   identically before and after: the four §1.8 arms, the `pretrain_v3` net (150 d, traced) and
+   the random v3 net (120 d). Trace fields added by rules v7 are excluded from the hash; every
+   other trace field is included.
+2. *Mechanics* (unit tests): a push moves a ball along the approach direction at κ·u; it decays
+   by f per sub-step; it reflects at a bound; tunnels and ramps never move; relief is zero when
+   holding still and full at a full-speed contact; physics draws from no random stream.
+3. *Development reading* (training seeds 7000–7002, physics on, rules v7), no pass condition:
+   - the heuristic (K = 12 continue) guard against the physics-off control;
+   - `pretrain_v4` read with the random v4 net beside it (form excess, family shares, ball
+     contacts and speeds);
+   - the `pretrain_v4` curve guard.
+
+**What this does not settle.** The amended H-f stays held. After check 3, a revised amendment
+(learned v4 vs random v4 at matched V, rules v7) goes to Jason before any evaluation seed is
+read.
+
 ## 2. Measurement: detectors per Burghardt criterion (eval-only, unvalidated)
 
 Principles. Every detector is computed after the fact from logs (position, action, drives, cell,
@@ -459,6 +529,63 @@ criterion 4 in 18 of 18). v6 is the frozen rule set. Re-reading the H-e sweep wi
 (exploratory): no policy — learned, heuristic or random — meets criterion 3 or 4 in any of
 216 windows per kind; the learned net's object episodes approach and hold (reversal fraction
 0.008), its locomotor episodes are the simulator's random walk (NOTES 2026-11-09).
+
+**v7 (fixed 2026-11-09 after the action-space-v2 reading, before the v7 test; card P4-13).**
+- *Why.* Under action space v2 the random v3 net meets criteria 3 and 4 in 5 of 18
+  training-seed windows. RUN_ON and TURN_BACK are defined relative to the agent's last move, so
+  random mixing already orders the end-point labels, and the label shuffle removes that order.
+  Its locomotor form excess is +0.08 to +0.12, for any near-uniform mixer.
+- *One change: the null of the form test.* Each episode is replayed 1,000 times on a random
+  stream of its own (`[seed, 7]`):
+  - The replay starts from the position before the episode's first row, with the heading of the
+    move into that position (uniform if unknown).
+  - Each own event row gets an action drawn uniformly from the kind's family. Locomotor:
+    EXPLORE, RUN_ON, TURN_BACK. Object: MANIPULATE, BACK_OFF, CIRCLE. The action is moved by
+    the simulator's mechanics: EXPLORE an isotropic Gaussian step; RUN_ON / TURN_BACK along /
+    against the heading; MANIPULATE, BACK_OFF and CIRCLE relative to that row's nearest object,
+    held where the trace saw it. Move lengths come from the trace's meta; walls clip.
+  - Rows inside the episode that are not own events keep their observed displacement.
+- *Statistic.* The reversal fraction is computed on each replayed path exactly as on the
+  observed one: own rows, radial direction to the path's own end point, pairs within episodes.
+  - Excess = observed − replay mean; z is taken against the replays.
+  - The form test is met when excess ≥ 0.10 and z > 1.645 (unchanged).
+  - Criteria 3 and 4 combine with it as in v6. All other statistics are unchanged.
+- *What "beyond chance" now means.* More approach–withdraw reversals than an animal mixing the
+  family's moves evenly, in the same places, would show. In action space v1 the only family
+  members a policy used were EXPLORE and MANIPULATE, and the reference is still the even
+  three-way mix. That is fixed in advance and the same for every policy and trace.
+- *Trace.* New fields `obj_x`, `obj_y`: the nearest object's position at each row. New meta
+  entries: the move model (EXPLORE σ per row, RUN_ON length, MANIPULATE step, world size). The
+  synthetic generator writes both.
+  - Traces without `obj_x` cannot replay object episodes: their object form test is NaN, and
+    object c3 / c4 are not met.
+  - Locomotor replays without the meta entries use the defaults derived from K.
+- *Kept.* v6 flags as `decisions_v6_unvalidated`. The v6 shuffle statistics are reported
+  alongside.
+
+Test on a fresh split (seeds 70,000 + 1,000 × class + colony, 30 colonies per class, 1,000
+surrogates). Pass conditions:
+- The v6 battery scored with v7 flags: the 16 v5 checks and both random-walk checks, with the
+  same AUC / TPR / FPR rules.
+- A simulator negative control (`scripts/negcontrol_v7.py`):
+  - Random-init networks (`MlpFrozenPolicy.random_init`, init seeds 7003 and 7004, never used)
+    on training seeds 7006–7008 (never traced).
+  - K = 12, 1,010 days, windows at days 400 / 700 / 1000, every fourth individual, ≤ 400
+    individuals, 1,000 surrogates.
+  - Two substrates: action space v2 without ball physics, and with it.
+  - Criterion 3 and criterion 4 flags must each be met in ≤ 10 % of the 18 windows per kind
+    and substrate.
+- The scripted alternation of `tests/test_actions_v2.py` meets the v7 form test in both kinds,
+  and the random net does not.
+
+Diagnostic, not a pass condition: v6 flags on the same traces, and the action-space-v2 reading
+(`_output/as2_reading`) re-read with v7.
+
+Known limits, recorded before the test:
+- The replay holds each object where the trace saw it. Under ball physics the replayed agent's
+  own pushes would have moved the ball differently.
+- The reference is one fixed mix. A policy that just prefers TURN_BACK, in any order, exceeds
+  it. That is a movement form (shuttling), not necessarily a sequential plan.
 
 **First simulator reading (training seeds 7000–7002, 4 windows).** Need-driven and random
 policies: object and locomotor episodes are non-functional (c1) and spontaneous (c2) but last
