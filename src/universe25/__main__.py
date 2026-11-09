@@ -69,9 +69,7 @@ def main(argv: list[str] | None = None) -> int:
     cfg = load_config(cfg_path, overrides)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    (out / "config.json").write_text(cfg.model_dump_json(indent=2), encoding="utf-8")
-
-    sim = Universe25Sim(cfg, out)
+    sim = Universe25Sim(cfg, out)  # writes config.json and manifest.json
     summary = sim.run()
     cal = write_calibration(out / "metrics.parquet", out / "calibration.json", summary)
     print(json.dumps({"summary": summary, "calibration_mean_rel_error": cal.get("mean_rel_error")}, indent=2))

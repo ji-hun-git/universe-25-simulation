@@ -1,0 +1,106 @@
+{
+ "fast": {
+  "environment": {
+   "numpy": "2.5.4",
+   "platform": "Windows-AMD64"
+  },
+  "days": 115.0,
+  "arms": {
+   "k1": {
+    "trajectory": "86b7f086cb828543c7c9bbf35cf7667121512cdd4211957a1eb955bd03969011",
+    "n_alive": 26,
+    "births": 32,
+    "deaths": 14
+   },
+   "k12_continue": {
+    "trajectory": "4e83fe037626f030f8ae7c5639c3151a25afc4ea930eeaa86e8bb13abf0da352",
+    "n_alive": 21,
+    "births": 26,
+    "deaths": 13
+   },
+   "k12_traced": {
+    "trajectory": "4e83fe037626f030f8ae7c5639c3151a25afc4ea930eeaa86e8bb13abf0da352",
+    "n_alive": 21,
+    "births": 26,
+    "deaths": 13,
+    "trace": "aeaa25b0e890007615c7e4c0bb79c1d2905dbeb5d97149e525dc5cb7bbc87f44"
+   },
+   "k12_rechoose_mlp": {
+    "trajectory": "886067d7714dc890c4d8e4464ad49123566fe7a8c3ef9e285cb3e3f443859ac6",
+    "n_alive": 8,
+    "births": 15,
+    "deaths": 15
+   },
+   "physics_novelty": {
+    "trajectory": "eb2f31ee576535d9cc6f0b48bc4d1a61c368f5b12b4efa8a2329fcdb3727810b",
+    "n_alive": 14,
+    "births": 11,
+    "deaths": 5
+   },
+   "scarce": {
+    "trajectory": "ed92078fb59423fa2121042c2f96fc0802bcfde2628ddd2f54046aab4e8bb222",
+    "n_alive": 16,
+    "births": 24,
+    "deaths": 16
+   },
+   "tpd24": {
+    "trajectory": "e6153c85f569e884b7a6e88b6bafa40e5632352faa5958be1eff72ddb5816cde",
+    "n_alive": 17,
+    "births": 31,
+    "deaths": 22
+   }
+  }
+ },
+ "slow": {
+  "environment": {
+   "numpy": "2.5.4",
+   "platform": "Windows-AMD64"
+  },
+  "days": 300.0,
+  "arms": {
+   "k1": {
+    "trajectory": "cb6d435cfe9b6e4498b12cc43b63d0fe0fa0d8a62873877ea5322a3cf99e90a6",
+    "n_alive": 370,
+    "births": 759,
+    "deaths": 397
+   },
+   "k12_continue": {
+    "trajectory": "7e1139d9d3f9945df9f2ab98846e51fa3c2b0bb33b76797bf2dcb7861b77326f",
+    "n_alive": 356,
+    "births": 646,
+    "deaths": 298
+   },
+   "k12_traced": {
+    "trajectory": "7e1139d9d3f9945df9f2ab98846e51fa3c2b0bb33b76797bf2dcb7861b77326f",
+    "n_alive": 356,
+    "births": 646,
+    "deaths": 298,
+    "trace": "aeaa25b0e890007615c7e4c0bb79c1d2905dbeb5d97149e525dc5cb7bbc87f44"
+   },
+   "k12_rechoose_mlp": {
+    "trajectory": "2576939af9244ba0b0bdda84df516b1d7e65c2fcb45bdb35e42ce6a49ec783cb",
+    "n_alive": 65,
+    "births": 262,
+    "deaths": 205
+   },
+   "physics_novelty": {
+    "trajectory": "fb74cea8906255e8a22deca92c6e7be9a0e6775e2b69bb3b287fdeb2f956da64",
+    "n_alive": 505,
+    "births": 796,
+    "deaths": 299
+   },
+   "scarce": {
+    "trajectory": "b268502b165ca4f67b7a2700ebbef22ff8e233e3caa7f5e41afc1a187a119c25",
+    "n_alive": 338,
+    "births": 660,
+    "deaths": 330
+   },
+   "tpd24": {
+    "trajectory": "4b18dd80fd2e3e6c7f94d80a6c8ee39d6888dd8a45d52c85e7d44a62a27d0704",
+    "n_alive": 274,
+    "births": 483,
+    "deaths": 217
+   }
+  }
+ }
+}

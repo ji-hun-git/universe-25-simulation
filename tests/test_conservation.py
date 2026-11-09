@@ -43,7 +43,44 @@ def test_no_play_reward_in_config() -> None:
     assert "reward_play" not in sim_src.lower()
 
 
+def test_invariants_hold_past_the_first_births() -> None:
+    """The calibrated colony (default.yaml) past its first litters with the runtime invariant
+    checks on (universe25/invariants.py: population accounting, drive and capacity bounds,
+    positions, pup actions, stocks), at K = 1 and with sub-steps, ball physics and novelty.
+    The checks only read state, so they cannot hide a perturbation."""
+    import tempfile
+
+    for over in ({}, {"free_substeps": 12, "playground": {"ball_physics": True},
+                      "drives": {"curiosity_novelty": True, "consequence_gain": 8.0}}):
+        cfg = load_config(ROOT / "configs" / "default.yaml", {
+            "seed": 7100, "days": 150.0, "ticks_per_day": 6, "backend": "numpy",
+            "device": "cpu", "log_every_ticks": 6, "snapshot_every_days": 0,
+            "debug_invariants": True, **over})
+        sim = Universe25Sim(cfg, Path(tempfile.mkdtemp(prefix="u25inv_")))
+        s = sim.run()
+        assert s["births"] > 0, "the run must reach the first litters"
+        assert s["final_n"] == sim._n_initial + s["births"] - s["deaths"]
+        assert s["litters_dropped_at_capacity"] == 0
+
+
+def test_strict_config_and_reference_backend() -> None:
+    """Unknown config keys are errors; ticks_per_day must be a multiple of the reference;
+    `auto` is the NumPy reference path (review 2026-11-09)."""
+    from universe25.agents.state import pick_backend
+
+    for bad in ({"biology": {"gestaton_days": 19.0}}, {"polcy": {"kind": "need_driven"}},
+                {"ticks_per_day": 9}, {"ticks_per_day": 3}):
+        try:
+            load_config(ROOT / "configs" / "default.yaml", bad)
+        except ValueError:
+            continue
+        raise AssertionError(f"config {bad} must be refused")
+    assert pick_backend("auto", "auto") == ("numpy", "cpu")
+
+
 if __name__ == "__main__":
     test_no_play_reward_in_config()
     test_population_accounting()
+    test_invariants_hold_past_the_first_births()
+    test_strict_config_and_reference_backend()
     print("test_conservation: OK")

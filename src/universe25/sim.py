@@ -152,7 +152,18 @@ class Universe25Sim:
         self._peak_n = 0
         self._peak_day = 0.0
         self._nan_count = 0
+        self._litters_dropped = 0  # litters lost because max_agents was reached
         self._seed_initial()
+        self._n_initial = int(self.agents.n_alive)
+        # provenance (review 2026-11-09): the resolved config and a manifest in every run
+        from universe25.repro import manifest
+
+        self.manifest = manifest(cfg, backend=self.backend, device=self.device)
+        self.out_dir.mkdir(parents=True, exist_ok=True)
+        (self.out_dir / "config.json").write_text(cfg.model_dump_json(indent=2),
+                                                  encoding="utf-8")
+        (self.out_dir / "manifest.json").write_text(json.dumps(self.manifest, indent=2),
+                                                    encoding="utf-8")
 
     # ------------------------------------------------------------------ setup
     def _seed_initial(self) -> None:
@@ -216,6 +227,7 @@ class Universe25Sim:
         a.boredom[slot] = 0.1
         a.last_action[slot] = ACT_REST
         a.recent_action[slot] = ACT_REST
+        a.heading[slot] = 0.0  # a reused slot no longer inherits its last occupant's heading
         a.in_playground[slot] = self.world.in_playground(a.x[slot], a.y[slot])
         a.competence[slot] = 1.0  # shaped during development (see _density_stress)
         a.maternal_cap[slot] = 1.0  # eroded in adulthood (see _daily_maternal_erosion)
@@ -304,6 +316,10 @@ class Universe25Sim:
 
         self.tick += 1
         self.day = self.tick * self.dt_days
+        if self.cfg.debug_invariants:
+            from universe25.invariants import enforce
+
+            enforce(self)
 
         if self.tick % self.cfg.log_every_ticks == 0:
             self._log_metrics()
@@ -1324,7 +1340,7 @@ class Universe25Sim:
         a = self.agents
         bio = self.cfg.biology
         births = np.flatnonzero(alive & (a.gestating > 0) & (a.gestating <= self.dt_days))
-        for i in births:
+        for k, i in enumerate(births):
             # birth this tick
             a.gestating[i] = 0.0
             if a.stress[i] > bio.maternal_neglect_stress and self.rng.random() < float(bio.stillbirth_neglect_p):
@@ -1333,6 +1349,14 @@ class Universe25Sim:
             try:
                 slots = a.free_slots(litter)
             except RuntimeError:
+                # max_agents reached: this litter and the others due this tick are lost (as
+                # before); now counted and reported in run.json, with a warning
+                if self._litters_dropped == 0:
+                    import warnings
+
+                    warnings.warn(f"max_agents ({a.capacity}) reached on day {self.day:.1f}: "
+                                  "litters are being dropped", RuntimeWarning, stacklevel=2)
+                self._litters_dropped += len(births) - k
                 break
             # Birth happens in the mother's nest; she returns there and pups stay until weaning.
             nid = int(a.nest_id[i])
@@ -1630,6 +1654,7 @@ class Universe25Sim:
             "last_conception_day": self._last_conception_day,
             "conception_cessation_day": rate_cessation_day(self._conc_by_day),
             "abandoned_pups": self._abandoned,
+            "litters_dropped_at_capacity": self._litters_dropped,
             "nan_count": self._nan_count,
             "playground_enabled": self.world.playground_enabled,
             "n_nests": self.world.n_nests,
@@ -1641,6 +1666,7 @@ class Universe25Sim:
             "trace_files": trace_files,
             "policy_kind": self.cfg.policy.kind,
             "learn": learn_summary,
+            "manifest": self.manifest,
         }
         (self.out_dir / "run.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
         return summary

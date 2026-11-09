@@ -5,10 +5,16 @@ from pathlib import Path
 from typing import Any, Literal
 
 import yaml
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
-class GeometryConfig(BaseModel):
+class _Strict(BaseModel):
+    """Unknown keys are errors, so a misspelt key cannot load silently (review 2026-11-09)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class GeometryConfig(_Strict):
     """Calhoun 1973 pen: 101 x 101 inches, 16 cells, 256 nests."""
 
     width_in: float = 101.0
@@ -21,7 +27,7 @@ class GeometryConfig(BaseModel):
     capacity_design: int = 3840
 
 
-class PlaygroundConfig(BaseModel):
+class PlaygroundConfig(_Strict):
     """Optional playground zone. Geometry only — no play reward."""
 
     enabled: bool = True
@@ -39,7 +45,7 @@ class PlaygroundConfig(BaseModel):
     ball_physics: bool = False
 
 
-class ResourceConfig(BaseModel):
+class ResourceConfig(_Strict):
     mode: Literal["abundant", "scarce"] = "abundant"
     food_refill_per_tick: float = 1e9
     water_refill_per_tick: float = 1e9
@@ -59,7 +65,7 @@ class ResourceConfig(BaseModel):
     scarce_famine_factor: float = 1.0
 
 
-class BiologyConfig(BaseModel):
+class BiologyConfig(_Strict):
     """Life-history + density/social mechanisms (no scheduled collapse day)."""
 
     gestation_days: float = 20.0
@@ -177,7 +183,7 @@ class BiologyConfig(BaseModel):
     conception_density_width: float = 0.0
 
 
-class DriveConfig(BaseModel):
+class DriveConfig(_Strict):
     """Homeostatic / social drives. Absolutely no play term."""
 
     hunger_gain_per_day: float = 1.2
@@ -203,7 +209,7 @@ class DriveConfig(BaseModel):
     aggression_scarce_boost: float = 0.5
 
 
-class PPOConfig(BaseModel):
+class PPOConfig(_Strict):
     # Shared-parameter PPO for policy.kind mlp_ppo (learn/ppo.py; PHASE4_DESIGN.md 1.5). The
     # reward is the homeostatic drive reduction only (learn/reward.py).
     enabled: bool = True  # False = act with the initial network, never update (baseline)
@@ -227,7 +233,7 @@ class PPOConfig(BaseModel):
     cpu_threads: int = 4
 
 
-class PolicyConfig(BaseModel):
+class PolicyConfig(_Strict):
     # Which policy chooses among the eligible actions at each decision (agents/policy.py).
     # "need_driven" is the phase 1/2 utility softmax (bit-identical to the inline version it
     # replaced). "mlp_frozen" is a fixed-weight MLP over agents/observation.py (NumPy
@@ -246,7 +252,7 @@ class PolicyConfig(BaseModel):
     ppo: PPOConfig = Field(default_factory=PPOConfig)
 
 
-class TraceConfig(BaseModel):
+class TraceConfig(_Strict):
     # Per-agent decision traces for the eval-only detectors (metrics/trace.py), recorded in day
     # windows [start, end) and written as trace_<start>_<end>.npz. Empty = off: no recorder,
     # bit-identical tick. The recorder draws no random numbers and writes no simulation state.
@@ -254,7 +260,7 @@ class TraceConfig(BaseModel):
     sample_every: int = 1  # keep rows only for individuals whose uid is a multiple of this
 
 
-class SimConfig(BaseModel):
+class SimConfig(_Strict):
     seed: int = 7000
     ticks_per_day: int = 24
     # Per-decision effect magnitudes (nursing amounts, drive relief, wounds, conception chance
@@ -284,6 +290,17 @@ class SimConfig(BaseModel):
     # and relief per sub-step, its own RNG stream). Feeding, nursing, conception, stress and
     # mortality stay per decision. 1 = off (bit-identical).
     free_substeps: int = Field(1, ge=1)
+    # Runtime invariant checks after every tick (universe25/invariants.py); read-only, so the
+    # trajectory is the same with them on. Off by default (cost).
+    debug_invariants: bool = False
+
+    @model_validator(mode="after")
+    def _ticks_per_day_multiple_of_ref(self) -> SimConfig:
+        ref = self.ticks_per_day_ref
+        if self.ticks_per_day < ref or self.ticks_per_day % ref != 0:
+            raise ValueError(f"ticks_per_day ({self.ticks_per_day}) must be a multiple of "
+                             f"ticks_per_day_ref ({ref}): decisions are held over whole ticks")
+        return self
 
     @model_validator(mode="after")
     def _physics_needs_substeps(self) -> SimConfig:

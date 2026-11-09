@@ -131,30 +131,12 @@ BackendName = Literal["numpy", "torch", "warp"]
 
 
 def pick_backend(requested: str, device: str) -> tuple[BackendName, str]:
-    """Choose compute backend. Prefer Warp on CUDA; fall back to torch then numpy."""
+    """Choose the compute backend. `auto` is the NumPy reference path: the Warp path lacks three
+    biology processes (homeless-nest adoption, the low-rank nest kick, young-female maternal
+    competence), so it runs only when requested explicitly (review 2026-11-09; until then
+    `auto` picked Warp whenever CUDA worked)."""
     req = requested
     if req == "auto":
-        # try warp cuda
-        try:
-            import warp as wp
-
-            wp.init()
-            if device in ("auto", "cuda"):
-                try:
-                    _ = wp.zeros(4, dtype=wp.float32, device="cuda:0")
-                    return "warp", "cuda:0"
-                except Exception:
-                    pass
-            return "numpy", "cpu"
-        except Exception:
-            pass
-        try:
-            import torch
-
-            if torch.cuda.is_available() and device in ("auto", "cuda"):
-                return "torch", "cuda"
-        except Exception:
-            pass
         return "numpy", "cpu"
     if req == "warp":
         import warp as wp

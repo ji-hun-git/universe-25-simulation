@@ -21,7 +21,15 @@ sys.path.insert(0, str(ROOT / "src"))
 
 
 def main() -> int:
-    from universe25.calib.policy_guard import format_table, guard, run_arm, write_report
+    from universe25.calib.policy_guard import (
+        arm_config,
+        format_table,
+        guard,
+        run_arm,
+        write_report,
+    )
+    from universe25.config import load_config
+    from universe25.repro import config_hash
 
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("kind")
@@ -35,17 +43,27 @@ def main() -> int:
     p.add_argument("--ball-physics", action="store_true", help="ball physics for the arm (P4-13)")
     p.add_argument("--novelty", action="store_true", help="novelty-based curiosity (P4-14)")
     p.add_argument("--consequence-gain", type=float, default=1.0, help="P4-14 relief gain g")
+    p.add_argument("--control-substeps", type=int, default=1,
+                   help="free_substeps of the need-driven control (1 = the frozen reference; "
+                        "12 = the K = 12-continue heuristic)")
     a = p.parse_args()
     seeds = [a.first + i for i in range(a.seeds)]
     out_dir = ROOT / "_output"
-    cache = out_dir / f"policy_guard_control_{a.first}_{a.seeds}_{a.days:.0f}.json"
+    # the control's cache is keyed by the hash of its resolved config (review 2026-11-09: a
+    # K = 12 control was once reused as the K = 1 reference)
+    c_extra = {"free_substeps": a.control_substeps} if a.control_substeps > 1 else None
+    c_hash = config_hash(load_config(arm_config("need_driven", None, None, c_extra)))[:10]
+    cache = out_dir / f"policy_guard_control_{a.first}_{a.seeds}_{a.days:.0f}_{c_hash}.json"
+    print(f"control: need_driven, free_substeps {a.control_substeps}, config {c_hash}",
+          flush=True)
     control = None
     if cache.exists():
         raw = json.loads(cache.read_text(encoding="utf-8"))
         control = {int(k): v for k, v in raw.items()}
         print(f"control rows reused from {cache}", flush=True)
     else:
-        control = run_arm("need_driven", seeds, a.days, a.workers, progress=print)
+        control = run_arm("need_driven", seeds, a.days, a.workers, progress=print,
+                          extra=c_extra)
         out_dir.mkdir(parents=True, exist_ok=True)
         cache.write_text(json.dumps({str(k): v for k, v in control.items()}, indent=1),
                          encoding="utf-8")

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
-"""Out-of-sample scoring of a parameter fragment over many seeds (the adjudicator for CMA-ES
-candidates since phase 2k): every landmark's mean +- se, the inverse-variance loss of the mean
+"""Twelve-seed scoring of a parameter fragment (the adjudicator for CMA-ES candidates since
+phase 2k; the default block 7000-7011 includes the training seeds 7000-7002, so it is not
+out-of-sample: docs/SEEDS.md): every landmark's mean +- se, the inverse-variance loss of the mean
 landmarks, the mean of the per-seed losses and the canonical error of the means.
 
 usage: python scripts/seed_eval.py <fragment.yaml|-> <label> [n_seeds=12] [workers=12]

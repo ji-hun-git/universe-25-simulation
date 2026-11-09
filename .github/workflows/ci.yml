@@ -1,0 +1,26 @@
+# Fast checks on every push and pull request (Tier 0 of docs/REVIEW_2026-11-09.md).
+# - ruff, error classes only (syntax errors, undefined names); style is not gated yet
+# - the fast test tier, which includes the H2 audits (tests/test_h2_audit.py)
+# Golden trajectory hashes are not checked here: they depend on platform and NumPy version
+# (tests/golden/trajectories.json records the environment; run the slow tier locally).
+name: ci
+on:
+  push:
+  pull_request:
+jobs:
+  fast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install "numpy>=2,<3" "pydantic>=2" "pyyaml>=6" "pyarrow>=14" "scipy>=1.11" ruff
+      - name: Ruff (errors only)
+        run: ruff check --select E9,F63,F7,F82 src tests scripts
+      - name: Fast test tier
+        env:
+          PYTHONPATH: src
+        run: python -X utf8 tests/run_tests.py --tier fast
