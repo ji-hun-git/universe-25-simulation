@@ -13,6 +13,9 @@
 > - Golden trajectory hashes: `scripts/golden_hashes.py`. Test tiers:
 >   `tests/run_tests.py --tier fast|slow|gpu`. CI: `.github/workflows/ci.yml`.
 > - The architecture map in §5 is updated for the 2026-11-09 modules.
+> - Tier 1 done: detector rules v9 frozen; guard v2 (equivalence, `calib/policy_guard.equivalence`);
+>   reference runs on 9000–9095 (`scripts/calib_reference.py`); Morris (`scripts/morris_screen.py`).
+>   Next: Tier 2 (learner signal) or Tier 3 (replica v2) — Jason's call.
 
 Read this file first. Then read `PLAN.md`, `NOTES.md`, `docs/NVIDIA_STACK.md`, `docs/TASKS.md`; for agents, policies, learning or play metrics also `docs/PHASE4_DESIGN.md` and `docs/RESEARCH_DIGEST.md`. Follow `CONTRIBUTING.md` for day-to-day rules.
 

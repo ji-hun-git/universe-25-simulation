@@ -79,9 +79,31 @@ removal of 150 adults on day 1014, seeds 9048–9095; 1,600 d):
   review predicted.
 - The removal event moves the late counts little: N@1444 median 128 without it, 120 with it.
 
+**Morris screening** (`scripts/morris_screen.py`, `_output/morris/summary.json`).
+- *Design:* 56 parameters — the 35 searched ones on their prior boxes, plus 21 hand-set biology
+  and drive values on ±30 %. r = 10 trajectories, seeds 7003 / 7004, 1,140 runs of 1,600 d.
+- *Identifiability.* The landmark × parameter matrix of μ* (rows scaled by each landmark's sd
+  over runs) has singular values 11, 3.5, 2.9, 1.9, 1.6, 1.4, 1.2, 1.1, then 0.45 and below.
+  - That is an effective rank of **8** at the preregistered 5 % cut, for 12 landmarks and 56
+    parameters, with one dominant direction.
+  - The calibrated 2m point is one member of a family of about 48 directions the landmarks
+    cannot tell apart.
+- *Influential parameters:*
+  - Searched: `stress_density_gain`, `stress_decay`, `imprint_rate`, `breeding_p_base`,
+    `maternal_erosion_rate`, `stress_mortality_scale`.
+  - Hand-set, which rank as high as the searched ones: `weaning_days`, `thirst_gain_per_day`,
+    `hunger_gain_per_day`, `pup_hunger_scale`, `fatigue_recovery_rest`, and `curiosity_gain` /
+    `curiosity_decay_on_novel` for the phase-B doubling time.
+  - The intrinsic drives carry weight in the curve, consistent with physics and novelty moving
+    it.
+- *Caveat.* 31 runs in extreme corners of the boxes reached `max_agents` 4,096 and dropped
+  litters (counted by the new Tier 0 counter), so their peak N is capped.
+- *Use.* An ensemble or history-matching recalibration (review, Tier 3) should search the
+  influential set, hand-set values included, and report results across the not-ruled-out
+  family, not one point.
+
 **Not done in Tier 1, recorded:** the stale cell-count cache and slot-order fights (they change
-calibrated behaviour and need adjudication). Morris screening is still running and is reported
-below when done.
+calibrated behaviour and need adjudication).
 
 ## 2026-11-09 — P4-14 result: the novelty learner reads neither novelty nor mobility; its colony grows too fast
 
