@@ -421,6 +421,17 @@ H-f stays held. Any amendment goes to Jason before an evaluation seed is read.
 - `pretrain_v5` (g = 8) trains in parallel to save time. It is only read if the guard is
   preserved.
 
+**Check 3 result (2026-11-09, NOTES).**
+- The heuristic guard at g = 8 is preserved (n = 3, low power).
+- `pretrain_v5`, restarted after the observation fix:
+  - Its free-time shares are near even. RUN_ON and TURN_BACK are equal, so the predicted
+    preference for straight runs did not appear.
+  - 2 % of its object rows touch a ball.
+  - No window meets the form test in either arm.
+  - A counterfactual probe shows it reads neither the novelty inputs nor `object_mobile`.
+- Its guard is not preserved, and guard v2 reads not equivalent: early growth too fast.
+- H-f stays held. The next lever is the learner's signal (Tier 2).
+
 ## 2. Measurement: detectors per Burghardt criterion (eval-only, unvalidated)
 
 Principles. Every detector is computed after the fact from logs (position, action, drives, cell,

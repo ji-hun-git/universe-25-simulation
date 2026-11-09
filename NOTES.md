@@ -1,5 +1,60 @@
 # Universe25 Play — NOTES
 
+## 2026-11-09 — P4-14 result: the novelty learner reads neither novelty nor mobility; its colony grows too fast
+
+**What ran.**
+- `pretrain_v5` is the `pretrain_v4` recipe with physics, novelty at g = 8 and observation
+  v5, after the observation fix (f686968).
+- Training: 43 episodes, 1.0e8 transitions, 2,830 s.
+- Late surviving-birth fraction 0.22 (v3 0.11, v4 0.30); drive at episode end 0.49.
+
+**Reading** (training seeds 7000–7002, physics and novelty at g = 8, K = 12 rechoose, rules v7 as
+preregistered; `scripts/read_p414.py`, `_output/p414_reading/`):
+
+| arm | kind | c1..c5 rates (v7, 9 windows) | form excess median [range] | form test met |
+|---|---|---|---|---:|
+| learned v5 | object | 0.33 1.00 0.00 0.00 0.44 | −0.096 [−0.196, −0.020] | 0 / 9 |
+| learned v5 | locomotor | 1.00 1.00 0.00 0.00 0.67 | −0.017 [−0.024, +0.001] | 0 / 9 |
+| random v5 | object | 0.56 1.00 0.00 0.00 0.00 | −0.069 [−0.118, +0.035] | 0 / 9 |
+| random v5 | locomotor | 1.00 1.00 0.00 0.00 0.00 | +0.008 [−0.012, +0.034] | 0 / 9 |
+
+Free-time shares, learned v5 (the same on all three seeds):
+
+| explore | run_on | turn_back | social | manipulate | back_off | circle |
+|---:|---:|---:|---:|---:|---:|---:|
+| 0.14 | 0.11 | 0.11 | 0.28 | 0.09 | 0.16 | 0.13 |
+
+- *Ball use.* 2 % of its object rows touch a ball.
+- *The prediction failed.* The preregistered prediction (straight runs preferred) did not
+  happen: RUN_ON and TURN_BACK have equal shares.
+- *Criterion 5 under v7.* The 0.44 / 0.67 rates carry the mechanical artefact that v9 removes.
+
+**Probe** (counterfactual inputs on 480 weaned animals of a learned-v5 colony, seed 7000, day
+300; scratch script):
+- *Novelty.* Setting novelty ahead / behind to (1, 0) instead of (0, 1) changes P(RUN_ON) by
+  −0.007 and P(TURN_BACK) by −0.018. The net does not read the inputs.
+- *Mobility.* Flipping `object_mobile` near an object changes P(MANIPULATE) by 0.002.
+- *Weights.* The first-layer weights of these inputs are of ordinary size: they were not
+  learned away, just not used.
+
+**Curve guard** (training seeds, against the K = 12-continue heuristic; with guard v2; n = 3 is a
+development screen, never decisive): **not preserved / not equivalent.**
+- N@315 +414 ± 11.
+- N@736 +225, outside its margin.
+- Phase-B doubling time −12 d, outside its margin.
+- Peak day and the decline band hold.
+
+**What it means.**
+- Three substrate changes, each giving free-time choices a consequence, have now left the
+  learner's free time at chance: movement primitives, ball physics, place novelty.
+- The probe shows why it is not the substrate: the learner does not condition on the
+  consequence inputs at all.
+- This matches the review's diagnosis. The free-time value differences sit below the entropy
+  bonus's temperature, so the best entropy-regularised policy mixes evenly.
+- The next lever is the learner's training signal (Tier 2: entropy annealing, advantage
+  normalisation per transition type, λ per unit of time), not more substrate.
+- H-f stays held. No evaluation seed was read.
+
 ## 2026-11-09 — Tier 0 integrity fixes (Jason: "Integrity fixes first")
 
 What `docs/REVIEW_2026-11-09.md` Tier 0 asked for, all without changing any trajectory:
