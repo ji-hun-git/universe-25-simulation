@@ -1,5 +1,68 @@
 # Universe25 Play — NOTES
 
+## 2026-11-11 — Replica v2 M1: Calhoun's pen built; the frozen biology runs the arc ~190 days early in it
+
+**Decision and design.** Jason chose replica v2 before any further play work. Design:
+`docs/REPLICA_V2.md` (9d515bd). The frozen 2m colony stays bit-identical; replica v2 is
+`configs/replica_v2.yaml`.
+
+**The pen** (24afb76). Apparatus detail is from the fidelity reviewer's page-by-page reading of
+Calhoun 1973, Calhoun 1971 and Marsden 1972.
+- *Cells:* 16 triangular cells tiling the floor. Each has a 25¼-in base on the wall and its apex
+  at the centre: 638 sq in, the record's 640.
+- *Boxes:* four tunnels per cell with four box levels.
+- *Food and water:* a wall hopper (food for 9,500) and a water platform (water for 6,144) per
+  cell, served highest rank first.
+- *Reconfiguration:* box feeding until day 160 (December 1968).
+- *Ring stands:* one per cell.
+- *Withdrawal:* withdrawn animals drift to the centre.
+- *Founders:* one pair per wall; the record does not say where they were placed.
+- *Checks:*
+  - Every existing golden hash is unchanged, and `World.cells_of` keeps the grid arithmetic
+    exactly.
+  - The 16 cells have equal area within Monte Carlo noise.
+  - The tests pass, including a 150-day replica colony with the invariants on.
+
+**M1 report** (training seeds 7000–7011, 1,600 d; `scripts/replica_report.py`,
+`_output/replica_report_m1.json`). Three arms: the frozen grid colony, the grid with the
+playground off, and the replica pen. Medians [5–95 %]; * = the record lies outside the range.
+
+| landmark | Calhoun | frozen grid | grid, playground off | replica M1 |
+|---|---:|---|---|---|
+| N@315 | 620 | 457 [171, 580] * | 889 [723, 1031] * | 1821 [1501, 2042] * |
+| peak N | 2200 | 2263 [2185, 2350] | 2378 [2325, 2460] * | 2524 [2472, 2583] * |
+| peak day | 560 | 538 [503, 654] | 482 [445, 509] * | 372 [356, 395] * |
+| last young day | 600 | 599 [540, 732] | 561 [511, 639] | 409 [393, 439] * |
+| N@736 | 2056 | 1951 [1920, 2093] | 2124 [2073, 2143] * | 2060 [2033, 2101] |
+| last conception | 920 | 922 [865, 1079] | 924 [908, 954] | 861 [850, 880] * |
+| N@1444 | 122 | 119 [83, 351] | 80 [58, 124] | 20 [16, 36] * |
+| phase-B doubling | 55 d | 47 [40, 73] | 36 [34, 40] * | 35 [32, 36] * |
+| phase-C doubling | 145 d | 95 [71, 111] * | 115 [92, 146] | 124 [91, 196] |
+
+Structural numbers (medians):
+
+| | day 315: replica | day 315: frozen grid | day 560: replica | day 560: frozen grid | Calhoun |
+|---|---:|---:|---:|---:|---|
+| empty boxes | 0.14 | 0.62 | 0.00 | 0.00 | ~0.20 at the peak |
+| weaned within 12 in of the centre | 0.000 | 0.028 | 0.000 | 0.032 | withdrawn mice pooled there |
+| withdrawn share | 0.25 | 0.23 | 0.80 | 0.71 | 32 % of a cell at the end of phase C |
+| male share | 0.49 | 0.52 | 0.50 | 0.50 | 0.40 in phase B |
+
+**Reading.**
+- **The calibrated curve depends on the playground and the layout,** as the review found. With
+  the playground off, the frozen biology doubles its early growth. In Calhoun's pen, with food
+  at the box until day 160, it grows faster still. Its doubling time is 35 d against the
+  record's 55, and it runs the whole arc about 190 days early, then collapses deeper (N@1444 20
+  vs 122).
+- **The pen alone does not produce Calhoun's structure:**
+  - nobody reaches the centre (the withdrawal drift is weaker than the trips to the wall
+    hoppers and boxes);
+  - every box is occupied at the peak (random box kicks spread the animals);
+  - the sex ratio stays 50 : 50;
+  - withdrawal is far too common.
+- These are the M2–M4 targets (life history and phase A; territories and box choice; breakdown
+  and categories). M1 was meant to change only the geometry, so no parameter was touched.
+
 ## 2026-11-11 — P4-15: a learner with a stronger free-time signal still ignores object consequences; the stop rule applies
 
 **What was tested** (`docs/PHASE4_DESIGN.md` §4.2, preregistered 507acb4 before any code or

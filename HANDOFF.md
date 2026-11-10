@@ -13,6 +13,9 @@
 > - Golden trajectory hashes: `scripts/golden_hashes.py`. Test tiers:
 >   `tests/run_tests.py --tier fast|slow|gpu`. CI: `.github/workflows/ci.yml`.
 > - The architecture map in §5 is updated for the 2026-11-09 modules.
+> - Replica v2 (`docs/REPLICA_V2.md`, Jason 2026-11-11) is underway in `configs/replica_v2.yaml`.
+>   M1, Calhoun's pen, is done: the frozen biology runs the arc about 190 d early in it. Next is
+>   M2, life history and phase A.
 > - Tier 2 done (2026-11-11): P4-15 failed its primary test, and the program-level stop rule
 >   applies (no further substrate change for PPO learners). Next: H-g / playground-off, `evo`,
 >   or replica v2 (Tier 3) — Jason's call.

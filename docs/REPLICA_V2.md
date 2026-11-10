@@ -78,6 +78,10 @@ frozen colony. Each one ends with an uncalibrated run of the replica that shows 
   and the observation, with the old grid arithmetic kept exactly for `layout: grid`. The Warp
   backend is refused for `layout: calhoun`.
 - *Report:* the frozen biology in this pen, with the playground off, against the record.
+- **Done 2026-11-11** (24afb76; NOTES):
+  - In this pen the frozen biology runs the arc about 190 days early (N@315 1,821, peak day 372,
+    doubling time 35 d).
+  - Nobody reaches the centre, every box is occupied at the peak, and the sex ratio is 50 : 50.
 
 **M2 — life history and an emergent phase A.**
 - 48-day founders and no calendar gate (`first_conception_min_day` 0). Litter size about 5.5
