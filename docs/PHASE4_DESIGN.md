@@ -1062,6 +1062,15 @@ is read twice for a new hypothesis).
 - ball contact;
 - a counterfactual probe of A1, as in P4-14.
 
+**Result (2026-11-11, NOTES): the primary fails; the stop rule applies.**
+- The manipulation check passed: A1's nursery surviving-birth fraction is 0.289 vs A0's 0.222,
+  and its colony is viable on all three training seeds.
+- A1 − R = +0.011 ± 0.008, one-sided p 0.100, below the 0.05 floor. A0 − R is +0.007
+  (p 0.22).
+- The gated secondary was not run.
+- A1 chooses object actions rarely and ignores `object_mobile`. Its colony peaks at about 420.
+- No further substrate change for PPO learners.
+
 ### 4.1 Guard v2, posterior predictive check and screening (fixed 2026-11-09 before any run; Tier 1)
 
 **Why.** The H-d guard is a difference test (review 2026-11-09):

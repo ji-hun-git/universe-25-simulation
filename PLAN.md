@@ -360,6 +360,9 @@ development reading, before any evaluation seed.
 - *Stop rule:* no further substrate change for PPO until a learner passes. If it fails, the
   programme moves to H-g, the playground-off arm and `evo`.
 - *If it passes,* the amended H-f (form excess, A1 vs R) is read on the same traces.
+- **Result (2026-11-11): fails.** A1 − R = +0.011 ± 0.008, p 0.10. The stop rule applies, and
+  H-f is not read. Next (Jason): H-g / the playground-off arm, `evo`, or replica v2 first.
+  NOTES 2026-11-11.
 
 ### 15.2 Arms
 

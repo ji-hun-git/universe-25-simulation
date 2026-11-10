@@ -588,6 +588,14 @@ Design and checks: `docs/PHASE4_DESIGN.md` §1.10.
 
 ## P4-15 — Consequence sensitivity of the learner (Tier 2)
 
+> **Done 2026-11-11:**
+> - The manipulation check passed. The primary test **failed**: A1 − R = +0.011 ± 0.008,
+>   one-sided p 0.10, floor 0.05.
+> - The stop rule applies: no further substrate change for PPO learners, and the amended H-f
+>   is not run.
+> - A1 rarely touches objects and ignores ball mobility. Its colony peaks at about 420.
+> - NOTES 2026-11-11.
+
 **Goal:** change the learner's signal and ask whether its free time depends on object
 consequences beyond its entropy.
 - Learner changes: entropy annealing, per-type advantage normalisation, λ per unit of time.

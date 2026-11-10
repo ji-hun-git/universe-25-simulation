@@ -1,5 +1,67 @@
 # Universe25 Play — NOTES
 
+## 2026-11-11 — P4-15: a learner with a stronger free-time signal still ignores object consequences; the stop rule applies
+
+**What was tested** (`docs/PHASE4_DESIGN.md` §4.2, preregistered 507acb4 before any code or
+run). Does a PPO learner's free time depend on object consequences once the training signal is
+changed?
+- *Learner options* (805a6ae; defaults train to the same actor as before):
+  - entropy annealed linearly 0.05 → 0.005 over transitions 5e7–1e8;
+  - advantages normalised per transition type (decision vs sub-step);
+  - GAE λ per unit of time.
+- *Substrate:* P4-13 (action space v2, ball physics, novelty off), observation v5.
+- *Arms:*
+  - **A0**: the `pretrain_v4` recipe after the observation fix. 40 nursery episodes,
+    1.0e8 transitions, 2,849 s; entropy 1.46 → 1.72.
+  - **A1**: A0 plus the three options. 50 episodes, 3,611 s; entropy 1.58 → 0.96–1.13 as its
+    weight fell to 0.005.
+  - **R**: `random_init(7007)`.
+
+**Manipulation check** (training data only): **pass.**
+- Surviving-birth fraction over the last 10 nursery episodes: A1 0.289 vs A0 0.222 (needs
+  ≥ 0.178).
+- A1's colony at day 1,010 on training seeds 7000–7002: N 180, 541, 261 (needs ≥ 100 each).
+
+**Primary test** (fresh seeds 9100–9111, 1,010 d, three traced windows each;
+`scripts/p415.py`, `_output/p415/summary.json`). Δ = P(object-family action | nearest object a
+ball) − P(object-family action | nearest object a tunnel or ramp), on free-time sub-step rows
+within 5 in of an object, per seed.
+
+| comparison | mean diff ± se | one-sided sign-flip p | passes (≥ 0.05 and p < 0.025) |
+|---|---:|---:|---|
+| **A1 − R (primary)** | **+0.011 ± 0.008** | **0.100** | **no** |
+| A0 − R | +0.007 ± 0.007 | 0.217 | no |
+| A1 − A0 | +0.004 ± 0.003 | 0.111 | no |
+
+- Per-seed Δ: A0 within [−0.011, +0.011], A1 within [−0.016, +0.020], R within [−0.073, +0.017].
+- Rows per window: A0 1,300–8,600; A1 130–1,100; R 0–6,000.
+- **The falsifier holds.** The learner does not condition its free time on object
+  consequences, even with the entropy weight cut tenfold and the advantage and λ fixes.
+- **The stop rule applies:** no further substrate change for PPO learners. The gated secondary
+  (amended H-f) is not run.
+
+**Reported alongside.**
+- *Probe* (training seed 7000, day 300): near an object, A1 chooses object actions rarely
+  (P(MANIPULATE) 0.025, BACK_OFF 0.005, CIRCLE 0.013; A0 about 0.31 in total). Flipping
+  `object_mobile` changes neither net's choice. Lower entropy made A1 decisive in the direction
+  of avoiding objects, not of using balls.
+- *A1 development guard* (training seeds, K = 12-continue control): not preserved and not
+  equivalent. The colony peaks at about 420 (control 2,255) around day 732, and the phase-B
+  doubling time is +20 d. It is viable but far from the Universe 25 arc.
+
+**What it means.**
+- Across P4-12 … P4-15, five learners on four substrates show the same thing. Movement form,
+  ball consequences and place novelty are expressible, and the detectors (rules v9) would see
+  them. But a homeostatic PPO learner neither uses the consequences nor shows a free-time form
+  beyond a random mixer's.
+- Strengthening the signal moved the policy, but not toward consequence-sensitive free time.
+- By the preregistered stop rule, play work with PPO on this substrate ends here. The remaining
+  routes are:
+  - H-g (state-gating by phase) and the playground-off arm, which need no form;
+  - `evo` (inherited weights, no entropy bonus);
+  - replica v2 (review Tier 3) before any further play hypothesis.
+- No claim of play. No evaluation seed of 8000–8011 was read.
+
 ## 2026-11-09 — Tier 1: detector rules v9 frozen; guard v2 checked; the frozen colony's predictive check; H-e re-read
 
 All preregistered in `docs/PHASE4_DESIGN.md` §2 (v8 / v9) and §4.1 before any run (324bbe0;
