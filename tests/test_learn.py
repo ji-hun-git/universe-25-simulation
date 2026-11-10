@@ -158,7 +158,42 @@ def test_h2_learner_code_has_no_play_signal() -> None:
                 assert not any(b in low for b in bad), (path.name, tok.string)
 
 
+def test_p415_learner_options() -> None:
+    """P4-15: the entropy weight anneals linearly over the transition count and is constant by
+    default; GAE with a per-transition lambda array equal to the scalar gives the scalar's
+    result, and lambda ** (duration / K) makes a decision's chain of K sub-steps discount like
+    one decision; the per-type advantage normalisation standardises each group on its own."""
+    import torch
+
+    from universe25.config import PPOConfig
+    from universe25.learn.ppo import PPOLearner, _masked_norm, gae
+
+    base = PPOLearner(10, 4, 16, PPOConfig(device="cpu"), seed=7100)
+    assert base.entropy_coef(None) == 0.05 and base.entropy_coef(9e9) == 0.05
+    ann = PPOLearner(10, 4, 16, PPOConfig(device="cpu", entropy_coef_final=0.005,
+                                          entropy_anneal_start=5e7, entropy_anneal_end=1e8),
+                     seed=7100)
+    assert ann.entropy_coef(0.0) == 0.05 and ann.entropy_coef(2e8) == 0.005
+    assert abs(ann.entropy_coef(7.5e7) - 0.0275) < 1e-12
+    r = np.random.default_rng(3)
+    n = 40
+    args = (r.normal(size=n), r.normal(size=n), r.normal(size=n), np.zeros(n),
+            np.full(n, 0.98))
+    slot, time = np.repeat(np.arange(4), 10), np.tile(np.arange(10), 4)
+    a_s = gae(*args, 0.95, slot, time)
+    a_v = gae(*args, np.full(n, 0.95), slot, time)
+    assert np.allclose(a_s, a_v, rtol=0, atol=1e-12)
+    lam_unit = 0.95 ** (np.ones(12) / 12)
+    assert abs(np.prod(lam_unit) - 0.95) < 1e-12
+    x = torch.tensor([1.0, 2.0, 3.0, 10.0, 20.0, 30.0])
+    m = torch.tensor([True, True, True, False, False, False])
+    y = torch.where(m, _masked_norm(x, m), _masked_norm(x, ~m))
+    for g in (m, ~m):
+        assert abs(float(y[g].mean())) < 1e-6 and abs(float(y[g].std(unbiased=False)) - 1) < 1e-4
+
+
 if __name__ == "__main__":
+    test_p415_learner_options()
     test_reward_is_drive_reduction_only()
     test_maternal_need_is_the_own_litters_hunger()
     test_gae_matches_hand_recursion()

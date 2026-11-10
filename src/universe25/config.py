@@ -234,6 +234,18 @@ class PPOConfig(_Strict):
     # for mothers from 0.10 to 0.003 / 0.005 and never rediscovered nursing (pups starved);
     # at 0.05 mothers nurse like the heuristic (training seed 7000 nursery, NOTES 2026-11-06).
     entropy_coef: float = 0.05
+    # P4-15 (PHASE4_DESIGN.md 4.2) learner-signal options; the defaults reproduce every earlier
+    # run. Entropy weight annealed linearly from entropy_coef to entropy_coef_final over the
+    # transition count [entropy_anneal_start, entropy_anneal_end] (None = constant).
+    entropy_coef_final: float | None = None
+    entropy_anneal_start: float = 0.0
+    entropy_anneal_end: float = 0.0
+    # "pooled": advantages normalised over the minibatch; "per_type": separately for
+    # transitions opened at a decision and at a free-time sub-step
+    adv_norm: Literal["pooled", "per_type"] = "pooled"
+    # True: a transition's GAE lambda factor is gae_lambda ** (duration / K), so lambda applies
+    # per decision however the decision is split into sub-steps (False: per transition)
+    gae_lambda_per_unit_time: bool = False
     vf_coef: float = 0.5
     huber_delta: float = 1.0
     max_grad_norm: float = 1.0

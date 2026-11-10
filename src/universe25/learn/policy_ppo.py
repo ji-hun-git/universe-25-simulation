@@ -40,7 +40,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from universe25.sim import Universe25Sim
 
 BUFFER_KEYS = ("obs", "action", "logp", "value", "mask", "reward", "done", "value_next",
-               "gamma", "slot", "time", "contrib")
+               "gamma", "slot", "time", "contrib", "dt", "is_decision")
 
 
 class MlpPpoPolicy:
@@ -77,6 +77,7 @@ class MlpPpoPolicy:
         self.p_D = np.zeros(cap, dtype=np.float64)
         self.p_time = np.zeros(cap, dtype=np.int64)
         self.p_contrib = np.zeros((cap, len(DRIVES)), dtype=np.float32)
+        self.p_dec = np.zeros(cap, dtype=bool)  # P4-15: the transition opened at a decision
         self.prev_age = np.full(cap, np.inf)
         self.K = max(1, int(getattr(sim, "free_substeps", 1)))
         self.gamma_unit = float(self.ppo.gamma_per_decision) ** (1.0 / self.K)
@@ -100,6 +101,8 @@ class MlpPpoPolicy:
         self._buf["slot"].append(slots.astype(np.int64))
         self._buf["time"].append(self.p_time[slots].copy())
         self._buf["contrib"].append(self.p_contrib[slots].copy())
+        self._buf["dt"].append(np.maximum(dt, 0).astype(np.float64))
+        self._buf["is_decision"].append(self.p_dec[slots].copy())
         self.has[slots] = False
         self.n_transitions += int(slots.size)
 
@@ -112,7 +115,8 @@ class MlpPpoPolicy:
             self._buf[k].clear()
         if B["reward"].size == 0 or not self.ppo.enabled:
             return
-        st = self.learner.update(B, self.mb_rng)
+        st = self.learner.update(B, self.mb_rng, transitions_total=float(self.n_transitions),
+                                 K=self.K)
         st["update"] = float(self.learner.n_updates)
         st["transitions_total"] = float(self.n_transitions)
         st["mean_D_at_call"] = float(np.mean(B["contrib"].sum(axis=1) ** 0.5))
@@ -169,6 +173,7 @@ class MlpPpoPolicy:
         self.p_D[idx] = D
         self.p_time[idx] = now
         self.p_contrib[idx] = contrib.astype(np.float32)
+        self.p_dec[idx] = decision
         self.n_calls += int(idx.size)
         return act.astype(np.int8)
 

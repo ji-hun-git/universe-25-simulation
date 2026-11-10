@@ -106,7 +106,8 @@ class ValueNorm:
 
 
 def gae(rew: np.ndarray, val: np.ndarray, val_next: np.ndarray, done: np.ndarray,
-        gamma: np.ndarray, lam: float, slot: np.ndarray, time: np.ndarray) -> np.ndarray:
+        gamma: np.ndarray, lam: float | np.ndarray, slot: np.ndarray,
+        time: np.ndarray) -> np.ndarray:
     """Generalised advantage estimates along each slot's chain of transitions (ordered by
     time), with per-transition discounts; truncated at the end of the buffer (the bootstrap is in
     val_next). A terminal transition cuts the chain."""
@@ -122,7 +123,8 @@ def gae(rew: np.ndarray, val: np.ndarray, val_next: np.ndarray, done: np.ndarray
     G, L = starts.size, int(lens.max())
     nd = 1.0 - done[order].astype(np.float64)
     delta = rew[order] + gamma[order] * nd * val_next[order] - val[order]
-    coef = gamma[order] * lam * nd
+    lam_o = np.asarray(lam, dtype=np.float64)[order] if np.ndim(lam) else lam  # P4-15
+    coef = gamma[order] * lam_o * nd
     D = np.zeros((G, L))
     C = np.zeros((G, L))
     D[grp, pos] = delta
@@ -133,6 +135,15 @@ def gae(rew: np.ndarray, val: np.ndarray, val_next: np.ndarray, done: np.ndarray
     out = np.empty(n)
     out[order] = A[grp, pos]
     return out
+
+
+def _masked_norm(x: torch.Tensor, m: torch.Tensor) -> torch.Tensor:
+    """(x - mean) / std over the rows where m is True (population std), by masked sums."""
+    w = m.to(x.dtype)
+    n = w.sum().clamp_min(1.0)
+    mu = (x * w).sum() / n
+    var = (((x - mu) ** 2) * w).sum() / n
+    return (x - mu) / (var.sqrt() + 1e-8)
 
 
 class PPOLearner:
@@ -173,10 +184,30 @@ class PPOLearner:
                 self.vnorm.denormalize(v.cpu().numpy()).astype(np.float32))
 
     # ---------------------------------------------------------------- learning
-    def update(self, B: dict[str, np.ndarray], rng: np.random.Generator) -> dict[str, float]:
+    def entropy_coef(self, transitions_total: float | None) -> float:
+        """P4-15: the entropy weight, linearly annealed over the transition count when
+        entropy_coef_final is set; otherwise the constant entropy_coef."""
         cfg = self.cfg
+        c0 = float(cfg.entropy_coef)
+        c1 = getattr(cfg, "entropy_coef_final", None)
+        if c1 is None or transitions_total is None:
+            return c0
+        a, b = float(cfg.entropy_anneal_start), float(cfg.entropy_anneal_end)
+        t = float(transitions_total)
+        if t <= a or b <= a:
+            return c0 if t <= a else float(c1)
+        if t >= b:
+            return float(c1)
+        return c0 + (float(c1) - c0) * (t - a) / (b - a)
+
+    def update(self, B: dict[str, np.ndarray], rng: np.random.Generator,
+               transitions_total: float | None = None, K: int = 1) -> dict[str, float]:
+        cfg = self.cfg
+        lam: float | np.ndarray = float(cfg.gae_lambda)
+        if getattr(cfg, "gae_lambda_per_unit_time", False) and "dt" in B:  # P4-15
+            lam = float(cfg.gae_lambda) ** (np.asarray(B["dt"], np.float64) / max(1, int(K)))
         adv = gae(B["reward"], B["value"].astype(np.float64), B["value_next"].astype(np.float64),
-                  B["done"], B["gamma"], float(cfg.gae_lambda), B["slot"], B["time"])
+                  B["done"], B["gamma"], lam, B["slot"], B["time"])
         ret = adv + B["value"]
         self.vnorm.update(ret)
         ret_n = self.vnorm.normalize(ret)
@@ -187,6 +218,10 @@ class PPOLearner:
         lp_old = torch.from_numpy(B["logp"].astype(np.float32)).to(dev)
         adv_t = torch.from_numpy(adv.astype(np.float32)).to(dev)
         ret_t = torch.from_numpy(ret_n.astype(np.float32)).to(dev)
+        per_type = getattr(cfg, "adv_norm", "pooled") == "per_type" and "is_decision" in B
+        if per_type:
+            dec_t = torch.from_numpy(np.asarray(B["is_decision"], bool)).to(dev)
+        ent_c = self.entropy_coef(transitions_total)
         if cfg.lr_decay_updates and cfg.lr_decay_updates > 0:
             frac = max(0.1, 1.0 - self.n_updates / float(cfg.lr_decay_updates))
             for gp in self.opt.param_groups:
@@ -206,12 +241,16 @@ class PPOLearner:
                 lp = logp_all.gather(1, act[chunk][:, None]).squeeze(1)
                 ratio = torch.exp(lp - lp_old[chunk])
                 a = adv_t[chunk]
-                a = (a - a.mean()) / (a.std(unbiased=False) + 1e-8)
+                if per_type:  # P4-15: decisions and sub-steps normalised apart (masked sums)
+                    a = torch.where(dec_t[chunk], _masked_norm(a, dec_t[chunk]),
+                                    _masked_norm(a, ~dec_t[chunk]))
+                else:
+                    a = (a - a.mean()) / (a.std(unbiased=False) + 1e-8)
                 clipped = torch.clamp(ratio, 1 - cfg.clip, 1 + cfg.clip) * a
                 pg = -torch.min(ratio * a, clipped).mean()
                 ent = -(logp_all.exp() * logp_all.clamp_min(-1e4)).sum(-1).mean()
                 vl = nn.functional.huber_loss(v_hat, ret_t[chunk], delta=float(cfg.huber_delta))
-                loss = pg + float(cfg.vf_coef) * vl - float(cfg.entropy_coef) * ent
+                loss = pg + float(cfg.vf_coef) * vl - ent_c * ent
                 self.opt.zero_grad(set_to_none=True)
                 loss.backward()
                 nn.utils.clip_grad_norm_(self.net.parameters(), float(cfg.max_grad_norm))
@@ -230,7 +269,8 @@ class PPOLearner:
                     "mean_adv": float(adv.mean()), "terminal_frac": float(B["done"].mean()),
                     "explained_var": float(1.0 - np.var(ret - B["value"]) / var_ret)
                     if var_ret > 0 else float("nan"),
-                    "value_norm_mean": self.vnorm.mean, "value_norm_std": self.vnorm.std})
+                    "value_norm_mean": self.vnorm.mean, "value_norm_std": self.vnorm.std,
+                    "entropy_coef": ent_c})
         return out
 
     # ---------------------------------------------------------------- export

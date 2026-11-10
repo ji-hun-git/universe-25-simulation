@@ -46,14 +46,30 @@ def main() -> int:
     p.add_argument("--ball-physics", action="store_true", help="ball physics on (P4-13)")
     p.add_argument("--novelty", action="store_true", help="novelty-based curiosity (P4-14)")
     p.add_argument("--consequence-gain", type=float, default=1.0, help="P4-14 relief gain g")
+    p.add_argument("--entropy-final", type=float, default=None,
+                   help="P4-15: final entropy weight (linear annealing)")
+    p.add_argument("--entropy-anneal", type=str, default=None,
+                   help="P4-15: annealing window in transitions, start:end (e.g. 5e7:1e8)")
+    p.add_argument("--adv-norm", choices=("pooled", "per_type"), default="pooled")
+    p.add_argument("--lambda-per-time", action="store_true",
+                   help="P4-15: GAE lambda per unit of time (lambda ** (duration / K))")
     a = p.parse_args()
+    ppo: dict = {}
+    if a.entropy_final is not None:
+        lo, hi = (float(v) for v in (a.entropy_anneal or "0:0").split(":"))
+        ppo.update(entropy_coef_final=a.entropy_final, entropy_anneal_start=lo,
+                   entropy_anneal_end=hi)
+    if a.adv_norm != "pooled":
+        ppo["adv_norm"] = a.adv_norm
+    if a.lambda_per_time:
+        ppo["gae_lambda_per_unit_time"] = True
     out = ROOT / "_output" / "pretrain" / a.label
     summ = pretrain(out, steps=a.steps, episode_days=a.episode_days, seed=a.seed,
                     free_substeps=a.free_substeps, ckpt_every=a.ckpt_every,
                     resume=Path(a.resume) if a.resume else None, progress=show,
                     founding_days=a.founding_days, p_founding=a.p_founding,
                     ball_physics=a.ball_physics, curiosity_novelty=a.novelty,
-                    consequence_gain=a.consequence_gain)
+                    consequence_gain=a.consequence_gain, ppo=ppo or None)
     print(json.dumps(summ, indent=1))
     return 0
 
