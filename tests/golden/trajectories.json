@@ -48,6 +48,12 @@
     "n_alive": 17,
     "births": 31,
     "deaths": 22
+   },
+   "replica_v2": {
+    "trajectory": "81342c5a0a8258557ff5d73fdeff747fbfa04d81f9a8e943630c59b2a60104ef",
+    "n_alive": 35,
+    "births": 27,
+    "deaths": 0
    }
   }
  },
@@ -100,6 +106,12 @@
     "n_alive": 274,
     "births": 483,
     "deaths": 217
+   },
+   "replica_v2": {
+    "trajectory": "bb67e11dc4151342e720111bcc05843ae053c67afbf99bdfad93c8c8cec4c3cf",
+    "n_alive": 1537,
+    "births": 2020,
+    "deaths": 491
    }
   }
  }

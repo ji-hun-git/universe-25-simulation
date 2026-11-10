@@ -172,8 +172,11 @@ class Universe25Sim:
         """Calhoun start: 4 pairs of young adults."""
         n = self.cfg.initial_pairs * 2
         slots = self.agents.free_slots(n)
-        # Place pairs in four corner cells
-        corner_cells = [0, 3, 12, 15]
+        # Place the pairs in four cells (grid: the corners; calhoun: the second cell of each
+        # wall - an assumption, the record does not say where the founders were placed)
+        corner_cells = list(self.cfg.geometry.founder_cells
+                            or ([1, 5, 9, 13] if self.world.layout == "calhoun"
+                                else [0, 3, 12, 15]))
         for i, slot in enumerate(slots):
             pair = i // 2
             cell = self.world.cells[corner_cells[pair % 4]]
@@ -509,6 +512,17 @@ class Universe25Sim:
         cells = a.cell_id[idx].astype(int)
         food_xy = np.array([self.world.cells[c].food_xy for c in cells], dtype=np.float64)
         water_xy = np.array([self.world.cells[c].water_xy for c in cells], dtype=np.float64)
+        geo = self.cfg.geometry
+        # replica v2: before Calhoun's December 1968 reconfiguration each box had its own food
+        # and water, so animals eat and drink at their own box (no hopper capacity then)
+        box_feed = 0.0 < geo.box_feeding_until_day and self.day < geo.box_feeding_until_day
+        if box_feed:
+            nid = a.nest_id[idx].astype(int)
+            housed = nid >= 0
+            if housed.any():
+                bx, by = self._nest_x[nid[housed]], self._nest_y[nid[housed]]
+                food_xy[housed, 0], food_xy[housed, 1] = bx, by
+                water_xy[housed, 0], water_xy[housed, 1] = bx, by
 
         def move_mask(mask, tx, ty, speed):
             ii = idx[mask]
@@ -532,7 +546,11 @@ class Universe25Sim:
                 # always exceeds hunger, so the abundant arm is unchanged (bit-identical).
                 n_c = np.bincount(a.cell_id[ii].astype(int), minlength=self.world.n_cells)
                 share = self.food / np.maximum(n_c, 1)
-                for i in ii:
+                eats = (self._capacity_mask(ii, geo.hopper_meals_per_day)
+                        if geo.hopper_meals_per_day > 0.0 and not box_feed else None)
+                for n_i, i in enumerate(ii):
+                    if eats is not None and not eats[n_i]:
+                        continue  # the hopper is full this decision (replica v2)
                     c = int(a.cell_id[i])
                     take = min(float(a.hunger[i]), self.food[c], float(share[c]))
                     self.food[c] -= take
@@ -547,7 +565,11 @@ class Universe25Sim:
         if m_drink.any():
             ii = idx[m_drink]
             if decision:  # a drink is a per-decision event, like a meal
-                for i in ii:
+                drinks = (self._capacity_mask(ii, geo.water_drinks_per_day)
+                          if geo.water_drinks_per_day > 0.0 and not box_feed else None)
+                for n_i, i in enumerate(ii):
+                    if drinks is not None and not drinks[n_i]:
+                        continue  # the platform is full this decision (replica v2)
                     c = int(a.cell_id[i])
                     take = min(float(a.thirst[i]), self.water[c])
                     self.water[c] -= take
@@ -669,17 +691,15 @@ class Universe25Sim:
             ii = idx[m_with]
             a.social_drive[ii] = np.maximum(0.0, a.social_drive[ii] - 0.1 * k)
             a.aggression[ii] = np.maximum(0.0, a.aggression[ii] - 0.05 * k)
-            # drift toward (20, 20) at 5 % per decision (x*0.95 + 1.0 at the reference resolution)
-            a.x[ii] = np.clip(a.x[ii] * (1.0 - 0.05 * k) + 20.0 * 0.05 * k, 0.5, xmax)
-            a.y[ii] = np.clip(a.y[ii] * (1.0 - 0.05 * k) + 20.0 * 0.05 * k, 0.5, ymax)
+            # drift toward world.withdraw_xy at 5 % per decision (grid: (20, 20), so
+            # x*0.95 + 1.0 at the reference resolution; calhoun: the pen centre, where Calhoun's
+            # withdrawn mice pooled)
+            wx, wy = self.world.withdraw_xy
+            a.x[ii] = np.clip(a.x[ii] * (1.0 - 0.05 * k) + wx * 0.05 * k, 0.5, xmax)
+            a.y[ii] = np.clip(a.y[ii] * (1.0 - 0.05 * k) + wy * 0.05 * k, 0.5, ymax)
 
-        # update cell + playground flags (vectorized)
-        nx, ny = self.cfg.geometry.n_cells_x, self.cfg.geometry.n_cells_y
-        cw = self.world.width / nx
-        ch = self.world.height / ny
-        ix = np.clip((a.x[idx] / cw).astype(int), 0, nx - 1)
-        iy = np.clip((a.y[idx] / ch).astype(int), 0, ny - 1)
-        a.cell_id[idx] = (iy * nx + ix).astype(np.int16)
+        # update cell + playground flags (vectorized; world.cells_of keeps the grid arithmetic)
+        a.cell_id[idx] = self.world.cells_of(a.x[idx], a.y[idx]).astype(np.int16)
         if self.world.playground_enabled:
             x0, y0, x1, y1 = self.world.playground_bounds
             a.in_playground[idx] = (a.x[idx] >= x0) & (a.x[idx] <= x1) & (a.y[idx] >= y0) & (a.y[idx] <= y1)
@@ -688,6 +708,21 @@ class Universe25Sim:
         self._update_heading(idx, x_before, y_before)
 
         self.playscore.observe_actions(actions[alive])
+
+    def _capacity_mask(self, ii: np.ndarray, per_day: float) -> np.ndarray:
+        """Replica v2: which of the agents `ii` (all at a resource this decision) are served,
+        at most round(per_day / decisions per day) per cell, highest rank first (then slot).
+        Deterministic; no random draw."""
+        a = self.agents
+        cap = int(round(per_day / float(self.cfg.ticks_per_day_ref)))
+        cells = a.cell_id[ii].astype(int)
+        order = np.lexsort((ii, -a.rank[ii].astype(np.float64), cells))
+        cs = cells[order]
+        start = np.r_[0, np.flatnonzero(cs[1:] != cs[:-1]) + 1]
+        pos = np.arange(order.size) - np.repeat(start, np.diff(np.r_[start, order.size]))
+        ok = np.zeros(ii.size, dtype=bool)
+        ok[order] = pos < cap
+        return ok
 
     def _update_heading(self, idx: np.ndarray, x0: np.ndarray, y0: np.ndarray) -> None:
         """Heading = direction of the last move of more than 1e-6 in (no random draw)."""
@@ -779,8 +814,6 @@ class Universe25Sim:
         cur_rel = d.curiosity_decay_on_novel / K
         bor_rel = d.boredom_decay_on_vary / K
         xmax, ymax = self.world.width - 0.5, self.world.height - 0.5
-        nx, ny = self.cfg.geometry.n_cells_x, self.cfg.geometry.n_cells_y
-        cw, ch = self.world.width / nx, self.world.height / ny
         tracing = self.trace is not None
         mode = self.cfg.policy.substep_mode
         if mode == "auto":
@@ -846,9 +879,7 @@ class Universe25Sim:
             if nov:
                 self._place_novelty(F, act, self.day + (j + 1) * self.dt_ref / K, cur_rel)
             self._update_heading(F, xs, ys)
-            ix = np.clip((a.x[F] / cw).astype(int), 0, nx - 1)
-            iy = np.clip((a.y[F] / ch).astype(int), 0, ny - 1)
-            a.cell_id[F] = (iy * nx + ix).astype(np.int16)
+            a.cell_id[F] = self.world.cells_of(a.x[F], a.y[F]).astype(np.int16)
             if self.world.playground_enabled:
                 x0, y0, x1, y1 = self.world.playground_bounds
                 a.in_playground[F] = ((a.x[F] >= x0) & (a.x[F] <= x1)

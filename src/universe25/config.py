@@ -25,6 +25,23 @@ class GeometryConfig(_Strict):
     food_per_cell: int = 1
     water_per_cell: int = 1
     capacity_design: int = 3840
+    # Replica v2 (docs/REPLICA_V2.md, M1). "grid": the 4 x 4 grid of the frozen 2m colony.
+    # "calhoun": Calhoun's 16 triangular cells (base a 25.25-in wall segment, apex at the
+    # centre; 1973 p. 82, Marsden 1972 p. 7), four tunnels of four box levels per cell, a wall
+    # hopper and a water platform per cell.
+    layout: Literal["grid", "calhoun"] = "grid"
+    # Feeding / drinking capacity per cell per day (Calhoun's design limits: food for 9500 and
+    # water for 6144 mice, i.e. 593.75 / 384 per cell), split evenly over the decisions; at a
+    # hopper, foragers beyond it this decision do not eat (highest rank first). 0 = unlimited.
+    hopper_meals_per_day: float = Field(0.0, ge=0.0)
+    water_drinks_per_day: float = Field(0.0, ge=0.0)
+    # Calhoun's December 1968 reconfiguration (1971 p. 339): until this day each box had its
+    # own food and water, so animals eat and drink at their own box. 0 = off.
+    box_feeding_until_day: float = Field(0.0, ge=0.0)
+    # Cells the founding pairs start in; None = the layout's default (grid: the corners
+    # 0 / 3 / 12 / 15; calhoun: the second cell of each wall, 1 / 5 / 9 / 13 - an assumption,
+    # the record does not say where the founders were placed).
+    founder_cells: list[int] | None = None
 
 
 class PlaygroundConfig(_Strict):
@@ -314,6 +331,16 @@ class SimConfig(_Strict):
     # Runtime invariant checks after every tick (universe25/invariants.py); read-only, so the
     # trajectory is the same with them on. Off by default (cost).
     debug_invariants: bool = False
+
+    @model_validator(mode="after")
+    def _replica_layout(self) -> SimConfig:
+        g = self.geometry
+        if g.layout == "calhoun":
+            if g.n_cells_x * g.n_cells_y != 16 or g.nests_per_cell != 16:
+                raise ValueError("geometry.layout calhoun has 16 cells of 16 boxes")
+            if self.backend == "warp":
+                raise ValueError("the Warp path implements only geometry.layout grid")
+        return self
 
     @model_validator(mode="after")
     def _ticks_per_day_multiple_of_ref(self) -> SimConfig:

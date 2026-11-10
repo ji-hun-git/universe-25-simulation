@@ -72,6 +72,7 @@ class TraceRecorder:
         self.out_dir = Path(sim.out_dir)
         self.files: list[str] = []
         w = sim.world
+        self.world = w
         self.food_xy = np.array([c.food_xy for c in w.cells], dtype=np.float64)
         self.water_xy = np.array([c.water_xy for c in w.cells], dtype=np.float64)
         self.nest_xy = np.array([(n.x, n.y) for n in w.nests], dtype=np.float64)
@@ -120,9 +121,7 @@ class TraceRecorder:
                 np.array([o.radius for o in objs], dtype=np.float64))
 
     def _cell_of(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
-        ix = np.clip((x / self.cw).astype(int), 0, self.nx - 1)
-        iy = np.clip((y / self.ch).astype(int), 0, self.ny - 1)
-        return iy * self.nx + ix
+        return self.world.cells_of(x, y)
 
     def _in_pg(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
         if not self.pg_on:

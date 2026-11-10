@@ -14,6 +14,7 @@ Arms (seed 7000, 6 ticks per day unless stated):
   physics_novelty    ball physics + novelty-based curiosity at g = 8 (P4-13 / P4-14)
   scarce             configs/scarce.yaml (food-limited capacity)
   tpd24              24 ticks per day
+  replica_v2         configs/replica_v2.yaml (replica v2: Calhoun's pen, its current milestone)
 The fast tier runs each for FAST_DAYS (past the first births), the slow tier for SLOW_DAYS.
 """
 from __future__ import annotations
@@ -44,6 +45,7 @@ ARMS: dict[str, tuple[str, dict[str, Any]]] = {
                                                     "consequence_gain": 8.0}}),
     "scarce": ("scarce.yaml", {}),
     "tpd24": ("default.yaml", {"ticks_per_day": 24}),
+    "replica_v2": ("replica_v2.yaml", {}),  # Calhoun's pen (docs/REPLICA_V2.md)
 }
 
 
