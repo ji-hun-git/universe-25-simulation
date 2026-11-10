@@ -976,6 +976,92 @@ breakdown to complete. So the calibration is "biology + heuristic behaviour", H-
 falsified for an arbitrary policy, and the random arm is the baseline bounding what a learned
 policy may do (`NOTES.md` 2026-11-04 → P4-1).
 
+### 4.2 P4-15: does the learner's free time depend on consequences at all? (fixed 2026-11-10 before any code or run; Tier 2)
+
+**Why.**
+- Three substrate changes each gave free-time choices a consequence: movement primitives, ball
+  physics, place novelty. Each left the learner's free time at chance.
+- The P4-14 probe found the net does not read the consequence inputs at all.
+- The review's diagnosis: free-time value differences (about 1e-3 in D per relief) sit below
+  the entropy bonus's temperature (about 3e-3). Advantages are normalised across decision and
+  sub-step transitions together, and λ is applied per transition, so a decision split into 12
+  sub-steps gets λ¹² ≈ 0.54.
+- This experiment changes the learner's signal, not the world, and asks one question with a
+  falsifier.
+
+**Program-level stop rule** (adopted with this card). No further substrate change for PPO
+learners until a learner passes the primary test below. If the test fails, substrate work for
+PPO ends and the play programme moves to H-g, the playground-off arm and `evo`.
+
+**Learner options** (`PPOConfig`; defaults reproduce every existing run):
+- `entropy_coef_final`, `entropy_anneal_start`, `entropy_anneal_end`: linear annealing of the
+  entropy weight over the transition count.
+- `adv_norm: per_type`: advantages normalised separately for transitions opened at a decision
+  and at a free-time sub-step. The default `pooled` normalises them together.
+- `gae_lambda_per_unit_time: true`: each transition's λ factor is λ^(duration / K), so λ
+  applies per decision whatever the sub-step split.
+
+**Substrate** (all arms): action space v2, ball physics on, novelty off (g = 1), K = 12
+rechoose, ABUND-PG (`configs/default.yaml`), observation v5 (its novelty fields read 0 without
+novelty). This is the P4-13 substrate; no calibration claim is made for it.
+
+**Arms:**
+- **A0** = the `pretrain_v4` recipe, retrained after the observation fix. Nursery v2 with
+  physics, 1e8 transitions, training seed 7000, entropy 0.05.
+- **A1** = A0 plus:
+  - entropy annealed linearly from 0.05 to 0.005 over transitions 5e7–1e8;
+  - `adv_norm: per_type`;
+  - `gae_lambda_per_unit_time: true`.
+
+  It uses the same nursery world sequence as A0.
+- **R** = a random v5 net, `MlpFrozenPolicy.random_init(7007)` (init seed never used).
+
+**Manipulation check** (training data only; before any evaluation seed):
+- A1's surviving-birth fraction over its last 10 nursery episodes must be ≥ 0.8 × A0's.
+- A1's colony must stay viable on training seeds 7000–7002 under the evaluation protocol:
+  N ≥ 100 at day 1,010 on every seed.
+- If either fails, stop: the signal change broke maternal care. Report it, read no evaluation
+  seed, and the result goes to Jason.
+
+**Evaluation.**
+- *Seeds:* 9100–9111, fresh, from the reserved band (`docs/SEEDS.md`). This deviates from PLAN
+  §15.3, which names 8000–8011 for arm comparisons. Those seeds have been read for H-d, H-e and
+  two re-reads, so a decisive test uses a block nothing has seen.
+- *Protocol:* 1,010 days, 6 ticks per day, K = 12, traced windows at days 400 / 700 / 1000, every
+  fourth individual.
+
+**Primary statistic** (`scripts/p415.py`).
+- *Rows:* free-time sub-step rows (action in the free set). Each row is conditioned on the
+  animal's state when it chose, the previous row's post-move position: its nearest object is
+  within 5 in.
+- *Per window:* Δ = P(object-family action | the nearest object is a ball) − P(object-family
+  action | the nearest object is a tunnel or ramp).
+- *Per seed:* the mean of its windows' Δ.
+- *Reference:* `pretrain_v4` read −0.002 on training seeds under P4-13.
+
+**Test.**
+- A1 − R, paired by seed, exact sign-flip test over the 12 seeds (all 4,096 sign patterns),
+  one-sided.
+- **Passes** iff the mean difference is ≥ 0.05 (effect floor) and p < 0.025.
+- A0 − R and A1 − A0 are reported with the same statistic and are not decisive.
+
+**Falsifier.** A mean A1 − R below 0.05, or p ≥ 0.025: the learner does not condition its free
+time on object consequences, and the stop rule applies.
+
+**Gated secondary** (run only if the primary passes; preregistered now, so no evaluation seed
+is read twice for a new hypothesis).
+- *Statistic:* the rules-v9 form excess per seed (the mean over windows with a finite value),
+  A1 − R, for each kind.
+- *Test:* the same sign-flip test, one-sided, α = 0.025, floor 0.05.
+- *Reading:* this is the amended H-f. A pass would say that the learner's free time has more
+  approach–withdraw form than a random mixer's on the same substrate.
+
+**Reported alongside:**
+- A1's development curve guard (training seeds; guard v2 on n = 3, not decisive);
+- the free-time shares;
+- ball contact;
+- a counterfactual probe of A1, as in P4-14.
+
 ### 4.1 Guard v2, posterior predictive check and screening (fixed 2026-11-09 before any run; Tier 1)
 
 **Why.** The H-d guard is a difference test (review 2026-11-09):

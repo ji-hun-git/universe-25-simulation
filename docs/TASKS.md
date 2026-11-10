@@ -586,6 +586,30 @@ Design and checks: `docs/PHASE4_DESIGN.md` §1.10.
 
 ---
 
+## P4-15 — Consequence sensitivity of the learner (Tier 2)
+
+**Goal:** change the learner's signal and ask whether its free time depends on object
+consequences beyond its entropy.
+- Learner changes: entropy annealing, per-type advantage normalisation, λ per unit of time.
+- Arms: A0 (the `pretrain_v4` recipe after the observation fix), A1 (A0 plus the three changes),
+  R (`random_init(7007)`).
+- Evaluation: fresh seeds 9100–9111. Primary statistic Δ = P(object | near a ball) −
+  P(object | near a fixed object). Sign-flip test, floor 0.05.
+- Program-level stop rule.
+
+Design: `docs/PHASE4_DESIGN.md` §4.2.
+
+**Files:** `config.py`, `learn/ppo.py`, `learn/policy_ppo.py`, `learn/nursery.py`,
+`scripts/pretrain_nursery.py`, `scripts/p415.py`, `tests/test_learn.py`, `NOTES.md`
+
+**Acceptance criteria:**
+- learner options default to the existing behaviour (learner determinism tests unchanged)
+- manipulation check reported before any evaluation seed
+- primary test and, if it passes, the gated secondary reported
+- `tests/run_tests.py` green; H2 audit clean
+
+---
+
 ## P4-6 — Phase 4 sweep harness
 
 > **2026-11-08:** survival condition decided (H-e amended to a state-based dose-response, PLAN

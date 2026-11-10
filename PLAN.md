@@ -350,6 +350,17 @@ development reading, before any evaluation seed.
     policy, not as learned play.
 - H-f stays held; the next lever is the learner's signal (review Tier 2). NOTES 2026-11-09.
 
+**P4-15 and a program-level stop rule (preregistered 2026-11-10; `PHASE4_DESIGN.md` §4.2).**
+- *Question:* does a learner whose training signal is changed condition its free time on object
+  consequences?
+- *Learner changes:* entropy annealed 0.05 → 0.005, advantages normalised per transition type,
+  λ per unit of time.
+- *Test:* A1 vs a random net on fresh seeds 9100–9111. Statistic: P(object action | near a
+  ball) − P(object action | near a fixed object). Sign-flip test, floor 0.05, α 0.025.
+- *Stop rule:* no further substrate change for PPO until a learner passes. If it fails, the
+  programme moves to H-g, the playground-off arm and `evo`.
+- *If it passes,* the amended H-f (form excess, A1 vs R) is read on the same traces.
+
 ### 15.2 Arms
 
 Policy kind × resources × playground: `need_driven` (control), `mlp_frozen`, `mlp_ppo`, `evo`;
