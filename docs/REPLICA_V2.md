@@ -321,6 +321,22 @@ experience. Each mechanism sits behind its own field; the default is M3.
   - *Effect on that seed:* exposure falls by about 3.7×, and the fullest box holds 50.
   - The report adds dispersal as a fifth cumulative arm (= M4 amended), so both versions are
     visible.
+- **Done 2026-11-11** (NOTES; 12 training seeds).
+  - **Without colony-wide terms the colony never collapses,** unless natal boxes are kept for
+    life.
+    - M4 as specified ends reproduction at day 814 (record 920), with N@1,444 140 and N@1,588
+      56: inside the record's range. It gets there through overfull natal boxes plus male
+      depletion by male–male wounding.
+    - With natal dispersal it holds at about 1,100 to day 1,600.
+  - **The peak is about 1,100–1,400 in every arm** (record 2,200).
+  - **Targets met:** female bias late (male share 0.23 at day 1,444); no conceptions after
+    transfer with the colony males.
+  - **Targets missed:**
+    - never fought or mated (0.16 vs 0.53);
+    - withdrawn share (0.81 vs 0.32);
+    - withdrawn at the centre (0);
+    - male share in phase B (0.46 vs 0.40);
+    - the stock-male transfer: the transferred females are as incompetent as the males.
 
 **M5 — landmarks and recalibration.**
 - *Expanded landmark set:*
@@ -337,6 +353,72 @@ experience. Each mechanism sits behind its own field; the default is M3.
   the record's own uncertainty, and an ensemble of the parameter sets not ruled out, instead of
   one point.
 - Jason decides whether the ensemble replaces 2m as the reference for new work.
+
+**M5 specification (fixed 2026-11-11 before any wave).** Calibrate the whole replica (M1–M4
+amended) to the record by history matching (`scripts/history_match.py`, emulator
+`universe25.calib.emulator`).
+- **Configuration** (`configs/replica_v2.yaml`): M4 amended plus
+  - the removal event: 150 adults on day 1,014. The record's counts at days 1,444 and 1,588 come
+    after about 150 removals.
+  - both methods fixes from the review (`fresh_cell_counts`, `synchronous_fights`).
+- **Parameters** (20, on boxes; log-uniform where marked):
+  - reproduction: `breeding_p_base` 0.2–0.95, `litter_mean` 4.5–7.5, `maturity_days` 42–70;
+  - development: `imprint_rate` 0.003–0.1 (log), `imprint_density_threshold` 0.05–0.6,
+    `care_imprint_gain` 0–3, `withdrawn_competence_threshold` 0.1–0.6;
+  - stress: `stress_density_gain` 0.15–1.2, `stress_decay` 0.5–1.5, `nest_overcrowd_stress`
+    0–0.5, `exclusion_stress` 0–0.15;
+  - adult breakdown: `maternal_erosion_stress` 0.25–0.8, `courtship_erosion_stress` 0.25–0.8;
+  - maternal care: `litter_abandon_p` 0–0.6, `maternal_neglect_stress` 0.3–0.9,
+    `nurse_disturb_coef` 0–8;
+  - mortality: `wound_mortality_scale` 0.005–0.3 (log), `base_mortality_per_day` 5e-5–1.5e-3
+    (log), `young_mortality_scale` 0.1–1, `stress_mortality_scale` 2e-4–0.02 (log).
+
+  The set holds the Morris-influential biology parameters plus the new M2–M4 ones. Everything
+  else stays at its M4 value.
+- **Targets.** Each is a record value z with an observation sd and a model-discrepancy sd.
+  Counts are compared as log(N + 10), and doubling times as logs.
+
+  | target | z | obs sd | discrepancy sd |
+  |---|---|---|---|
+  | first litters | 77 | 13.5 | — |
+  | N@315 | 620 | 5 % | 10 % |
+  | adults @315 | 150 | 15 | 30 |
+  | peak N | 2,200 | 5 % | 10 % |
+  | plateau onset (first day at 97 % of the peak; the review's peak-day fix) | 560 | 20 | 30 |
+  | N@736 / N@811 / N@960 | 2,056 / 1,871 / 1,650 | 5 % | 10 % |
+  | last surviving birth | 600 | 15 | 30 |
+  | last conception | 920 | 20 | 40 |
+  | N@1,444 | 122 | 12 | 40 |
+  | N@1,588 | 27 | 5 | 15 |
+  | phase-B doubling | 55 | 5 | 8 |
+  | phase-C doubling (day 315 to plateau onset) | 125 | 10 | 15 |
+  | male share @315 | 0.40 | 0.03 | 0.05 |
+  | male share @1,444 | 0.18 | 0.03 | 0.06 |
+  | empty boxes @560 | 0.25 | 0.05 | 0.05 |
+  | withdrawn share @560 | 0.32 | 0.05 | 0.10 |
+  | never fought or mated, 131–320 d, @800 | 0.53 | 0.05 | 0.10 |
+  | brood groups by day 315 | 14 | 1 | 3 |
+
+  First litters (record 50–104) and phase-C doubling (105–145) are contested, so z is the
+  middle of each range. An undefined doubling time (no growth) scores as 2,000 d.
+- **Emulators and implausibility.**
+  - One GP per target: constant mean, ARD squared-exponential kernel, nugget for seed noise,
+    maximum marginal likelihood. It is refitted on every run so far.
+  - I_i(x) = |z_i − E f_i(x)| / √(obs² + discrepancy² + emulator variance + seed noise).
+  - NROY = {x : the second-largest I_i ≤ 3}, so one target may miss.
+- **Waves** (training seeds 7000–7011 in turn, 1,600 d, one seed per point):
+  - wave 1: a 200-point Latin hypercube;
+  - waves 2 and 3: 120 points each, drawn uniformly from the current NROY.
+
+  Emulator leave-one-out checks are reported each wave.
+- **Ensemble.** After wave 3, 24 NROY points × 2 training seeds. The best simulated runs are
+  reported with their implausibilities, ranked by I_max.
+- **Stop rule.** If no NROY point exists after a wave (none among 1.2 M candidates), the waves
+  stop. The result is then that the replica, with these mechanisms and these ranges, cannot
+  match the record. The report lists the targets that conflict: the smallest achievable
+  implausibility per target, alone and jointly.
+- **Validation** is M6, on fresh seeds. Jason decides whether the ensemble becomes the
+  reference for new work.
 
 **M6 — out-of-sample validation.**
 - The sibling universes of Calhoun 1971 (1, 2, 4 and 8 cells; Fig 3) were never fitted. They are

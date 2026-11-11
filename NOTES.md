@@ -1,5 +1,102 @@
 # Universe25 Play — NOTES
 
+## 2026-11-11 — Replica v2 M4: without colony-wide terms the colony collapses only with lifelong natal boxes
+
+**Design.** Jason: "start m4, try to finish the project". The specification was committed before
+code (30e5d8d), with a priori values:
+- no colony-wide term (`breakdown_scope: individual`);
+- pups lose competence with their own care deficit (gain 1.0);
+- 0.05 stress per displacement by an owner;
+- aggression by sex: males fight males, and females fight only while nursing;
+- wound mortality as a field;
+- pens of fewer open cells;
+- fought / mated / littered bookkeeping;
+- the Marsden transfer (`scripts/replica_transfer.py`).
+
+**Amendment, before any multi-seed run** (cc3348c). A one-seed diagnostic found that overfull
+boxes gave 92 % of the young's developmental exposure, with up to 160 mice in a box of 15.
+Animals kept their natal box for life. Natal dispersal at maturity
+(`geometry.disperse_at_maturity`) was added a priori and reported as its own arm.
+
+**Checks.**
+- All eight golden arms are unchanged with the flags off. `replica_v2` was refreshed, and the
+  report's M3 arm reproduces the M3 hash exactly.
+- `test_m4_mechanisms` covers:
+  - the guards;
+  - the conception term in individual scope;
+  - care-driven competence loss (exact);
+  - aggression by sex and the fought marks;
+  - exclusion stress;
+  - open cells;
+  - dispersal.
+- The fast tier passes, H2 audit included.
+
+**M4 report** (training seeds 7000–7011, 1,600 d; `_output/replica_report_m4.json`). Arms are
+cumulative: M3, + individual breakdown and care, + exclusion stress, + aggression by sex (= M4
+as specified), + natal dispersal (= M4 amended). Medians, with [5–95 %] where it matters.
+
+| | Calhoun | M3 | + individual | + exclusion | M4 as specified | M4 amended |
+|---|---:|---|---|---|---|---|
+| N@315 | 620 | 1089 | 1119 | 1100 | 1014 | 1073 |
+| peak N | 2200 | 1377 | 1395 | 1373 | 1126 | 1271 |
+| N@736 | 2056 | 1214 | 1231 | 1215 | 986 | 1092 |
+| last conception | 920 | 1599 | 1599 | 1599 | **814** [735, 1060] | 1599 |
+| N@1444 | 122 | 1259 | 1297 | 1252 | **140** [67, 372] | 1080 |
+| N@1588 | 27 | 1220 | 1236 | 1226 | **56** [17, 225] | 1066 |
+| male share, day 315 | 0.40 | 0.50 | 0.50 | 0.50 | 0.45 | 0.46 |
+| male share, day 1444 | 0.18 | 0.53 | 0.53 | 0.52 | 0.03 | 0.23 |
+| withdrawn share, day 560 | 0.32 | 0.69 | 0.69 | 0.70 | 0.86 | 0.81 |
+| withdrawn within 12 in of the centre | > 0.09 | 0 | 0 | 0 | 0 | 0 |
+| never fought or mated, 131–320 d, day 800 | 0.53 | 0 | 0 | 0 | 0.34 | 0.16 |
+| empty boxes, day 560 | 0.20–0.30 | 0.60 | 0.60 | 0.60 | 0.81 | 0.64 |
+| brood groups by day 315 | 14 | 24 | 25 | 24.5 | 18.5 | 23.5 |
+
+With aggression "any", everyone fights sooner or later, so nobody counts as never having fought
+in the first three arms.
+
+**Marsden transfer** (M4 amended, day 870, 12 seeds; `_output/replica_transfer_m4.json`):
+
+| | conceptions | females conceived | littered | pups to 14 d |
+|---|---|---|---|---|
+| colony males | 0 [0, 3] | 0 | 0 | 0 |
+| fresh stock males | 0 [0, 3] | 0 | 0 | 0 [0, 6] |
+| record | 0 with colony males; 6 of 16 conceived with stock males | | 3 | 5 |
+
+The transferred females' competence is 0.06, and conception scales with female competence. So
+in the model the females are as broken as the males. In the record, the stock males showed the
+females were partly intact.
+
+**Against the M4 targets** (reported, not fitted):
+- **Reproduction ends without a colony-wide term** only in M4 as specified (last conception 814;
+  N@1,444 and N@1,588 inside the record's range). With dispersal it does not end.
+- **Missed:**
+  - never fought or mated: 0.16, against 0.53 ± 0.15;
+  - withdrawn share: 0.81, against 0.32 ± 0.10;
+  - withdrawn at the centre: 0;
+  - male share at day 315: 0.46, against 0.40 ± 0.05;
+  - transfer with stock males: the females are not partly intact.
+- **Met:**
+  - female bias late: male share 0.23 at day 1,444, record 0.18;
+  - no conceptions after transfer with the colony males.
+
+**Reading.**
+- **Removing the colony-wide terms removes the collapse,** as M3 predicted. Individual
+  breakdown and exclusion stress leave the plateau of about 1,250 unchanged.
+- **Aggression by sex depletes males.** Male–male fights put the wound mortality on males: male
+  share 0.25 by day 560, against the record's 0.40 in phase B and 0.18 only at day 1,444.
+  - Fewer males means fewer owners: 11 owned cells by day 800, none by day 1,444.
+  - With lifelong natal boxes, the overcrowded boxes erode the young's competence. Together with
+    male depletion, this ends reproduction near the record's date, and the counts at days
+    1,444–1,588 match.
+  - **But the collapse rests on an artefact.** With natal dispersal the young keep enough
+    competence, and the colony holds at about 1,100 to the end. So the near-match of the late
+    landmarks in M4 as specified is not evidence for the mechanism.
+- **The colony is regulated at about 1,100–1,400 in every arm.** That is about half the
+  record's peak. M3 found the cause: pup loss in the aggregated cells.
+- **What this leaves for M5:** whether any parameter set, with all the mechanisms and the
+  artefact removed, reproduces the record. Specifically: growth to 2,200, a plateau, the end of
+  reproduction near day 920, and the decline. History matching answers that, including "no".
+
 ## 2026-11-11 — Replica v2 M3: territories settle and hoppers aggregate; the aggregated colony never collapses
 
 **Design.** Jason: "Start M3". The specification was committed before code (aec8958,
