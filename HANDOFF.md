@@ -14,8 +14,12 @@
 >   `tests/run_tests.py --tier fast|slow|gpu`. CI: `.github/workflows/ci.yml`.
 > - The architecture map in §5 is updated for the 2026-11-09 modules.
 > - Replica v2 (`docs/REPLICA_V2.md`, Jason 2026-11-11) is underway in `configs/replica_v2.yaml`.
->   M1, Calhoun's pen, is done: the frozen biology runs the arc about 190 d early in it. Next is
->   M2, life history and phase A.
+>   M1, Calhoun's pen, is done: the frozen biology runs the arc about 190 d early in it.
+>   M2 is done: 48-day founders, no gate, litter 5.5, territories (`biology.territories`).
+>   - First litters fall at day 49 with no gate.
+>   - Growth is still too fast (N@315 1,559 vs 620).
+>   - Only about 7.5 cells settle, giving 22 brood groups vs 14.
+>   Next, Jason's call: M3, owner behaviour and box choice.
 > - Tier 2 done (2026-11-11): P4-15 failed its primary test, and the program-level stop rule
 >   applies (no further substrate change for PPO learners). Next: H-g / playground-off, `evo`,
 >   or replica v2 (Tier 3) — Jason's call.

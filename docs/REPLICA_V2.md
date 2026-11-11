@@ -129,11 +129,34 @@ frozen colony. Each one ends with an uncalibrated run of the replica that shows 
   - first litters 40–80 d with no gate;
   - 10–16 brood groups by day 315 with a skewed distribution;
   - N@315 and the doubling times reported against 620 / 55 d / 145 d.
+- *Implementation clarifications* (decided in code, before any multi-seed run; no rule or
+  parameter changed after the one-seed sanity run):
+  - A challenge needs r_challenger ≥ r_owner − gap, so a higher-ranked male always contests,
+    at P(the owner wins) 0.05 when far above. The spec's "within the gap" left that case open.
+  - Owners of other cells neither claim nor challenge.
+  - The challenger is the top-ranked eligible non-owner present.
+  - Cells are visited in id order.
+  - With no eligible male present, a claim holds.
+  - The owner sires only if he passes the old male filter that day: adult, not withdrawn,
+    stress < 0.85.
+  - Roles are unchanged: `ROLE_TERRITORIAL_MALE` is still rank > 0.55, and owners' behaviour
+    is M3.
+  - The M1 comparison arm is `replica_v2.yaml` with the four M2 fields reset. It reproduces the
+    M1 golden hash exactly.
+- **Done 2026-11-11** (NOTES; 12 training seeds):
+  - First litters at day 49 with no gate: target met.
+  - N@315 1,559 (record 620) and phase-B doubling 39 d (55): missed.
+  - Brood groups by day 315: 22 against 10–16, missed, though skewed as targeted.
+  - Only about 7.5 cells are ever owned; 0 of 4 founding males die (record 2 of 4).
+  - Phase A is the sum of maturity, settling and gestation, not founder fighting: the founders
+    start in separate cells.
 
 **M3 — the social system.**
-- *Territories:* each wall sector is held by a territorial male, contested by maturing males,
-  and the holder sires. This yields brood groups and role saturation (more young adults than
-  roles).
+- *Territories:* M2 added ownership (a holder per cell, contested by maturing males, who sires).
+  M3 adds the behaviour:
+  - site fidelity and defence by owners (in M2, only about 7.5 cells settle);
+  - the owner as the territorial role;
+  - role saturation (more young adults than roles).
 - *Hoppers:* aggregation emerges from social facilitation at feeding.
 - *Boxes:* physical box occupancy, with a choice among free boxes and the effort of upper levels.
 - *Targets:* about 14 brood groups by day 315 with a skewed young-per-group distribution (Fig 3:

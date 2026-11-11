@@ -1,5 +1,104 @@
 # Universe25 Play — NOTES
 
+## 2026-11-11 — Replica v2 M2: no calendar gate, first litters at day 49; territories slow phase B but too few cells settle
+
+**Design.** Jason: "Start M2". The specification and targets were committed before code
+(5d25410, `docs/REPLICA_V2.md`), with a priori parameters:
+- 48-day founders (`biology.founder_age_days`);
+- no calendar gate (`first_conception_min_day` 0);
+- litter 5.5;
+- territories (`biology.territories`):
+  - one owner per cell;
+  - a claim settles after 14 daily passes as the cell's top male;
+  - daily contests against a present male ranked at least owner − 0.15;
+  - ownership lapses only by death, withdrawal or defeat;
+  - conception needs an owner in the female's cell, and he sires.
+
+The rule details the spec left open were decided in code before any multi-seed run, and are
+recorded in the spec. No rule or parameter changed after the one-seed sanity run.
+
+**Checks.**
+- Every frozen golden hash is unchanged on both tiers. Only `replica_v2` was refreshed, because
+  its config is now M2.
+- The M1 comparison arm (`replica_v2.yaml` with the four M2 fields reset) reproduces the old M1
+  hash exactly.
+- `test_m2_territories` covers settling, restart, the absent owner, the contest and takeover,
+  dropped claims, lapse by death or withdrawal, and conception by the owner. A one-seed sanity
+  run printed the pass's state. The fast tier passes, including the H2 audit and a 150-day M2
+  colony with invariants on.
+
+**M2 report** (training seeds 7000–7011, 1,600 d; `_output/replica_report_m2.json`). Arms:
+- M1;
+- M2 without territories (founders, no gate, litter 5.5);
+- M2.
+
+Medians [5–95 %]; * = the record lies outside the range.
+
+| landmark | Calhoun | M1 | M2, no territories | M2 |
+|---|---:|---|---|---|
+| first litters | 50–104 | 102 [102, 102] | 36 [36, 36] * | 49 [49, 52] |
+| N@315 | 620 | 1821 [1501, 2042] * | 2459 [2305, 2528] * | 1559 [1109, 1872] * |
+| adults @315 | 150 | 654 [599, 742] * | 1314 [1047, 1570] * | 703 [514, 838] * |
+| phase-B doubling | 55 d | 35 [32, 36] * | 42 [37, 44] * | 39 [36, 43] * |
+| phase-C doubling | 145 d | 124 [91, 196] | 359 [260, 783] * | 156 [109, 190] |
+| peak N | 2200 | 2524 [2472, 2583] * | 2535 [2471, 2592] * | 2394 [2321, 2460] * |
+| peak day | 560 | 372 [356, 395] * | 323 [305, 347] * | 393 [368, 472] * |
+| last young day | 600 | 409 [393, 439] * | 352 [329, 383] * | 439 [407, 503] * |
+| N@736 | 2056 | 2060 [2033, 2101] | 2018 [1967, 2048] * | 2050 [2015, 2100] |
+| last conception | 920 | 861 [850, 880] * | 809 [793, 827] * | 863 [836, 899] * |
+| N@1444 | 122 | 20 [16, 36] * | 11 [8, 21] * | 30 [17, 61] * |
+
+Territories (M2):
+
+| | M2 | Calhoun |
+|---|---|---|
+| owned cells at day 315 / 560 / 736 | 7.5 / 7.5 / 7 of 16 | 16 territories |
+| brood groups by day 315 | 22 [14, 33]; 10–16 in 2 of 12 seeds | ~14 |
+| brood groups by day 338 | 25 [17, 34] | 14 |
+| young born by day 338 | 2576 [1786, 3120] | 842 |
+| largest group by day 338 | 377 [282, 564]; the top 14 hold 90 % | 111 |
+| founding males dead by day 60 | 0 of 4 in every seed | 2 of 4 |
+| contests / takeovers by day 315 | 79 / 26 | — |
+
+The structural numbers are unchanged from M1:
+- nobody within 12 in of the centre;
+- no empty boxes at the peak;
+- male share 0.50;
+- withdrawn share 0.75 at day 560.
+
+**Against the M2 targets** (reported, not fitted):
+- **Met:** first litters fall in 40–80 d with no gate (49 d).
+- **Missed:** 10–16 brood groups by day 315 (22). The distribution is skewed, as the target
+  asked.
+- **Missed:** N@315 is 1,559 against 620.
+- **Missed:** phase-B doubling is 39 d against 55.
+- **Inside the range:** phase-C doubling (156 d against 145).
+
+This is a development report on 12 training seeds. The 48-seed validation standard applies to
+the calibrated replica (M5), not to an a priori milestone.
+
+**Reading.**
+- **Phase A is now timing, not a social process.** First litters fall at about day 49 in nearly
+  every seed. That is the sum of the founders reaching `maturity_days` (age 63.9, so day 16),
+  14 days of settling, and gestation (19.5). The founders start in separate cells (an
+  assumption), so they never fight: no contests and no founder deaths before other males mature.
+  Calhoun's phase A came from founder fighting, which killed 2 of 4 males. Without territories,
+  litters come at day 36 and phase B grows faster still.
+- **Territories slow phase B but do not hold it.** N@315 falls from 2,459 (no territories) to
+  1,559, which is still 2.5 times the record.
+  - Only about half the cells ever get an owner. A probable cause, not tested: males have no
+    site fidelity yet. A cell's top male changes from day to day as the colony grows, so a
+    14-pass claim rarely completes.
+  - The owners that exist turn over (26 takeovers by day 315). Each new owner starts a new brood
+    group, so there are too many groups (22 against 14). Each holds far too many young, because
+    an owner's females conceive at the frozen rate.
+- **What follows.**
+  - The missing structure (site-faithful owners, centre pooling, box vacancy, the sex ratio,
+    founder deaths) is M3–M4 behaviour.
+  - The growth rate (N@315, phase-B doubling, the peak about 170 days early) is calibration,
+    which is M5.
+  - M2 changed nothing else.
+
 ## 2026-11-11 — Replica v2 M1: Calhoun's pen built; the frozen biology runs the arc ~190 days early in it
 
 **Decision and design.** Jason chose replica v2 before any further play work. Design:
