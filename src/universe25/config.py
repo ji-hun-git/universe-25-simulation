@@ -42,6 +42,14 @@ class GeometryConfig(_Strict):
     # 0 / 3 / 12 / 15; calhoun: the second cell of each wall, 1 / 5 / 9 / 13 - an assumption,
     # the record does not say where the founders were placed).
     founder_cells: list[int] | None = None
+    # Replica v2 M3 (docs/REPLICA_V2.md). box_choice: an animal needing a box (homeless, or
+    # kicked from an overfull one) takes the fullest box below capacity in its cell (lower level,
+    # then lower id, on ties), else its cell's emptiest; off = nearest box / uniform random box.
+    box_choice: bool = False
+    # hopper_facilitation (calhoun layout): after box_feeding_until_day a forager heads for the
+    # hopper, among its cell's and its two wall neighbours', with the most foragers at the
+    # previous decision (ties: its own, then the lower id).
+    hopper_facilitation: bool = False
 
 
 class PlaygroundConfig(_Strict):
@@ -166,6 +174,15 @@ class BiologyConfig(_Strict):
     territories: bool = False
     territory_settle_days: int = Field(default=14, ge=1)
     territory_gap: float = Field(default=0.15, gt=0.0)
+    # Replica v2 M3. Fidelity: a male who owns or claims the cell he is in does not leave it (a
+    # move out is undone); an owner takes his cell's emptiest box; the territorial role means an
+    # owner. Tolerance (calhoun layout; Calhoun's basic group: 1 territorial + 3 subordinate
+    # males): at each decision an owner in his territory keeps the N lowest-ranked adult males
+    # there and displaces the rest to 10 in from the pen centre; territories (and the territory
+    # pass) exclude the disc of territory_centre_in around the centre. None = off.
+    territory_fidelity: bool = False
+    territory_tolerance: int | None = Field(default=None, ge=0)
+    territory_centre_in: float = Field(default=12.0, gt=10.0)
 
     def breakdown_threshold(self) -> float:
         if self.breakdown_density_threshold is not None:
@@ -350,8 +367,17 @@ class SimConfig(_Strict):
                 raise ValueError("geometry.layout calhoun has 16 cells of 16 boxes")
             if self.backend == "warp":
                 raise ValueError("the Warp path implements only geometry.layout grid")
-        if self.biology.territories and self.backend == "warp":
+        b = self.biology
+        if b.territories and self.backend == "warp":
             raise ValueError("biology.territories is implemented on the NumPy path only")
+        if (b.territory_fidelity or b.territory_tolerance is not None) and not b.territories:
+            raise ValueError("territory_fidelity / territory_tolerance need biology.territories")
+        if b.territory_fidelity and self.free_substeps > 1:
+            raise ValueError("territory_fidelity restores moves per decision: no sub-steps")
+        if g.layout != "calhoun" and (g.hopper_facilitation or b.territory_tolerance is not None):
+            raise ValueError("hopper_facilitation / territory_tolerance need layout calhoun")
+        if (g.box_choice or g.hopper_facilitation) and self.backend == "warp":
+            raise ValueError("box_choice / hopper_facilitation are NumPy-path only")
         return self
 
     @model_validator(mode="after")

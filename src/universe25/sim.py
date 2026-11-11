@@ -73,6 +73,11 @@ class Universe25Sim:
         self.world: World = build_world(cfg.geometry, cfg.playground, seed=cfg.seed)
         self._nest_x = np.array([n.x for n in self.world.nests], dtype=np.float64)
         self._nest_y = np.array([n.y for n in self.world.nests], dtype=np.float64)
+        # replica v2 M3: box capacity / level and each cell's boxes (box choice, owner's box)
+        self._nest_cap = np.array([n.capacity for n in self.world.nests], dtype=np.int64)
+        self._nest_level = np.array([n.level for n in self.world.nests], dtype=np.int64)
+        self._cell_nests = [np.asarray(c.nest_ids, dtype=np.int64) for c in self.world.cells]
+        self._forage_prev = np.zeros(self.world.n_cells, dtype=np.int64)  # by target hopper
         self.agents = AgentSoA.create(cfg.max_agents)
         self.policy = make_policy(cfg.policy, cfg.seed)  # chooses among eligible actions
         self.tick = 0
@@ -298,6 +303,8 @@ class Universe25Sim:
                 free = (self._free_pre(alive, actions)
                         if self.free_substeps > 1 and decision else None)
                 self._execute_actions(alive, actions)
+                if decision and self.cfg.biology.territory_tolerance is not None:
+                    self._territory_defence()
                 if free is not None:
                     self._run_free_substeps(free)
                 if self.novelty and decision:  # every animal marks where it ends the decision
@@ -427,7 +434,10 @@ class Universe25Sim:
         female = a.sex[idx] == SEX_F
         nursing = female & ((a.maternal[idx] > 0.5) & ((a.gestating[idx] > 0) | (a.role[idx] == ROLE_NURSING)))
         male = ~female
-        terr = male & (a.rank[idx] > 0.55)
+        if bio.territory_fidelity:  # replica v2 M3: the territorial role is ownership
+            terr = male & self._owner_mask()[idx]
+        else:
+            terr = male & (a.rank[idx] > 0.55)
         role[pup] = ROLE_PUP
         role[juv] = ROLE_JUVENILE
         role[withdrawn] = ROLE_WITHDRAWN
@@ -546,6 +556,13 @@ class Universe25Sim:
                 bx, by = self._nest_x[nid[housed]], self._nest_y[nid[housed]]
                 food_xy[housed, 0], food_xy[housed, 1] = bx, by
                 water_xy[housed, 0], water_xy[housed, 1] = bx, by
+        # replica v2 M3 fidelity: owners / claimants of the cell they are in stay in it
+        bound = None
+        if self.cfg.biology.territory_fidelity and decision:
+            s = self._serial[idx]
+            bound = (self._owner_serial[cells] == s) | (self._claim_serial[cells] == s)
+        if geo.hopper_facilitation and decision and not box_feed:
+            self._facilitated_hoppers(act == ACT_FORAGE, cells, bound, food_xy)
 
         def move_mask(mask, tx, ty, speed):
             ii = idx[mask]
@@ -721,6 +738,10 @@ class Universe25Sim:
             a.x[ii] = np.clip(a.x[ii] * (1.0 - 0.05 * k) + wx * 0.05 * k, 0.5, xmax)
             a.y[ii] = np.clip(a.y[ii] * (1.0 - 0.05 * k) + wy * 0.05 * k, 0.5, ymax)
 
+        if bound is not None and bound.any():  # a move out of his territory is undone
+            back = bound & (self.world.cells_of(a.x[idx], a.y[idx]) != cells)
+            if back.any():
+                a.x[idx[back]], a.y[idx[back]] = x_before[back], y_before[back]
         # update cell + playground flags (vectorized; world.cells_of keeps the grid arithmetic)
         a.cell_id[idx] = self.world.cells_of(a.x[idx], a.y[idx]).astype(np.int16)
         if self.world.playground_enabled:
@@ -731,6 +752,65 @@ class Universe25Sim:
         self._update_heading(idx, x_before, y_before)
 
         self.playscore.observe_actions(actions[alive])
+
+    def _facilitated_hoppers(self, m_f: np.ndarray, cells: np.ndarray,
+                             bound: np.ndarray | None, food_xy: np.ndarray) -> None:
+        """Replica v2 M3: each forager (mask m_f over the deciding agents) heads for the hopper,
+        among its cell's and its two wall neighbours', with the most foragers at the previous
+        decision (ties: its own, then the lower id); a bound owner / claimant uses his own.
+        Rewrites food_xy in place and records this decision's counts. No random draw."""
+        nc = self.world.n_cells
+        if not m_f.any():
+            self._forage_prev = np.zeros(nc, dtype=np.int64)
+            return
+        c0 = cells[m_f].astype(np.int64)
+        cand = np.stack([c0, (c0 - 1) % nc, (c0 + 1) % nc], axis=1)
+        not_own = np.broadcast_to(np.array([0, 1, 1]), cand.shape)
+        order = np.lexsort((cand, not_own, -self._forage_prev[cand]), axis=-1)
+        target = cand[np.arange(c0.size), order[:, 0]]
+        if bound is not None:
+            target = np.where(bound[m_f], c0, target)
+        food_xy[m_f] = self._cell_food[target]
+        self._forage_prev = np.bincount(target, minlength=nc).astype(np.int64)
+
+    def _owner_mask(self) -> np.ndarray:
+        """Slots that currently own a cell (serial-checked)."""
+        own = np.zeros(self.agents.capacity, dtype=bool)
+        o = self._owner
+        ok = (o >= 0)
+        ok[ok] = self._serial[o[ok]] == self._owner_serial[ok]
+        own[o[ok]] = True
+        return own
+
+    def _territory_defence(self) -> None:
+        """Replica v2 M3 (biology.territory_tolerance), on decision ticks: an owner in his
+        territory (his cell outside the central disc of territory_centre_in) keeps the
+        `territory_tolerance` lowest-ranked adult, non-withdrawn males there (ties: lower slot)
+        and displaces the others along their ray from the pen centre to 10 in from it.
+        Deterministic; nobody loses his box."""
+        a = self.agents
+        bio = self.cfg.biology
+        cx, cy = self.world.width / 2.0, self.world.height / 2.0
+        r = np.hypot(a.x - cx, a.y - cy)
+        males = np.flatnonzero(a.alive & (a.sex == SEX_M) & (a.age_days >= bio.maturity_days)
+                               & (a.role != ROLE_WITHDRAWN) & (r >= bio.territory_centre_in))
+        if males.size < 2:
+            return
+        owner_mask = self._owner_mask()
+        tol = int(bio.territory_tolerance)
+        mc = a.cell_id[males].astype(np.int64)
+        for c, o in enumerate(self._owner):
+            if o < 0 or not owner_mask[o] or a.cell_id[o] != c or o not in males:
+                continue
+            rest = males[(mc == c) & (males != o)]
+            if rest.size <= tol:
+                continue
+            rest = rest[np.lexsort((rest, a.rank[rest].astype(np.float64)))]
+            out = rest[tol:]
+            f = 10.0 / r[out]
+            a.x[out] = cx + (a.x[out] - cx) * f
+            a.y[out] = cy + (a.y[out] - cy) * f
+            a.cell_id[out] = self.world.cells_of(a.x[out], a.y[out]).astype(np.int16)
 
     def _capacity_mask(self, ii: np.ndarray, per_day: float) -> np.ndarray:
         """Replica v2: which of the agents `ii` (all at a resource this decision) are served,
@@ -1146,7 +1226,10 @@ class Universe25Sim:
         gain = d.stress_density_gain * local
         # Weaned agents without a nest box (abandoned as pups) adopt the nearest box.
         homeless = (a.nest_id[idx] < 0) & (a.age_days[idx] >= self.cfg.biology.weaning_days)
-        if homeless.any():
+        box_choice = self.cfg.geometry.box_choice
+        if homeless.any() and box_choice:  # replica v2 M3
+            self._choose_boxes(idx[homeless])
+        elif homeless.any():
             hi = idx[homeless]
             d2n = (a.x[hi, None] - self._nest_x[None, :]) ** 2
             d2n += (a.y[hi, None] - self._nest_y[None, :]) ** 2
@@ -1170,7 +1253,9 @@ class Universe25Sim:
         # random nest kick for low-rank overcrowded agents: one 10 % chance per decision
         if decision:
             kick = over & (a.rank[idx] < 0.4) & (self.rng.random(idx.size) < 0.1)
-            if kick.any():
+            if kick.any() and box_choice:  # replica v2 M3: no destination draw
+                self._choose_boxes(idx[kick])
+            elif kick.any():
                 a.nest_id[idx[kick]] = self.rng.integers(
                     0, self.world.n_nests, size=int(kick.sum())
                 )
@@ -1206,6 +1291,29 @@ class Universe25Sim:
             a.maternal[yf] = 0.8 * a.competence[yf]
 
 
+
+    def _choose_boxes(self, ii: np.ndarray) -> None:
+        """Replica v2 M3 box choice, in slot order with running occupancy: each animal leaves its
+        box and takes, in its current cell, the box below capacity with the most living
+        occupants (ties: lower level, then lower id); if every box there is at capacity, the
+        one with the fewest. Deterministic."""
+        a = self.agents
+        occ = np.bincount(a.nest_id[a.alive & (a.nest_id >= 0)].astype(np.int64),
+                          minlength=self.world.n_nests)
+        for i in np.sort(ii):
+            old = int(a.nest_id[i])
+            if old >= 0:
+                occ[old] -= 1
+            boxes = self._cell_nests[int(a.cell_id[i])]
+            n = occ[boxes]
+            free = n < self._nest_cap[boxes]
+            if free.any():
+                b = boxes[free]
+                pick = b[np.lexsort((b, self._nest_level[b], -n[free]))[0]]
+            else:
+                pick = boxes[np.lexsort((boxes, self._nest_level[boxes], n))[0]]
+            a.nest_id[i] = pick
+            occ[pick] += 1
 
     def _breakdown_density(self, alive: np.ndarray) -> float:
         """Density fraction that drives the social-breakdown stress switch."""
@@ -1367,8 +1475,12 @@ class Universe25Sim:
             if o >= 0 and (not a.alive[o] or self._serial[o] != own_s[c]
                            or a.role[o] == ROLE_WITHDRAWN):
                 own[c], own_s[c] = -1, -1
-        elig = np.flatnonzero(alive & (a.sex == SEX_M) & (a.age_days >= bio.maturity_days)
-                              & (a.role != ROLE_WITHDRAWN))
+        elig_m = alive & (a.sex == SEX_M) & (a.age_days >= bio.maturity_days)
+        elig_m &= a.role != ROLE_WITHDRAWN
+        if bio.territory_tolerance is not None:  # M3: territories exclude the central disc
+            cx, cy = self.world.width / 2.0, self.world.height / 2.0
+            elig_m &= np.hypot(a.x - cx, a.y - cy) >= bio.territory_centre_in
+        elig = np.flatnonzero(elig_m)
         if elig.size == 0:
             return
         cells = a.cell_id[elig].astype(np.int64)
@@ -1418,6 +1530,12 @@ class Universe25Sim:
         """Make slot m the owner of cell c and drop every claim he holds."""
         self._owner[c], self._owner_serial[c] = m, self._serial[m]
         owners.add(m)
+        if self.cfg.biology.territory_fidelity:  # M3: he moves to his cell's emptiest box
+            a = self.agents
+            boxes = self._cell_nests[c]
+            occ = np.bincount(a.nest_id[a.alive & (a.nest_id >= 0)].astype(np.int64),
+                              minlength=self.world.n_nests)[boxes]
+            a.nest_id[m] = boxes[np.lexsort((boxes, self._nest_level[boxes], occ))[0]]
         mine = (self._claim == m) & (self._claim_serial == self._serial[m])
         self._claim[mine], self._claim_serial[mine], self._claim_days[mine] = -1, -1, 0
         self._claim[c], self._claim_serial[c], self._claim_days[c] = -1, -1, 0

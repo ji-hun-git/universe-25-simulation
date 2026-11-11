@@ -16,6 +16,10 @@ Structural numbers per snapshot day:
   male_share          males among weaned animals (Calhoun: 40 % in phase B)
   max_cell_share      the largest cell's share of the weaned animals (aggregation)
   owned_cells         cells with a territory owner (biology.territories; M2)
+  excluded_centre     share of adult, non-withdrawn, non-owner males within 12 in of the centre
+  hopper_max_share    the busiest cell's share of the animals foraging this decision
+  owner_ring_dist     owners' mean distance (in) from their cell's ring stand
+  subs_per_owner      adult, non-withdrawn, non-owner males per owner (Calhoun: 3)
 Territory numbers per run (M2, biology.territories on):
   brood groups        sires (owners) of the young born by day 338, their count and the young
                       per group (Calhoun 1971: 842 young in 14 groups, 111 ... 13)
@@ -69,7 +73,7 @@ def run_one(job: tuple[str, str, dict, int, float]) -> tuple[str, int, dict]:
     from universe25.config import load_config
     from universe25.metrics.calibration import landmarks_from_series
     from universe25.sim import Universe25Sim
-    from universe25.agents.state import ROLE_WITHDRAWN, SEX_M
+    from universe25.agents.state import ACT_FORAGE, ROLE_WITHDRAWN, SEX_M
 
     base = dict(seed=seed, days=days, ticks_per_day=6, backend="numpy", device="cpu",
                 log_every_ticks=10**9, snapshot_every_days=0)
@@ -120,6 +124,23 @@ def run_one(job: tuple[str, str, dict, int, float]) -> tuple[str, int, dict]:
                     "owned_cells": float((sim._owner >= 0).sum()) if bio.territories
                     else np.nan,
                 }
+                fo = al & (a.last_action == ACT_FORAGE)
+                fc = np.bincount(a.cell_id[fo].astype(int), minlength=sim.world.n_cells)
+                struct[str(d)]["hopper_max_share"] = (float(fc.max() / fc.sum()) if fc.sum()
+                                                      else np.nan)
+                if bio.territories:
+                    own = sim._owner_mask()
+                    oi = np.flatnonzero(own)
+                    adm = (al & (a.sex == SEX_M) & (a.age_days >= bio.maturity_days)
+                           & (a.role != ROLE_WITHDRAWN) & ~own)
+                    ring = np.array(sim.world.ring_xy) if sim.world.ring_xy else None
+                    struct[str(d)].update({
+                        "excluded_centre": float(near[adm].mean()) if adm.any() else np.nan,
+                        "subs_per_owner": float(adm.sum() / max(1, oi.size)),
+                        "owner_ring_dist": (float(np.mean(np.hypot(
+                            a.x[oi] - ring[a.cell_id[oi], 0], a.y[oi] - ring[a.cell_id[oi], 1])))
+                            if ring is not None and oi.size else np.nan),
+                    })
         if a.n_alive == 0 and sim.day > 50:
             break
     lm = landmarks_from_series(*(np.asarray(hist[k], float) for k in ("day", "n", "births",
@@ -129,11 +150,12 @@ def run_one(job: tuple[str, str, dict, int, float]) -> tuple[str, int, dict]:
                                surv_births_by_day=sim._surv_births_by_day,
                                conceptions_by_day=sim._conc_by_day)
     if bio.territories:
-        groups: dict[int, int] = {}
-        for day, sire, n_pups in sim._litter_log:
-            if day <= 338.0:
-                groups[sire] = groups.get(sire, 0) + n_pups
-        terr["brood_sizes_338"] = sorted(groups.values(), reverse=True)
+        for lim in (315, 338):
+            groups: dict[int, int] = {}
+            for day, sire, n_pups in sim._litter_log:
+                if day <= float(lim):
+                    groups[sire] = groups.get(sire, 0) + n_pups
+            terr[f"brood_sizes_{lim}"] = sorted(groups.values(), reverse=True)
     return name, seed, {"landmarks": {k: float(v) for k, v in lm.items()}, "struct": struct,
                         "territory": terr}
 
@@ -179,7 +201,8 @@ def main() -> int:
         print(f"| {k} | {tgt:g} | " + " | ".join(cells) + " |")
     print("\n(* = the record lies outside the 5-95 % range over seeds)")
     keys = ("n", "empty_box_share", "centre_share", "withdrawn_share", "withdrawn_centre",
-            "male_share", "max_cell_share", "owned_cells")
+            "male_share", "max_cell_share", "owned_cells", "excluded_centre",
+            "hopper_max_share", "owner_ring_dist", "subs_per_owner")
     for d in SNAP_DAYS:
         print(f"\nday {d}: " + " | ".join(names))
         out["struct"][str(d)] = {}
@@ -198,6 +221,7 @@ def main() -> int:
         if not any("brood_sizes_338" in t for t in tr):
             continue
         ng = np.array([len(t["brood_sizes_338"]) for t in tr], float)
+        ng315 = np.array([len(t.get("brood_sizes_315", [])) for t in tr], float)
         young = np.array([sum(t["brood_sizes_338"]) for t in tr], float)
         top = np.array([t["brood_sizes_338"][0] if t["brood_sizes_338"] else 0 for t in tr],
                        float)
@@ -206,7 +230,8 @@ def main() -> int:
         fd = np.array([t.get("founder_male_deaths", np.nan) for t in tr], float)
         ct = np.array([t.get("contests_315", np.nan) for t in tr], float)
         tk = np.array([t.get("takeovers_315", np.nan) for t in tr], float)
-        summ = {"brood_groups_338": ng, "young_by_338": young, "largest_group_338": top,
+        summ = {"brood_groups_315": ng315, "brood_groups_338": ng, "young_by_338": young,
+                "largest_group_338": top,
                 "share_in_top14_groups": g14, "founder_male_deaths_60": fd,
                 "contests_315": ct, "takeovers_315": tk}
         out["territory"][n] = {k: {"median": float(np.nanmedian(v)),

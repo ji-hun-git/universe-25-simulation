@@ -213,10 +213,105 @@ def test_m2_territories() -> None:
     assert sim._litter_log == [(sim.day, int(sim._serial[m2]), int(pups.size))]
 
 
+def test_m3_mechanisms() -> None:
+    """Replica v2 M3: the guards; fidelity keeps an owner in his cell, gives him his cell's
+    emptiest box and the territorial role; defence keeps the 3 lowest-ranked males and puts the
+    rest 10 in from the centre, where the territory pass ignores them; box choice takes the
+    fullest box below capacity (lower level on ties), else the emptiest; facilitation picks the
+    busiest of three neighbouring hoppers (own, then lower id, on ties)."""
+    from universe25.agents.state import (
+        ACT_EXPLORE,
+        ROLE_SUBORDINATE_MALE,
+        ROLE_TERRITORIAL_MALE,
+        SEX_M,
+    )
+
+    for bad in ({"biology": {"territory_fidelity": True}},
+                {"biology": {"territories": True, "territory_fidelity": True},
+                 "free_substeps": 2},
+                {"geometry": {"layout": "grid", "hopper_facilitation": True}},
+                {"geometry": {"layout": "grid"},
+                 "biology": {"territories": True, "territory_tolerance": 3}}):
+        try:
+            _cfg(**bad)
+        except ValueError:
+            continue
+        raise AssertionError(f"{bad} must be refused")
+    cfg = _cfg(seed=7100, days=5.0, ticks_per_day=6, backend="numpy", device="cpu",
+               log_every_ticks=6, snapshot_every_days=0,
+               geometry={"box_choice": True, "hopper_facilitation": True},
+               biology={"territories": True, "territory_fidelity": True,
+                        "territory_tolerance": 3, "founder_age_days": 100.0})
+    sim = Universe25Sim(cfg, Path(tempfile.mkdtemp(prefix="u25rep_")))
+    a, w = sim.agents, sim.world
+    rx, ry = w.ring_xy[2]
+    males = [int(i) for i in np.flatnonzero(a.alive & (a.sex == SEX_M))]
+    for s in a.free_slots(2):
+        sim._spawn(int(s), sex=SEX_M, age=100.0, x=rx, y=ry, nest_id=0, cell_id=2,
+                   role=ROLE_SUBORDINATE_MALE)
+        males.append(int(s))
+    o, rivals = males[0], males[1:]
+    a.x[males], a.y[males] = rx, ry
+    a.cell_id[males] = 2
+    a.rank[o] = 0.6
+    a.rank[rivals] = (0.2, 0.3, 0.4, 0.9, 0.7)  # tolerated: 0.2, 0.3, 0.4
+    # fidelity: his box, his role, and he stays in his cell
+    sim._set_owner(2, o, set())
+    box = w.nests[int(a.nest_id[o])]
+    assert box.cell_id == 2 and box.level == 0 and box.id == min(
+        n for n in w.cells[2].nest_ids if w.nests[n].level == 0)
+    sim._assign_roles(a.alive.copy())
+    assert a.role[o] == ROLE_TERRITORIAL_MALE and a.role[rivals[3]] == ROLE_SUBORDINATE_MALE
+    acts = np.full(a.capacity, -1, np.int8)
+    acts[a.alive] = 0
+    acts[o] = ACT_EXPLORE
+    for _ in range(30):
+        sim._execute_actions(a.alive.copy(), acts)
+        assert a.cell_id[o] == 2
+    a.x[o], a.y[o] = rx, ry
+    a.cell_id[o] = 2
+    # defence: the two highest-ranked rivals go to 10 in from the centre, still in cell 2
+    sim._territory_defence()
+    r = np.hypot(a.x - 50.5, a.y - 50.5)
+    assert np.allclose(r[rivals[3:]], 10.0) and np.all(r[rivals[:3]] > 12.0)
+    assert np.all(a.cell_id[rivals] == 2)
+    sim._daily_territories(a.alive.copy())  # the 0.9 male is in the disc: no contest
+    assert sim._contests == 0 and sim._owner[2] == o
+    # box choice: the fullest box below capacity, lower level on ties; else the emptiest
+    boxes = sim._cell_nests[3]
+    lv = sim._nest_level[boxes]
+    full, b_hi, b_lo = boxes[lv == 2][0], boxes[lv == 3][0], boxes[lv == 1][0]
+    pups = a.free_slots(25)
+    for k, s in enumerate(pups):
+        nid = int(full if k < 15 else (b_hi if k < 20 else b_lo))
+        sim._spawn(int(s), sex=0, age=0.0, x=1.0, y=1.0, nest_id=nid, cell_id=3, role=0)
+    i = rivals[0]
+    a.cell_id[i] = 3
+    sim._choose_boxes(np.array([i]))
+    assert a.nest_id[i] == b_lo, (a.nest_id[i], b_lo)
+    sim._nest_cap[boxes] = 0  # every box of the cell "at capacity": take the emptiest
+    sim._choose_boxes(np.array([i]))
+    assert a.nest_id[i] == min(int(b) for b in boxes if sim._nest_level[b] == 0)
+    # facilitation: the busiest of own / wall neighbours (own, then lower id, on ties)
+    sim._forage_prev[:] = 0
+    sim._forage_prev[[0, 15, 1, 4, 3, 5]] = (2, 5, 5, 4, 4, 1)
+    ii = np.array([rivals[0], rivals[1], o])
+    a.cell_id[ii] = (0, 4, 2)
+    cells = a.cell_id[ii].astype(int)
+    food = np.zeros((3, 2))
+    m_f = np.array([True, True, True])
+    bound = np.array([False, False, True])
+    sim._facilitated_hoppers(m_f, cells, bound, food)
+    want = [1, 4, 2]  # 15 / 1 tie -> lower id 1; 4 / 3 tie -> own 4; bound owner -> own 2
+    assert np.allclose(food, sim._cell_food[want])
+    assert list(sim._forage_prev[want]) == [1, 1, 1] and sim._forage_prev.sum() == 3
+
+
 if __name__ == "__main__":
     test_grid_cells_of_is_the_old_arithmetic()
     test_calhoun_pen()
     test_capacity_box_feeding_and_withdrawal()
     test_layout_guards_and_a_replica_colony()
     test_m2_territories()
+    test_m3_mechanisms()
     print("test_replica: OK")
