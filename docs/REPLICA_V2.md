@@ -439,6 +439,18 @@ amended) to the record by history matching (`scripts/history_match.py`, emulator
 - The sibling universes of Calhoun 1971 (1, 2, 4 and 8 cells; Fig 3) were never fitted. They are
   the cleanest out-of-sample test: the same biology in smaller pens.
 - Then the guard v2 / predictive-check protocol against the record on fresh seeds.
+- **Done 2026-11-11** (NOTES; `scripts/replica_validate.py`; fresh seeds 9200–9307).
+  - **Calhoun's pen:** the record lies inside the 5–95 % range for 11 of 20 targets, several of
+    them only because the ensemble is bistable. Peak N, N@736–960, brood groups, empty boxes,
+    never fought or mated, and the late sex ratio are outside.
+  - **Sibling universes:** the 1-cell universe matches. The replica's plateau per cell falls
+    with pen size (171 → 69), while the record's stays at 130–180.
+    - A post-hoc diagnostic traces this to hopper facilitation (M3): an 8-cell pen holds 81 per
+      cell with it and 185 without.
+  - **Marsden transfer** (best member): the pattern matches the record (colony males sire
+    nothing, and stock males rescue the females), but the rescue is too strong.
+  - **Not met: the validation standard.** The open questions are in NOTES ("Replica v2 — state
+    at the end of M1–M6").
 
 ## Validation standard (fixed now; applied from M2 on)
 

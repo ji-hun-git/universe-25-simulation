@@ -1,5 +1,127 @@
 # Universe25 Play — NOTES
 
+## 2026-11-11 — Replica v2 M6: out of sample the replica misses the record; the sibling universes contradict the hopper sink
+
+**Design** (`docs/REPLICA_V2.md` M6; `scripts/replica_validate.py`). The seed bands were
+registered in `docs/SEEDS.md` before use. The M5 fallback ensemble (12 members, flagged) ran on
+fresh seeds:
+- Calhoun's pen: 48 runs, member i mod 12 on seed 9200 + i.
+- The sibling universes of Calhoun 1971 Fig 3: 1, 2, 4 and 8 open cells, 12 seeds each
+  (9248–9295), 900 days, no removal. Time is aligned to the first surviving litter, as in the
+  record.
+- The Marsden transfer with the best member (9296–9307).
+
+**Calhoun's pen** (48 fresh seeds; the record against the replica's 5–95 % range; * = outside):
+
+| target | record | replica median [5–95 %] |
+|---|---|---|
+| first litters | 50–104 | 50 [37, 56] |
+| N@315 | 620 | 858 [475, 1198] |
+| adults @315 | 150 | 402 [220, 827] * |
+| peak N | 2200 | 1333 [1109, 1826] * |
+| plateau onset | 560 | 516 [340, 1413] |
+| N@736 / 811 / 960 | 2056 / 1871 / 1650 | 1090 / 1082 / 988 * (all three) |
+| last surviving birth | 600 | 1578 [580, 1578] |
+| last conception | 920 | 1599 [552, 1599] |
+| N@1444 | 122 | 993 [29, 1592] |
+| N@1588 | 27 | 946 [4, 1562] |
+| phase-B doubling | 55 | 47 [41, 56] |
+| phase-C doubling | 105–145 | 361 [131, 2000] |
+| male share @315 | 0.40 | 0.47 [0.39, 0.53] |
+| male share @1444 | 0.18 | 0.32 [0.20, 0.41] * |
+| empty boxes @560 | 0.25 | 0.42 [0.29, 0.69] * |
+| withdrawn @560 | 0.32 | 0.07 [0.00, 0.85] |
+| never fought or mated @800 | 0.53 | 0.00 [0.00, 0.36] * |
+| brood groups by 315 | 14 | 24.5 [17, 31] * |
+
+The record is inside 11 of 20 ranges. Several of those are inside only because the ensemble is
+bistable: the 5–95 % ranges of N@1,444, N@1,588, last conception and withdrawn share span both
+the collapsing and the plateauing regime. The median run does not collapse.
+
+**Sibling universes** (N at T days after the first surviving litter; record vs replica median
+[5–95 %]):
+
+| cells | end of phase B | end of phase C | later | per cell, later (record) |
+|---|---|---|---|---|
+| 1 | T142: 60 vs 116 [48, 180] | T293: 181 vs 176 [96, 221] | T498: 185 vs 171 [63, 190] | 171 (180) |
+| 2 | T150: 113 vs 223 [106, 292] | T298: 340 vs 219 * | T602: 330 vs 195 * | 98 (175) |
+| 4 | T230: 143 vs 407 * | T453: 507 vs 376 * | T573: 490 vs 350 * | 87 (130) |
+| 8 | T190: 240 vs 396 * | T378: 1120 vs 573 * | T513: 1100 vs 605 * | 76 (142) |
+| 16 (the pen) | T251: 640 vs 780 | T493: 2200 vs 1168 * | T692: 2250 vs 1102 * | 69 (138) |
+
+- The 1-cell universe matches at all three times.
+- The replica's plateau per cell falls with pen size (171 → 69); the record's stays at 130–180.
+- **Diagnostic, post hoc** (best member, 8 cells, training seeds 7000–7003). The pen holds 81 mice
+  per cell with hopper facilitation and 185 without (record 138).
+  - So M3's cross-cell hopper aggregation, through pup loss in the aggregated cells, makes the
+    plateau depend on pen size.
+  - The sibling universes say it should not. The aggregation mechanism as implemented is
+    contradicted by data it was never fitted to.
+
+**Marsden transfer, best member** (fresh seeds 9296–9307):
+
+| | conceptions | females conceived | littered | pups to 14 d |
+|---|---|---|---|---|
+| colony males | 0 [0, 12] | 0 | 0 | 0 |
+| fresh stock males | 27 [20, 39] | 10 of 16 | 10 | 32 |
+| record | 0; with stock males 6 of 16 conceived | | 3 | 5 |
+
+- Unlike M4, the pattern matches the record. The colony's males are the bottleneck: their
+  courtship capacity is eroded to 0.00, while female competence is 0.90.
+- Stock males rescue the females, but the rescue is too strong, so the model's females are
+  healthier than Calhoun's.
+
+**Reading.**
+- **The replica does not meet the validation standard.** Its peak is too low. It plateaus or
+  collapses by chance, and its structural numbers miss.
+- **The out-of-sample test was informative.** The sibling universes point at a specific
+  mechanism: hopper facilitation, coupled to local nursing disturbance. That mechanism also
+  capped the colony at about 1,200 in M3 and M4.
+- Because M6 found this, removing or revising the mechanism now would use the sibling data in
+  fitting. The siblings would then no longer be out of sample.
+
+## Replica v2 — state at the end of M1–M6 (2026-11-11)
+
+**Built.** Every mechanism sits behind a config field whose default reproduces the frozen 2m
+colony, which is still the reference and still bit-identical.
+- **The pen:** 16 triangular cells, 4 × 4 boxes per cell, hoppers, water, ring stands, box
+  feeding until day 160.
+- **Life history:** 48-day founders and no calendar gate.
+- **Territories:** owners, contests and sires.
+- **Owner behaviour:** fidelity and defence, with the centre as no-man's land.
+- **Boxes and feeding:** box choice with natal dispersal, and hopper facilitation.
+- **Individual breakdown:** care-driven development, exclusion stress, aggression by sex, wound
+  mortality.
+- **Pens of fewer cells,** with bookkeeping of fought / mated / littered.
+- **Tools:** the Marsden transfer, history matching with GP emulators, and fresh-seed validation
+  with the sibling universes.
+- **Process:** each milestone was preregistered, tested (golden hashes unchanged for every
+  frozen arm) and reported, including its misses.
+
+**What the replica reproduces:**
+- first litters with no gate;
+- territories in all 16 cells;
+- hopper aggregation;
+- a female-biased late sex ratio;
+- the Marsden transfer pattern (best member);
+- the 1-cell sibling universe's plateau.
+
+**What it does not:**
+- the 2,200 peak followed by the end of reproduction. M5 found no parameter set doing both
+  among 488 runs;
+- brood groups (about 24 against 14), withdrawn mice at the centre, the share that never fought
+  or mated, and box vacancy;
+- the sibling universes larger than one cell.
+
+**Open questions, Jason's call:**
+1. Hopper facilitation as implemented is contradicted by the siblings. Dropping or revising it
+   would need a fresh out-of-sample check, as there is no other unfitted record left.
+2. Is the record's collapse a delayed multi-generational mechanism (care across generations),
+   or one draw from a bistable system? The record has n = 1, and the model's best region is
+   bistable.
+3. Whether any replica configuration becomes the reference for new work. I recommend not
+   replacing the frozen 2m colony.
+
 ## 2026-11-11 — Replica v2 M5: history matching finds no parameter set that grows to 2,200 and then collapses
 
 **Design.** As preregistered in `docs/REPLICA_V2.md` (spec b468f4c, code 11ab904):
