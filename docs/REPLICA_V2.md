@@ -249,6 +249,68 @@ behind its own field (default off = M2 unchanged).
 - *Recovery tests:* the Marsden transfers, and the Kessler and Hammock recoveries, measure what
   the irreversibility assumption costs.
 
+**M4 specification (fixed 2026-11-11 before code; a priori values, not fitted).** M3 showed
+that the frozen collapse is switched by colony-wide weaned density: a colony held below it
+never collapses. M4 removes every colony-wide term and lets breakdown come from each animal's
+experience. Each mechanism sits behind its own field; the default is M3.
+- **Individual breakdown** (`biology.breakdown_scope: individual`). This removes the frozen
+  biology's three colony-wide terms:
+  - the breakdown stress boost (the weaned-density switch);
+  - the colony-wide developmental exposure;
+  - the conception suppression by colony density (N / design capacity).
+
+  What remains is individual: stress from the animal's cell density, its box, its fights and
+  its displacements; development from its local exposure and the care it received (below).
+- **Development from care** (`biology.care_imprint_gain`, a priori 1.0, the weight the
+  colony-wide exposure had). A pup loses competence at `imprint_rate` × gain × its care deficit
+  per day, on top of its local exposure. The deficit is max(0, hunger − 0.5) while it has a
+  box, and 1 while it has none (abandoned or evicted). Calhoun: mothers rejected their young
+  prematurely in mid-phase C, and young reared so never acquired adult behaviour.
+- **Exclusion stress** (`biology.exclusion_stress`, a priori 0.05, half a lost fight). Every
+  displacement by a territory owner adds it to the displaced male. Withdrawal can then come from
+  role saturation.
+- **Aggression by sex** (`biology.aggression_targets: by_sex`; the frozen rule is `any`).
+  - A male attacks only lower-ranked males within 6 in.
+  - A female attacks only while nursing, and then any lower-ranked animal within 6 in
+    (maternal aggression, which in phase C reached her own young).
+  - The draw is unchanged. Without a target there is no fight.
+
+  With this, wounds and wound mortality fall mostly on males (record: 22 M : 100 F at day
+  1,444).
+- **Wound mortality** (`biology.wound_mortality_scale`): the frozen hard-coded 0.02 per wound²
+  per day, now a field for M5. M4 keeps 0.02.
+- **Pens of fewer cells** (`geometry.open_cells`, calhoun layout). Only the listed cells exist:
+  - a move ending in a closed cell is undone;
+  - founders go to open cells;
+  - facilitation considers open neighbours only.
+
+  It serves the Marsden transfers below and M6's sibling universes.
+- **Categories** (bookkeeping only). Per animal: *fought* (either side of a fight or a contest),
+  *mated* (conceived or sired) and *littered*. For our purposes a "beautiful one" is an adult who
+  never fought or mated. Nest building is read as littering, which implies mating.
+- **Marsden transfer** (`scripts/replica_transfer.py`).
+  - At day 870 (Marsden's "at this writing"), 16 females and 8 males (adults, chosen at random)
+    move with their traits (age, rank, wounds, competence, maternal and courtship capacity) into
+    a fresh 4-cell pen. Stress starts at the spawn value, and there is no box-feeding period.
+  - The pen runs 60 days. The second arm replaces the 8 males with 8 fresh stock males
+    (100 days old, full competence).
+  - Measured: conceptions, litters, and pups alive at 14 days.
+  - Record: no sex, pregnancy or pups with the colony males. With competent stock males, 6 of 16
+    females conceived, 3 littered, and 5 pups of about 100 potential survived to day 14.
+- *Report* (training seeds 7000–7011, 1,600 d). The arms are cumulative: M3, + individual
+  breakdown and development from care, + exclusion stress, + aggression by sex (= M4). The
+  transfer runs on the M4 arm.
+- *M4 targets* (reported, not fitted; calibration is M5):
+  - Whether reproduction still ends without any colony-wide term: last conception, N@1,444 and
+    N@1,588. No target; the uncalibrated values will move.
+  - Share of 131–320-day-olds at day 800 who never fought or mated: 0.53 (± 0.15).
+  - Withdrawn share of the weaned at day 560: 0.32 (± 0.10).
+  - Withdrawn within 12 in of the centre: > 0.09.
+  - Male share of the weaned: 0.40 at day 315 (± 0.05), and below 0.5 at day 1,444 (record
+    0.18).
+  - Marsden transfer: 0 conceptions with the colony's males, and more with stock males.
+- The Kessler and Hammock recoveries are not modelled: only abstracts were reachable.
+
 **M5 — landmarks and recalibration.**
 - *Expanded landmark set:*
   - plateau onset as the peak day;
