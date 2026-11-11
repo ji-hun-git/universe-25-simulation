@@ -163,6 +163,63 @@ frozen colony. Each one ends with an uncalibrated run of the replica that shows 
   111 … 13); territories shrinking towards the ring stands in phase C; about 20 % of boxes empty
   at the peak.
 
+**M3 specification (fixed 2026-11-11 before code; no fitted parameter).** Four mechanisms, each
+behind its own field (default off = M2 unchanged).
+- **Fidelity** (`biology.territory_fidelity`). A male who owns or claims the cell he is in does
+  not leave it: after each decision's moves, his position is restored if he left that cell.
+  - On taking ownership, his box becomes the one in his cell with the fewest living occupants
+    (ties: lower level, then lower id).
+  - `ROLE_TERRITORIAL_MALE` then means an owner, and every other adult, non-withdrawn male is
+    subordinate. Roles do not enter the dynamics; this fixes the label.
+  - Sub-steps are refused with it.
+- **Defence** (`biology.territory_tolerance`: 3, Calhoun's basic group of 1 territorial male +
+  3 subordinate males + 6 females; unset = off).
+  - Territories exclude the central disc: points within 12 in of the pen centre
+    (`territory_centre_in`; 12 in is our centre measure; the record gives no radius). The
+    territory pass ignores males inside the disc, so they neither claim nor challenge.
+  - At each decision, an owner in his territory tolerates the `territory_tolerance`
+    lowest-ranked adult, non-withdrawn males there (ties: lower slot).
+  - Every other such male is displaced along his ray from the centre to 10 in from it, into the
+    no-man's land where the territories' apexes meet. Calhoun: excluded and withdrawn males
+    pooled in the floor centre. Nobody loses his box.
+- **Box choice** (`geometry.box_choice`). Two box assignments of the frozen colony change:
+  - the homeless rule, which took the nearest box;
+  - the destination of the overcrowding kick, which was a uniformly random box anywhere in the
+    pen.
+
+  An animal needing a box takes, in its current cell, the box below capacity (15 living
+  occupants) with the most occupants: aggregation, as in Calhoun's crowded boxes. Ties go to
+  the lower level (the effort of climbing), then the lower id. If every box of its cell is at
+  capacity, it takes the one with the fewest occupants. The kick keeps its draw; the
+  destination draw is no longer made.
+- **Hopper facilitation** (`geometry.hopper_facilitation`, Calhoun layout only). After the
+  reconfiguration day, a forager heads for the hopper with the most foragers at the previous
+  decision. The choice is among its own cell's hopper and its two neighbours' along the wall
+  (ties: its own, then the lower id). An owner or claimant under fidelity uses his own. This is
+  social facilitation, which Calhoun's mesh hoppers were designed to permit.
+- *Report* (training seeds 7000–7011, 1,600 d), with cumulative arms: M2, + fidelity,
+  + defence, + box choice, + facilitation (= M3). Reported:
+  - the landmarks;
+  - owned cells;
+  - brood groups by day 315 and by day 338;
+  - subordinate males per owner;
+  - the share of weaned, withdrawn and excluded (adult, non-withdrawn, non-owner) males within
+    12 in of the centre;
+  - empty boxes at days 315 / 560 / 736;
+  - the largest hopper's share of the current foragers;
+  - owners' mean distance from their ring stand at days 315 and 560.
+- *M3 targets* (reported, not fitted; calibration is M5):
+  - 10–16 brood groups by day 315, skewed (M2 missed with 22);
+  - at least 10 owned cells at day 315 (territories ≈ 1.5 cells, 14 groups);
+  - 20–30 % of boxes empty at day 560 (1973: 20 %; 1971: 30 % empty or with 1–2 mice);
+  - withdrawn mice within 12 in of the centre at more than twice the disc's area share
+    (> 0.09), against 0 in M1 and M2;
+  - the largest hopper with at least twice a uniform share of foragers (> 0.125) after day 175.
+- *Reported, no target:*
+  - territory shrinkage towards the ring stands in phase C (no mechanism is designed for it);
+  - N@315 and the doubling times;
+  - the sex ratio.
+
 **M4 — breakdown and the behavioural categories.**
 - *Mothers:* maternal aggression and eviction of the young before weaning, mid-phase C (about
   day 437).
