@@ -25,7 +25,12 @@
 >     targets.
 >   - With facilitation, the colony holds at about 1,200 and never collapses. Pup loss in the
 >     sink keeps it below the frozen breakdown's colony-wide density threshold.
->   Next, Jason's call: M4, breakdown from individual experience.
+>   M4 is done: individual breakdown, development from care, exclusion stress, aggression by
+>   sex, natal dispersal (amendment), open cells, the Marsden transfer.
+>   - Without colony-wide terms, the colony collapses only with lifelong natal boxes.
+>   - With dispersal it holds at about 1,100.
+>   M5 (history matching, `scripts/history_match.py`) and M6 (`scripts/replica_validate.py`,
+>   fresh seeds 9200–9295) follow (Jason: "try to finish the project").
 > - Tier 2 done (2026-11-11): P4-15 failed its primary test, and the program-level stop rule
 >   applies (no further substrate change for PPO learners). Next: H-g / playground-off, `evo`,
 >   or replica v2 (Tier 3) — Jason's call.

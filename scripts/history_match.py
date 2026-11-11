@@ -258,6 +258,50 @@ def sample_nroy(em: Emulators, n: int, seed: int, max_rounds: int = 12) -> tuple
     return pts[sel], frac
 
 
+def write_ensemble(runs: list[dict], path: Path) -> None:
+    """Score each ensemble member (wave 99) on the mean of its seeds' outputs, on the
+    comparison scale, with the seed noise of the final emulators divided by the number of
+    seeds. Members pass if the second-largest implausibility is <= CUT. If none pass, the
+    12 best are written with fallback = true (and the report says so)."""
+    em = Emulators([r for r in runs if r["wave"] != 99])
+    groups: dict[str, list[dict]] = {}
+    for r in runs:
+        if r["wave"] == 99:
+            groups.setdefault(json.dumps([round(v, 10) for v in r["u"]]), []).append(r)
+    scored = []
+    for rs in groups.values():
+        k = len(rs)
+        Ii, means = [], {}
+        for name in OUTPUTS:
+            ys = np.array([r["outputs"].get(name, np.nan) for r in rs], float)
+            ys = ys[np.isfinite(ys)]
+            if not ys.size:
+                Ii.append(np.inf)
+                continue
+            yt = float(np.mean(transform(name, ys)))
+            means[name] = yt
+            z, var = target(name)
+            vn = (em.gp[name].n2 * em.gp[name].sd ** 2 / ys.size) if name in em.gp else 0.0
+            Ii.append(abs(z - yt) / np.sqrt(var + vn))
+        Ii = np.array(Ii)
+        scored.append({"u": rs[0]["u"], "params": rs[0]["params"],
+                       "seeds": [r["seed"] for r in rs], "n_seeds": k,
+                       "i2": float(np.sort(Ii)[-2]), "imax": float(Ii.max()),
+                       "implausibility": dict(zip(OUTPUTS, map(float, Ii)))})
+    scored.sort(key=lambda m: m["i2"])
+    passing = [m for m in scored if m["i2"] <= CUT]
+    members = passing or scored[:12]
+    path.write_text(json.dumps({
+        "criterion": f"second-largest implausibility <= {CUT} on the mean of the member's seeds",
+        "n_sampled": len(scored), "n_pass": len(passing), "fallback": not passing,
+        "members": members}, indent=1, default=float), encoding="utf-8")
+    print(f"{len(scored)} members scored, {len(passing)} pass; wrote {len(members)} to {path}")
+    for m in scored[:10]:
+        worst = sorted(m["implausibility"].items(), key=lambda t: -t[1])[:3]
+        print(f"  I2 {m['i2']:.2f} Imax {m['imax']:.2f}; worst: "
+              + ", ".join(f"{n} {v:.1f}" for n, v in worst))
+
+
 def main() -> int:
     from scipy.stats import qmc
 
@@ -268,6 +312,7 @@ def main() -> int:
     p.add_argument("--fit", action="store_true")
     p.add_argument("--ensemble", type=int)
     p.add_argument("--seeds", default="7000-7003")
+    p.add_argument("--write-ensemble", help="path: score the ensemble runs, write members")
     a = p.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
     if a.wave:
@@ -325,6 +370,9 @@ def main() -> int:
             "best": [{"i2": float(i2), "imax": float(im), "key": r["key"], "u": r["u"],
                       "params": r["params"], "outputs": r["outputs"]} for i2, im, r in rows[:20]],
         }, indent=1, default=float), encoding="utf-8")
+        return 0
+    if a.write_ensemble:
+        write_ensemble(runs, Path(a.write_ensemble))
         return 0
     if a.ensemble:
         em = Emulators(runs)

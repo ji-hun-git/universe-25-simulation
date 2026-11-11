@@ -25,7 +25,10 @@ passed to the generator, not simulation seeds.
 | 9048–9095 | calibration reference (Tier 1) | posterior predictive check with the removal event |
 | 9500–9504 | detector negative control (Tier 1) | rules v8 simulator negative control (random v5 nets, init 7005 / 7006) |
 | 9100–9111 | evaluation, P4-15 (preregistered 2026-11-10) | the consequence-sensitivity test (A1 vs random net); the first decisive use of the band |
-| 9096–9099, 9112–9499, 9505–9999 | **reserved, fresh** | substrate-variant confirmation (24 seeds per variant) and future references |
+| 7000–7011 | replica v2 development (M1–M5) | every replica milestone report (M1–M4) and the M5 history-matching waves and ensemble (training seeds; not out-of-sample) |
+| 9200–9247 | replica v2 M6 validation (registered 2026-11-11, before use) | the M5 ensemble in Calhoun's pen, one member per seed: 90 % prediction intervals against the record |
+| 9248–9295 | replica v2 M6 sibling universes (registered 2026-11-11, before use) | 1, 2, 4 and 8 open cells, 12 seeds each in that order (Calhoun 1971 Fig 3) |
+| 9096–9099, 9112–9199, 9296–9499, 9505–9999 | **reserved, fresh** | substrate-variant confirmation (24 seeds per variant) and future references |
 
 ## Random-network init seeds (`MlpFrozenPolicy.random_init(s)`)
 
