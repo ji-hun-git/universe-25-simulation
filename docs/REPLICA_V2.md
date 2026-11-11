@@ -219,6 +219,19 @@ behind its own field (default off = M2 unchanged).
   - territory shrinkage towards the ring stands in phase C (no mechanism is designed for it);
   - N@315 and the doubling times;
   - the sex ratio.
+- **Done 2026-11-11** (NOTES; 12 training seeds).
+  - Targets met: all 16 cells owned; hopper aggregation (busiest cell 0.25 of foragers).
+  - Targets missed:
+    - brood groups by day 315: 24 against 10–16, with fast owner turnover;
+    - empty boxes at the peak: 0.60 against 0.20–0.30;
+    - withdrawn mice at the centre: 0.00. The excluded males pool there instead (0.59).
+  - **With facilitation the colony never collapses.** It holds at about 1,200 until day 1,600,
+    conceiving to the end.
+    - The cause is pup loss in the aggregated cells, through the frozen nursing disturbance.
+      Hopper capacity is not involved.
+    - That loss keeps the colony below the colony-wide density that switches on the frozen
+      breakdown.
+    - So the frozen collapse needs a fixed colony-wide density, which is M4's to replace.
 
 **M4 — breakdown and the behavioural categories.**
 - *Mothers:* maternal aggression and eviction of the young before weaning, mid-phase C (about

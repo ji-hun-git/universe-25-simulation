@@ -1,5 +1,93 @@
 # Universe25 Play — NOTES
 
+## 2026-11-11 — Replica v2 M3: territories settle and hoppers aggregate; the aggregated colony never collapses
+
+**Design.** Jason: "Start M3". The specification was committed before code (aec8958,
+`docs/REPLICA_V2.md`), with no fitted parameter. Four mechanisms, each behind its own field:
+- **Fidelity:** owners and claimants keep to their cell. An owner takes his cell's emptiest box,
+  and the territorial role means an owner.
+- **Defence:** an owner tolerates the 3 lowest-ranked adult males (Calhoun's basic group) and
+  displaces the rest to 10 in from the centre. Territories exclude the 12-in centre disc.
+- **Box choice:** an animal needing a box takes the fullest box below capacity in its cell
+  (lower level on ties), else the emptiest.
+- **Hopper facilitation:** after day 160 a forager goes to the busiest of its own and its two
+  neighbours' hoppers, counted at the previous decision.
+
+**Checks.**
+- With every M3 flag off, all eight golden arms are unchanged, M2's replica arm included. Only
+  `replica_v2` was refreshed (now M3), and the report's M2 arm reproduces the M2 hash exactly.
+- `test_m3_mechanisms` covers the guards and each mechanism. The fast tier passes, H2 audit
+  included.
+- After the code was written, a one-seed sanity run and a one-seed turnover count were made.
+  No rule or parameter was changed after them.
+
+**M3 report** (training seeds 7000–7011, 1,600 d; `_output/replica_report_m3.json`). The arms
+are cumulative: M2, + fidelity, + defence, + box choice, + facilitation (= M3). Medians
+[5–95 %]; * = the record lies outside the range.
+
+| landmark | Calhoun | M2 | + fidelity | + defence | + box choice | M3 |
+|---|---:|---|---|---|---|---|
+| N@315 | 620 | 1559 * | 2348 * | 2355 * | 1826 * | 1089 [1042, 1164] * |
+| peak N | 2200 | 2394 * | 2563 * | 2560 * | 2450 * | 1377 [1352, 1433] * |
+| peak day | 560 | 393 * | 338 * | 339 * | 372 * | 1129 [514, 1284] |
+| N@736 | 2056 | 2050 | 2044 | 2043 | 2037 | 1214 * |
+| last conception | 920 | 863 * | 825 * | 831 * | 852 * | 1599 (end of run) * |
+| N@1444 | 122 | 30 * | 17 * | 12 * | 24 * | 1259 [1222, 1289] * |
+| N@1588 | 27 | 4 * | 1 * | 1 * | 2 * | 1220 * |
+| phase-B doubling | 55 d | 39 * | 38 * | 38 * | 40 * | 45 [41, 48] * |
+
+Structure and territories (medians; day 560 unless stated):
+
+| | M2 | + fidelity | + defence | + box choice | M3 | Calhoun / target |
+|---|---|---|---|---|---|---|
+| owned cells (day 315) | 7.5 | 16 | 16 | 16 | 16 | ≥ 10 |
+| brood groups by day 315 | 22 | 35 | 30.5 | 28 | 24 [22, 32] | 10–16 (14) |
+| largest group by day 338 | 377 | 368 | 414 | 544 | 673 | 111 |
+| takeovers by day 315 | 26 | 40 | 27 | 24 | 26 | — |
+| subordinate males per owner | 35 | 13.5 | 14 | 12.8 | 5.4 | 3 |
+| empty boxes | 0.00 | 0.00 | 0.00 | 0.36 | 0.60 | 0.20–0.30 |
+| withdrawn within 12 in of the centre | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | > 0.09 |
+| excluded males within 12 in of the centre | 0.00 | 0.00 | 0.78 | 0.76 | 0.59 | pooled there |
+| busiest cell's share of foragers | 0.09 | 0.09 | 0.08 | 0.09 | 0.25 | > 0.125 |
+| owners' distance from ring stand (in), day 315 → 560 | 18.4 → 17.9 | 18.8 → 19.0 | 18.9 → 19.0 | 18.9 → 18.7 | 18.4 → 18.9 | < 12 in phase C |
+| founding males dead by day 60 | 0 | 0 | 0 | 0 | 0 | 2 of 4 |
+
+**Against the M3 targets** (reported, not fitted):
+- **Met:**
+  - owned cells (16 from day ~250 on);
+  - hopper aggregation (busiest cell 0.25 of the foragers, four times uniform).
+- **Missed:**
+  - brood groups (24 against 10–16). Owners are defeated after a median 19 days in one seed
+    (51 takeovers by day 315). Males are born at rank 0.4–0.8, so many maturing males sit within
+    0.15 of the owner, even among the three he tolerates.
+  - empty boxes at the peak (0.60 in M3, 0.36 with box choice alone, against 0.20–0.30).
+    Aggregating into the fullest box overshoots.
+  - the withdrawn at the centre (0.00 everywhere). The excluded, non-withdrawn males pool there
+    instead. Withdrawn animals reach the centre only while choosing WITHDRAW; feeding and their
+    boxes pull them back to the walls.
+- **No shrinkage towards the ring stands.** None was designed in. Owners average about 19 in
+  from it in every phase.
+
+**The main finding: the aggregated colony never collapses.** With hopper facilitation, the colony
+peaks at about 1,380, sits at about 1,200–1,260 from day 500 to 1,600, and conceives until the
+end of the run. The record collapsed to 27.
+- **What it is not:** hopper capacity. No meal was refused in three seeds, with or without
+  facilitation, and no weaned animal starved (hunger > 1.2, days 300–500).
+- **What it is:** pup survival. Between days 300 and 400, conceptions change little (520–561 vs
+  590–665). Pups weaned fall by half (453–586 vs 943–1,238).
+  - Aggregation puts about 20 % of the weaned in one cell, so mothers feel a higher local
+    density (0.70 vs 0.60 of a cell's design capacity).
+  - The frozen biology's nursing disturbance is driven by local density.
+- **Why that stops the collapse:** the frozen biology's breakdown is switched by colony-wide
+  weaned density, at about 2,200 weaned. A colony held near 1,200 by pup loss in the sink never
+  reaches it. So it neither breaks down nor dies out; stress is lower, too (0.36 vs 0.47).
+- **What it shows about the frozen biology:** its collapse depends on reaching a fixed
+  colony-wide density. Calhoun's colony showed the sink and pup loss and still reached 2,200
+  and collapsed. M4 (breakdown driven by each animal's own care and experience, not a
+  colony-wide count) is where this has to change.
+- **Not changed:** M3 changed no biology parameter. Without facilitation (+ box choice) the old
+  arc returns, with peak day 372 and N@1444 24.
+
 ## 2026-11-11 — Replica v2 M2: no calendar gate, first litters at day 49; territories slow phase B but too few cells settle
 
 **Design.** Jason: "Start M2". The specification and targets were committed before code

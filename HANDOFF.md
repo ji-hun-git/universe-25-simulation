@@ -19,7 +19,13 @@
 >   - First litters fall at day 49 with no gate.
 >   - Growth is still too fast (N@315 1,559 vs 620).
 >   - Only about 7.5 cells settle, giving 22 brood groups vs 14.
->   Next, Jason's call: M3, owner behaviour and box choice.
+>   M3 is done: fidelity, defence, box choice and hopper facilitation, each behind its own field.
+>   - All 16 cells are owned, and hoppers aggregate.
+>   - Brood groups (24), empty boxes (0.60) and withdrawn mice at the centre (0) miss their
+>     targets.
+>   - With facilitation, the colony holds at about 1,200 and never collapses. Pup loss in the
+>     sink keeps it below the frozen breakdown's colony-wide density threshold.
+>   Next, Jason's call: M4, breakdown from individual experience.
 > - Tier 2 done (2026-11-11): P4-15 failed its primary test, and the program-level stop rule
 >   applies (no further substrate change for PPO learners). Next: H-g / playground-off, `evo`,
 >   or replica v2 (Tier 3) — Jason's call.
