@@ -1,0 +1,344 @@
+#!/usr/bin/env python
+"""Replica v2 M5: history matching of the replica to the record (docs/REPLICA_V2.md).
+
+Each run is configs/replica_v2.yaml with the PARAMS overrides, one training seed (7000-7011 in
+turn), 1,600 days. Each OUTPUT has a record value z, an observation sd (the record's own
+uncertainty) and a model-discrepancy sd, and some are compared on a log scale. A GP emulator
+(universe25.calib.emulator) per output, refitted on every run so far, gives the implausibility
+
+    I_i(x) = |z_i - E f_i(x)| / sqrt(obs_i^2 + md_i^2 + emulator var + seed-noise var)
+
+and the not-ruled-out-yet (NROY) space is {x : the second-largest I_i(x) <= 3}. Wave 1 is a
+Latin hypercube over the parameter box. Wave k > 1 samples the current NROY space uniformly
+(rejection from the box, then local perturbation if it is small).
+
+usage:
+  python scripts/history_match.py --wave 1 --n 200 [--workers 8]
+  python scripts/history_match.py --wave 2 --n 200       (fits on waves < 2, samples NROY, runs)
+  python scripts/history_match.py --fit                  (emulator diagnostics, NROY size, best)
+  python scripts/history_match.py --ensemble 12 --seeds 7000-7003   (NROY members x seeds)
+Runs are cached in _output/hm/runs.jsonl (resumable); designs in _output/hm/.
+"""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import sys
+import time
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from pathlib import Path
+
+import numpy as np
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))
+sys.path.insert(0, str(ROOT / "scripts"))
+
+OUT = ROOT / "_output" / "hm"
+CONF = "replica_v2.yaml"
+DAYS = 1600.0
+TRAIN_SEEDS = tuple(range(7000, 7012))
+CUT = 3.0
+
+# (group, name, low, high, log)
+PARAMS = [
+    ("biology", "breeding_p_base", 0.2, 0.95, False),
+    ("biology", "litter_mean", 4.5, 7.5, False),
+    ("biology", "maturity_days", 42.0, 70.0, False),
+    ("biology", "imprint_rate", 0.003, 0.1, True),
+    ("biology", "imprint_density_threshold", 0.05, 0.6, False),
+    ("drives", "stress_density_gain", 0.15, 1.2, False),
+    ("drives", "stress_decay", 0.5, 1.5, False),
+    ("biology", "nest_overcrowd_stress", 0.0, 0.5, False),
+    ("biology", "maternal_erosion_stress", 0.25, 0.8, False),
+    ("biology", "courtship_erosion_stress", 0.25, 0.8, False),
+    ("biology", "withdrawn_competence_threshold", 0.1, 0.6, False),
+    ("biology", "care_imprint_gain", 0.0, 3.0, False),
+    ("biology", "exclusion_stress", 0.0, 0.15, False),
+    ("biology", "wound_mortality_scale", 0.005, 0.3, True),
+    ("biology", "base_mortality_per_day", 5e-5, 1.5e-3, True),
+    ("biology", "young_mortality_scale", 0.1, 1.0, False),
+    ("biology", "nurse_disturb_coef", 0.0, 8.0, False),
+    ("biology", "stress_mortality_scale", 2e-4, 0.02, True),
+    ("biology", "litter_abandon_p", 0.0, 0.6, False),
+    ("biology", "maternal_neglect_stress", 0.3, 0.9, False),
+]
+# name: (z, obs sd, discrepancy sd, log offset or None)
+OUTPUTS = {
+    "first_litters_day": (77.0, 13.5, 0.0, None),  # record 50-104 (contested)
+    "n_at_day_315": (620.0, 31.0, 62.0, 10.0),
+    "adults_at_day_315": (150.0, 15.0, 30.0, 10.0),
+    "peak_n": (2200.0, 110.0, 220.0, 10.0),
+    "plateau_onset_day": (560.0, 20.0, 30.0, None),
+    "n_at_day_736": (2056.0, 103.0, 206.0, 10.0),
+    "n_at_day_811": (1871.0, 94.0, 187.0, 10.0),
+    "n_at_day_960": (1650.0, 83.0, 165.0, 10.0),
+    "last_young_day": (600.0, 15.0, 30.0, None),
+    "last_conception_day": (920.0, 20.0, 40.0, None),
+    "n_at_day_1444": (122.0, 12.0, 40.0, 10.0),  # after ~150 removed (removal event on)
+    "n_at_day_1588": (27.0, 5.0, 15.0, 10.0),
+    "doubling_b": (55.0, 5.0, 8.0, 0.0),
+    "doubling_c": (125.0, 10.0, 15.0, 0.0),  # record 105-145 (contested); 315 -> plateau onset
+    "male_share_315": (0.40, 0.03, 0.05, None),
+    "male_share_1444": (0.18, 0.03, 0.06, None),
+    "empty_boxes_560": (0.25, 0.05, 0.05, None),
+    "withdrawn_560": (0.32, 0.05, 0.10, None),
+    "beautiful_800": (0.53, 0.05, 0.10, None),
+    "brood_groups_315": (14.0, 1.0, 3.0, None),
+}
+DOUBLING_CAP = 2000.0  # a doubling time that is undefined (no growth) is scored as this
+
+
+def to_params(u: np.ndarray) -> dict:
+    """Unit-cube point -> nested config overrides."""
+    over: dict = {}
+    for (g, k, lo, hi, lg), v in zip(PARAMS, u):
+        val = float(np.exp(np.log(lo) + v * (np.log(hi) - np.log(lo))) if lg
+                    else lo + v * (hi - lo))
+        over.setdefault(g, {})[k] = val
+    return over
+
+
+def key_of(u: np.ndarray, seed: int) -> str:
+    return hashlib.sha1((",".join(f"{v:.10f}" for v in u) + f"|{seed}").encode()).hexdigest()
+
+
+def outputs(r: dict) -> dict[str, float]:
+    lm, st, tr = r["landmarks"], r["struct"], r.get("territory", {})
+    n = np.asarray(r["n_series"], float)  # N at day i + 1
+
+    def at(day: float) -> float:
+        i = int(round(day)) - 1
+        return float(n[i]) if 0 <= i < n.size else float("nan")
+
+    t97 = lm.get("peak_day_97pct", float("nan"))
+    n315, n97 = at(315.0), at(t97)
+    dc = ((t97 - 315.0) * np.log(2.0) / np.log(n97 / n315)
+          if np.isfinite(t97) and t97 > 315.0 and n315 > 0 and n97 > n315 else DOUBLING_CAP)
+    db = lm.get("doubling_time_phase_b_days", float("nan"))
+    db = db if np.isfinite(db) else DOUBLING_CAP
+
+    def s(day: str, k: str) -> float:
+        return float(st.get(day, {}).get(k, float("nan")))
+
+    return {
+        "first_litters_day": lm.get("first_litters_day", float("nan")),
+        "n_at_day_315": n315,
+        "adults_at_day_315": lm.get("adults_at_day_315", float("nan")),
+        "peak_n": lm.get("peak_n", float("nan")),
+        "plateau_onset_day": t97,
+        "n_at_day_736": at(736.0) if n.size >= 736 else 0.0,
+        "n_at_day_811": at(811.0) if n.size >= 811 else 0.0,
+        "n_at_day_960": at(960.0) if n.size >= 960 else 0.0,
+        "last_young_day": lm.get("last_young_day", float("nan")),
+        "last_conception_day": lm.get("last_conception_day", float("nan")),
+        "n_at_day_1444": at(1444.0) if n.size >= 1444 else 0.0,
+        "n_at_day_1588": at(1588.0) if n.size >= 1588 else 0.0,
+        "doubling_b": min(db, DOUBLING_CAP),
+        "doubling_c": min(dc, DOUBLING_CAP),
+        "male_share_315": s("315", "male_share"),
+        "male_share_1444": s("1444", "male_share"),
+        "empty_boxes_560": s("560", "empty_box_share"),
+        "withdrawn_560": s("560", "withdrawn_share"),
+        "beautiful_800": s("800", "beautiful_share"),
+        "brood_groups_315": float(len(tr.get("brood_sizes_315", []))),
+    }
+
+
+def transform(name: str, y: np.ndarray) -> np.ndarray:
+    off = OUTPUTS[name][3]
+    return np.log(np.maximum(y, 0.0) + off) if off is not None else y
+
+
+def target(name: str) -> tuple[float, float]:
+    """(z, total observation + discrepancy variance) on the comparison scale."""
+    z, so, sm, off = OUTPUTS[name]
+    var = so ** 2 + sm ** 2
+    if off is not None:
+        return float(np.log(z + off)), var / (z + off) ** 2
+    return z, var
+
+
+def run_job(job: tuple[str, list[float], int, int]) -> dict:
+    from replica_report import run_one
+
+    key, u, seed, wave = job
+    over = to_params(np.asarray(u))
+    t0 = time.perf_counter()
+    _, _, r = run_one(("hm", CONF, over, seed, DAYS))
+    return {"key": key, "wave": wave, "u": u, "seed": seed, "params": over,
+            "outputs": outputs(r), "secs": time.perf_counter() - t0,
+            "n_series": r["n_series"]}
+
+
+def load_runs() -> list[dict]:
+    path = OUT / "runs.jsonl"
+    if not path.exists():
+        return []
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
+
+
+def run_jobs(jobs: list[tuple], workers: int) -> None:
+    done = {r["key"] for r in load_runs()}
+    todo = [j for j in jobs if j[0] not in done]
+    print(f"{len(jobs)} jobs, {len(todo)} to run ({len(jobs) - len(todo)} cached)", flush=True)
+    if not todo:
+        return
+    t0 = time.perf_counter()
+    with ProcessPoolExecutor(max_workers=workers) as ex, \
+            (OUT / "runs.jsonl").open("a", encoding="utf-8") as fh:
+        futs = [ex.submit(run_job, j) for j in todo]
+        for k, f in enumerate(as_completed(futs), 1):
+            fh.write(json.dumps(f.result(), default=float) + "\n")
+            fh.flush()
+            if k % 10 == 0 or k == len(todo):
+                print(f"  {k}/{len(todo)} done, {time.perf_counter() - t0:.0f} s", flush=True)
+
+
+class Emulators:
+    def __init__(self, runs: list[dict]) -> None:
+        from universe25.calib.emulator import GP
+
+        self.gp: dict = {}
+        self.loo: dict = {}
+        U = np.array([r["u"] for r in runs])
+        for name in OUTPUTS:
+            y = np.array([r["outputs"].get(name, np.nan) for r in runs], float)
+            ok = np.isfinite(y)
+            if ok.sum() < 20:
+                continue
+            yt = transform(name, y[ok])
+            gp = GP(U[ok], yt, restarts=3, seed=11)
+            self.gp[name] = gp
+            m, v = gp.loo()
+            self.loo[name] = float(np.mean(np.abs(yt - m) / np.sqrt(v) > 3.0))
+
+    def impl(self, U: np.ndarray) -> np.ndarray:
+        """(points, outputs) implausibility; NaN where an output has no emulator."""
+        cols = []
+        for name in OUTPUTS:
+            if name not in self.gp:
+                cols.append(np.full(len(U), np.nan))
+                continue
+            z, var = target(name)
+            m, ve, vn = self.gp[name].predict(U)
+            cols.append(np.abs(z - m) / np.sqrt(var + ve + vn))
+        return np.stack(cols, axis=1)
+
+
+def kth_max(I: np.ndarray, k: int) -> np.ndarray:
+    J = np.where(np.isfinite(I), I, -np.inf)
+    return -np.sort(-J, axis=1)[:, k - 1]
+
+
+def sample_nroy(em: Emulators, n: int, seed: int, max_rounds: int = 12) -> tuple[np.ndarray, float]:
+    rng = np.random.default_rng(seed)
+    d = len(PARAMS)
+    keep, tried = [], 0
+    for _ in range(max_rounds):
+        C = rng.random((100_000, d))
+        tried += len(C)
+        ok = kth_max(em.impl(C), 2) <= CUT
+        keep.extend(C[ok])
+        if len(keep) >= 5 * n:
+            break
+    frac = len(keep) / tried
+    pts = np.array(keep) if keep else np.empty((0, d))
+    while 0 < len(pts) < 5 * n:  # small NROY: perturb found points
+        P = np.clip(pts[rng.integers(0, len(pts), 20_000)]
+                    + rng.normal(0, 0.03, (20_000, d)), 0.0, 1.0)
+        ok = kth_max(em.impl(P), 2) <= CUT
+        pts = np.vstack([pts, P[ok]])
+        if not ok.any():
+            break
+    if len(pts) == 0:
+        return pts, frac
+    sel = rng.choice(len(pts), size=min(n, len(pts)), replace=False)
+    return pts[sel], frac
+
+
+def main() -> int:
+    from scipy.stats import qmc
+
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument("--wave", type=int)
+    p.add_argument("--n", type=int, default=200)
+    p.add_argument("--workers", type=int, default=8)
+    p.add_argument("--fit", action="store_true")
+    p.add_argument("--ensemble", type=int)
+    p.add_argument("--seeds", default="7000-7003")
+    a = p.parse_args()
+    OUT.mkdir(parents=True, exist_ok=True)
+    if a.wave:
+        if a.wave == 1:
+            U = qmc.LatinHypercube(d=len(PARAMS), seed=2511).random(a.n)
+            frac = 1.0
+        else:
+            runs = [r for r in load_runs() if r["wave"] < a.wave]
+            em = Emulators(runs)
+            U, frac = sample_nroy(em, a.n, seed=2511 + a.wave)
+            print(f"wave {a.wave}: NROY fraction of the box {frac:.4g} "
+                  f"(emulators on {len(runs)} runs); {len(U)} points")
+        jobs = [(key_of(u, TRAIN_SEEDS[i % 12]), [float(v) for v in u], TRAIN_SEEDS[i % 12],
+                 a.wave) for i, u in enumerate(U)]
+        (OUT / f"wave{a.wave}_design.json").write_text(
+            json.dumps({"nroy_fraction": frac, "jobs": jobs}), encoding="utf-8")
+        run_jobs(jobs, a.workers)
+        return 0
+    runs = load_runs()
+    if a.fit:
+        em = Emulators(runs)
+        print(f"{len(runs)} runs; emulators for {len(em.gp)} of {len(OUTPUTS)} outputs")
+        for name, gp in em.gp.items():
+            print(f"  {name:22s} LOO |e|>3sd {em.loo[name]:.3f}  nugget sd "
+                  f"{np.sqrt(gp.n2) * gp.sd:.3g}  shortest lengthscales "
+                  + ", ".join(f"{PARAMS[i][1]} {gp.ls[i]:.2f}" for i in np.argsort(gp.ls)[:3]))
+        C = np.random.default_rng(1).random((100_000, len(PARAMS)))
+        I = em.impl(C)
+        for k in (1, 2, 3):
+            print(f"  NROY fraction (k-th max <= {CUT}): k={k} {np.mean(kth_max(I, k) <= CUT):.4g}")
+        # the simulated runs, scored on their own outputs (seed noise from the emulators)
+        rows = []
+        for r in runs:
+            Ii = []
+            for name in OUTPUTS:
+                y = r["outputs"].get(name, np.nan)
+                if not np.isfinite(y):
+                    Ii.append(np.inf)
+                    continue
+                z, var = target(name)
+                vn = em.gp[name].n2 * em.gp[name].sd ** 2 if name in em.gp else 0.0
+                Ii.append(abs(z - transform(name, np.array([y]))[0]) / np.sqrt(var + vn))
+            Ii = np.array(Ii)
+            rows.append((np.sort(Ii)[-2], np.max(Ii), r))
+        rows.sort(key=lambda t: t[0])
+        print("best simulated runs (2nd-max / max implausibility):")
+        for i2, im, r in rows[:8]:
+            o = r["outputs"]
+            print(f"  wave {r['wave']} seed {r['seed']}: I2 {i2:.2f} Imax {im:.2f} | N315 "
+                  f"{o['n_at_day_315']:.0f} peak {o['peak_n']:.0f}@{o['plateau_onset_day']:.0f} "
+                  f"N736 {o['n_at_day_736']:.0f} N1444 {o['n_at_day_1444']:.0f} N1588 "
+                  f"{o['n_at_day_1588']:.0f} lastconc {o['last_conception_day']:.0f}")
+        (OUT / "fit_summary.json").write_text(json.dumps({
+            "n_runs": len(runs), "loo_out_3sd": em.loo,
+            "best": [{"i2": float(i2), "imax": float(im), "key": r["key"], "u": r["u"],
+                      "params": r["params"], "outputs": r["outputs"]} for i2, im, r in rows[:20]],
+        }, indent=1, default=float), encoding="utf-8")
+        return 0
+    if a.ensemble:
+        em = Emulators(runs)
+        U, frac = sample_nroy(em, a.ensemble, seed=9901)
+        lo, hi = (int(v) for v in a.seeds.split("-"))
+        jobs = [(key_of(u, s), [float(v) for v in u], s, 99) for u in U
+                for s in range(lo, hi + 1)]
+        (OUT / "ensemble_design.json").write_text(
+            json.dumps({"nroy_fraction": frac, "jobs": jobs}), encoding="utf-8")
+        run_jobs(jobs, a.workers)
+        return 0
+    p.print_help()
+    return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

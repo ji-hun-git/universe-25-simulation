@@ -50,7 +50,7 @@
     "deaths": 22
    },
    "replica_v2": {
-    "trajectory": "715699570f9234bd5b53e02c9611e6039b8a42fc7f0f70b323fc5fe678268ac5",
+    "trajectory": "6f9c02e38288ec8b5d38629d1808b4e109bedf4abc1a5bf54ad70079d241fb82",
     "n_alive": 66,
     "births": 58,
     "deaths": 0
@@ -108,10 +108,10 @@
     "deaths": 217
    },
    "replica_v2": {
-    "trajectory": "5de1d2b3f5ec6f9fd2b844c101b234d003f50b7312ec0555c425e24522ef7ed2",
-    "n_alive": 1127,
-    "births": 1606,
-    "deaths": 487
+    "trajectory": "bc5eb4b38983052c9b7aeba37c667f848135424a498ec66085733f640625b24c",
+    "n_alive": 1172,
+    "births": 1702,
+    "deaths": 538
    }
   }
  }

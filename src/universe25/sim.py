@@ -711,8 +711,9 @@ class Universe25Sim:
             ii = idx[m_agg]
             a.aggression[ii] = np.minimum(1.5, a.aggression[ii] + 0.05 * k)
             if decision:  # one fight per decision
+                r0 = a.rank.copy() if self.cfg.synchronous_fights else None
                 for i in ii:
-                    self._aggress(int(i))
+                    self._aggress(int(i), r0)
                 sd = 4.0 * dtr * 10
                 a.x[ii] = np.clip(a.x[ii] + self.rng.normal(0, sd, ii.size), 0.5, xmax)
                 a.y[ii] = np.clip(a.y[ii] + self.rng.normal(0, sd, ii.size), 0.5, ymax)
@@ -760,6 +761,8 @@ class Universe25Sim:
                 a.x[idx[back]], a.y[idx[back]] = x_before[back], y_before[back]
         # update cell + playground flags (vectorized; world.cells_of keeps the grid arithmetic)
         a.cell_id[idx] = self.world.cells_of(a.x[idx], a.y[idx]).astype(np.int16)
+        if self.cfg.fresh_cell_counts:  # methods fix: later readers see post-move counts
+            self._cell_counts_tick = -1
         if self.world.playground_enabled:
             x0, y0, x1, y1 = self.world.playground_bounds
             a.in_playground[idx] = (a.x[idx] >= x0) & (a.x[idx] <= x1) & (a.y[idx] >= y0) & (a.y[idx] <= y1)
@@ -830,6 +833,8 @@ class Universe25Sim:
             a.cell_id[out] = self.world.cells_of(a.x[out], a.y[out]).astype(np.int16)
             if bio.exclusion_stress > 0.0:  # M4: a displacement is a small defeat
                 a.stress[out] = np.minimum(1.5, a.stress[out] + float(bio.exclusion_stress))
+            if self.cfg.fresh_cell_counts:
+                self._cell_counts_tick = -1
 
     def _capacity_mask(self, ii: np.ndarray, per_day: float) -> np.ndarray:
         """Replica v2: which of the agents `ii` (all at a resource this decision) are served,
@@ -1125,14 +1130,16 @@ class Universe25Sim:
         a.x[i] = float(np.clip(a.x[i] + self.rng.normal(0, scale * self.dt_days * 10), 0.5, self.world.width - 0.5))
         a.y[i] = float(np.clip(a.y[i] + self.rng.normal(0, scale * self.dt_days * 10), 0.5, self.world.height - 0.5))
 
-    def _aggress(self, i: int) -> None:
-        """One fight per AGGRESS decision (called on decision ticks only)."""
+    def _aggress(self, i: int, rank_ref: np.ndarray | None = None) -> None:
+        """One fight per AGGRESS decision (called on decision ticks only). rank_ref: the ranks
+        targets are chosen by (synchronous_fights: the decision's start); None = current."""
         a = self.agents
         alive = a.alive & (np.arange(a.capacity) != i)
         if not alive.any():
             return
         d2 = (a.x - a.x[i]) ** 2 + (a.y - a.y[i]) ** 2
-        cand = alive & (d2 < 36.0) & (a.rank < a.rank[i])
+        rk = a.rank if rank_ref is None else rank_ref
+        cand = alive & (d2 < 36.0) & (rk < rk[i])
         if self.cfg.biology.aggression_targets == "by_sex":  # replica v2 M4
             if a.sex[i] == SEX_M:
                 cand &= a.sex == SEX_M

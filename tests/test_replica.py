@@ -428,6 +428,38 @@ def test_m4_mechanisms() -> None:
     assert a.nest_id[s] == boxes[5], (a.nest_id[s], boxes[5])
 
 
+def test_methods_fixes() -> None:
+    """Synchronous fights choose targets by the decision-start ranks (a rank lowered by an
+    earlier fight of the same decision does not make a new target); fresh cell counts are
+    recomputed after the moves."""
+    from universe25.agents.state import ACT_EXPLORE, SEX_M
+
+    cfg = _cfg(seed=7100, days=5.0, ticks_per_day=6, backend="numpy", device="cpu",
+               log_every_ticks=6, snapshot_every_days=0, fresh_cell_counts=True,
+               synchronous_fights=True)
+    sim = Universe25Sim(cfg, Path(tempfile.mkdtemp(prefix="u25rep_")))
+    a = sim.agents
+    a.alive[:] = False
+    s = [int(v) for v in a.free_slots(3)]
+    for k in s:
+        sim._spawn(k, sex=SEX_M, age=100.0, x=30.0, y=30.0, nest_id=0, cell_id=0, role=0)
+    A, B, C = s
+    a.x[[A, B, C]] = (30.0, 34.0, 38.0)  # A reaches only B; C reaches only B
+    a.rank[[A, B, C]] = (0.70, 0.65, 0.62)
+    for synchronous in (True, False):
+        a.rank[[A, B, C]] = (0.70, 0.65, 0.62)
+        sim._fought[:] = False
+        r0 = a.rank.copy() if synchronous else None
+        sim._aggress(A, r0)  # B loses 0.05 rank: 0.60 < C's 0.62
+        sim._aggress(C, r0)
+        assert sim._fought[C] == (not synchronous), synchronous
+    sim._tick_cell_counts()
+    acts = np.full(a.capacity, -1, np.int8)
+    acts[a.alive] = ACT_EXPLORE
+    sim._execute_actions(a.alive.copy(), acts)
+    assert sim._cell_counts_tick == -1
+
+
 if __name__ == "__main__":
     test_grid_cells_of_is_the_old_arithmetic()
     test_calhoun_pen()
@@ -436,4 +468,5 @@ if __name__ == "__main__":
     test_m2_territories()
     test_m3_mechanisms()
     test_m4_mechanisms()
+    test_methods_fixes()
     print("test_replica: OK")

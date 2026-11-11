@@ -376,6 +376,12 @@ class SimConfig(_Strict):
     # Runtime invariant checks after every tick (universe25/invariants.py); read-only, so the
     # trajectory is the same with them on. Off by default (cost).
     debug_invariants: bool = False
+    # Methods fixes (review 2026-11-09; replica v2 M5), off = the frozen numerics:
+    # fresh_cell_counts: the per-tick cell-count cache is refreshed after the moves (it was read
+    # pre-move by the nursing disturbance on most ticks); synchronous_fights: every fight of a
+    # decision picks its target by the ranks at the decision's start, not after earlier fights.
+    fresh_cell_counts: bool = False
+    synchronous_fights: bool = False
 
     @model_validator(mode="after")
     def _replica_layout(self) -> SimConfig:

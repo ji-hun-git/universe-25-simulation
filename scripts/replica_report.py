@@ -167,7 +167,8 @@ def run_one(job: tuple[str, str, dict, int, float]) -> tuple[str, int, dict]:
                     groups[sire] = groups.get(sire, 0) + n_pups
             terr[f"brood_sizes_{lim}"] = sorted(groups.values(), reverse=True)
     return name, seed, {"landmarks": {k: float(v) for k, v in lm.items()}, "struct": struct,
-                        "territory": terr}
+                        "territory": terr, "n_series": [int(v) for v in hist["n"]],
+                        "surv_births_by_day": [int(v) for v in sim._surv_births_by_day]}
 
 
 def main() -> int:
