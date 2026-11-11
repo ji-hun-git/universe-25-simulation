@@ -307,6 +307,127 @@ def test_m3_mechanisms() -> None:
     assert list(sim._forage_prev[want]) == [1, 1, 1] and sim._forage_prev.sum() == 3
 
 
+def test_m4_mechanisms() -> None:
+    """Replica v2 M4: the guards; individual scope drops the colony-density conception term; an
+    unhoused pup loses competence faster by imprint_rate x care gain; a displacement adds the
+    exclusion stress; aggression by sex (males fight males, females only while nursing) marks
+    both fighters; a move into a closed cell is undone and founders start in open cells; an
+    animal reaching maturity leaves its natal box by the box-choice rule."""
+    from universe25.agents.state import (
+        ACT_EXPLORE,
+        ROLE_BREEDING_FEMALE,
+        ROLE_NURSING,
+        ROLE_SUBORDINATE_MALE,
+        SEX_F,
+        SEX_M,
+    )
+
+    for bad in ({"geometry": {"open_cells": [0, 1]}},
+                {"geometry": {"layout": "grid", "box_choice": True, "open_cells": [0]}},
+                {"geometry": {"disperse_at_maturity": True}},
+                {"geometry": {"layout": "grid"}, "backend": "warp",
+                 "biology": {"breakdown_scope": "individual"}}):
+        try:
+            _cfg(**bad)
+        except ValueError:
+            continue
+        raise AssertionError(f"{bad} must be refused")
+    base = dict(seed=7100, days=5.0, ticks_per_day=6, backend="numpy", device="cpu",
+                log_every_ticks=6, snapshot_every_days=0)
+
+    def make(scope: str, **geo):
+        cfg = _cfg(**base, geometry={"box_choice": True, **geo},
+                   biology={"territories": True, "territory_fidelity": True,
+                            "territory_tolerance": 3, "founder_age_days": 100.0,
+                            "first_conception_min_day": 0.0,
+                            "breakdown_scope": scope, "care_imprint_gain": 1.0,
+                            "exclusion_stress": 0.05, "aggression_targets": "by_sex"})
+        return Universe25Sim(cfg, Path(tempfile.mkdtemp(prefix="u25rep_"))), cfg
+
+    # conception: the colony-density term (here N / 1 >> threshold) is gone in individual scope
+    got = {}
+    for scope in ("colony", "individual"):
+        sim, cfg = make(scope)
+        a = sim.agents
+        f = int(np.flatnonzero(a.alive & (a.sex == SEX_F))[0])
+        m = int(np.flatnonzero(a.alive & (a.sex == SEX_M))[0])
+        a.cell_id[[f, m]] = 2
+        a.stress[[f, m]] = 0.0
+        a.energy[f] = 0.9
+        sim._set_owner(2, m, set())
+        sim.world.capacity_design = 1
+        sim.rng, real = _FixedDraw(0.3), sim.rng
+        sim._daily_breeding_pass(a.alive.copy())
+        sim.rng = real
+        got[scope] = bool(a.gestating[f] > 0)
+    assert got == {"colony": False, "individual": True}, got
+    # care: an unhoused pup loses imprint_rate x gain x dt more competence than a fed one
+    sim, cfg = make("individual")
+    a, bio = sim.agents, cfg.biology
+    pups = a.free_slots(2)
+    for s in pups:
+        sim._spawn(int(s), sex=SEX_F, age=5.0, x=20.0, y=5.0, nest_id=0, cell_id=0, role=0)
+    a.hunger[pups] = 0.0
+    a.nest_id[pups[1]] = -1
+    a.cell_id[pups] = 0
+    sim._density_stress(a.alive.copy())
+    lost = 1.0 - a.competence[pups]
+    assert np.isclose(lost[1] - lost[0], bio.imprint_rate * 1.0 * sim.dt_days), lost
+    # aggression by sex, and the fought marks
+    m = [int(i) for i in np.flatnonzero(a.alive & (a.sex == SEX_M))][:2]
+    f = [int(i) for i in np.flatnonzero(a.alive & (a.sex == SEX_F) & (a.age_days > 50))][:2]
+    a.x[m + f], a.y[m + f] = 30.0, 30.0
+    a.rank[m] = (0.9, 0.5)
+    a.rank[f] = (0.8, 0.1)
+    a.alive[m[1]] = False  # only a lower-ranked female is near the attacking male
+    sim._aggress(m[0])
+    assert not sim._fought[m[0]] and a.wounds[f[1]] == 0.0
+    a.alive[m[1]] = True
+    sim._aggress(m[0])
+    assert sim._fought[m[0]] and sim._fought[m[1]] and a.wounds[m[1]] > 0.0
+    a.role[f[0]] = ROLE_BREEDING_FEMALE
+    sim._aggress(f[0])
+    assert not sim._fought[f[0]]
+    a.role[f[0]] = ROLE_NURSING
+    sim._aggress(f[0])
+    assert sim._fought[f[0]]
+    # exclusion stress on displacement
+    rx, ry = sim.world.ring_xy[2]
+    ms = [int(i) for i in a.free_slots(5)]
+    for s in ms:
+        sim._spawn(s, sex=SEX_M, age=100.0, x=rx, y=ry, nest_id=0, cell_id=2,
+                   role=ROLE_SUBORDINATE_MALE)
+    a.rank[ms] = (0.95, 0.1, 0.2, 0.3, 0.8)
+    a.stress[ms] = 0.2
+    sim._owner[:] = -1
+    sim._set_owner(2, ms[0], set())
+    sim._territory_defence()
+    assert np.isclose(a.stress[ms[4]], 0.25) and np.isclose(a.stress[ms[3]], 0.2)
+    # open cells: founders in open cells; a move into a closed cell is undone
+    sim, cfg = make("individual", open_cells=[4, 5])
+    a = sim.agents
+    assert set(int(c) for c in a.cell_id[a.alive]) <= {4, 5}
+    acts = np.full(a.capacity, -1, np.int8)
+    acts[a.alive] = ACT_EXPLORE
+    for _ in range(40):
+        sim._execute_actions(a.alive.copy(), acts)
+        assert set(int(c) for c in sim.world.cells_of(a.x[a.alive], a.y[a.alive])) <= {4, 5}
+    # natal dispersal: reaching maturity, an animal takes the fullest box below capacity
+    sim, cfg = make("individual", disperse_at_maturity=True)
+    a, bio = sim.agents, cfg.biology
+    boxes = sim._cell_nests[6]
+    s = int(a.free_slots(1)[0])
+    sim._spawn(s, sex=SEX_F, age=bio.maturity_days, x=1.0, y=1.0, nest_id=int(boxes[0]),
+               cell_id=6, role=0)
+    others = a.free_slots(4)
+    for o in others:
+        sim._spawn(int(o), sex=SEX_F, age=10.0, x=1.0, y=1.0, nest_id=int(boxes[5]),
+                   cell_id=6, role=0)
+    a.cell_id[s] = 6
+    sim._density_stress(a.alive.copy())
+    assert a.nest_id[s] == boxes[5], (a.nest_id[s], boxes[5])
+
+
 if __name__ == "__main__":
     test_grid_cells_of_is_the_old_arithmetic()
     test_calhoun_pen()
@@ -314,4 +435,5 @@ if __name__ == "__main__":
     test_layout_guards_and_a_replica_colony()
     test_m2_territories()
     test_m3_mechanisms()
+    test_m4_mechanisms()
     print("test_replica: OK")

@@ -50,6 +50,12 @@ class GeometryConfig(_Strict):
     # hopper, among its cell's and its two wall neighbours', with the most foragers at the
     # previous decision (ties: its own, then the lower id).
     hopper_facilitation: bool = False
+    # Replica v2 M4 amendment: an animal reaching maturity leaves its natal box and takes one by
+    # the box-choice rule (needs box_choice). Off = boxes are kept for life (the frozen colony).
+    disperse_at_maturity: bool = False
+    # Replica v2 M4 / M6: only these cells of the calhoun pen are open (a move ending in a
+    # closed cell is undone; founders go to open cells). None = all 16.
+    open_cells: list[int] | None = None
 
 
 class PlaygroundConfig(_Strict):
@@ -183,6 +189,18 @@ class BiologyConfig(_Strict):
     territory_fidelity: bool = False
     territory_tolerance: int | None = Field(default=None, ge=0)
     territory_centre_in: float = Field(default=12.0, gt=10.0)
+    # Replica v2 M4 (docs/REPLICA_V2.md). breakdown_scope "individual" removes the three
+    # colony-wide terms (breakdown stress boost, colony-wide developmental exposure, conception
+    # suppression by N / design capacity). care_imprint_gain: a pup also loses competence at
+    # imprint_rate x gain x its care deficit (max(0, hunger - 0.5) housed, 1 unhoused).
+    # exclusion_stress: stress added per displacement by a territory owner. aggression_targets
+    # "by_sex": males attack males only, females only while nursing. wound_mortality_scale: the
+    # death hazard per wound^2 per day (the frozen hard-coded 0.02).
+    breakdown_scope: Literal["colony", "individual"] = "colony"
+    care_imprint_gain: float = Field(default=0.0, ge=0.0)
+    exclusion_stress: float = Field(default=0.0, ge=0.0)
+    aggression_targets: Literal["any", "by_sex"] = "any"
+    wound_mortality_scale: float = Field(default=0.02, ge=0.0)
 
     def breakdown_threshold(self) -> float:
         if self.breakdown_density_threshold is not None:
@@ -334,7 +352,7 @@ class SimConfig(_Strict):
     # not depend on ticks_per_day. Movement reaches its target within one decision at any dt.
     ticks_per_day_ref: int = 6
     max_agents: int = 4096
-    initial_pairs: int = 4
+    initial_pairs: int = Field(4, ge=0)  # 0: a pen filled by a harness (replica transfers)
     days: float = 1600.0
     device: Literal["cuda", "cpu", "auto"] = "auto"
     backend: Literal["warp", "torch", "numpy", "auto"] = "auto"
@@ -378,6 +396,21 @@ class SimConfig(_Strict):
             raise ValueError("hopper_facilitation / territory_tolerance need layout calhoun")
         if (g.box_choice or g.hopper_facilitation) and self.backend == "warp":
             raise ValueError("box_choice / hopper_facilitation are NumPy-path only")
+        m4 = (b.breakdown_scope != "colony" or b.care_imprint_gain > 0.0
+              or b.aggression_targets != "any" or b.wound_mortality_scale != 0.02)
+        if m4 and self.backend == "warp":
+            raise ValueError("the M4 biology fields are NumPy-path only")
+        if g.disperse_at_maturity and not g.box_choice:
+            raise ValueError("disperse_at_maturity needs geometry.box_choice")
+        if g.open_cells is not None:
+            oc = list(g.open_cells)
+            if g.layout != "calhoun" or not oc or len(set(oc)) != len(oc) or not all(
+                    0 <= c < 16 for c in oc):
+                raise ValueError("open_cells: distinct calhoun cells 0-15")
+            if not g.box_choice or self.free_substeps > 1:
+                raise ValueError("open_cells needs geometry.box_choice and no sub-steps")
+            if g.founder_cells is not None and not set(g.founder_cells) <= set(oc):
+                raise ValueError("founder_cells must be open cells")
         return self
 
     @model_validator(mode="after")

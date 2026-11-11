@@ -177,6 +177,15 @@ class Universe25Sim:
         self._contests = 0
         self._takeovers = 0
         self._litter_log: list[tuple[float, int, int]] = []  # (day, sire serial, pups) if on
+        # replica v2 M4: Calhoun's categories (bookkeeping only) and the open cells of the pen
+        self._fought = np.zeros(cap, dtype=bool)
+        self._mated = np.zeros(cap, dtype=bool)
+        self._littered = np.zeros(cap, dtype=bool)
+        oc = cfg.geometry.open_cells
+        self._open = np.zeros(nc, dtype=bool) if oc is not None else np.ones(nc, dtype=bool)
+        if oc is not None:
+            self._open[list(oc)] = True
+        self._closed_any = not bool(self._open.all())
         self._seed_initial()
         self._n_initial = int(self.agents.n_alive)
         # provenance (review 2026-11-09): the resolved config and a manifest in every run
@@ -196,8 +205,10 @@ class Universe25Sim:
         slots = self.agents.free_slots(n)
         # Place the pairs in four cells (grid: the corners; calhoun: the second cell of each
         # wall - an assumption, the record does not say where the founders were placed)
+        oc = self.cfg.geometry.open_cells
         corner_cells = list(self.cfg.geometry.founder_cells
-                            or ([1, 5, 9, 13] if self.world.layout == "calhoun"
+                            or ([oc[k % len(oc)] for k in range(4)] if oc is not None
+                                else [1, 5, 9, 13] if self.world.layout == "calhoun"
                                 else [0, 3, 12, 15]))
         f_age = self.cfg.biology.founder_age_days
         for i, slot in enumerate(slots):
@@ -236,6 +247,7 @@ class Universe25Sim:
         self._next_serial += 1
         self._sire[slot] = -1
         self._preg_sire[slot] = -1
+        self._fought[slot] = self._mated[slot] = self._littered[slot] = False
         if self._visit_t is not None:  # a new animal knows no place yet
             self._visit_t[slot] = -np.inf
         a.age_days[slot] = age
@@ -742,6 +754,10 @@ class Universe25Sim:
             back = bound & (self.world.cells_of(a.x[idx], a.y[idx]) != cells)
             if back.any():
                 a.x[idx[back]], a.y[idx[back]] = x_before[back], y_before[back]
+        if self._closed_any:  # replica v2 M4 / M6: a move into a closed cell is undone
+            back = ~self._open[self.world.cells_of(a.x[idx], a.y[idx])]
+            if back.any():
+                a.x[idx[back]], a.y[idx[back]] = x_before[back], y_before[back]
         # update cell + playground flags (vectorized; world.cells_of keeps the grid arithmetic)
         a.cell_id[idx] = self.world.cells_of(a.x[idx], a.y[idx]).astype(np.int16)
         if self.world.playground_enabled:
@@ -766,7 +782,8 @@ class Universe25Sim:
         c0 = cells[m_f].astype(np.int64)
         cand = np.stack([c0, (c0 - 1) % nc, (c0 + 1) % nc], axis=1)
         not_own = np.broadcast_to(np.array([0, 1, 1]), cand.shape)
-        order = np.lexsort((cand, not_own, -self._forage_prev[cand]), axis=-1)
+        busy = np.where(self._open[cand], self._forage_prev[cand], -1)  # closed: never
+        order = np.lexsort((cand, not_own, -busy), axis=-1)
         target = cand[np.arange(c0.size), order[:, 0]]
         if bound is not None:
             target = np.where(bound[m_f], c0, target)
@@ -811,6 +828,8 @@ class Universe25Sim:
             a.x[out] = cx + (a.x[out] - cx) * f
             a.y[out] = cy + (a.y[out] - cy) * f
             a.cell_id[out] = self.world.cells_of(a.x[out], a.y[out]).astype(np.int16)
+            if bio.exclusion_stress > 0.0:  # M4: a displacement is a small defeat
+                a.stress[out] = np.minimum(1.5, a.stress[out] + float(bio.exclusion_stress))
 
     def _capacity_mask(self, ii: np.ndarray, per_day: float) -> np.ndarray:
         """Replica v2: which of the agents `ii` (all at a resource this decision) are served,
@@ -1113,10 +1132,17 @@ class Universe25Sim:
         if not alive.any():
             return
         d2 = (a.x - a.x[i]) ** 2 + (a.y - a.y[i]) ** 2
-        near = np.flatnonzero(alive & (d2 < 36.0) & (a.rank < a.rank[i]))
+        cand = alive & (d2 < 36.0) & (a.rank < a.rank[i])
+        if self.cfg.biology.aggression_targets == "by_sex":  # replica v2 M4
+            if a.sex[i] == SEX_M:
+                cand &= a.sex == SEX_M
+            elif a.role[i] != ROLE_NURSING:
+                return
+        near = np.flatnonzero(cand)
         if len(near) == 0:
             return
         j = int(self.rng.choice(near))
+        self._fought[i] = self._fought[j] = True
         a.wounds[j] = min(1.5, a.wounds[j] + 0.15)
         a.stress[j] = min(1.5, a.stress[j] + 0.1)
         a.rank[j] = max(0.0, a.rank[j] - 0.05)
@@ -1227,6 +1253,9 @@ class Universe25Sim:
         # Weaned agents without a nest box (abandoned as pups) adopt the nearest box.
         homeless = (a.nest_id[idx] < 0) & (a.age_days[idx] >= self.cfg.biology.weaning_days)
         box_choice = self.cfg.geometry.box_choice
+        if self.cfg.geometry.disperse_at_maturity:  # replica v2 M4 amendment: natal dispersal
+            mat = float(self.cfg.biology.maturity_days)
+            homeless |= (a.age_days[idx] >= mat) & (a.age_days[idx] - dt < mat)
         if homeless.any() and box_choice:  # replica v2 M3
             self._choose_boxes(idx[homeless])
         elif homeless.any():
@@ -1246,7 +1275,9 @@ class Universe25Sim:
         gain = gain + float(self.cfg.biology.nest_overcrowd_stress) * over
         # Social-breakdown pressure: full boost above the weaned-density threshold, a linear ramp
         # below it (breakdown_density_ramp; 0 = step). Mirrors warp density_stress_kernel.
-        f_bd = self.cfg.biology.breakdown_factor(self._breakdown_density(alive))
+        # (replica v2 M4: breakdown_scope "individual" has no colony-wide term)
+        f_bd = (0.0 if self.cfg.biology.breakdown_scope == "individual"
+                else self.cfg.biology.breakdown_factor(self._breakdown_density(alive)))
         if f_bd > 0.0:
             gain = gain + float(self.cfg.biology.social_breakdown_stress_boost) * f_bd
         decision = self._decision_tick()
@@ -1281,6 +1312,11 @@ class Universe25Sim:
             if bio.imprint_breakdown_exposure > 0.0 and f_bd > 0.0:
                 # colony-wide: the social breakdown reaches every nest (mirrors Warp kernel)
                 exposure = exposure + float(bio.imprint_breakdown_exposure) * f_bd
+            if bio.care_imprint_gain > 0.0:  # replica v2 M4: the care a pup receives
+                pup = a.age_days[idx] < bio.weaning_days
+                deficit = np.where(a.nest_id[idx] >= 0,
+                                   np.maximum(0.0, a.hunger[idx] - 0.5), 1.0)
+                exposure = exposure + float(bio.care_imprint_gain) * np.where(pup, deficit, 0.0)
             yi = idx[young]
             a.competence[yi] = np.clip(
                 a.competence[yi] - bio.imprint_rate * exposure[young] * dt, 0.0, 1.0
@@ -1509,6 +1545,7 @@ class Universe25Sim:
                 a.stress[lose] = min(1.5, float(a.stress[lose]) + 0.10)
                 a.rank[win] = min(1.0, float(a.rank[win]) + 0.05)
                 self._contests += 1
+                self._fought[o] = self._fought[ch] = True
                 if win == ch:
                     owners.discard(o)
                     self._set_owner(c, ch, owners)
@@ -1552,6 +1589,8 @@ class Universe25Sim:
         dens = a.n_alive / max(1, self.world.capacity_design)
         # suppression with density (behavioral-sink precursor) — no scheduled collapse day
         p_base = float(bio.breeding_p_base) * max(0.02, 1.0 - dens / max(1e-6, bio.menopause_density_threshold))
+        if bio.breakdown_scope == "individual":  # replica v2 M4: no colony-density term
+            p_base = float(bio.breeding_p_base)
         females = np.flatnonzero(
             alive
             & (a.sex == SEX_F)
@@ -1609,6 +1648,8 @@ class Universe25Sim:
                 )
                 if bio.territories:
                     self._preg_sire[f] = self._serial[cands[0]]
+                    self._mated[cands[0]] = True
+                self._mated[f] = True
                 self._conceptions += 1
                 self._last_conception_day = self.day
                 self._conc_by_day[min(int(self.day), self._conc_by_day.size - 1)] += 1
@@ -1630,6 +1671,7 @@ class Universe25Sim:
         for k, i in enumerate(births):
             # birth this tick
             a.gestating[i] = 0.0
+            self._littered[i] = True
             if a.stress[i] > bio.maternal_neglect_stress and self.rng.random() < float(bio.stillbirth_neglect_p):
                 continue  # stillbirth / neglect
             litter = int(np.clip(self.rng.normal(bio.litter_mean, bio.litter_sd), 1, 12))
@@ -1693,7 +1735,7 @@ class Universe25Sim:
         dens = a.n_alive / max(1, self.world.capacity_design)
         h = h + float(bio.density_mortality_scale) * (dens ** 2)
         h += bio.stress_mortality_scale * (a.stress[idx] ** 2)
-        h += 0.02 * (a.wounds[idx] ** 2)
+        h += bio.wound_mortality_scale * (a.wounds[idx] ** 2)  # frozen 0.02 (field: M4)
         h += np.where(a.age_days[idx] > a.lifespan[idx], 0.05, 0.0)  # old age, per individual
         starving = (a.hunger[idx] > 1.2) | (a.thirst[idx] > 1.2)
         h += np.where(starving, float(bio.starvation_hazard_per_day), 0.0)

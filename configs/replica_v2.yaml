@@ -5,7 +5,9 @@
 # conception gate, litter 5.5, territories (one owner per cell, who sires). Milestone M3 (a
 # priori): owners and claimants keep to their cell, owners tolerate 3 subordinate males and
 # displace the rest to the central no-man's land, box choice (fullest box below capacity,
-# lower levels first), hopper facilitation. The rest of the
+# lower levels first), hopper facilitation. Milestone M4 (a priori): no colony-wide term
+# (breakdown from each animal's experience), development from the care a pup received,
+# exclusion stress, aggression by sex, natal dispersal at maturity. The rest of the
 # biology is still the frozen 2m point of configs/default.yaml (uncalibrated for this pen);
 # later milestones change it here, never in default.yaml.
 # Universe 25 abundant arm. Biology/drives = phase-2m calibration to Calhoun landmarks: the 2i optimum
@@ -40,6 +42,7 @@ geometry:
   box_feeding_until_day: 160.0
   box_choice: true  # M3
   hopper_facilitation: true  # M3
+  disperse_at_maturity: true  # M4 amendment (natal dispersal)
 playground:
   enabled: false
   x0: 35.0
@@ -104,6 +107,10 @@ biology:
   territory_fidelity: true  # M3
   territory_tolerance: 3  # M3 (Calhoun's basic group: 1 territorial + 3 subordinate males)
   territory_centre_in: 12.0  # M3
+  breakdown_scope: individual  # M4
+  care_imprint_gain: 1.0  # M4
+  exclusion_stress: 0.05  # M4
+  aggression_targets: by_sex  # M4
 drives:
   hunger_gain_per_day: 1.2
   thirst_gain_per_day: 1.5

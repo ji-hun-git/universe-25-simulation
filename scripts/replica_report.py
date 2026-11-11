@@ -20,6 +20,10 @@ Structural numbers per snapshot day:
   hopper_max_share    the busiest cell's share of the animals foraging this decision
   owner_ring_dist     owners' mean distance (in) from their cell's ring stand
   subs_per_owner      adult, non-withdrawn, non-owner males per owner (Calhoun: 3)
+  beautiful_share     share of 131-320-day-olds who never fought or mated (M4; Calhoun: 53 % of
+                      those entering adulthood in mid-phase D)
+  withdrawn_fought    share of withdrawn adults who ever fought (Calhoun's withdrawn males were
+                      wounded; his "beautiful ones" never fought)
 Territory numbers per run (M2, biology.territories on):
   brood groups        sires (owners) of the young born by day 338, their count and the young
                       per group (Calhoun 1971: 842 young in 14 groups, 111 ... 13)
@@ -42,7 +46,7 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-SNAP_DAYS = (315, 560, 736)
+SNAP_DAYS = (315, 560, 736, 800, 1444)
 DEFAULT_ARMS = ("frozen_grid=default.yaml", "grid_nopg=default.yaml;playground.enabled=false",
                 "replica=replica_v2.yaml")
 
@@ -124,6 +128,12 @@ def run_one(job: tuple[str, str, dict, int, float]) -> tuple[str, int, dict]:
                     "owned_cells": float((sim._owner >= 0).sum()) if bio.territories
                     else np.nan,
                 }
+                cat = al & (a.age_days >= 131.0) & (a.age_days <= 320.0)
+                wad = wd & (a.age_days >= bio.maturity_days)
+                struct[str(d)]["beautiful_share"] = (
+                    float(np.mean(~sim._fought[cat] & ~sim._mated[cat])) if cat.any() else np.nan)
+                struct[str(d)]["withdrawn_fought"] = (float(np.mean(sim._fought[wad]))
+                                                      if wad.any() else np.nan)
                 fo = al & (a.last_action == ACT_FORAGE)
                 fc = np.bincount(a.cell_id[fo].astype(int), minlength=sim.world.n_cells)
                 struct[str(d)]["hopper_max_share"] = (float(fc.max() / fc.sum()) if fc.sum()
@@ -202,7 +212,8 @@ def main() -> int:
     print("\n(* = the record lies outside the 5-95 % range over seeds)")
     keys = ("n", "empty_box_share", "centre_share", "withdrawn_share", "withdrawn_centre",
             "male_share", "max_cell_share", "owned_cells", "excluded_centre",
-            "hopper_max_share", "owner_ring_dist", "subs_per_owner")
+            "hopper_max_share", "owner_ring_dist", "subs_per_owner", "beautiful_share",
+            "withdrawn_fought")
     for d in SNAP_DAYS:
         print(f"\nday {d}: " + " | ".join(names))
         out["struct"][str(d)] = {}
