@@ -310,6 +310,17 @@ experience. Each mechanism sits behind its own field; the default is M3.
     0.18).
   - Marsden transfer: 0 conceptions with the colony's males, and more with stock males.
 - The Kessler and Hammock recoveries are not modelled: only abstracts were reachable.
+- **Amendment (2026-11-11, after a one-seed diagnostic and before any multi-seed run).**
+  - *The diagnostic:* in the M4 colony at day 260, overfull boxes give 92 % of the young's
+    developmental exposure. One box holds 160 mice (capacity 15), and 81 % of boxes are empty.
+  - *The cause is structural:* animals keep their natal box for life. The only way out is the
+    overcrowding kick, which needs rank < 0.4, and pups are born at rank 0.4–0.8.
+  - *The fix:* `geometry.disperse_at_maturity`. An animal reaching maturity leaves its natal
+    box and takes one by the box-choice rule. It is a priori: mice disperse at maturity, and
+    Calhoun's boxes held 15.
+  - *Effect on that seed:* exposure falls by about 3.7×, and the fullest box holds 50.
+  - The report adds dispersal as a fifth cumulative arm (= M4 amended), so both versions are
+    visible.
 
 **M5 — landmarks and recalibration.**
 - *Expanded landmark set:*
