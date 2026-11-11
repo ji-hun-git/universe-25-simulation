@@ -15,6 +15,13 @@ Structural numbers per snapshot day:
   withdrawn_centre    share of withdrawn animals within 12 in of the centre
   male_share          males among weaned animals (Calhoun: 40 % in phase B)
   max_cell_share      the largest cell's share of the weaned animals (aggregation)
+  owned_cells         cells with a territory owner (biology.territories; M2)
+Territory numbers per run (M2, biology.territories on):
+  brood groups        sires (owners) of the young born by day 338, their count and the young
+                      per group (Calhoun 1971: 842 young in 14 groups, 111 ... 13)
+  founder_male_deaths founding males dead by day 60 (Calhoun: 2 of 4 within two months)
+  contests_315, takeovers_315
+An override value of null sets None (e.g. biology.founder_age_days=null).
 """
 from __future__ import annotations
 
@@ -42,8 +49,9 @@ def parse_arm(spec: str) -> tuple[str, str, dict]:
     over: dict = {}
     for kv in parts[1:]:
         key, val = kv.split("=", 1)
-        v: object = {"true": True, "false": False}.get(val.lower(), None)
-        if v is None:
+        lit = {"true": True, "false": False, "null": None}
+        v: object = lit.get(val.lower(), lit)
+        if v is lit:
             try:
                 v = float(val)
             except ValueError:
@@ -73,6 +81,9 @@ def run_one(job: tuple[str, str, dict, int, float]) -> tuple[str, int, dict]:
     hist = {k: [] for k in ("day", "n", "births", "young", "adult", "conc")}
     struct: dict[str, dict] = {}
     cx, cy = sim.world.width / 2, sim.world.height / 2
+    f_m = np.flatnonzero(a.alive & (a.sex == SEX_M))
+    f_m_serial = sim._serial[f_m].copy()
+    terr: dict = {}
     for _ in range(int(days * 6)):
         sim.step()
         if sim.tick % 6 == 0:
@@ -83,6 +94,12 @@ def run_one(job: tuple[str, str, dict, int, float]) -> tuple[str, int, dict]:
             hist["adult"].append(int(np.sum(a.alive & (a.age_days >= bio.maturity_days))))
             hist["conc"].append(sim._last_conception_day)
             d = int(round(sim.day))
+            if d == 60:
+                terr["founder_male_deaths"] = int(np.sum(~a.alive[f_m]
+                                                         | (sim._serial[f_m] != f_m_serial)))
+            if d == 315:
+                terr["contests_315"] = sim._contests
+                terr["takeovers_315"] = sim._takeovers
             if d in SNAP_DAYS:
                 al = a.alive
                 weaned = al & (a.age_days >= bio.weaning_days)
@@ -100,6 +117,8 @@ def run_one(job: tuple[str, str, dict, int, float]) -> tuple[str, int, dict]:
                     "male_share": float((a.sex[weaned] == SEX_M).mean()) if weaned.any()
                     else np.nan,
                     "max_cell_share": float(cells.max() / max(1, cells.sum())),
+                    "owned_cells": float((sim._owner >= 0).sum()) if bio.territories
+                    else np.nan,
                 }
         if a.n_alive == 0 and sim.day > 50:
             break
@@ -109,7 +128,14 @@ def run_one(job: tuple[str, str, dict, int, float]) -> tuple[str, int, dict]:
                                last_conception=np.asarray(hist["conc"], float),
                                surv_births_by_day=sim._surv_births_by_day,
                                conceptions_by_day=sim._conc_by_day)
-    return name, seed, {"landmarks": {k: float(v) for k, v in lm.items()}, "struct": struct}
+    if bio.territories:
+        groups: dict[int, int] = {}
+        for day, sire, n_pups in sim._litter_log:
+            if day <= 338.0:
+                groups[sire] = groups.get(sire, 0) + n_pups
+        terr["brood_sizes_338"] = sorted(groups.values(), reverse=True)
+    return name, seed, {"landmarks": {k: float(v) for k, v in lm.items()}, "struct": struct,
+                        "territory": terr}
 
 
 def main() -> int:
@@ -153,7 +179,7 @@ def main() -> int:
         print(f"| {k} | {tgt:g} | " + " | ".join(cells) + " |")
     print("\n(* = the record lies outside the 5-95 % range over seeds)")
     keys = ("n", "empty_box_share", "centre_share", "withdrawn_share", "withdrawn_centre",
-            "male_share", "max_cell_share")
+            "male_share", "max_cell_share", "owned_cells")
     for d in SNAP_DAYS:
         print(f"\nday {d}: " + " | ".join(names))
         out["struct"][str(d)] = {}
@@ -166,6 +192,31 @@ def main() -> int:
                 out["struct"][str(d)].setdefault(k, {})[n] = m
                 vals.append(f"{m:.3f}" if k != "n" else f"{m:.0f}")
             print(f"  {k:18s} " + "  ".join(f"{v:>9s}" for v in vals))
+    out["territory"] = {}
+    for n in names:
+        tr = [r.get("territory", {}) for nn, _, r in rows if nn == n]
+        if not any("brood_sizes_338" in t for t in tr):
+            continue
+        ng = np.array([len(t["brood_sizes_338"]) for t in tr], float)
+        young = np.array([sum(t["brood_sizes_338"]) for t in tr], float)
+        top = np.array([t["brood_sizes_338"][0] if t["brood_sizes_338"] else 0 for t in tr],
+                       float)
+        g14 = np.array([sum(t["brood_sizes_338"][:14]) / max(1, sum(t["brood_sizes_338"]))
+                        for t in tr], float)
+        fd = np.array([t.get("founder_male_deaths", np.nan) for t in tr], float)
+        ct = np.array([t.get("contests_315", np.nan) for t in tr], float)
+        tk = np.array([t.get("takeovers_315", np.nan) for t in tr], float)
+        summ = {"brood_groups_338": ng, "young_by_338": young, "largest_group_338": top,
+                "share_in_top14_groups": g14, "founder_male_deaths_60": fd,
+                "contests_315": ct, "takeovers_315": tk}
+        out["territory"][n] = {k: {"median": float(np.nanmedian(v)),
+                                   "p05": float(np.nanquantile(v, 0.05)),
+                                   "p95": float(np.nanquantile(v, 0.95))}
+                               for k, v in summ.items()}
+        print(f"\nterritories ({n}); Calhoun: 14 groups, 842 young by day 338, largest 111, "
+              "2 of 4 founding males dead within two months")
+        for k, v in out["territory"][n].items():
+            print(f"  {k:24s} {v['median']:8.2f} [{v['p05']:.2f}, {v['p95']:.2f}]")
     path = ROOT / "_output" / f"replica_report_{a.label}.json"
     path.write_text(json.dumps(out, indent=1, default=float), encoding="utf-8")
     print(f"\nwritten {path}")

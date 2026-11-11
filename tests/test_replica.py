@@ -108,8 +108,109 @@ def test_layout_guards_and_a_replica_colony() -> None:
     sim = Universe25Sim(cfg, Path(tempfile.mkdtemp(prefix="u25rep_")))
     founders = sorted({int(c) for c in sim.agents.cell_id[sim.agents.alive]})
     assert founders == [1, 5, 9, 13], founders
+    assert np.all(sim.agents.age_days[sim.agents.alive] == 48.0)  # M2 founders
     s = sim.run()
     assert s["births"] > 0 and s["final_n"] == sim._n_initial + s["births"] - s["deaths"]
+    assert s["territories"]["owned_cells"] >= 1, s["territories"]
+
+
+class _FixedDraw:
+    """Stands in for the simulation stream where a test needs one outcome."""
+
+    def __init__(self, u: float) -> None:
+        self.u = u
+
+    def random(self) -> float:
+        return self.u
+
+
+def test_m2_territories() -> None:
+    """Replica v2 M2: off by default and refused on Warp; claims settle after
+    territory_settle_days passes as top male, a new top male restarts the claim, an absent
+    owner keeps his cell, a challenger within the gap contests, a winning challenger takes
+    the cell and drops his other claims, death and withdrawal end ownership, and only a
+    female whose cell has an owner conceives, by him."""
+    from universe25.agents.state import ROLE_WITHDRAWN, SEX_F, SEX_M
+
+    d = load_config(ROOT / "configs" / "default.yaml")
+    assert d.biology.territories is False and d.biology.founder_age_days is None
+    try:
+        _cfg("grid", backend="warp", biology={"territories": True})
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("territories must be refused on the Warp path")
+    cfg = _cfg(seed=7100, days=5.0, ticks_per_day=6, backend="numpy", device="cpu",
+               log_every_ticks=6, snapshot_every_days=0,
+               biology={"territories": True, "founder_age_days": 48.0,
+                        "first_conception_min_day": 0.0})
+    sim = Universe25Sim(cfg, Path(tempfile.mkdtemp(prefix="u25rep_")))
+    a = sim.agents
+    ff = np.flatnonzero(a.alive)
+    assert np.all(a.age_days[ff] == 48.0) and list(sim._serial[ff]) == list(range(8))
+    a.age_days[ff] = 100.0
+    m0, m1, m2, m3 = (int(i) for i in ff[a.sex[ff] == SEX_M])
+    f0, f1 = (int(i) for i in ff[a.sex[ff] == SEX_F][:2])
+    a.rank[[m0, m1, m2, m3]] = (0.9, 0.5, 0.3, 0.2)
+    a.cell_id[[m0, m1, m2, m3]] = (2, 7, 7, 7)
+    a.cell_id[ff[a.sex[ff] == SEX_F]] = 0
+    alive = a.alive.copy()
+    settle = cfg.biology.territory_settle_days
+
+    def daily(k: int = 1) -> None:
+        for _ in range(k):
+            sim._daily_territories(alive)
+
+    daily(settle - 1)
+    assert sim._owner[2] == -1 and sim._claim[2] == m0 and sim._claim_days[2] == settle - 1
+    daily()
+    assert sim._owner[2] == m0 and sim._owner[7] == m1 and sim._claim[2] == -1
+    daily()  # m2 (0.3) is below m1 (0.5) - gap: no contest
+    assert sim._contests == 0
+    # a new top male restarts a claim; an owner neither claims nor loses his absent cell
+    a.cell_id[m3] = 11
+    daily(2)
+    assert sim._claim[11] == m3 and sim._claim_days[11] == 2
+    a.cell_id[m2] = 11
+    daily()
+    assert sim._claim[11] == m2 and sim._claim_days[11] == 1
+    a.cell_id[m0] = 11
+    daily()
+    assert sim._owner[2] == m0 and sim._claim[11] == m2 and sim._claim_days[11] == 2
+    # a challenger within the gap contests; a winning challenger takes the cell
+    a.cell_id[m2] = 7
+    a.rank[m2] = 0.45
+    sim.rng, real = _FixedDraw(0.99), sim.rng
+    daily()
+    sim.rng = real
+    assert sim._contests == 1 and sim._takeovers == 1 and sim._owner[7] == m2
+    assert np.isclose(a.rank[m2], 0.50) and np.isclose(a.rank[m1], 0.40)
+    assert np.isclose(a.wounds[m1], 0.15)
+    assert sim._claim[11] == m3 and sim._claim_days[11] == 1  # m2's claim went; m3 restarts
+    sim._claim[5], sim._claim_serial[5], sim._claim_days[5] = m2, sim._serial[m2], 3
+    sim._set_owner(7, m2, set())  # becoming an owner drops every claim he holds
+    assert sim._claim[5] == -1 and sim._claim_days[5] == 0
+    # death and withdrawal end ownership
+    a.alive[m0] = alive[m0] = False
+    a.role[m2] = ROLE_WITHDRAWN
+    daily()
+    assert sim._owner[2] == -1 and sim._owner[7] == -1
+    # conception needs an owner, who sires: f0 in an owned cell, f1 in an unowned one
+    a.role[m2] = a.role[m1]
+    sim._set_owner(7, m2, set())
+    a.cell_id[f0], a.cell_id[f1] = 7, 4
+    a.stress[[f0, f1, m2]] = 0.0
+    a.energy[[f0, f1]] = 0.9
+    sim.rng = _FixedDraw(0.0)
+    sim._daily_breeding_pass(alive)
+    sim.rng = real
+    assert a.gestating[f0] > 0 and a.gestating[f1] == 0
+    assert sim._preg_sire[f0] == sim._serial[m2]
+    a.gestating[f0] = sim.dt_days
+    sim._reproduce(a.alive.copy())
+    pups = np.flatnonzero(a.alive & (a.age_days == 0.0))
+    assert pups.size > 0 and np.all(sim._sire[pups] == sim._serial[m2])
+    assert sim._litter_log == [(sim.day, int(sim._serial[m2]), int(pups.size))]
 
 
 if __name__ == "__main__":
@@ -117,4 +218,5 @@ if __name__ == "__main__":
     test_calhoun_pen()
     test_capacity_box_feeding_and_withdrawal()
     test_layout_guards_and_a_replica_colony()
+    test_m2_territories()
     print("test_replica: OK")

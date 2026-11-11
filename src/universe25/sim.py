@@ -155,6 +155,23 @@ class Universe25Sim:
         self._litters_dropped = 0  # litters lost because max_agents was reached
         self._removed = 0  # adults taken out by the removal event (not deaths)
         self._removal_done = False
+        # replica v2 M2 (docs/REPLICA_V2.md): a serial number per spawned animal (slots are
+        # reused), territory owners / claims per cell (slot and serial, -1 = none), and the sire
+        # (owner serial) of each animal and of each pregnancy. Bookkeeping only unless
+        # biology.territories is on; no RNG draw.
+        cap, nc = cfg.max_agents, self.world.n_cells
+        self._serial = np.full(cap, -1, dtype=np.int64)
+        self._next_serial = 0
+        self._sire = np.full(cap, -1, dtype=np.int64)
+        self._preg_sire = np.full(cap, -1, dtype=np.int64)
+        self._owner = np.full(nc, -1, dtype=np.int64)
+        self._owner_serial = np.full(nc, -1, dtype=np.int64)
+        self._claim = np.full(nc, -1, dtype=np.int64)
+        self._claim_serial = np.full(nc, -1, dtype=np.int64)
+        self._claim_days = np.zeros(nc, dtype=np.int64)
+        self._contests = 0
+        self._takeovers = 0
+        self._litter_log: list[tuple[float, int, int]] = []  # (day, sire serial, pups) if on
         self._seed_initial()
         self._n_initial = int(self.agents.n_alive)
         # provenance (review 2026-11-09): the resolved config and a manifest in every run
@@ -177,6 +194,7 @@ class Universe25Sim:
         corner_cells = list(self.cfg.geometry.founder_cells
                             or ([1, 5, 9, 13] if self.world.layout == "calhoun"
                                 else [0, 3, 12, 15]))
+        f_age = self.cfg.biology.founder_age_days
         for i, slot in enumerate(slots):
             pair = i // 2
             cell = self.world.cells[corner_cells[pair % 4]]
@@ -185,7 +203,7 @@ class Universe25Sim:
             self._spawn(
                 slot,
                 sex=sex,
-                age=float(self.rng.uniform(60, 90)),
+                age=float(self.rng.uniform(60, 90)) if f_age is None else float(f_age),
                 x=nest.x + float(self.rng.normal(0, 0.5)),
                 y=nest.y + float(self.rng.normal(0, 0.5)),
                 nest_id=nest.id,
@@ -209,6 +227,10 @@ class Universe25Sim:
         a = self.agents
         a.alive[slot] = True
         a.sex[slot] = sex
+        self._serial[slot] = self._next_serial
+        self._next_serial += 1
+        self._sire[slot] = -1
+        self._preg_sire[slot] = -1
         if self._visit_t is not None:  # a new animal knows no place yet
             self._visit_t[slot] = -np.inf
         a.age_days[slot] = age
@@ -286,6 +308,7 @@ class Universe25Sim:
             with nvtx_range("life"):
                 self._removal_event(alive)
                 self._passive_nurse(alive)
+                self._daily_territories(alive)
                 self._daily_breeding_pass(alive)
                 self._daily_maternal_erosion(alive)
                 self._daily_courtship_erosion(alive)
@@ -1319,8 +1342,89 @@ class Universe25Sim:
             a.nest_id[victims] = -1
             self._abandoned += int(victims.size)
 
+    def _daily_territories(self, alive: np.ndarray) -> None:
+        """Once per day (biology.territories; replica v2 M2, docs/REPLICA_V2.md): cell ownership.
+
+        Eligible males are alive, adult and not withdrawn; a male owns at most one cell, and
+        owners neither claim nor challenge elsewhere. Cells are visited in id order.
+        - Ownership lapses when the owner died (or his slot was reused) or withdrew; never
+          because he is away.
+        - Owned cell, owner present: the top-ranked other eligible male present challenges if
+          his rank is at least owner - gap. One contest, P(owner wins) = 0.5 + (r_o - r_c) /
+          (2 gap) clipped to [0.05, 0.95], drawn from the simulation stream. Loser: rank -0.10,
+          wounds +0.15, stress +0.10; winner: rank +0.05. A winning challenger takes the cell.
+        - Unowned cell: the top-ranked eligible male present (ties: lower slot) claims it; a
+          different top male restarts the claim; with nobody present the claim holds. After
+          territory_settle_days passes as its top male he owns it.
+        """
+        bio = self.cfg.biology
+        if not bio.territories or (self.tick % self.cfg.ticks_per_day) != 0:
+            return
+        a = self.agents
+        own, own_s = self._owner, self._owner_serial
+        for c in range(own.size):
+            o = int(own[c])
+            if o >= 0 and (not a.alive[o] or self._serial[o] != own_s[c]
+                           or a.role[o] == ROLE_WITHDRAWN):
+                own[c], own_s[c] = -1, -1
+        elig = np.flatnonzero(alive & (a.sex == SEX_M) & (a.age_days >= bio.maturity_days)
+                              & (a.role != ROLE_WITHDRAWN))
+        if elig.size == 0:
+            return
+        cells = a.cell_id[elig].astype(np.int64)
+        order = np.lexsort((elig, -a.rank[elig], cells))  # by cell, rank down, slot up
+        elig, cells = elig[order], cells[order]
+        starts = np.searchsorted(cells, np.arange(own.size + 1))
+        owners = {int(o) for o in own if o >= 0}
+        gap = float(bio.territory_gap)
+        for c in range(own.size):
+            present = [int(m) for m in elig[starts[c]:starts[c + 1]]]
+            if not present:
+                continue
+            o = int(own[c])
+            if o >= 0:
+                if o not in present:
+                    continue
+                rivals = [m for m in present if m not in owners]
+                if not rivals or a.rank[rivals[0]] < a.rank[o] - gap:
+                    continue
+                ch = rivals[0]
+                p_own = min(0.95, max(0.05, 0.5 + (float(a.rank[o]) - float(a.rank[ch]))
+                                      / (2.0 * gap)))
+                win, lose = (o, ch) if self.rng.random() < p_own else (ch, o)
+                a.rank[lose] = max(0.0, float(a.rank[lose]) - 0.10)
+                a.wounds[lose] = min(1.5, float(a.wounds[lose]) + 0.15)
+                a.stress[lose] = min(1.5, float(a.stress[lose]) + 0.10)
+                a.rank[win] = min(1.0, float(a.rank[win]) + 0.05)
+                self._contests += 1
+                if win == ch:
+                    owners.discard(o)
+                    self._set_owner(c, ch, owners)
+                    self._takeovers += 1
+                continue
+            cands = [m for m in present if m not in owners]
+            if not cands:
+                continue
+            top = cands[0]
+            if self._claim[c] == top and self._claim_serial[c] == self._serial[top]:
+                self._claim_days[c] += 1
+            else:
+                self._claim[c], self._claim_serial[c] = top, self._serial[top]
+                self._claim_days[c] = 1
+            if self._claim_days[c] >= bio.territory_settle_days:
+                self._set_owner(c, top, owners)
+
+    def _set_owner(self, c: int, m: int, owners: set[int]) -> None:
+        """Make slot m the owner of cell c and drop every claim he holds."""
+        self._owner[c], self._owner_serial[c] = m, self._serial[m]
+        owners.add(m)
+        mine = (self._claim == m) & (self._claim_serial == self._serial[m])
+        self._claim[mine], self._claim_serial[mine], self._claim_days[mine] = -1, -1, 0
+        self._claim[c], self._claim_serial[c], self._claim_days[c] = -1, -1, 0
+
     def _daily_breeding_pass(self, alive: np.ndarray) -> None:
-        """Once per day: conceive eligible females that share a cell with a male."""
+        """Once per day: conceive eligible females that share a cell with a male (with
+        biology.territories: whose cell has an eligible owner, who sires)."""
         if (self.tick % self.cfg.ticks_per_day) != 0:
             return
         a = self.agents
@@ -1356,8 +1460,14 @@ class Universe25Sim:
         # Per-cell mean male courtship capability: developmental competence x what adult-stage
         # stress has left of the courtship capacity.
         male_cells: dict[int, list[int]] = {}
-        for m in males:
-            male_cells.setdefault(int(a.cell_id[m]), []).append(int(m))
+        if bio.territories:  # the cell's owner, if he is an eligible male, sires
+            elig_m = set(int(m) for m in males)
+            for c, o in enumerate(self._owner):
+                if o >= 0 and int(o) in elig_m:
+                    male_cells[c] = [int(o)]
+        else:
+            for m in males:
+                male_cells.setdefault(int(a.cell_id[m]), []).append(int(m))
         male_comp = {
             c: float(np.mean(a.competence[ms] * a.courtship_cap[ms]))
             for c, ms in male_cells.items()
@@ -1379,6 +1489,8 @@ class Universe25Sim:
                 a.maternal[f] = max(
                     float(a.maternal[f]), 0.85 * c_f * float(a.maternal_cap[f])
                 )
+                if bio.territories:
+                    self._preg_sire[f] = self._serial[cands[0]]
                 self._conceptions += 1
                 self._last_conception_day = self.day
                 self._conc_by_day[min(int(self.day), self._conc_by_day.size - 1)] += 1
@@ -1422,6 +1534,10 @@ class Universe25Sim:
                 a.x[i] = float(np.clip(nest.x, 0.5, self.world.width - 0.5))
                 a.y[i] = float(np.clip(nest.y, 0.5, self.world.height - 0.5))
                 a.cell_id[i] = nest.cell_id
+            sire = int(self._preg_sire[i])
+            self._preg_sire[i] = -1
+            if self.cfg.biology.territories:
+                self._litter_log.append((float(self.day), sire, len(slots)))
             for s in slots:
                 sex = int(self.rng.integers(0, 2))
                 self._spawn(
@@ -1434,6 +1550,7 @@ class Universe25Sim:
                     cell_id=int(a.cell_id[i]),
                     role=ROLE_PUP,
                 )
+                self._sire[int(s)] = sire
                 self._births += 1
                 self._last_young_day = self.day
             a.role[i] = ROLE_NURSING
@@ -1714,6 +1831,9 @@ class Universe25Sim:
             "abandoned_pups": self._abandoned,
             "removed": self._removed,
             "litters_dropped_at_capacity": self._litters_dropped,
+            "territories": ({"owned_cells": int((self._owner >= 0).sum()),
+                             "contests": self._contests, "takeovers": self._takeovers}
+                            if self.cfg.biology.territories else None),
             "nan_count": self._nan_count,
             "playground_enabled": self.world.playground_enabled,
             "n_nests": self.world.n_nests,

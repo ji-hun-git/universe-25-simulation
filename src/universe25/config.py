@@ -156,6 +156,16 @@ class BiologyConfig(_Strict):
     # draw, bit-identical). Not part of the calibrated biology (e.g. 1014 / 150).
     removal_day: float = Field(default=0.0, ge=0.0)
     removal_n: int = Field(default=0, ge=0)
+    # Replica v2 M2 (docs/REPLICA_V2.md). Founders' age at day 0 (Calhoun 1973: 48 days); None =
+    # the frozen colony's uniform 60-90 draw.
+    founder_age_days: float | None = Field(default=None, ge=0.0)
+    # Territories: one owner (an adult male) per cell, claimed after territory_settle_days daily
+    # passes as the cell's top male, contested daily by a present male ranked at least
+    # owner - territory_gap; conception needs the female's cell to have an owner, who sires.
+    # Off = the frozen rule (any adult male in the cell, cell mean courtship), bit-identical.
+    territories: bool = False
+    territory_settle_days: int = Field(default=14, ge=1)
+    territory_gap: float = Field(default=0.15, gt=0.0)
 
     def breakdown_threshold(self) -> float:
         if self.breakdown_density_threshold is not None:
@@ -340,6 +350,8 @@ class SimConfig(_Strict):
                 raise ValueError("geometry.layout calhoun has 16 cells of 16 boxes")
             if self.backend == "warp":
                 raise ValueError("the Warp path implements only geometry.layout grid")
+        if self.biology.territories and self.backend == "warp":
+            raise ValueError("biology.territories is implemented on the NumPy path only")
         return self
 
     @model_validator(mode="after")
