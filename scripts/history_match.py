@@ -343,6 +343,34 @@ def main() -> int:
         I = em.impl(C)
         for k in (1, 2, 3):
             print(f"  NROY fraction (k-th max <= {CUT}): k={k} {np.mean(kth_max(I, k) <= CUT):.4g}")
+        # conflicts: the smallest implausibility each target can reach alone, and what the
+        # others are where the joint (2nd-max) implausibility is smallest
+        i2 = kth_max(I, 2)
+        best = int(np.argmin(i2))
+        print(f"  smallest joint 2nd-max implausibility {i2[best]:.2f}; per target there "
+              "(alone-minimum in brackets):")
+        for j, name in enumerate(OUTPUTS):
+            if np.isfinite(I[:, j]).any():
+                print(f"    {name:22s} {I[best, j]:6.2f}  [{np.nanmin(I[:, j]):.2f}]")
+        names = list(OUTPUTS)
+        print("  pairwise conflicts: min over candidates of max(I_a, I_b), emulated; and the "
+              "simulated runs' best")
+        for pa, pb in (("peak_n", "n_at_day_1588"), ("peak_n", "last_conception_day"),
+                       ("peak_n", "n_at_day_1444"), ("n_at_day_736", "n_at_day_1444"),
+                       ("peak_n", "n_at_day_315"), ("peak_n", "beautiful_800")):
+            ja, jb = names.index(pa), names.index(pb)
+            em_min = float(np.nanmin(np.maximum(I[:, ja], I[:, jb])))
+            sim_min = np.inf
+            for r in runs:
+                ii = []
+                for nm in (pa, pb):
+                    y = r["outputs"].get(nm, np.nan)
+                    z, var = target(nm)
+                    vn = em.gp[nm].n2 * em.gp[nm].sd ** 2
+                    ii.append(abs(z - transform(nm, np.array([y]))[0]) / np.sqrt(var + vn)
+                              if np.isfinite(y) else np.inf)
+                sim_min = min(sim_min, max(ii))
+            print(f"    {pa} & {pb}: emulated {em_min:.2f}, simulated {sim_min:.2f}")
         # the simulated runs, scored on their own outputs (seed noise from the emulators)
         rows = []
         for r in runs:

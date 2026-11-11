@@ -419,6 +419,21 @@ amended) to the record by history matching (`scripts/history_match.py`, emulator
   implausibility per target, alone and jointly.
 - **Validation** is M6, on fresh seeds. Jason decides whether the ensemble becomes the
   reference for new work.
+- **Done 2026-11-11** (NOTES; 488 runs, 10.3 CPU-hours).
+  - **No simulated parameter set passes.**
+    - NROY shrank from 0.51 % of the box to 0.003 % over the waves.
+    - The best simulated run has I₂ 3.19. The best ensemble member has I₂ 3.95 on its seed
+      mean.
+    - `configs/replica_v2_ensemble.json` holds the 12 best members as a fallback, marked as
+      such.
+  - **The conflict is growth versus collapse.** 97 runs peak above 1,800 and 76 collapse
+    (below 300 at day 1,588), but none does both. The largest peak among collapsing runs is
+    1,749.
+  - **The best region is bistable:** the seed decides whether the colony collapses or
+    plateaus.
+  - **What it means:** with breakdown driven only by individual experience, the model cannot
+    produce Calhoun's arc. Either a delayed or cumulative (multi-generational) mechanism is
+    missing, or the record is one draw from a bistable system.
 
 **M6 — out-of-sample validation.**
 - The sibling universes of Calhoun 1971 (1, 2, 4 and 8 cells; Fig 3) were never fitted. They are

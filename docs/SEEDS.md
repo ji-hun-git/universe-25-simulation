@@ -28,7 +28,8 @@ passed to the generator, not simulation seeds.
 | 7000–7011 | replica v2 development (M1–M5) | every replica milestone report (M1–M4) and the M5 history-matching waves and ensemble (training seeds; not out-of-sample) |
 | 9200–9247 | replica v2 M6 validation (registered 2026-11-11, before use) | the M5 ensemble in Calhoun's pen, one member per seed: 90 % prediction intervals against the record |
 | 9248–9295 | replica v2 M6 sibling universes (registered 2026-11-11, before use) | 1, 2, 4 and 8 open cells, 12 seeds each in that order (Calhoun 1971 Fig 3) |
-| 9096–9099, 9112–9199, 9296–9499, 9505–9999 | **reserved, fresh** | substrate-variant confirmation (24 seeds per variant) and future references |
+| 9296–9307 | replica v2 M6 Marsden transfer (registered 2026-11-11, before use) | the best M5 member: transfer at day 870 into a fresh 4-cell pen |
+| 9096–9099, 9112–9199, 9308–9499, 9505–9999 | **reserved, fresh** | substrate-variant confirmation (24 seeds per variant) and future references |
 
 ## Random-network init seeds (`MlpFrozenPolicy.random_init(s)`)
 

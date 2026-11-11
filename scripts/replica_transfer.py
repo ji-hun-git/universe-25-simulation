@@ -145,9 +145,13 @@ def main() -> int:
     p.add_argument("--pen-days", type=float, default=60.0)
     p.add_argument("--workers", type=int, default=6)
     p.add_argument("--arm", default="m4=replica_v2.yaml")
+    p.add_argument("--members", help="M5 ensemble file: use its first (best) member's params")
     a = p.parse_args()
     lo, hi = (int(v) for v in a.seeds.split("-"))
     name, conf, over = parse_arm(a.arm)
+    if a.members:
+        best = json.loads(Path(a.members).read_text(encoding="utf-8"))["members"][0]
+        over = _deep(over, best["params"])
     jobs = [(name, conf, over, s, a.day, a.pen_days) for s in range(lo, hi + 1)]
     t0 = time.perf_counter()
     with ProcessPoolExecutor(max_workers=a.workers) as ex:

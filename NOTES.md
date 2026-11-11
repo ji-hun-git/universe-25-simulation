@@ -1,5 +1,75 @@
 # Universe25 Play — NOTES
 
+## 2026-11-11 — Replica v2 M5: history matching finds no parameter set that grows to 2,200 and then collapses
+
+**Design.** As preregistered in `docs/REPLICA_V2.md` (spec b468f4c, code 11ab904):
+- the replica is M4 amended, plus the removal event (150 on day 1,014) and both methods fixes
+  from the review;
+- 20 parameters on boxes, 20 record targets with observation and discrepancy sds;
+- a GP emulator per target, with NROY defined by second-largest implausibility ≤ 3;
+- waves of 200 (Latin hypercube), 120 and 120 points, then 24 NROY points × 2 seeds;
+- training seeds 7000–7011 throughout.
+
+The run took 488 runs and 10.3 CPU-hours (`_output/hm/`).
+
+**Emulators.** Leave-one-out errors beyond 3 sd were at most 3 % for every target in every wave.
+The ones driving most outputs are `imprint_rate`, `maternal_erosion_stress` and
+`stress_density_gain`.
+
+**The NROY space shrank wave by wave:**
+
+| fitted on | NROY fraction of the box (2nd-max ≤ 3) | max ≤ 3 |
+|---|---|---|
+| wave 1 (200 runs) | 0.51 % | 0.006 % |
+| waves 1–2 (320) | 0.032 % | 0 |
+| waves 1–3 (440) | 0.008 % | — |
+| all 488 | 0.003 % | 0 |
+
+**No simulated parameter set passes.**
+- The best simulated run has I₂ 3.19 and I_max 4.40. Its N@315 is 742, its peak 1,413 at day
+  764, and N@1,444 571.
+- None of the 24 ensemble members passes on its two-seed mean. The best scores I₂ 3.95. Its
+  worst targets are never fought or mated (4.5), N@736 (3.9) and N@811 (3.3).
+- `configs/replica_v2_ensemble.json` holds the 12 best members, marked `fallback: true` because
+  none passes.
+
+**The conflict is growth versus collapse.**
+- Of 488 runs, 97 peak above 1,800 and 76 end below 300 at day 1,588. **None does both.**
+  - The largest peak among collapsing runs is 1,749.
+  - Every run that peaks above 1,800 still holds at least 1,265 at day 1,588, and keeps
+    conceiving to the end.
+- Parameter sets that let the colony grow to the record's size leave reproduction intact at
+  that size. Sets whose development and stress end reproduction also cap growth at about
+  1,200–1,750.
+- "Never fought or mated" at day 800 (record 0.53) is the hardest single target. It can reach
+  0.54 on its own (its median over all runs is 0.01). Where the other targets come closest, it
+  reaches only about 0.0–0.2.
+
+**The best region is bistable.**
+- The best ensemble member's two seeds fall into different regimes. Seed 7001 ends conceptions
+  at day 569 and dies out (8 at day 1,588). Seed 7000 conceives to day 1,562 and holds 1,291.
+- In the ensemble, 8 of 48 runs end reproduction.
+- Near the boundary, the seed decides whether the colony collapses or plateaus.
+
+**Reading.**
+- With breakdown driven only by each animal's own experience, the model cannot produce
+  Calhoun's arc: growth to 2,200 and then the end of reproduction.
+  - The frozen 2m calibration produced it with a colony-wide density switch. M3 showed that
+    switch is a fixed density threshold, not a mechanism.
+  - The individual mechanisms (local density stress, box overcrowding, care deficits, erosion
+    thresholds) act during growth as much as after the peak. So they trade growth against
+    collapse.
+- Two readings stay open, and this replica cannot separate them:
+  - **A missing delayed or cumulative mechanism.** For example, competence lost across
+    generations through the care each generation received. This would be Calhoun's "second
+    death", which the model has only in one generation.
+  - **The record's collapse is one draw from a bistable system** (n = 1). The four sibling
+    universes plateaued and were terminated (Calhoun 1971), and the model's best region is
+    bistable.
+- **This is a negative calibration result, reported as such.** The fallback ensemble does not
+  meet the validation standard. Whether any of it becomes the reference for new work is
+  Jason's call; I recommend against replacing 2m with it.
+
 ## 2026-11-11 — Replica v2 M4: without colony-wide terms the colony collapses only with lifelong natal boxes
 
 **Design.** Jason: "start m4, try to finish the project". The specification was committed before
