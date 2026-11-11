@@ -91,6 +91,45 @@ frozen colony. Each one ends with an uncalibrated run of the replica that shows 
 - *Targets:* first surviving litters at 50–65 d (60 ± 15); 620 at day 315 (150 adults + 470
   young); the doubling time changes from about 55 d to about 145 d at day 315.
 
+**M2 specification (fixed 2026-11-11 before code; parameters set a priori, not fitted).**
+- *Founders* (`biology.founder_age_days`): 48 days old (Calhoun 1973 p. 82). Unset means the
+  frozen colony's uniform 60–90.
+- *No calendar gate:* `first_conception_min_day` 0.
+- *Litters:* `litter_mean` 5.5 (BALB/c 5–6).
+- *Territories* (`biology.territories`, default off).
+  - **Owners.** A cell can have one owner, an adult male. Each male owns at most one cell.
+  - **Claiming.** In a daily pass, the top-ranked adult, non-withdrawn male present in an
+    unowned cell claims it. He becomes its owner after `territory_settle_days` (14) daily
+    passes as its top male. A different top male restarts the claim.
+  - **Contests.** When the owner is present and another adult male present has a rank within
+    `territory_gap` (0.15) of his, they hold one contest a day, drawn from the simulation
+    stream. P(the owner wins) = 0.5 + (r_owner − r_challenger) / (2 × gap), clipped to
+    [0.05, 0.95].
+    - The loser loses 0.10 rank and gains 0.15 wounds and 0.10 stress, as a lost fight in
+      `_aggress`.
+    - The winner gains 0.05 rank.
+    - A winning challenger takes the cell.
+  - **Ownership lapses** when the owner dies, withdraws or is defeated. It does not lapse while
+    he is away.
+  - **Conception** needs the female's cell to have an owner, and uses the owner's competence ×
+    courtship capacity: the owner sires. This replaces "any male in the cell, cell mean".
+  - **Why:** phase A then comes from the founders settling territories instead of a date. Role
+    saturation follows when maturing males outnumber the 16 territories, and brood groups are
+    the owners' cells (Calhoun's basic group: one territorial male per territory).
+- *Bookkeeping:* every pup's brood group is the owner who sired it (a spawn serial number per
+  animal).
+- *Report* (training seeds 7000–7011, 1,600 d): M1 vs M2.
+  - The landmarks.
+  - The first-litter day; Calhoun 1971 gives first surviving litters at 50 d, and figures imply
+    60–65.
+  - Owned cells at day 315.
+  - Young per brood group born by day 338 (Calhoun: 842 young in 14 groups, 111 … 13).
+  - Founder-male deaths within 60 d (Calhoun: 2 of 4).
+- *M2 targets* (reported, not fitted; calibration is M5):
+  - first litters 40–80 d with no gate;
+  - 10–16 brood groups by day 315 with a skewed distribution;
+  - N@315 and the doubling times reported against 620 / 55 d / 145 d.
+
 **M3 — the social system.**
 - *Territories:* each wall sector is held by a territorial male, contested by maturing males,
   and the holder sires. This yields brood groups and role saturation (more young adults than
