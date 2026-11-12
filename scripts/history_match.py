@@ -17,7 +17,10 @@ usage:
   python scripts/history_match.py --wave 2 --n 200       (fits on waves < 2, samples NROY, runs)
   python scripts/history_match.py --fit                  (emulator diagnostics, NROY size, best)
   python scripts/history_match.py --ensemble 12 --seeds 7000-7003   (NROY members x seeds)
-Runs are cached in _output/hm/runs.jsonl (resumable); designs in _output/hm/.
+Runs are cached in _output/<label>/runs.jsonl (resumable; --label, default hm); designs there.
+--fixed group.key=value ... applies the same overrides to every run of the label (M5b:
+--label hm_nofac --fixed geometry.hopper_facilitation=false); they are stored in each run's
+params, so the ensemble members carry them.
 """
 from __future__ import annotations
 
@@ -35,7 +38,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "scripts"))
 
-OUT = ROOT / "_output" / "hm"
+OUT = ROOT / "_output" / "hm"  # main process only; set from --label
+FIXED: dict = {}  # main process only; set from --fixed (jobs carry it to the workers)
 CONF = "replica_v2.yaml"
 DAYS = 1600.0
 TRAIN_SEEDS = tuple(range(7000, 7012))
@@ -160,11 +164,39 @@ def target(name: str) -> tuple[float, float]:
     return z, var
 
 
-def run_job(job: tuple[str, list[float], int, int]) -> dict:
+def _deep(base: dict, over: dict) -> dict:
+    out = dict(base)
+    for k, v in over.items():
+        out[k] = _deep(out[k], v) if isinstance(v, dict) and isinstance(out.get(k), dict) else v
+    return out
+
+
+def parse_fixed(items: list[str]) -> dict:
+    """["geometry.hopper_facilitation=false", ...] -> nested overrides."""
+    out: dict = {}
+    for it in items:
+        key, val = it.split("=", 1)
+        lit = {"true": True, "false": False, "null": None}
+        v: object = lit.get(val.lower(), lit)
+        if v is lit:
+            try:
+                v = float(val)
+            except ValueError:
+                v = val
+        d = out
+        ks = key.split(".")
+        for k in ks[:-1]:
+            d = d.setdefault(k, {})
+        d[ks[-1]] = v
+    return out
+
+
+def run_job(job: tuple) -> dict:
     from replica_report import run_one
 
-    key, u, seed, wave = job
-    over = to_params(np.asarray(u))
+    key, u, seed, wave = job[:4]
+    fixed = job[4] if len(job) > 4 else {}
+    over = _deep(to_params(np.asarray(u)), fixed)
     t0 = time.perf_counter()
     _, _, r = run_one(("hm", CONF, over, seed, DAYS))
     return {"key": key, "wave": wave, "u": u, "seed": seed, "params": over,
@@ -313,8 +345,15 @@ def main() -> int:
     p.add_argument("--ensemble", type=int)
     p.add_argument("--seeds", default="7000-7003")
     p.add_argument("--write-ensemble", help="path: score the ensemble runs, write members")
+    p.add_argument("--label", default="hm", help="run cache: _output/<label>/")
+    p.add_argument("--fixed", nargs="*", default=[], help="group.key=value for every run")
     a = p.parse_args()
+    global OUT, FIXED
+    OUT = ROOT / "_output" / a.label
+    FIXED = parse_fixed(a.fixed)
     OUT.mkdir(parents=True, exist_ok=True)
+    if FIXED:
+        print(f"label {a.label}: fixed overrides {FIXED}")
     if a.wave:
         if a.wave == 1:
             U = qmc.LatinHypercube(d=len(PARAMS), seed=2511).random(a.n)
@@ -326,7 +365,7 @@ def main() -> int:
             print(f"wave {a.wave}: NROY fraction of the box {frac:.4g} "
                   f"(emulators on {len(runs)} runs); {len(U)} points")
         jobs = [(key_of(u, TRAIN_SEEDS[i % 12]), [float(v) for v in u], TRAIN_SEEDS[i % 12],
-                 a.wave) for i, u in enumerate(U)]
+                 a.wave, FIXED) for i, u in enumerate(U)]
         (OUT / f"wave{a.wave}_design.json").write_text(
             json.dumps({"nroy_fraction": frac, "jobs": jobs}), encoding="utf-8")
         run_jobs(jobs, a.workers)
@@ -406,7 +445,7 @@ def main() -> int:
         em = Emulators(runs)
         U, frac = sample_nroy(em, a.ensemble, seed=9901)
         lo, hi = (int(v) for v in a.seeds.split("-"))
-        jobs = [(key_of(u, s), [float(v) for v in u], s, 99) for u in U
+        jobs = [(key_of(u, s), [float(v) for v in u], s, 99, FIXED) for u in U
                 for s in range(lo, hi + 1)]
         (OUT / "ensemble_design.json").write_text(
             json.dumps({"nroy_fraction": frac, "jobs": jobs}), encoding="utf-8")

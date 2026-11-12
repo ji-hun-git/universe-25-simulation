@@ -10,8 +10,10 @@
    of a pup that reached weaning). N at the record's T values against the record.
 
 usage: python scripts/replica_validate.py --ensemble configs/replica_v2_ensemble.json
-       [--workers 6] [--part pen|siblings|all]
-Writes _output/replica_validate.json.
+       [--workers 6] [--part pen|siblings|all] [--label m6] [--pen-seeds 9200-9247]
+       [--sib-seeds 9248-9295]
+The sibling seeds are split into four blocks of 12 (1, 2, 4, 8 cells, in that order).
+Writes _output/replica_validate[_<label>].json.
 """
 from __future__ import annotations
 
@@ -78,14 +80,23 @@ def main() -> int:
     p.add_argument("--ensemble", required=True)
     p.add_argument("--workers", type=int, default=6)
     p.add_argument("--part", default="all", choices=("pen", "siblings", "all"))
+    p.add_argument("--label", default="")
+    p.add_argument("--pen-seeds", default="9200-9247")
+    p.add_argument("--sib-seeds", default="9248-9295")
     a = p.parse_args()
+    lo, hi = (int(v) for v in a.pen_seeds.split("-"))
+    pen_seeds = tuple(range(lo, hi + 1))
+    lo, hi = (int(v) for v in a.sib_seeds.split("-"))
+    sb = list(range(lo, hi + 1))
+    assert len(pen_seeds) == 48 and len(sb) == 48, "48 pen seeds and 48 sibling seeds"
+    sib_seeds = {c: sb[12 * k:12 * (k + 1)] for k, c in enumerate((1, 2, 4, 8))}
     members = json.loads(Path(a.ensemble).read_text(encoding="utf-8"))["members"]
     jobs = []
     if a.part in ("pen", "all"):
         jobs += [("pen", members[i % len(members)]["params"], s, 1600.0, 16)
-                 for i, s in enumerate(PEN_SEEDS)]
+                 for i, s in enumerate(pen_seeds)]
     if a.part in ("siblings", "all"):
-        for cells, seeds in SIB_SEEDS.items():
+        for cells, seeds in sib_seeds.items():
             jobs += [("sib", members[i % len(members)]["params"], s, 900.0, cells)
                      for i, s in enumerate(seeds)]
     t0 = time.perf_counter()
@@ -150,7 +161,8 @@ def main() -> int:
             t0s = [t["t0"] for t in ta]
             line.append(f"first surviving litter day {np.median(t0s):.0f}")
             print(f"  {cells:2d} cells: " + "; ".join(line))
-    path = ROOT / "_output" / "replica_validate.json"
+    path = ROOT / "_output" / (f"replica_validate_{a.label}.json" if a.label
+                               else "replica_validate.json")
     path.write_text(json.dumps(res, indent=1, default=float), encoding="utf-8")
     print(f"\nwritten {path}")
     return 0
