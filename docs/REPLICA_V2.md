@@ -815,6 +815,53 @@ social competence (Jason, 2026-11-12: "Yes, design it"; fixed before code).**
     - recalibrate with M8 on (M5e), with the imprinting rate and its density threshold free;
     - or stop the replica line.
 
+**M5e — history matching with M8 on (Jason, 2026-11-12: "Run M5e"; fixed before any run).**
+- **Why.** M8 removed the two structural blocks. But the population parameters were fitted
+  without it, and at the strong imprinting that gave the categories, the colony stopped
+  growing. Only a recalibration with M8 on can tell whether some parameter set does all of
+  this:
+  - the colony grows to the record's size;
+  - the later cohorts imprint;
+  - crowding erodes the males' courtship.
+- **The design is M5d exactly, with two changes:**
+  - **M8 on,** as fixed overrides beside facilitation off: `biology.withdrawn_disengage: true`
+    and `biology.fertility_from_competence: false`.
+  - **The categories target** "never fought or mated" (131–320 days old, day 800) is measured
+    as the adult share (`beautiful_share_adult`), with M5's z (0.53), sds and scale.
+
+  Everything else is M5d:
+  - the 22 parameters and their boxes;
+  - the 15 mean targets, the arc frequency (α 0.05) and the 5 targets given the arc;
+  - wave 0, M5c's final NROY;
+  - waves of 120 and 80 points × 6 seeds (7000–7005);
+  - the ensemble of 24 points from the top 10 % of emulated p, run on 12 seeds;
+  - the member criterion: the arc in at least 2 of 12 seeds, and I₂ ≤ 3 over all 20 targets;
+  - M5d's wave stop rule.
+- **Wave 1 pairs with M5d.** It draws the same 120 points (the same candidate stream) and runs
+  the same seeds, so the difference is M8 and the adult measure.
+- **A caveat on wave 0.** M5c's NROY was built without M8, with the any-age share. Its rule
+  (the second-largest implausibility) lets one target fail, and the any-age share was mostly
+  that target. So wave 0 should cut little of what M8 makes possible; the paired wave 1 shows
+  how much it does.
+- **Stop rule for the replica line (new).**
+  - If no ensemble member passes, the replica line ends: no further replica milestone. The
+    frozen 2m colony stays the reference. The best member of M5d or M5e (whichever does
+    better on fresh seeds) is documented with its misses as the final replica.
+  - If M5d's wave stop rule ends M5e early, the same applies.
+  - If members pass, they are validated on the fresh seeds below. Jason decides afterwards,
+    whatever the validation shows.
+- **Validation** on new fresh seeds, registered now before use. The categories target counts
+  as the adult share.
+  - Calhoun's pen: 48 runs, seeds 9721–9768, with the arc's frequency;
+  - the sibling universes: seeds 9769–9816, a consistency check;
+  - the Marsden transfer with the best member: seeds 9817–9828.
+- **Reported:**
+  - M5d's list;
+  - the paired wave-1 comparison with M5d;
+  - the categories (adult and any-age shares) and the withdrawn share;
+  - in the transfer, whether the colony's own males sire.
+- **Cost:** about 1,500 runs (about 35 CPU-hours), plus validation.
+
 ## Validation standard (fixed now; applied from M2 on)
 
 **Population landmarks.** Calhoun's value must lie inside the replica's 90 % prediction interval
