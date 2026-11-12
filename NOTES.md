@@ -1,5 +1,138 @@
 # Universe25 Play — NOTES
 
+## 2026-11-12 — Replica v2 M5c: transmission makes the record's whole arc more frequent, but history matching cannot select for it, and the best member ends reproduction the wrong way
+
+**Design.** Jason: "네, 재보정". The spec was fixed before any run (462b4c2; tooling 827b435,
+ce0fedb). It is M5b exactly, plus two parameters: τ (`maternal_transmission`, 0–1) and
+`care_ref` (0.5–2.5, log).
+- Runs: 488 on training seeds, 10.3 CPU-hours (`_output/hm_m7/`).
+- Validation: fresh seeds 9505–9612, registered before use.
+
+**Wave 1, paired with M5b** (the same 200 points in the 20 shared parameters, and the same
+seeds; medians and counts):
+
+| | M5b | M5c |
+|---|---|---|
+| N@315 | 1,100 | 994 |
+| peak N | 1,920 | 1,650 |
+| N@736 | 1,650 | 1,300 |
+| N@1,588 | 1,320 | 564 |
+| runs peaking > 1,800 / collapsing (N@1,588 < 300) / both | 116 / 49 / 16 | 80 / 92 / 18 |
+| runs with a gap of at least 150 d (last surviving birth to last conception) | 27 | 72 |
+| runs with all three: peak > 1,800, the gap, collapse | 3 | 9 |
+
+- The stronger the transmission, the longer the gap and the more runs collapse, but the lower
+  the peak.
+- Where a typical phase-B daughter's capacity is cut to 0.60–0.75, the median gap rises from 21
+  to 290 days, and the median peak falls from 2,050 to 1,487.
+
+**History matching.**
+- NROY is 8.3 % of the box after wave 1 and 8.6 % on all runs, or 1.2 % under the strict max
+  rule. For M5b the figures were 3.6 % and 0.32 %.
+- **τ and care_ref are not constrained.** Their NROY distributions match the prior:
+  - τ is 0.05 / 0.51 / 0.95 (5 / 50 / 95 %);
+  - care_ref is 0.53 / 1.06 / 2.31;
+  - the share with τ < 0.2 is 0.199, against 0.2 in the prior.
+- **The reason is the two targets that define the phase.**
+  - The last surviving birth and the last conception have two outcomes across seeds:
+    reproduction either ends or goes on to the end of the run.
+  - The emulators fit the mean and treat the spread as seed noise, with an sd of 283 and 227
+    days (M5b: 236 and 199).
+  - A higher chance of the ended outcome moves the emulated mean by less than that noise. The
+    implausibility therefore barely separates parameter sets on these targets.
+- **Transmission does make the record's arc more frequent.** Across all 488 runs, the share
+  showing all three rises with τ:
+
+  | τ | below 0.2 | 0.2–0.4 | 0.4–0.6 | 0.6–0.8 | 0.8 and above |
+  |---|---|---|---|---|---|
+  | runs with all three | 3 % | 0 % | 4 % | 11 % | 14 % |
+
+  In total, 33 runs show all three (M5b: 9 of 488).
+- **Single runs pass the cut.** The best two score I₂ 2.93 and 2.96 (M5b: 2.35). The second has
+  a peak of 2,214, last conception on day 601 and 5 mice on day 1,588.
+- **No ensemble member passes on its two-seed mean** (best I₂ 4.00; M5b 3.70).
+  - The worst targets are empty boxes, the withdrawn share, brood groups, adults at day 315, the
+    last surviving birth, the late sex ratio and peak N.
+  - `configs/replica_v2_ensemble_m7.json` holds the 12 best members, marked `fallback: true`.
+    Their τ runs from 0.16 to 0.86.
+- **As in M5b, fitting shortens the gap.** Among collapsing runs, its median is 410, 116 and 192
+  days in waves 1–3, and 86 in the ensemble. M5b had 186, 43, 28 and 28.
+
+**Validation on fresh seeds** (the M5c fallback ensemble; Calhoun's pen, seeds 9505–9552; M5b
+for comparison; * = the record is outside the 5–95 % range):
+
+| target | record | M5b | M5c |
+|---|---|---|---|
+| peak N | 2200 | 1762 [1235, 3701] | 1760 [1316, 2921] |
+| plateau onset | 560 | 542 [386, 1101] | 543 [407, 685] |
+| N@736 / 811 / 960 | 2056 / 1871 / 1650 | 1674 / 1614 / 1365 | 1675 / 1545 / 1221 |
+| N@1444 | 122 | 492 [47, 3021] | 267 [57, 1521] |
+| N@1588 | 27 | 492 [7, 3313] | 135 [13, 1595] |
+| last conception | 920 | 1598 [717, 1599] | 1394 [714, 1599] |
+| last surviving birth | 600 | 1576 [642, 1578] * | 1100 [666, 1578] * |
+| phase-B doubling | 55 | 48 [41, 61] | 45 [41, 53] * |
+| adults @315 | 150 | 398 * | 482 * |
+| male share @315 / @1444 | 0.40 / 0.18 | 0.48 * / 0.43 * | 0.48 * / 0.43 * |
+| empty boxes @560 | 0.25 | 0.54 * | 0.49 [0.24, 0.64] |
+| withdrawn @560 | 0.32 | 0.61 [0.01, 0.89] | 0.63 [0.05, 0.87] |
+| never fought or mated @800 | 0.53 | 0.13 * | 0.13 * |
+| brood groups by 315 | 14 | 28 * | 26 * |
+| inside, of 20 | | 13 | 13 |
+
+- **The ranges are narrower than in M5b.** N@1,588 runs from 13 to 1,595 (M5b 7–3,313), and
+  the median run holds 135 on day 1,588 (M5b 492).
+- **Reproduction ends in 26 of 48 runs.** Where it ends, the median gap is 22 days, and 8 of the
+  26 have a gap of at least 150 days. One run of 48 shows all three.
+- **Adult females' maternal capacity** (medians) is 0.79 / 0.65 / 0.60 / 0.58 at days 315 / 560
+  / 736 / 1,444.
+
+**Sibling universes** (seeds 9553–9600; a consistency check):
+
+| | 1 cell | 2 | 4 | 8 | 16 |
+|---|---|---|---|---|---|
+| record, per cell later | 180 | 175 | 130 | 142 | 138 |
+| M5b, per cell later | 102 | 94 | 108 | 95 | 104 |
+| M5c, per cell later | 138 | 126 | 138 | 98 | 105 |
+| M5c record points inside | 2 of 3 | 2 of 3 | 2 of 3 | 1 of 3 | 3 of 3 |
+
+- The plateau per cell is closer to the record in the small pens.
+- 10 of 15 record points are inside (M5b: 11). The misses are early: at the end of phase B the
+  small pens hold more mice than the record's.
+
+**Marsden transfer** (best member, seeds 9601–9612):
+- **No female conceived,** with the colony's males or with stock males. The record has none
+  with colony males, and 6 of 16 with stock males.
+- **The transferred females' competence is 0.007** (M5b: 0.82). In this member's colony the
+  females alive on day 870 were born into crowding, and imprinting has left them unable to
+  conceive.
+- **So the best member ends reproduction the wrong way.**
+  - Its pen runs reach the record's population arc in 3 of its 4 fresh seeds: peaks of
+    2,184–2,460, last conception on days 865–927, and 68–120 mice on day 1,588.
+  - But conceptions stop because no female can conceive, not because mothers conceive and then
+    fail to rear. Surviving births stop at the same time (gaps of −8 to 46 days).
+
+**Reading.**
+- **The mechanism pushes towards the record.** The stronger the transmission, the more often
+  growth, a long phase without surviving young, and collapse occur together.
+- **History matching cannot use it.** The targets that define the phase have two outcomes
+  across seeds, and the emulators treat that spread as noise. So τ stays unconstrained, and
+  fitting the other targets selects parameter sets where the phase is short.
+- **Out of sample, M5c is not better than M5b overall.**
+  - Both have 13 of 20 pen targets inside.
+  - M5c's ranges are narrower, and its sibling plateau is closer in the small pens.
+- **The transfer separates routes that the counts cannot.** The best member matches the peak,
+  the last conception and the collapse on fresh seeds. It gets there because all young females
+  lose competence. In Calhoun's colony, females were still conceiving when it collapsed.
+- **Not met: the validation standard.**
+- **What would test the mechanism properly:**
+  - Score the phase as a frequency over replicate seeds per parameter set, for example the share
+    of seeds with a gap of at least 150 days and a collapse. This is a method change.
+  - Use the female side of the transfer as a target. This would use up the transfer as
+    validation.
+- **Recommendation unchanged:** keep the frozen 2m colony as the reference. M5b and M5c are
+  research substrates with stated misses. Whether to continue the replica line with the method
+  change above is Jason's call.
+
 ## 2026-11-12 — Replica v2 M7: passing maternal care down the generations can produce the record's phase without surviving young, but at the M5b parameters only in a much smaller colony
 
 **Design.** Jason: "네, 설계해 줘". The spec was fixed before code (9132a71; code 2f01e10).

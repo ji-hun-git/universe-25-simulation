@@ -594,6 +594,26 @@ fixed before any run).**
   - the M6 tables on the fresh seeds, and the M7 transfer targets: at least 3 of 16 females
     conceive with stock males, and at most 10 pups reach 14 days (record 6 and 5).
 - Jason decides afterwards whether an ensemble replaces 2m as the reference for new work.
+- **Done 2026-11-12** (NOTES; 488 runs, 10.3 CPU-hours; fresh seeds 9505–9612).
+  - **Transmission makes the record's whole arc more frequent.** Growth above 1,800, a gap of
+    at least 150 days and a collapse co-occur in 33 of 488 runs (M5b: 9). The share rises with
+    τ, from 3 % below 0.2 to 14 % above 0.8.
+  - **History matching does not constrain τ or care_ref.** The share of NROY with τ < 0.2 is
+    0.199, as in the prior. The two targets that define the phase have two outcomes across
+    seeds (reproduction ends, or goes on), and the emulators treat the spread as seed noise
+    (sd 283 and 227 days).
+  - **No ensemble member passes on its seed mean** (best I₂ 4.00; M5b 3.70). The fallback is
+    `configs/replica_v2_ensemble_m7.json`.
+  - **On fresh seeds:**
+    - 13 of 20 pen targets are inside, as in M5b, with narrower ranges.
+    - The sibling plateau per cell is closer to the record in the small pens; 10 of 15 record
+      points are inside.
+  - **The transfer fails on the female side.** With the best member, no transferred female
+    conceives, even with stock males (record 6 of 16): imprinting has left the females born
+    into crowding without competence. Its colonies match the peak, the last conception and the
+    collapse, but because females stop conceiving, not because mothers fail to rear.
+  - **Not met: the validation standard.** A proper test of the mechanism needs a method change:
+    score the phase as a frequency over replicate seeds per parameter set. Jason's call.
 
 ## Validation standard (fixed now; applied from M2 on)
 

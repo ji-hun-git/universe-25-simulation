@@ -53,7 +53,15 @@
 >   - At the specified values reproduction never ends.
 >   - With a stricter reference (post hoc) the record's phase of conceptions without surviving
 >     young appears, but in a colony peaking at about 800.
->   Next, Jason's call: a joint recalibration (M5c).
+>   M5c (2026-11-12) is the joint recalibration with τ and care_ref (fresh seeds 9505–9612).
+>   - Transmission makes the record's whole arc (growth, the phase, collapse) more frequent:
+>     33 of 488 runs, against 9 in M5b.
+>   - History matching cannot constrain τ: the phase's targets are bimodal across seeds.
+>   - No ensemble member passes. On fresh seeds 13 of 20 are inside, as in M5b.
+>   - In the transfer, the best member's females cannot conceive at all (record: 6 of 16).
+>   The fallback ensemble is `configs/replica_v2_ensemble_m7.json`. The validation standard is
+>   not met, and the frozen 2m colony remains the reference. Next, Jason's call: a method change
+>   (score the phase as a frequency over replicate seeds), or stop the replica line here.
 > - Tier 2 done (2026-11-11): P4-15 failed its primary test, and the program-level stop rule
 >   applies (no further substrate change for PPO learners). Next: H-g / playground-off, `evo`,
 >   or replica v2 (Tier 3) — Jason's call.
