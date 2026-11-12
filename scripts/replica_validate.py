@@ -125,6 +125,16 @@ def main() -> int:
                   f"{'' if inside else '  *'}")
         print(f"  inside: {n_in} of {len(res['pen'])}")
         res["pen_t_aligned"] = [t_aligned(r["r"], 16) for r in pen]
+        # per run (M5c): do growth, the phase without surviving young and collapse co-occur?
+        res["pen_runs"] = [{"seed": r["seed"], "outputs": o,
+                            "maternal_cap_f": {d: v.get("maternal_cap_f")
+                                               for d, v in r["r"]["struct"].items()}}
+                           for r, o in zip(pen, outs)]
+        g = np.array([o["peak_n"] > 1800 for o in outs])
+        k = np.array([o["n_at_day_1588"] < 300 for o in outs])
+        gp = np.array([o["last_conception_day"] - o["last_young_day"] >= 150 for o in outs])
+        print(f"  single runs: peak > 1800 {g.sum()}, collapse (N1588 < 300) {k.sum()}, gap >= "
+              f"150 d {gp.sum()}; all three {(g & k & gp).sum()} of {len(outs)}")
     sib = [r for r in rows if r["part"] == "sib"]
     if sib:
         res["siblings"] = {}
