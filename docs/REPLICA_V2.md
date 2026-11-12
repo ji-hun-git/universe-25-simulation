@@ -553,6 +553,48 @@ fixed before code).**
     surviving birth, record 320), but the colony then peaks at about 800.
   - **Next:** a joint recalibration (M5c), Jason's call.
 
+**M5c — joint recalibration with maternal-care transmission (Jason, 2026-11-12: "네, 재보정";
+fixed before any run).**
+- **Why.** At its a priori values (τ = 1, care_ref 0.888), M7 lowers maternal capacity across
+  generations but no run ends reproduction. With a stricter care_ref (1.8, post hoc) the record's
+  phase of conceptions without surviving young appears, but the colony peaks at about 800. The
+  M5b parameters were fitted without the mechanism. Whether growth to 2,200, the phase and the
+  collapse can co-occur needs the mechanism's two parameters fitted jointly with the rest.
+- **The change.** M5b exactly (`configs/replica_v2.yaml` with `geometry.hopper_facilitation:
+  false` as a fixed override), plus two parameters:
+  - `biology.maternal_transmission` τ: 0–1;
+  - `biology.care_ref`: 0.5–2.5 (log). The M7 measurement (0.888) and the post-hoc 1.8 are both
+    inside.
+
+  Everything else is M5b:
+  - the 20 parameters and their boxes;
+  - the 20 targets with their sds and scales;
+  - the emulator, the cut (second-largest implausibility ≤ 3) and the stop rule;
+  - waves of 200 / 120 / 120, then 24 NROY points × 2 seeds;
+  - the training seeds 7000–7011.
+
+  Wave 1 pairs with M5b: the same 200 points in the 20 shared parameters and the same seeds,
+  with τ and care_ref from a second Latin hypercube (seed 2512). Runs are cached apart
+  (`_output/hm_m7/`). The script records a label's parameter names and fixed overrides with its
+  first wave and refuses later calls that differ.
+- **Validation** on new fresh seeds, registered now before use:
+  - Calhoun's pen: 48 runs, seeds 9505–9552;
+  - the sibling universes: 1 / 2 / 4 / 8 cells, 12 each, seeds 9553–9600. As in M5b they are a
+    consistency check, since they motivated dropping facilitation.
+  - the Marsden transfer with the best member: seeds 9601–9612. Its record motivated M7, but
+    neither the transfer nor its record enters the fit.
+- **Reported:**
+  - the M5 and M5b tables: emulator checks, NROY fractions, conflicts, best runs, ensemble;
+  - the paired wave-1 comparison with M5b;
+  - the NROY ranges of τ and care_ref, and the share of NROY with τ < 0.2 (transmission weak or
+    off). If that share is large, the record does not need the mechanism under this model.
+  - in single runs and in ensemble members, whether these co-occur: a peak above 1,800, a gap of
+    at least 150 days between the last surviving birth and the last conception, and a collapse
+    (below 300 at day 1,588);
+  - the M6 tables on the fresh seeds, and the M7 transfer targets: at least 3 of 16 females
+    conceive with stock males, and at most 10 pups reach 14 days (record 6 and 5).
+- Jason decides afterwards whether an ensemble replaces 2m as the reference for new work.
+
 ## Validation standard (fixed now; applied from M2 on)
 
 **Population landmarks.** Calhoun's value must lie inside the replica's 90 % prediction interval
