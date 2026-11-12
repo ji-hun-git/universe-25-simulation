@@ -452,6 +452,34 @@ amended) to the record by history matching (`scripts/history_match.py`, emulator
   - **Not met: the validation standard.** The open questions are in NOTES ("Replica v2 — state
     at the end of M1–M6").
 
+**M5b — recalibration without hopper facilitation (Jason, 2026-11-12: "Yes, recalibrate";
+fixed before any run).**
+- **Why.** In M6, a post-hoc diagnostic found that hopper facilitation makes the plateau per
+  cell fall with pen size: 8 cells hold 81 per cell with it and 185 without. Calhoun's sibling
+  universes plateau at 130–180 per cell whatever their size. In M3 and M4 the same mechanism
+  capped the colony at about 1,200.
+- **The one change.** `geometry.hopper_facilitation: false` is applied to every run as a fixed
+  override; `configs/replica_v2.yaml` itself is not changed. Everything else is exactly M5:
+  - the configuration, with the removal event and the methods fixes;
+  - the 20 parameters and their boxes;
+  - the 20 targets with their sds and scales;
+  - the emulator, the cut (second-largest implausibility ≤ 3) and the stop rule;
+  - waves of 200 / 120 / 120, then 24 NROY points × 2 seeds;
+  - the training seeds.
+
+  Wave 1 reuses M5's Latin hypercube and seeds, so the 200 points pair up with M5's: the same
+  parameters, with and without facilitation. Runs are cached apart (`_output/hm_nofac/`).
+- **Validation.** M6 is repeated on new fresh seeds registered before use:
+  - Calhoun's pen: 48 runs, seeds 9308–9355;
+  - the sibling universes: 1 / 2 / 4 / 8 cells, 12 each, seeds 9356–9403;
+  - the Marsden transfer with the best member: seeds 9404–9415.
+- **What the validation can still show.** The sibling universes motivated this change, so for
+  the decision to drop facilitation they are no longer out of sample. They were not used to
+  fit any parameter. The siblings are therefore reported as a consistency check, not as
+  independent validation. The pen landmarks on fresh seeds remain the validation.
+- **Reported:** the same tables as M5 and M6, the paired wave-1 comparison, and whether
+  growth to 2,200 and a collapse can now co-occur.
+
 ## Validation standard (fixed now; applied from M2 on)
 
 **Population landmarks.** Calhoun's value must lie inside the replica's 90 % prediction interval
