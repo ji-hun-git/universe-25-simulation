@@ -51,6 +51,19 @@ def test_history_match_scales() -> None:
         v = over[g][k]
         assert lo <= v <= hi
         assert np.isclose(v, np.sqrt(lo * hi) if lg else 0.5 * (lo + hi))
+    # M5c: the two transmission parameters append to the M5 set; a point of the wrong
+    # dimension is refused instead of silently truncated
+    ps = hm.param_set(True)
+    assert ps[:len(hm.PARAMS_M5)] == hm.PARAMS_M5 and len(ps) == len(hm.PARAMS_M5) + 2
+    over = hm.to_params(np.full(len(ps), 0.5), ps)
+    assert np.isclose(over["biology"]["maternal_transmission"], 0.5)
+    assert np.isclose(over["biology"]["care_ref"], np.sqrt(0.5 * 2.5))
+    try:
+        hm.to_params(np.full(len(ps), 0.5))
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("a 22-dimensional point for the 20 M5 parameters must be refused")
 
 
 if __name__ == "__main__":

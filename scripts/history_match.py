@@ -20,7 +20,10 @@ usage:
 Runs are cached in _output/<label>/runs.jsonl (resumable; --label, default hm); designs there.
 --fixed group.key=value ... applies the same overrides to every run of the label (M5b:
 --label hm_nofac --fixed geometry.hopper_facilitation=false); they are stored in each run's
-params, so the ensemble members carry them.
+params, so the ensemble members carry them. --transmission adds the two M7 parameters
+(biology.maternal_transmission, biology.care_ref); M5c is --label hm_m7 --transmission --fixed
+geometry.hopper_facilitation=false. A label keeps the parameter names and fixed overrides of
+its first wave (_output/<label>/label.json) and refuses calls that differ.
 """
 from __future__ import annotations
 
@@ -46,7 +49,7 @@ TRAIN_SEEDS = tuple(range(7000, 7012))
 CUT = 3.0
 
 # (group, name, low, high, log)
-PARAMS = [
+PARAMS_M5 = [
     ("biology", "breeding_p_base", 0.2, 0.95, False),
     ("biology", "litter_mean", 4.5, 7.5, False),
     ("biology", "maturity_days", 42.0, 70.0, False),
@@ -68,6 +71,16 @@ PARAMS = [
     ("biology", "litter_abandon_p", 0.0, 0.6, False),
     ("biology", "maternal_neglect_stress", 0.3, 0.9, False),
 ]
+PARAMS_M7 = [  # M5c: maternal-care transmission (replica v2 M7)
+    ("biology", "maternal_transmission", 0.0, 1.0, False),
+    ("biology", "care_ref", 0.5, 2.5, True),
+]
+PARAMS = PARAMS_M5  # main process only; set from --transmission (jobs carry the overrides)
+
+
+def param_set(transmission: bool) -> list:
+    return PARAMS_M5 + (PARAMS_M7 if transmission else [])
+
 # name: (z, obs sd, discrepancy sd, log offset or None)
 OUTPUTS = {
     "first_litters_day": (77.0, 13.5, 0.0, None),  # record 50-104 (contested)
@@ -94,10 +107,13 @@ OUTPUTS = {
 DOUBLING_CAP = 2000.0  # a doubling time that is undefined (no growth) is scored as this
 
 
-def to_params(u: np.ndarray) -> dict:
+def to_params(u: np.ndarray, params: list | None = None) -> dict:
     """Unit-cube point -> nested config overrides."""
+    params = PARAMS if params is None else params
+    if len(u) != len(params):
+        raise ValueError(f"{len(u)}-dimensional point for {len(params)} parameters")
     over: dict = {}
-    for (g, k, lo, hi, lg), v in zip(PARAMS, u):
+    for (g, k, lo, hi, lg), v in zip(params, u):
         val = float(np.exp(np.log(lo) + v * (np.log(hi) - np.log(lo))) if lg
                     else lo + v * (hi - lo))
         over.setdefault(g, {})[k] = val
@@ -194,9 +210,7 @@ def parse_fixed(items: list[str]) -> dict:
 def run_job(job: tuple) -> dict:
     from replica_report import run_one
 
-    key, u, seed, wave = job[:4]
-    fixed = job[4] if len(job) > 4 else {}
-    over = _deep(to_params(np.asarray(u)), fixed)
+    key, u, seed, wave, over = job  # over: the run's full overrides, made in the main process
     t0 = time.perf_counter()
     _, _, r = run_one(("hm", CONF, over, seed, DAYS))
     return {"key": key, "wave": wave, "u": u, "seed": seed, "params": over,
@@ -209,6 +223,28 @@ def load_runs() -> list[dict]:
     if not path.exists():
         return []
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
+
+
+def check_label(fixed: dict) -> None:
+    """A label keeps the parameter names and fixed overrides of its first wave."""
+    cur = {"params": [k for _, k, *_ in PARAMS], "fixed": fixed}
+    path = OUT / "label.json"
+    runs = load_runs()
+    if path.exists():
+        old = json.loads(path.read_text(encoding="utf-8"))
+        if old != cur:
+            raise SystemExit(f"label {OUT.name} holds {old}; this call has {cur}")
+    elif runs:  # labels from before the record (M5, M5b): at least the dimension must agree
+        if len(runs[0]["u"]) != len(PARAMS):
+            raise SystemExit(f"label {OUT.name} holds {len(runs[0]['u'])}-parameter runs; "
+                             f"this call has {len(PARAMS)} parameters")
+    else:
+        path.write_text(json.dumps(cur, indent=1), encoding="utf-8")
+
+
+def job_of(u: np.ndarray, seed: int, wave: int) -> tuple:
+    uu = [float(v) for v in u]
+    return (key_of(u, seed), uu, seed, wave, _deep(to_params(np.asarray(uu)), FIXED))
 
 
 def run_jobs(jobs: list[tuple], workers: int) -> None:
@@ -347,16 +383,23 @@ def main() -> int:
     p.add_argument("--write-ensemble", help="path: score the ensemble runs, write members")
     p.add_argument("--label", default="hm", help="run cache: _output/<label>/")
     p.add_argument("--fixed", nargs="*", default=[], help="group.key=value for every run")
+    p.add_argument("--transmission", action="store_true",
+                   help="add maternal_transmission and care_ref to the parameters (M5c)")
     a = p.parse_args()
-    global OUT, FIXED
+    global OUT, FIXED, PARAMS
     OUT = ROOT / "_output" / a.label
     FIXED = parse_fixed(a.fixed)
+    PARAMS = param_set(a.transmission)
     OUT.mkdir(parents=True, exist_ok=True)
+    check_label(FIXED)
     if FIXED:
         print(f"label {a.label}: fixed overrides {FIXED}")
     if a.wave:
         if a.wave == 1:
-            U = qmc.LatinHypercube(d=len(PARAMS), seed=2511).random(a.n)
+            U = qmc.LatinHypercube(d=len(PARAMS_M5), seed=2511).random(a.n)
+            if len(PARAMS) > len(PARAMS_M5):  # M5c: M5b's points, new parameters appended
+                U = np.hstack([U, qmc.LatinHypercube(d=len(PARAMS) - len(PARAMS_M5),
+                                                     seed=2512).random(a.n)])
             frac = 1.0
         else:
             runs = [r for r in load_runs() if r["wave"] < a.wave]
@@ -364,8 +407,7 @@ def main() -> int:
             U, frac = sample_nroy(em, a.n, seed=2511 + a.wave)
             print(f"wave {a.wave}: NROY fraction of the box {frac:.4g} "
                   f"(emulators on {len(runs)} runs); {len(U)} points")
-        jobs = [(key_of(u, TRAIN_SEEDS[i % 12]), [float(v) for v in u], TRAIN_SEEDS[i % 12],
-                 a.wave, FIXED) for i, u in enumerate(U)]
+        jobs = [job_of(u, TRAIN_SEEDS[i % 12], a.wave) for i, u in enumerate(U)]
         (OUT / f"wave{a.wave}_design.json").write_text(
             json.dumps({"nroy_fraction": frac, "jobs": jobs}), encoding="utf-8")
         run_jobs(jobs, a.workers)
@@ -382,6 +424,25 @@ def main() -> int:
         I = em.impl(C)
         for k in (1, 2, 3):
             print(f"  NROY fraction (k-th max <= {CUT}): k={k} {np.mean(kth_max(I, k) <= CUT):.4g}")
+        nroy = C[kth_max(I, 2) <= CUT]
+        if len(nroy):
+            print(f"  NROY ranges in parameter units (5 / 50 / 95 %, {len(nroy)} candidates):")
+            for j, (g, k, lo, hi, lg) in enumerate(PARAMS):
+                q = np.quantile(nroy[:, j], [0.05, 0.5, 0.95])
+                v = np.exp(np.log(lo) + q * (np.log(hi) - np.log(lo))) if lg else lo + q * (hi - lo)
+                print(f"    {k:32s} {v[0]:.4g} / {v[1]:.4g} / {v[2]:.4g}")
+            names_p = [k for _, k, *_ in PARAMS]
+            if "maternal_transmission" in names_p:
+                tau = nroy[:, names_p.index("maternal_transmission")]  # unit = raw on 0-1
+                print(f"  NROY share with tau < 0.2: {np.mean(tau < 0.2):.3f}")
+        # co-occurrence in the simulated runs: growth, the phase without surviving young, collapse
+        grow = np.array([r["outputs"]["peak_n"] > 1800 for r in runs])
+        coll = np.array([r["outputs"]["n_at_day_1588"] < 300 for r in runs])
+        gap = np.array([r["outputs"]["last_conception_day"] - r["outputs"]["last_young_day"]
+                        >= 150 for r in runs])
+        print(f"  runs: peak > 1800 {grow.sum()}, collapse (N1588 < 300) {coll.sum()}, gap >= 150 "
+              f"d {gap.sum()}; grow & collapse {(grow & coll).sum()}, grow & gap "
+              f"{(grow & gap).sum()}, all three {(grow & coll & gap).sum()} of {len(runs)}")
         # conflicts: the smallest implausibility each target can reach alone, and what the
         # others are where the joint (2nd-max) implausibility is smallest
         i2 = kth_max(I, 2)
@@ -445,8 +506,7 @@ def main() -> int:
         em = Emulators(runs)
         U, frac = sample_nroy(em, a.ensemble, seed=9901)
         lo, hi = (int(v) for v in a.seeds.split("-"))
-        jobs = [(key_of(u, s), [float(v) for v in u], s, 99, FIXED) for u in U
-                for s in range(lo, hi + 1)]
+        jobs = [job_of(u, s, 99) for u in U for s in range(lo, hi + 1)]
         (OUT / "ensemble_design.json").write_text(
             json.dumps({"nroy_fraction": frac, "jobs": jobs}), encoding="utf-8")
         run_jobs(jobs, a.workers)
