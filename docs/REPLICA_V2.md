@@ -797,6 +797,23 @@ social competence (Jason, 2026-11-12: "Yes, design it"; fixed before code).**
     validate on fresh seeds. Jason's call.
   - If not: report what is missing.
   - Reported but not a target: whether the arc survives (its count, landmarks and peak).
+- **Done 2026-11-12** (NOTES; 144 runs on training seeds; development).
+  - **The structure question: no.** No A2 arm meets the three targets at once.
+  - **At the member's weak imprinting, M8 changes almost nothing.** No adult falls below the
+    competence threshold, so A1 is identical to A0.
+  - **At `imprint_rate` 0.06, M8 gives the categories and the stock-male transfer together.**
+    - 41 % of young adults never fought as adults or mated (target 0.38–0.68).
+    - With stock males, 6.5 of 16 transferred females conceive, and no pup reaches 14 days.
+    - Without M8 at the same imprinting, 1 of 16 conceives.
+  - **At that setting the colony stops growing:** peak 1,218, and no run shows the arc.
+    - 49 % of the weaned are withdrawn on day 560 (limit 0.42).
+    - The colony's own males sire in the transfer (5 of 16; record 0). In the smaller colony
+      crowding no longer erodes their courtship (0.75, against 0.03 in A0).
+  - **With M8, the any-age share falls to 0.** The young who never fought as adults had
+    fought before maturity, and a larger share of the attacks now falls on pups and juveniles.
+  - **Next, Jason's call:**
+    - recalibrate with M8 on (M5e), with the imprinting rate and its density threshold free;
+    - or stop the replica line.
 
 ## Validation standard (fixed now; applied from M2 on)
 

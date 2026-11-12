@@ -1,5 +1,98 @@
 # Universe25 Play — NOTES
 
+## 2026-11-12 — Replica v2 M8: with the beautiful ones disengaged and fertility apart from competence, the categories and the transfer come within reach, but not together with the record's growth; the structure test fails
+
+**Design.** Jason: "Yes, design it" (split the competence trait). A pre-spec diagnostic changed
+the design. The spec was fixed before code (11bf0c0; the transfer fix e749d54; code 1a9e678).
+- **The diagnostic** (the M5d best member, development seeds 7000–7001, `imprint_rate` 0.0073 /
+  0.03 / 0.09; `_aggress` replaced by an exact, logging copy):
+  - **No male could count as never having fought.** By day 800, 94–100 % of the males aged
+    131–320 days had both attacked and been attacked, in every arm. That held even where
+    97–98 % of them were withdrawn. While withdrawn, 87 % attacked and 97 % were attacked
+    (`imprint_rate` 0.09). Withdrawn animals kept the AGGRESS action, and they stayed targets.
+  - **Withdrawn females were excluded from conception.** At 0.09 every young female was
+    withdrawn by day 800, and none conceived, so a transfer would fail as in M5c.
+  - So the split alone could not give the record's categories. The male side also needed the
+    beautiful ones to stop fighting.
+- **The change** (two fields; their defaults keep the current model; NumPy path only):
+  - `biology.withdrawn_disengage`: adults below `withdrawn_competence_threshold` (withdrawn for
+    life) neither fight nor are fought. AGGRESS is masked for them, and they are never a
+    target. Animals withdrawn by stress alone fight as before.
+  - `biology.fertility_from_competence: false`: a female's conception no longer scales with her
+    developmental competence, and a female withdrawn for low competence can still conceive and
+    is courted. Male courtship and maternal investment still scale with competence.
+  - Bookkeeping: fights are also marked from maturity on. The share of 131–320-day-olds who
+    never fought *as adults* or mated is reported beside the any-age share used by M5–M5d.
+  - Defaults are bit-identical: the golden hashes pass, and an M5d validation run (seed 9613)
+    reproduces its outputs exactly.
+- **Runs** (development, not validation): six arms on training seeds 7000–7011 (1,600 days),
+  with the M5d best member as the base, and a Marsden transfer for each arm. That is 144 runs.
+
+**Results** (seed medians; the targets were fixed in the spec):
+
+| arm | never fought as adults or mated @800 | any-age | withdrawn @560 | arc, of 12 | peak N | last surviving birth | last conception | transfer: colony males / stock males conceive, pups at 14 d |
+|---|---|---|---|---|---|---|---|---|
+| record | 0.53 | | 0.32 | | 2,200 | 600 | 920 | 0 / 6 of 16, 5 |
+| target | 0.38–0.68 | | 0.22–0.42 | | | | | ≤ 1 / ≥ 3, ≤ 10 |
+| A0 base | 0.00 | 0.00 | 0.09 | 11 | 2,551 | 692 | 1,092 | 1 / 10, 0 |
+| A1 + disengagement | 0.00 | 0.00 | 0.09 | 11 | 2,551 | 692 | 1,092 | 1 / 10, 0 |
+| A2 = M8 | 0.00 | 0.00 | 0.13 | 11 | 2,500 | 650 | 1,062 | 0 / 11, 0 |
+| A2, `imprint_rate` 0.03 | 0.18 | 0.00 | 0.18 | 6 | 1,822 | 779 | 1,041 | 4.5 / 9, 0 |
+| A2, `imprint_rate` 0.06 | **0.41** | 0.00 | 0.49 | 0 | 1,218 | 987 | 1,353 | 5 / **6.5**, **0** |
+| A0, `imprint_rate` 0.06 | 0.33 | 0.25 | 0.47 | 0 | 1,274 | 894 | 1,011 | 1 / 1, 0 |
+
+- **The structure question: no.** No A2 arm meets all three targets at once.
+  - A0, A1 and A2 meet the transfer target only. A2 at 0.03 meets none. A2 at 0.06 meets the
+    categories target only.
+- **At the member's weak imprinting, M8 changes almost nothing.** A1 is identical to A0: no
+  adult falls below the competence threshold (0.145), so there is nobody to disengage. The
+  split alone (A2) slightly raises conception.
+- **At strong imprinting (0.06), M8 does what it was built for.**
+  - 41 % of young adults never fought as adults or mated, within the target (record 53 %).
+    Without M8 at the same imprinting, 33 %.
+  - With stock males, 6.5 of 16 transferred females conceive (record 6), and no pup reaches
+    14 days (record 5). Their mean competence is 0.28 (A0: 0.82).
+  - Without M8 at the same imprinting, the transferred females' mean competence is 0.12, and 1
+    of 16 conceives. Strong imprinting alone sterilises them, as in M5c.
+- **But at these settings the colony and its males are wrong.**
+  - The colony stops growing: peak 1,218, and no run shows the arc.
+  - 49 % of the weaned are withdrawn on day 560, above the 0.42 limit.
+  - In the transfer, the colony's own males get 5 of 16 females pregnant (record 0). In the
+    smaller colony (790 on day 870, against 1,598 in A0) the males keep their courtship
+    capacity: 0.75, against 0.03 in A0, where crowding stress has eroded it.
+- **The any-age share falls to 0 with M8.** It is 0 in 23 of the 24 runs of A2 at 0.03 and
+  0.06 (one run 0.02). So every young adult who never fought as an adult had fought before
+  maturity.
+  - Fights fall by more than half: 18,769 attacks to day 800, against 44,109 (A2 against A0
+    at 0.06, seed 7000; a post-run count).
+  - A larger share of the remaining attacks falls on the young: 39 % on pups and juveniles,
+    against 26 %.
+  - The adult share is Calhoun's definition, and the one the spec fixed as the target.
+- **Unchanged misses in every arm:** the male share on day 1,444 is 0.42–0.47 (record 0.18),
+  and withdrawn animals are not at the centre (0.00–0.05; M3's target is above 0.09).
+
+**Reading.**
+- **The structure test fails as specified.** No arm combines the categories, the withdrawn
+  share and the transfer.
+- **M8 removes the two blocks the diagnostic found.**
+  - With the switches on, a young adult can be a beautiful one: never fighting, never mating.
+  - A withdrawn female can still conceive with competent males and then fail to rear.
+  - At strong imprinting this gives the record's categories and the stock-male transfer at the
+    same time, which no earlier version could.
+- **What fails is tied to the population.** At the strong imprinting that produces the
+  categories, the colony no longer grows. Its smaller size then leaves the colony's males able
+  to court, and the withdrawn share overshoots.
+  - The population parameters were fitted without M8 (M5d).
+  - Whether a parameter set exists where the colony grows to 2,200, the later cohorts
+    imprint, and crowding erodes the males' courtship can only be told by recalibrating with
+    M8 on, including the imprinting rate and its density threshold.
+  - Nothing here shows that such a set exists.
+- **Not met: the validation standard.** The frozen 2m colony stays the reference.
+- **Next, Jason's call:**
+  - a recalibration with M8 on (M5e, about 1,500 runs, with the adult share as the categories'
+    target), then validation on fresh seeds;
+  - or stop the replica line here.
+
 ## 2026-11-12 — Replica v2 M5d: scored as a frequency, the record's arc becomes common and ends reproduction the record's way, but it comes late and the behavioural categories miss; no member passes
 
 **Design.** Jason: "네, 방법 바꿔 보정". The spec was fixed before any run (cf385bf; tooling
