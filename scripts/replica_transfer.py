@@ -149,9 +149,9 @@ def main() -> int:
     a = p.parse_args()
     lo, hi = (int(v) for v in a.seeds.split("-"))
     name, conf, over = parse_arm(a.arm)
-    if a.members:
+    if a.members:  # the arm's own overrides win (as in replica_report.py; fixed in M8)
         best = json.loads(Path(a.members).read_text(encoding="utf-8"))["members"][0]
-        over = _deep(over, best["params"])
+        over = _deep(best["params"], over)
     jobs = [(name, conf, over, s, a.day, a.pen_days) for s in range(lo, hi + 1)]
     t0 = time.perf_counter()
     with ProcessPoolExecutor(max_workers=a.workers) as ex:
