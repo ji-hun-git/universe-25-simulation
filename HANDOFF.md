@@ -40,6 +40,13 @@
 >   - The transfer pattern matches.
 >   The milestones are complete. The open questions are in NOTES ("Replica v2 — state at the end
 >   of M1–M6"). The frozen 2m colony remains the reference.
+>   M5b (2026-11-12) is the recalibration without hopper facilitation.
+>   - Growth to the record's size and collapse now co-occur.
+>   - 13 of 20 fresh-seed targets are inside, within wide, bistable ranges.
+>   - The siblings' plateau per cell is flat but about 30 % low.
+>   - It is still missing a phase of conceptions without surviving young (day 600 → 920), and
+>     the categories.
+>   The fallback ensemble is `configs/replica_v2_ensemble_nofac.json`.
 > - Tier 2 done (2026-11-11): P4-15 failed its primary test, and the program-level stop rule
 >   applies (no further substrate change for PPO learners). Next: H-g / playground-off, `evo`,
 >   or replica v2 (Tier 3) — Jason's call.

@@ -479,6 +479,21 @@ fixed before any run).**
   independent validation. The pen landmarks on fresh seeds remain the validation.
 - **Reported:** the same tables as M5 and M6, the paired wave-1 comparison, and whether
   growth to 2,200 and a collapse can now co-occur.
+- **Done 2026-11-12** (NOTES; 488 runs, 13.1 CPU-hours).
+  - **Growth and collapse now co-occur.** 57 runs peak above 1,800 and collapse (M5: 0). NROY
+    is 3.6 % of the box (M5: 0.003 %), and single runs pass the cut (best I₂ 2.35).
+  - **No ensemble member passes on its seed mean** (best 3.70). The fallback is
+    `configs/replica_v2_ensemble_nofac.json`.
+  - **On fresh seeds:**
+    - 13 of 20 pen targets are inside, including every population count, but within wide,
+      bistable ranges (N@1,588: 7–3,313).
+    - The sibling universes' plateau per cell is now independent of pen size, as in the record,
+      but about 30 % low.
+  - **Still missing:**
+    - the 320-day phase of conceptions without surviving young (day 600 → 920);
+    - the behavioural categories;
+    - brood groups, empty boxes, the sex ratios;
+    - the female side of the transfer.
 
 ## Validation standard (fixed now; applied from M2 on)
 

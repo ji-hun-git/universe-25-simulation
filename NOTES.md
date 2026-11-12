@@ -1,5 +1,108 @@
 # Universe25 Play — NOTES
 
+## 2026-11-12 — Replica v2 M5b: without hopper facilitation the replica reaches the record's size and can collapse; structure still misses
+
+**Design.** Jason: "Yes, recalibrate". The spec was fixed before any run (9748d33; tooling
+820da88). It is M5 exactly, with `geometry.hopper_facilitation: false` as a fixed override.
+- Runs: 488 on training seeds, 13.1 CPU-hours (`_output/hm_nofac/`).
+- Validation: fresh seeds 9308–9415, registered before use.
+
+**Wave 1, paired with M5** (the same 200 parameter points and seeds; medians):
+
+| | with facilitation (M5) | without (M5b) |
+|---|---|---|
+| N@315 | 654 | 1,100 |
+| peak N | 1,020 | 1,920 |
+| N@736 | 842 | 1,650 |
+| N@1,588 | 746 | 1,320 |
+| empty boxes @560 | 0.62 | 0.47 |
+| runs peaking > 1,800 / collapsing (N@1,588 < 300) / both | 30 / 52 / 0 | 116 / 49 / 16 |
+
+**History matching.**
+- The growth-versus-collapse conflict is gone. Of 488 runs, 281 peak above 1,800, 130 collapse,
+  and **57 do both** (M5: 0). For peak and N@1,588 together, the best simulated run reaches
+  max implausibility 0.09 (M5: 1.65).
+- NROY is 3.9 % of the box after wave 1 and 3.6 % on all runs, or 0.32 % under the strict max
+  rule. For M5 the figures were 0.003 % and empty.
+- Single runs now pass the cut. The best scores I₂ 2.35. An ensemble run has N@315 690, a peak
+  of 1,839 at day 514, N@736 1,655, N@1,444 105, N@1,588 34 and last conception 939; the record
+  is 620, 2,200 at 560, 2,056, 122, 27 and about 920.
+- **No ensemble member passes on its two-seed mean** (best I₂ 3.70; M5 3.95). The worst targets
+  are now structural:
+  - never fought or mated;
+  - the last surviving birth;
+  - brood groups;
+  - empty boxes;
+  - the late sex ratio;
+  - the withdrawn share;
+  - adults at day 315.
+- `configs/replica_v2_ensemble_nofac.json` holds the 12 best members, marked `fallback: true`.
+- The record's last surviving birth (day 600) comes 320 days before its last conception (about
+  920). In the model, young survive almost until conceptions end.
+  - Among collapsing runs the median gap was 186 days in wave 1. In waves 2 and 3, fitting the
+    other targets shrank it to 24 and then 6 days.
+
+**Validation on fresh seeds** (the M5b fallback ensemble; Calhoun's pen, seeds 9308–9355; M6
+for comparison; * = the record is outside the 5–95 % range):
+
+| target | record | M6 (with facilitation) | M5b |
+|---|---|---|---|
+| peak N | 2200 | 1333 [1109, 1826] * | 1762 [1235, 3701] |
+| N@736 / 811 / 960 | 2056 / 1871 / 1650 | 1090 / 1082 / 988 * | 1674 / 1614 / 1365 |
+| N@1444 | 122 | 993 [29, 1592] | 492 [47, 3021] |
+| N@1588 | 27 | 946 [4, 1562] | 493 [7, 3313] |
+| last conception | 920 | 1599 [552, 1599] | 1598 [717, 1599] |
+| last surviving birth | 600 | 1578 [580, 1578] | 1576 [642, 1578] * |
+| adults @315 | 150 | 402 * | 399 * |
+| male share @315 / @1444 | 0.40 / 0.18 | 0.47 / 0.32 * | 0.48 * / 0.43 * |
+| empty boxes @560 | 0.25 | 0.42 * | 0.54 * |
+| withdrawn @560 | 0.32 | 0.07 | 0.61 [0.01, 0.89] |
+| never fought or mated @800 | 0.53 | 0.00 * | 0.13 * |
+| brood groups by 315 | 14 | 24.5 * | 28 * |
+| inside, of 20 | | 11 | 13 |
+
+- Every population count is now inside, but the ranges are very wide. N@1,588 runs from 7 to
+  3,313, and the median run still holds 493 on day 1,588. On the training seeds, 12 of the 48
+  ensemble runs end reproduction.
+- So the replica collapses like the record in some runs and keeps growing in others.
+
+**Sibling universes** (seeds 9356–9403). This is a consistency check, not independent
+validation, because the siblings motivated M5b.
+
+| | 1 cell | 2 | 4 | 8 | 16 |
+|---|---|---|---|---|---|
+| record, per cell later | 180 | 175 | 130 | 142 | 138 |
+| M6, per cell later | 171 | 98 | 87 | 76 | 69 |
+| M5b, per cell later | 102 | 94 | 108 | 95 | 104 |
+| M5b record points inside | 3 of 3 | 2 of 3 | 2 of 3 | 1 of 3 | 3 of 3 |
+
+The plateau per cell no longer depends on pen size, as in the record. It sits about 30 % too
+low. 11 of 15 record points are inside, against 5 in M6.
+
+**Marsden transfer** (best member, seeds 9404–9415):
+- With the colony's males: a median of 4 conceptions [0, 20], 3 females conceived and 3 pups
+  to 14 days. The record has none.
+- With stock males: 12 of 16 females conceived and 42.5 pups (record 6 of 16, and 5 pups).
+- The males' courtship capacity is eroded to 0.08, and the females' competence is 0.82.
+
+**Reading.**
+- **Facilitation was the cap.** Dropping it removes the conflict between growth and collapse:
+  the replica can now produce the record's whole population arc. Its plateau per cell is
+  independent of pen size, as in Calhoun's siblings.
+- **It still does not meet the validation standard.**
+  - No member passes on seed means.
+  - The predictive distribution is wide and bistable: some runs collapse like the record,
+    others keep growing. Most population counts are "inside" because of that width.
+  - The structural targets miss: the 320-day gap between the last surviving birth and the last
+    conception, never fought or mated, brood groups, empty boxes, the sex ratios, and the
+    transfer's female side.
+- **What is missing is now specific.** Calhoun's colony had a long phase in which females
+  conceived but no young survived. The model has no mechanism that kills nearly all young
+  while conceptions continue. Next to it come the behavioural categories.
+- **Recommendation unchanged:** keep the frozen 2m colony as the reference. The M5b ensemble is
+  the best replica configuration so far, a research substrate with stated misses. Adopting it
+  is Jason's call.
+
 ## 2026-11-11 — Replica v2 M6: out of sample the replica misses the record; the sibling universes contradict the hopper sink
 
 **Design** (`docs/REPLICA_V2.md` M6; `scripts/replica_validate.py`). The seed bands were
