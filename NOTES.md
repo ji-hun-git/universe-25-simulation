@@ -1,5 +1,153 @@
 # Universe25 Play — NOTES
 
+## 2026-11-13 — Replica v2 ends: M5d's best member is the final replica, with 10 of 20 pen targets inside and the arc in 45 of 48 fresh-seed runs, but late and without the categories; the frozen 2m colony stays the reference
+
+**Decision.** Jason, after M5e: "End the line".
+- The replica line ends, with no further replica milestone. The frozen 2m colony stays the
+  reference for new work.
+- M5e's stop rule says what happens when the line ends without a passing member, and it is
+  applied here as well: the better of M5d's and M5e's best members on fresh seeds is documented
+  with its misses as the final replica.
+
+**Design** (`docs/REPLICA_V2.md`, "End of the replica line"; committed in 4d7d890 before any run).
+- **Why one more run.** Neither best member had 48 fresh seeds of its own: the validations gave
+  the members seeds in turn (M5d's 12 members had 4 each, and M5e's 2 members 24 each).
+- **The two members:**
+  - M5d's best member, the first of `configs/replica_v2_ensemble_m5d.json`: I₂ 3.14, a fallback
+    member, with M8 off;
+  - M5e's member A: I₂ 2.92, with M8 on.
+- **Runs.** Each member ran alone in Calhoun's pen on the same 48 fresh seeds, 9829–9876: 96 runs,
+  377 s and 405 s on 10 workers.
+- **The rule.** The first difference decides:
+  1. more of the 20 pen targets inside;
+  2. more of the six structural targets of M7 and M8 met;
+  3. the arc in more runs;
+  4. otherwise member A.
+- The categories target is the adult share for both members.
+- **Reproducibility.** Today's code reproduces M5d's validation run of its best member exactly:
+  on seed 9613 all 20 outputs are identical. So the member is the model M5d calibrated.
+
+**Result: M5d's best member wins at the first step, with 10 of 20 pen targets inside against 8.**
+The table gives the median [5–95 %]; * marks a target outside.
+
+| target | record | M5d's best member | M5e's member A |
+|---|---|---|---|
+| first litters (day) | 50–104 | 50 [50, 50] | 47 [47, 48] * |
+| N@315 | 620 | 711 [487, 936] | 804 [545, 1,038] |
+| adults @315 | 150 | 297 [194, 384] * | 301 [219, 378] * |
+| peak N | 2,200 | 2,519 [2,283, 2,634] * | 2,508 [2,350, 2,661] * |
+| plateau onset (day) | 560 | 509 [467, 564] | 566 [523, 630] |
+| N@736 | 2,056 | 1,979 [1,868, 2,081] | 2,162 [2,056.4, 2,294] * |
+| N@811 | 1,871 | 1,781 [1,644, 1,875] | 1,883 [1,768, 1,993] |
+| N@960 | 1,650 | 1,302 [1,201, 1,440] * | 1,533 [1,410, 1,705] |
+| last surviving birth (day) | 600 | 687 [616, 1,330] * | 800 [700, 1,576] * |
+| last conception (day) | 920 | 1,093 [1,027, 1,470] * | 1,230 [1,161, 1,599] * |
+| N@1,444 | 122 | 82 [50, 148] | 151 [91, 294] |
+| N@1,588 | 27 | 19 [8, 179] | 46 [21, 359] |
+| doubling, phase B (days) | 55 | 50 [45, 56] | 51 [44, 58] |
+| doubling, phase C (days) | 105–145 | 107 [91, 134] | 155 [122, 193] |
+| male share @315 | 0.40 | 0.49 [0.47, 0.54] * | 0.49 [0.48, 0.54] * |
+| male share @1,444 | 0.18 | 0.42 [0.34, 0.50] * | 0.49 [0.43, 0.55] * |
+| empty boxes @560 | 0.25 | 0.28 [0.24, 0.39] | 0.43 [0.40, 0.50] * |
+| withdrawn @560 | 0.32 | 0.11 [0.08, 0.17] * | 0.00 [0.00, 0.00] * |
+| never fought as adults or mated @800 | 0.53 | 0.00 [0.00, 0.01] * | 0.00 [0.00, 0.00] * |
+| brood groups @315 | 14 | 28 [22, 34] * | 27 [21, 32] * |
+| **inside** | | **10 of 20** | **8 of 20** |
+
+- **Two calls sit at a boundary, and neither changes the result.**
+  - M5d's best member has its first litters on day 50 in all 48 runs. That is inside only at the
+    lower edge of the record's contested range (50–104).
+  - Member A's N@736 misses by 0.4 mice: its 5 % point is 2,056.4, and the record is 2,056.
+  - Reversing both calls gives 9 and 9. The structural targets then tie (3 of 6 each), and the
+    arc decides for M5d's best member (45 runs against 43).
+
+**Structural targets** (M7 and M8, in seed medians). The transfer numbers come from each member's
+validation transfer, on its registered seeds (M5d 9709–9720, M5e 9817–9828).
+
+| target | band (record) | M5d's best member | M5e's member A |
+|---|---|---|---|
+| gap from the last surviving birth to the last conception (days) | ≥ 150 (320) | 408, met | 431, met |
+| never fought as adults or mated @800 | 0.38–0.68 (0.53) | 0.00 | 0.00 |
+| withdrawn @560 | 0.22–0.42 (0.32) | 0.11 | 0.00 |
+| transfer with the colony's males: females conceiving, of 16 | ≤ 1 (0) | 1.5 | 4 |
+| transfer with stock males: females conceiving, of 16 | ≥ 3 (6) | 10, met | 4, met |
+| transfer with stock males: pups reaching 14 days | ≤ 10 (5) | 0, met | 0, met |
+| **met** | | **3 of 6** | **3 of 6** |
+
+**The arc** (growth above 1,800, a gap of at least 150 days, and N@1,588 below 300).
+- M5d's best member shows it in 45 of 48 runs, and member A in 43.
+- Paired by seed: both members show it on 40 seeds, only M5d's best member on 5, and only A on 3.
+  Every seed shows it with at least one of them.
+- Given the arc, M5d's best member is closer to the record (medians):
+
+| given the arc | record | M5d's best member | M5e's member A |
+|---|---|---|---|
+| last surviving birth (day) | 600 | 681 | 784 |
+| last conception (day) | 920 | 1,092 | 1,222 |
+| N@1,444 | 122 | 79 | 143 |
+| N@1,588 | 27 | 18 | 44 |
+| male share @1,444 | 0.18 | 0.42 | 0.49 |
+
+- **Maternal capacity falls faster in M5d's best member.** At days 315 / 560 / 736 / 1,444 it is
+  0.86 / 0.18 / 0.06 / 0.09, against 0.92 / 0.50 / 0.14 / 0.05 for member A.
+- **This agrees with the earlier validations.** In M5d's validation, M5d's best member showed the
+  arc in all 4 of its seeds (last surviving birth 684, last conception 1,110). In M5e's
+  validation, member A showed it in 21 of its 24 seeds.
+
+**A correction to the M5e report.** That report called member A the most reliable replica of the
+arc so far (21 of 24 fresh seeds). On the same 48 seeds, M5d's best member shows the arc as often
+(45 against 43 runs), and closer to the record's timing. The M5e section is marked accordingly.
+
+**The final replica: M5d's best member** (`configs/replica_v2_final.json`).
+- **Settings.** Hopper facilitation is off and M8 is off.
+- **Its main parameters:**
+  - maternal transmission τ 0.92, with care_ref 0.79, so maternal care declines across
+    generations;
+  - weak imprinting (`imprint_rate` 0.0073);
+  - litter mean 4.9.
+- **What it reproduces on fresh seeds:**
+  - Growth above 1,800, then a long phase of conceptions without surviving young, then
+    collapse: the arc, in 45 of 48 runs.
+  - N on days 315, 736, 811, 1,444 and 1,588, the plateau onset, both doubling times, and the
+    empty boxes.
+  - The transfer's route. Transferred females are competent and conceive with stock males (10 of
+    16; record 6), and no pup reaches 14 days (record 5 of about 100).
+- **Its misses:**
+  - **The arc comes late:** the last surviving birth on day 687 (record 600), and the last
+    conception on day 1,093 (920).
+  - **Too many adults early, and too high a peak.** It has 297 adults on day 315 (150) and peaks
+    at 2,519 (2,200). After the plateau it thins faster: N@960 is 1,302 (1,650).
+  - **First litters** fall on day 50 in every run, at the edge of the record's 50–104.
+  - **Sex ratios:** the male share is 0.49 on day 315 (0.40) and 0.42 on day 1,444 (0.18).
+  - **Brood groups** on day 315: 28 (14).
+  - **The categories:** 11 % of the weaned are withdrawn on day 560 (32 %), and no young adult
+    has never fought or mated (53 %). With M8 off, one developmental competence value governs
+    withdrawal, courtship, conception and care.
+  - **The colony's males sire a little in the transfer:** a median of 1.5 of 16 females conceive
+    with them (record 0; M8's band is at most 1).
+  - **On training seeds it did not pass M5d's member criterion** (I₂ 3.14). Its largest
+    implausibilities were the categories (4.7), the male share on day 1,444 (3.1) and brood
+    groups (3.0).
+
+**What the replica line established** (2026-11-11 to 2026-11-13).
+- **Reached:** Calhoun's arc as a frequent outcome on fresh seeds: growth above 1,800, a long phase
+  of conceptions without surviving young, then collapse. It took three changes:
+  - removing hopper facilitation (M5b), so growth and collapse can co-occur;
+  - passing maternal care down the generations (M7), which makes the phase possible;
+  - calibration that scores the arc as a frequency over replicate seeds (M5d).
+- **Not reached: the validation standard.** No ensemble had more than 13 of 20 pen targets inside
+  on fresh seeds (M5b and M5c). The final member alone has 10.
+- **Never together: the behavioural categories and the arc.**
+  - With M8, the categories come within reach. But in 1,488 M5e runs, the 24 with both
+    categories inside never showed the arc.
+  - In M5d, no run had both categories inside.
+- **Kept in the code.** `configs/replica_v2.yaml` and every mechanism field stay. Their defaults
+  reproduce the 2m colony, and the golden hashes guard that.
+
+**Status.** The replica line is closed. The frozen 2m colony is the reference for new work. Next,
+Jason's call: the options P4-15's stop rule left open are H-g with the playground-off arm, and
+`evo`.
+
 ## 2026-11-13 — Replica v2 M5e: with M8 on, two members pass and the arc is common on fresh seeds, but it comes late, never with the record's categories, and the colony's own males sire in the transfer
 
 **Design.** Jason: "Run M5e". The spec was fixed before any run (a2e2941; tooling 704e21e).
@@ -214,6 +362,9 @@ compared with the record's own range.
   - A later experiment may need a colony that grows past 1,800 and then collapses after a long
     phase without surviving young. For that, member A is the most reliable replica of the arc so
     far (21 of 24 fresh seeds), with the misses above.
+    - *Corrected the same day* (the end-of-line section above): on the same 48 fresh seeds,
+      M5d's best member shows the arc as often (45 against 43 runs) and closer to the
+      record's timing. It is the final replica.
 
 ## 2026-11-12 — Replica v2 M8: with the beautiful ones disengaged and fertility apart from competence, the categories and the transfer come within reach, but not together with the record's growth; the structure test fails
 

@@ -8,6 +8,11 @@ untouched, bit-identical and the reference for every earlier result. Replica v2 
 its own (`configs/replica_v2.yaml`): every new mechanism sits behind a config field whose
 default reproduces the 2m colony, and the golden trajectory hashes guard that.
 
+**Status (2026-11-13): ended.** Jason ended the line after M5e ("End the line"). The frozen
+2m colony stays the reference for new work. The final replica is M5d's best member
+(`configs/replica_v2_final.json`). Its misses are in NOTES and under "End of the replica line"
+below.
+
 ## Sources and what they fix
 
 Calhoun 1973 (*Proc R Soc Med* 66: 80–88; scan decoded page by page), Calhoun 1971 (*Space and
@@ -924,6 +929,25 @@ social competence (Jason, 2026-11-12: "Yes, design it"; fixed before code).**
   - the final replica's misses.
 
   The final member is written to `configs/replica_v2_final.json`.
+- **Done 2026-11-13** (NOTES; 96 runs on fresh seeds 9829–9876).
+  - **M5d's best member is the final replica,** decided at the first step: 10 of 20 pen targets
+    inside, against 8 for member A.
+    - Two calls sit at a boundary. Its first litters fall on day 50 in every run, the edge of the
+      record's 50–104, and member A's N@736 misses by 0.4 mice.
+    - Reversing both gives 9 and 9. The structural targets then tie (3 of 6 each), and the arc
+      decides the same way (45 against 43 of 48 runs).
+  - **The arc** is in 45 of 48 runs, closer to the record's timing than member A's. Given the arc,
+    the last surviving birth is on day 681 and the last conception on day 1,092 (record 600 and
+    920; member A 784 and 1,222).
+  - **Its misses:**
+    - the arc's late timing;
+    - too many adults on day 315, and too high a peak;
+    - a faster decline after the plateau (N@960 1,302, against 1,650);
+    - both sex ratios, and the brood groups;
+    - the categories (withdrawn 0.11, never fought or mated 0.00);
+    - in the transfer, a median of 1.5 of 16 females conceiving with the colony's males
+      (record 0).
+  - Today's code reproduces M5d's validation run of the member exactly (seed 9613).
 
 ## Validation standard (fixed now; applied from M2 on)
 

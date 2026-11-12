@@ -13,7 +13,8 @@
 > - Golden trajectory hashes: `scripts/golden_hashes.py`. Test tiers:
 >   `tests/run_tests.py --tier fast|slow|gpu`. CI: `.github/workflows/ci.yml`.
 > - The architecture map in §5 is updated for the 2026-11-09 modules.
-> - Replica v2 (`docs/REPLICA_V2.md`, Jason 2026-11-11) is underway in `configs/replica_v2.yaml`.
+> - Replica v2 (`docs/REPLICA_V2.md`, Jason 2026-11-11) ran in `configs/replica_v2.yaml` and ended
+>   on 2026-11-13 (see the end of this item).
 >   M1, Calhoun's pen, is done: the frozen biology runs the arc about 190 d early in it.
 >   M2 is done: 48-day founders, no gate, litter 5.5, territories (`biology.territories`).
 >   - First litters fall at day 49 with no gate.
@@ -84,8 +85,14 @@
 >   - 11 of 20 pen targets are inside, but each member alone has 8.
 >   - The categories and the arc never occur together (0 of 1,488 runs). The best member has no
 >     withdrawn young, and in the transfer the colony's own males sire.
->   The validation standard is not met. Next, Jason's call: end the replica line with 2m as the
->   reference (recommended), or adopt the M5e ensemble.
+>   The validation standard is not met.
+>   **The replica line ended on 2026-11-13** (Jason: "End the line"). The frozen 2m colony stays
+>   the reference for new work.
+>   - The final replica is M5d's best member (`configs/replica_v2_final.json`). On fresh seeds
+>     9829–9876 it has 10 of 20 pen targets inside (M5e's member A: 8), and the arc in 45 of 48
+>     runs. But the arc comes late (last surviving birth 687, against the record's 600), and the
+>     categories miss.
+>   - Next, Jason's call: H-g with the playground-off arm, or `evo`.
 > - Tier 2 done (2026-11-11): P4-15 failed its primary test, and the program-level stop rule
 >   applies (no further substrate change for PPO learners). Next: H-g / playground-off, `evo`,
 >   or replica v2 (Tier 3) — Jason's call.

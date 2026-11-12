@@ -363,6 +363,9 @@ development reading, before any evaluation seed.
 - **Result (2026-11-11): fails.** A1 − R = +0.011 ± 0.008, p 0.10. The stop rule applies, and
   H-f is not read. Next (Jason): H-g / the playground-off arm, `evo`, or replica v2 first.
   NOTES 2026-11-11.
+- **Replica v2 ran first (2026-11-11 to 2026-11-13) and ended** without meeting its validation
+  standard (`docs/REPLICA_V2.md`; NOTES 2026-11-13). The frozen 2m colony stays the reference.
+  Open next (Jason): H-g / the playground-off arm, or `evo`.
 
 ### 15.2 Arms
 
