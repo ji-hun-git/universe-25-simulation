@@ -711,6 +711,93 @@ fixed before any run).**
       mated. Strong imprinting (M5c) leaves females that cannot conceive.
     - Next: Jason's call.
 
+**M8 — the behavioural categories: the "beautiful ones" disengage, and fertility is apart from
+social competence (Jason, 2026-11-12: "Yes, design it"; fixed before code).**
+- **The gap.** M5d's best member comes closest to the record's population arc, and its transfer
+  takes the record's route. But the categories miss: 0–1 % of young adults never fought or
+  mated on day 800 (record 53 %), and 7–12 % of the weaned are withdrawn on day 560 (record
+  32 %). Stronger imprinting withdraws more young, but then the females cannot conceive at all
+  (M5c's transfer: 0 of 16).
+- **Pre-spec diagnostic** (2026-11-12). The M5d best member on development seeds 7000–7001,
+  with `imprint_rate` 0.0073 (the member's), 0.03 and 0.09. `_aggress` was replaced by an exact
+  copy that also logs attacker and target, so the runs are unchanged (`_output/m8_diag*.json`).
+  - **No male can count as never having fought.**
+    - By day 800, 94–100 % of the males aged 131–320 days have both attacked and been
+      attacked, in every arm. That holds even where 97–98 % of them are withdrawn.
+    - At `imprint_rate` 0.09 (seed 7000), 87 % attacked and 97 % were attacked *while
+      withdrawn*.
+    - Withdrawn animals keep the AGGRESS action (its utility is aggression × stress), and they
+      stay targets.
+  - **Females.** At 0.09 every young female is withdrawn by day 800, and none conceives:
+    withdrawn females are excluded from conception, so a transfer fails as in M5c. A quarter of
+    them were attacked as adults by nursing females.
+  - **Fights before maturity are a small part.** As adults, 88 % of the young males attacked
+    and 98 % were attacked; at any age, 99 % and 99 %.
+- **The record separates two groups** (M4).
+  - Withdrawn males pooled at the centre, wounded in fights among themselves.
+  - The "beautiful ones": unwounded, never fought or mated.
+
+  Transferred colony females conceived with competent stock males (6 of 16), but not with the
+  colony's males. The model gives both groups one role and one behaviour, and one competence
+  value gates withdrawal, male courtship, female fertility and maternal investment.
+- **The change.** Two fields; their defaults are the current model; NumPy path only.
+  1. `biology.withdrawn_disengage` (default false). Adults whose developmental competence is
+     below `withdrawn_competence_threshold` (withdrawn for life: the beautiful ones) neither
+     fight nor are fought:
+     - the AGGRESS action is masked for them;
+     - they are never the target of an attack.
+
+     Animals withdrawn by stress alone (high stress, low social drive, low aggression) keep
+     today's behaviour: they fight and are attacked (Calhoun's centre pool). Territory contests
+     already exclude every withdrawn male.
+  2. `biology.fertility_from_competence` (default true). When false:
+     - a female's conception no longer scales with her developmental competence (her factor
+       c_f is 1);
+     - a female withdrawn for low competence stays eligible to conceive, and males' courtship
+       approaches include her. The other filters stay: age, stress below 0.8, energy, not
+       pregnant.
+
+     Two things still scale with competence:
+     - Male courtship still scales with competence × courtship capacity. So a colony whose
+       males are incompetent stops conceiving (record: no conception with the colony's males).
+     - Maternal investment still scales with the mother's competence × maternal capacity. So a
+       mother withdrawn for low competence rears almost nothing (record: 5 pups of about 100).
+  3. **Bookkeeping, with no effect on the run.** A new flag marks either side of a fight or
+     contest from maturity on. The share of 131–320-day-olds who never fought *as adults* or
+     mated is reported beside the any-age share. The adult share is Calhoun's definition:
+     those entering adulthood who never fought. M5–M5d used the any-age share.
+- **Tooling fix.** `replica_transfer.py --members` merged the member's parameters over the
+  arm's overrides, so an arm could not change a member parameter. The arm's overrides now win,
+  as in `replica_report.py`. Earlier transfers had no overlapping keys, so their results do not
+  change.
+- **Development report.** The base is the M5d best member; training seeds 7000–7011, 1,600
+  days. This is development, not validation.
+  - Arms:
+    - A0: the base;
+    - A1: + disengagement;
+    - A2: + disengagement + the fertility split (= M8);
+    - A2 at `imprint_rate` 0.03 and 0.06 (stronger imprinting, now possible without sterile
+      females);
+    - A0 at `imprint_rate` 0.06 (strong imprinting without M8: the bracket).
+  - The Marsden transfer for every arm (training seeds).
+  - Reported for every arm:
+    - never fought or mated (adult and any-age shares);
+    - the withdrawn share at day 560, and withdrawn animals at the centre;
+    - the arc over 12 seeds: growth above 1,800, a gap of at least 150 days, and a collapse;
+    - last surviving birth, last conception, peak N, N@315, adults @315;
+    - the male share at day 1,444, and maternal capacity;
+    - the transfer numbers.
+- **M8 targets** (reported, not fitted; the tolerances are M4's):
+  - never fought as adults or mated, 131–320 days old, day 800: 0.53 ± 0.15;
+  - withdrawn share of the weaned at day 560: 0.32 ± 0.10;
+  - transfer: with the colony's males, at most 1 female conceives (median; record 0). With
+    stock males, at least 3 of 16 conceive, and at most 10 pups reach 14 days.
+- **The structure question.** Does any A2 arm meet all three at once, in seed medians?
+  - If yes: recalibrate with M8 on (M5e), with the adult share as the categories' target, and
+    validate on fresh seeds. Jason's call.
+  - If not: report what is missing.
+  - Reported but not a target: whether the arc survives (its count, landmarks and peak).
+
 ## Validation standard (fixed now; applied from M2 on)
 
 **Population landmarks.** Calhoun's value must lie inside the replica's 90 % prediction interval

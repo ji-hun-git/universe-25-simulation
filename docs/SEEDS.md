@@ -25,7 +25,7 @@ passed to the generator, not simulation seeds.
 | 9048–9095 | calibration reference (Tier 1) | posterior predictive check with the removal event |
 | 9500–9504 | detector negative control (Tier 1) | rules v8 simulator negative control (random v5 nets, init 7005 / 7006) |
 | 9100–9111 | evaluation, P4-15 (preregistered 2026-11-10) | the consequence-sensitivity test (A1 vs random net); the first decisive use of the band |
-| 7000–7011 | replica v2 development (M1–M7, M5b–M5d) | every replica milestone report (M1–M4, M7) and the M5, M5b, M5c and M5d history-matching waves and ensembles (training seeds; not out-of-sample) |
+| 7000–7011 | replica v2 development (M1–M8, M5b–M5d) | every replica milestone report (M1–M4, M7, M8; the M8 pre-spec diagnostic on 7000–7001) and the M5, M5b, M5c and M5d history-matching waves and ensembles (training seeds; not out-of-sample) |
 | 9200–9247 | replica v2 M6 validation (registered 2026-11-11, before use) | the M5 ensemble in Calhoun's pen, one member per seed: 90 % prediction intervals against the record |
 | 9248–9295 | replica v2 M6 sibling universes (registered 2026-11-11, before use) | 1, 2, 4 and 8 open cells, 12 seeds each in that order (Calhoun 1971 Fig 3) |
 | 9296–9307 | replica v2 M6 Marsden transfer (registered 2026-11-11, before use) | the best M5 member: transfer at day 870 into a fresh 4-cell pen |
