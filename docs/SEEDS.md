@@ -25,7 +25,7 @@ passed to the generator, not simulation seeds.
 | 9048–9095 | calibration reference (Tier 1) | posterior predictive check with the removal event |
 | 9500–9504 | detector negative control (Tier 1) | rules v8 simulator negative control (random v5 nets, init 7005 / 7006) |
 | 9100–9111 | evaluation, P4-15 (preregistered 2026-11-10) | the consequence-sensitivity test (A1 vs random net); the first decisive use of the band |
-| 7000–7011 | replica v2 development (M1–M7, M5b, M5c) | every replica milestone report (M1–M4, M7) and the M5, M5b and M5c history-matching waves and ensembles (training seeds; not out-of-sample) |
+| 7000–7011 | replica v2 development (M1–M7, M5b–M5d) | every replica milestone report (M1–M4, M7) and the M5, M5b, M5c and M5d history-matching waves and ensembles (training seeds; not out-of-sample) |
 | 9200–9247 | replica v2 M6 validation (registered 2026-11-11, before use) | the M5 ensemble in Calhoun's pen, one member per seed: 90 % prediction intervals against the record |
 | 9248–9295 | replica v2 M6 sibling universes (registered 2026-11-11, before use) | 1, 2, 4 and 8 open cells, 12 seeds each in that order (Calhoun 1971 Fig 3) |
 | 9296–9307 | replica v2 M6 Marsden transfer (registered 2026-11-11, before use) | the best M5 member: transfer at day 870 into a fresh 4-cell pen |
@@ -35,7 +35,10 @@ passed to the generator, not simulation seeds.
 | 9505–9552 | replica v2 M5c validation (registered 2026-11-12, before use) | the M5c ensemble (M5b plus maternal-care transmission) in Calhoun's pen, one member per seed |
 | 9553–9600 | replica v2 M5c sibling universes (registered 2026-11-12, before use) | 1, 2, 4 and 8 open cells, 12 seeds each in that order; a consistency check |
 | 9601–9612 | replica v2 M5c Marsden transfer (registered 2026-11-12, before use) | the best M5c member |
-| 9096–9099, 9112–9199, 9416–9499, 9613–9999 | **reserved, fresh** | substrate-variant confirmation (24 seeds per variant) and future references |
+| 9613–9660 | replica v2 M5d validation (registered 2026-11-12, before use) | the M5d ensemble (replicate-seed history matching) in Calhoun's pen, one member per seed |
+| 9661–9708 | replica v2 M5d sibling universes (registered 2026-11-12, before use) | 1, 2, 4 and 8 open cells, 12 seeds each in that order; a consistency check |
+| 9709–9720 | replica v2 M5d Marsden transfer (registered 2026-11-12, before use) | the best M5d member |
+| 9096–9099, 9112–9199, 9416–9499, 9721–9999 | **reserved, fresh** | substrate-variant confirmation (24 seeds per variant) and future references |
 
 ## Random-network init seeds (`MlpFrozenPolicy.random_init(s)`)
 

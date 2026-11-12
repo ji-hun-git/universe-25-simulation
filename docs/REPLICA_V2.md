@@ -615,6 +615,80 @@ fixed before any run).**
   - **Not met: the validation standard.** A proper test of the mechanism needs a method change:
     score the phase as a frequency over replicate seeds per parameter set. Jason's call.
 
+**M5d — history matching with replicate seeds: the phase as a frequency (Jason, 2026-11-12:
+"네, 방법 바꿔 보정"; fixed before any run).**
+- **Why.** In M5c, the targets for the phase without surviving young have two outcomes across
+  seeds: reproduction ends, or it goes on to the end of the run. One run per parameter set
+  cannot tell how often each happens. The mean emulators treated the spread as noise (sd 283
+  and 227 days), so τ stayed unconstrained.
+- **A correction found while designing M5d.** The ensemble scoring of M5–M5c
+  (`write_ensemble`) compared each member's seed mean with the record using the seed variance
+  divided by the number of seeds, V_s / k. The record is one realization, so one run's variance
+  belongs in the denominator as well: V_s (1 + 1/k). Re-scored this way:
+  - M5: 2 of 24 members pass (best I₂ 2.94; before, 3.95);
+  - M5b: none (best 3.29; before, 3.70);
+  - M5c: none (best 3.00; before, 4.00).
+
+  The two M5 members pass only because the record falls between their two seeds. In each, one
+  seed holds 1,290–1,470 mice on day 1,588 and the other falls to 8 or 401, and no seed grows
+  past 1,600. Once correct, a mean criterion is too lenient for targets with two outcomes. That
+  is the problem M5d addresses. The fix applies from now on; the earlier ensemble files stay as
+  they were.
+- **Configuration and parameters:** M5c exactly. That is `configs/replica_v2.yaml` with
+  facilitation off, and the 22 parameters with their boxes.
+- **Replicates.** Every design point runs 6 training seeds (7000–7005).
+- **Targets,** of three kinds:
+  - *Mean targets* (15): first litters, N@315, adults @315, peak N, plateau onset, N@736 / 811
+    / 960, both doubling times, male share @315, empty boxes, the withdrawn share, never fought
+    or mated, and brood groups. They keep M5's z, sds and scales.
+    - Each has two emulators: the seed mean, and the log of the seed variance V_s(x).
+    - I(x) = |z − m(x)| / √(obs² + discrepancy² + emulator variance + V_s(x)).
+  - *The arc frequency* p(x). This is the probability that one run does all three: grows above
+    1,800, has a gap of at least 150 days between the last surviving birth and the last
+    conception, and falls below 300 by day 1,588.
+    - It is emulated on the share of a point's seeds that do.
+    - A point is ruled out where the emulator's mean + 3 sd is below 0.05. The record would then
+      be a rarer outcome than 1 in 20, even at the emulator's upper bound.
+  - *Conditional targets* (5): the last surviving birth, the last conception, N@1,444, N@1,588
+    and the male share @1,444, with M5's values and sds.
+    - They are the record's values given the arc.
+    - They are scored only in the ensemble, on the seeds where the arc occurs.
+- **NROY** is the intersection of three sets:
+  - M5c's final NROY (wave 0: its emulators on its 440 wave runs);
+  - the points whose second-largest mean-target implausibility is ≤ 3;
+  - the points where p is not ruled out.
+- **Waves** (6 seeds each, 1,200 runs). Leave-one-out checks for every emulator are reported
+  each wave.
+  - Wave 1: 120 points drawn uniformly from M5c's final NROY.
+  - Wave 2: 80 points drawn uniformly from the M5d NROY.
+- **Ensemble.** From the final NROY, 24 points are drawn uniformly among the 10 % of candidates
+  with the highest emulated p. Each runs all 12 training seeds (7000–7011); seeds 7006–7011 are
+  new to M5d's design.
+  - Mean targets use the member's own seed variance: I = |z − ȳ| / √(obs² + discrepancy² +
+    V_s (1 + 1/12)).
+  - Conditional targets use the member's arc seeds: I = |z − ȳ_arc| / √(obs² + discrepancy² +
+    V_arc (1 + 1/k_arc)). V_arc is the within-member variance on arc seeds, pooled over the
+    members with at least 2 of them.
+  - A member passes if the arc occurs in at least 2 of its 12 seeds, and the second-largest
+    implausibility over all 20 targets is ≤ 3. If none passes, the 12 best by that
+    implausibility are written with `fallback: true`.
+- **Stop rule.** If, after a wave, no candidate in the mean-target NROY has an emulated p above
+  0.05, the waves stop: the arc is then rare wherever the other targets fit.
+- **Validation** on new fresh seeds, registered now before use:
+  - Calhoun's pen: 48 runs, seeds 9613–9660, with the arc's frequency on fresh seeds;
+  - the sibling universes: seeds 9661–9708, a consistency check;
+  - the Marsden transfer with the best member: seeds 9709–9720.
+- **Reported:**
+  - the re-scoring of M5–M5c above;
+  - emulator checks, and NROY sizes as a share of the box and of M5c's NROY;
+  - the emulated p over NROY (its distribution and maximum), and the observed arc counts per
+    point;
+  - τ and care_ref over NROY and over its high-p part, with the share of τ < 0.2;
+  - each member's arc frequency on seeds 7000–7005 against 7006–7011, an internal check;
+  - the M6 tables and the transfer.
+- **Cost:** about 1,500 runs (about 30 CPU-hours), plus validation.
+- Jason decides afterwards whether an ensemble replaces 2m as the reference.
+
 ## Validation standard (fixed now; applied from M2 on)
 
 **Population landmarks.** Calhoun's value must lie inside the replica's 90 % prediction interval
