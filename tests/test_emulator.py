@@ -93,6 +93,15 @@ def test_history_match_rep_scoring() -> None:
     assert np.isfinite(sc["i2"])
     sc0 = rp.score(flat, va)  # no arc: the conditional targets cannot be scored
     assert sc0["arc_freq"] == 0.0 and np.isinf(sc0["implausibility"]["last_young_day"])
+    # M5e: a target read through the alias (the adult share of never fought or mated)
+    runs = [{"seed": 7000, "outputs": out(2200, 27, 600, 920, beautiful_800=0.0,
+                                          beautiful_800_adult=0.53)}]
+    assert rp.tvals(runs, "beautiful_800")[0] == 0.0
+    rp.ALIAS = dict(rp.ALIAS_M8)
+    try:
+        assert rp.tvals(runs, "beautiful_800")[0] == 0.53
+    finally:
+        rp.ALIAS = {}
     # replicate emulators on a synthetic design (22 parameters, 6 seeds per point)
     hm.PARAMS = hm.param_set(True)
     rng = np.random.default_rng(3)

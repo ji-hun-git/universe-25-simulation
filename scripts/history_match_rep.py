@@ -16,6 +16,10 @@ targets split in three:
 NROY = M5c's final NROY (wave 0, history_match label hm_m7) and {second-largest MEAN I <= 3}
 and {p not ruled out}.
 
+M5e (--m8; docs/REPLICA_V2.md): the same with replica v2 M8 on (withdrawn_disengage, no
+fertility from competence) as fixed overrides, and the categories target beautiful_800 read as
+the adult share (outputs key beautiful_800_adult). Default label hm_m5e.
+
 usage:
   python scripts/history_match_rep.py --wave 1 --n 120 [--workers 8]
   python scripts/history_match_rep.py --wave 2 --n 80
@@ -41,6 +45,10 @@ import history_match as hm  # noqa: E402
 
 BASE = "hm_m7"  # M5c: wave 0
 FIXED = {"geometry": {"hopper_facilitation": False}}
+FIXED_M8 = {"geometry": {"hopper_facilitation": False},
+            "biology": {"withdrawn_disengage": True, "fertility_from_competence": False}}
+ALIAS: dict[str, str] = {}  # target -> outputs key it is read from (M5e: the adult share)
+ALIAS_M8 = {"beautiful_800": "beautiful_800_adult"}
 REP_SEEDS = tuple(range(7000, 7006))
 ENS_SEEDS = tuple(range(7000, 7012))
 MEAN = ["first_litters_day", "n_at_day_315", "adults_at_day_315", "peak_n", "plateau_onset_day",
@@ -82,8 +90,9 @@ def points(runs: list[dict], waves: set[int], n_seeds: int | None = None) -> lis
 
 
 def tvals(rs: list[dict], name: str) -> np.ndarray:
-    """A target's finite values over runs, on the comparison scale."""
-    y = np.array([r["outputs"].get(name, np.nan) for r in rs], float)
+    """A target's finite values over runs, on the comparison scale (read through ALIAS)."""
+    key = ALIAS.get(name, name)
+    y = np.array([r["outputs"].get(key, np.nan) for r in rs], float)
     return hm.transform(name, y[np.isfinite(y)])
 
 
@@ -177,6 +186,8 @@ def raw(U: np.ndarray, j: int) -> np.ndarray:
 def check_label(label: str) -> None:
     cur = {"params": [k for _, k, *_ in hm.PARAMS], "fixed": FIXED, "rep_seeds": list(REP_SEEDS),
            "ens_seeds": list(ENS_SEEDS), "base": BASE, "alpha": ALPHA, "min_arc": MIN_ARC}
+    if ALIAS:  # M5e (labels from before the alias keep their record)
+        cur["alias"] = ALIAS
     path = ROOT / "_output" / label / "label.json"
     if path.exists():
         old = json.loads(path.read_text(encoding="utf-8"))
@@ -306,7 +317,8 @@ def write_ensemble(path: Path) -> None:
     path.write_text(json.dumps({
         "criterion": (f"arc in at least {MIN_ARC} of the member's seeds, and second-largest "
                       f"implausibility <= {hm.CUT} over 15 mean targets (own seed variance, "
-                      "V_s (1 + 1/k)) and 5 targets given the arc (pooled arc variance)"),
+                      "V_s (1 + 1/k)) and 5 targets given the arc (pooled arc variance)"
+                      + (f"; targets read as {ALIAS}" if ALIAS else "")),
         "n_sampled": len(scored), "n_pass": len(passing), "fallback": not passing,
         "v_arc": va, "members": members}, indent=1, default=float), encoding="utf-8")
     print(f"{len(scored)} members scored, {len(passing)} pass; wrote {len(members)} to {path}")
@@ -331,8 +343,14 @@ def main() -> int:
     p.add_argument("--fit", action="store_true")
     p.add_argument("--ensemble", type=int)
     p.add_argument("--write-ensemble")
-    p.add_argument("--label", default="hm_m5d")
+    p.add_argument("--label")
+    p.add_argument("--m8", action="store_true",
+                   help="M5e: replica v2 M8 on, categories target as the adult share")
     a = p.parse_args()
+    global FIXED, ALIAS
+    if a.m8:
+        FIXED, ALIAS = FIXED_M8, dict(ALIAS_M8)
+    a.label = a.label or ("hm_m5e" if a.m8 else "hm_m5d")
     hm.PARAMS = hm.param_set(True)
     hm.FIXED = FIXED
     hm.OUT = ROOT / "_output" / a.label

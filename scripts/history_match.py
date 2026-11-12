@@ -162,6 +162,7 @@ def outputs(r: dict) -> dict[str, float]:
         "empty_boxes_560": s("560", "empty_box_share"),
         "withdrawn_560": s("560", "withdrawn_share"),
         "beautiful_800": s("800", "beautiful_share"),
+        "beautiful_800_adult": s("800", "beautiful_share_adult"),  # M8: fights from maturity
         "brood_groups_315": float(len(tr.get("brood_sizes_315", []))),
     }
 

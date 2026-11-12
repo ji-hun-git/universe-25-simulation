@@ -83,6 +83,8 @@ def main() -> int:
     p.add_argument("--label", default="")
     p.add_argument("--pen-seeds", default="9200-9247")
     p.add_argument("--sib-seeds", default="9248-9295")
+    p.add_argument("--beautiful-adult", action="store_true",
+                   help="M5e: read 'never fought or mated' as the adult share (replica v2 M8)")
     a = p.parse_args()
     lo, hi = (int(v) for v in a.pen_seeds.split("-"))
     pen_seeds = tuple(range(lo, hi + 1))
@@ -110,8 +112,10 @@ def main() -> int:
         res["pen"] = {}
         print("\nCalhoun's pen, 48 fresh seeds: record vs 5-95 % range")
         n_in = 0
+        alias = {"beautiful_800": "beautiful_800_adult"} if a.beautiful_adult else {}
+        res["alias"] = alias
         for name, (z, *_rest) in hm.OUTPUTS.items():
-            v = np.array([o[name] for o in outs], float)
+            v = np.array([o.get(alias.get(name, name), np.nan) for o in outs], float)
             v = v[np.isfinite(v)]
             if not v.size:
                 continue
@@ -123,7 +127,8 @@ def main() -> int:
                                 "p95": float(q[2]), "inside": inside, "n": int(v.size)}
             print(f"  {name:22s} record {z:8.3g}  replica {q[1]:9.4g} [{q[0]:.4g}, {q[2]:.4g}]"
                   f"{'' if inside else '  *'}")
-        print(f"  inside: {n_in} of {len(res['pen'])}")
+        print(f"  inside: {n_in} of {len(res['pen'])}" + (f" (targets read as {alias})"
+                                                          if alias else ""))
         res["pen_t_aligned"] = [t_aligned(r["r"], 16) for r in pen]
         # per run (M5c): do growth, the phase without surviving young and collapse co-occur?
         res["pen_runs"] = [{"seed": r["seed"], "outputs": o,
