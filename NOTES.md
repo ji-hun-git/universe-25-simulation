@@ -1,5 +1,220 @@
 # Universe25 Play — NOTES
 
+## 2026-11-13 — Replica v2 M5e: with M8 on, two members pass and the arc is common on fresh seeds, but it comes late, never with the record's categories, and the colony's own males sire in the transfer
+
+**Design.** Jason: "Run M5e". The spec was fixed before any run (a2e2941; tooling 704e21e).
+- M5d's design exactly, with two changes:
+  - M8 on, as fixed overrides beside facilitation off: `biology.withdrawn_disengage: true` and
+    `biology.fertility_from_competence: false`;
+  - the categories target "never fought or mated" (131–320 days old, day 800) read as the adult
+    share, `beautiful_share_adult`.
+- Runs: 1,488 on training seeds, 33.8 CPU-hours (`_output/hm_m5e/`).
+- Validation: fresh seeds 9721–9828, registered before use.
+
+**Wave 1 paired with M5d.** It used the same 120 points and the same seeds (7000–7005), so the
+difference is M8 and the adult measure:
+
+| | M5d | M5e |
+|---|---|---|
+| runs with the arc, of 720 | 53 | 81 (37 in both) |
+| never fought or mated @800, inside 0.38–0.68 | 5 % (any-age share) | 42 % (adult share) |
+| withdrawn @560, inside 0.22–0.42 | 13 % | 8 % |
+| withdrawn @560, median | 0.58 | 0.70 |
+| runs with both categories inside | 0 | 8, none with the arc |
+| peak N / plateau onset, medians | 1,900 / 522 | 1,825 / 472 |
+
+- At the same points, M8 makes the arc more common and brings the adult share within reach. But
+  more young withdraw, and the withdrawn share is mostly above its band.
+- The spec's caveat on wave 0 holds. Wave 1 was drawn from M5c's NROY, which was built without
+  M8, and 42 % of its runs still have the adult share inside.
+
+**Waves** (6 seeds per point):
+
+| | wave 1 | wave 2 |
+|---|---|---|
+| points, drawn from | 120, M5c's NROY | 80, M5e's NROY |
+| runs with the arc | 81 of 720 (11.3 %) | 23 of 480 (4.8 %) |
+| points with the arc in 0 / 1–2 / 3–5 / 6 of 6 seeds | 94 / 12 / 9 / 5 | 71 / 5 / 4 / 0 |
+
+- **Emulators.** Every leave-one-out check passes: 31 of 31 after each wave. For the arc share,
+  0.0 % and 2.0 % of points lie beyond 3 sd.
+- **NROY** is 1.4 % of the box after wave 1 and 1.5 % after wave 2 (17 % and 18 % of M5c's
+  NROY).
+  - As in M5d, the mean targets do all of the cutting.
+  - The frequency rule removes no candidate.
+- **Emulated p over the mean-target NROY** after wave 2:
+  - median 0.04, 95th percentile 0.42, maximum 1.19 (the emulator's mean is not bounded to
+    [0, 1]);
+  - at least 0.1 on 34 % of it (M5d 23 %), and at least 0.2 on 19 % (M5d 12 %).
+
+**Where the arc is frequent** (the 10 % of NROY with the highest emulated p, against the whole
+NROY; 5 / 50 / 95 %):
+- **τ.** In the high-p part it is 0.35 / 0.80 / 0.99, with 1.6 % below 0.2. Over the whole NROY
+  it is 0.04 / 0.49 / 0.95, with 21 % below 0.2, as in the prior. As in M5d, the arc needs strong
+  transmission.
+- **New with M8:** the high-p part has a higher neglect threshold, so mothers neglect only at
+  higher stress (`maternal_neglect_stress` median 0.79, against 0.54). Its imprinting is also
+  weaker (`imprint_rate` 0.017, against 0.024).
+- **care_ref is not constrained:** 0.54 / 1.21 / 2.40, against 0.53 / 1.12 / 2.35.
+
+**Ensemble** (24 points from the top 10 % of emulated p, p ≥ 0.31; 12 seeds each):
+- **The arc occurs in 51 of 288 runs (18 %; M5d 29 %).** 13 of the 24 points never show it, and
+  8 show it in at least 2 seeds.
+- **Its frequency is a property of the parameter set.** The arc occurs in 27 of 144 runs on seeds
+  7000–7005 and in 24 of 144 on 7006–7011. Over members, the Spearman correlation between the
+  two halves' counts is 0.79 (M5d 0.73).
+- **Two members pass, the first in any M5 calibration.** They are in
+  `configs/replica_v2_ensemble_m5e.json`, which is not a fallback.
+
+  | | member A | member B |
+  |---|---|---|
+  | I₂ (largest) | 2.92 (4.74) | 2.98 (3.34) |
+  | arc, of 12 seeds | 12 | 7 |
+  | worst targets | never fought as adults or mated 4.7; male share @1444 2.9; withdrawn @560 2.9 | adults @315 3.3; phase-C doubling 3.0; male share @1444 2.8 |
+  | τ / care_ref | 0.96 / 0.53 | 0.93 / 1.93 |
+  | `imprint_rate` / competence threshold | 0.006 / 0.56 | 0.009 / 0.16 |
+  | withdrawn @560 / never fought as adults or mated @800, medians | 0.00 / 0.00 | 0.57 / 0.30 |
+
+  - **Member A passes with the categories as its failed target.** I₂ is the second-largest
+    implausibility, so one target may fail. In all 12 seeds it has no withdrawn young and no
+    young adult who never fought or mated.
+  - The next member scores 3.25, with the arc in 1 of 12 seeds.
+- **14 ensemble runs reached the 4,096-agent cap and dropped litters** (warnings in
+  `ensemble.log`).
+  - The cap binds only when the living colony nears 4,096, far above the record.
+  - The passing members' runs peak at most 2,744. The fresh-seed validation logged no cap.
+- **Given the arc, it comes late** (the ensemble's arc runs; medians, with [5 %, 95 %] for M5e):
+
+  | | record | M5d (83 runs) | M5e (51 runs) |
+  |---|---|---|---|
+  | peak N | 2,200 | 2,117 | 2,413 [1,859, 3,426] |
+  | plateau onset | 560 | 515 | 491 [367, 645] |
+  | last surviving birth | 600 | 913 | 835 [438, 1,244] |
+  | last conception | 920 | 1,408 | 1,259 [967, 1,599] |
+  | N@1,444 / N@1,588 | 122 / 27 | 185 / 79 | 152 / 51 |
+  | adults on day 315 | 150 | 640 | 532 |
+  | male share on day 1,444 | 0.18 | 0.42 | 0.47 |
+  | never fought or mated on day 800 | 0.53 | 0.17 (any age) | 0.32 (as adults) |
+
+  Of the 155 arc runs among all 1,488, 8 have both the last surviving birth and the last
+  conception within 100 days of the record's, and 20 within 150 days (M5d: 11 and 43).
+
+**The categories and the arc never occur together.** Over all 1,488 M5e runs:
+- 561 have the adult share inside 0.38–0.68, 119 have the withdrawn share inside 0.22–0.42, and
+  24 have both. None of the 24 shows the arc.
+- Of the 155 arc runs, 64 have the adult share inside and 9 have the withdrawn share inside.
+  Their median withdrawn share is 0.71.
+- In M5d's 1,488 runs, no run has both categories inside (with the any-age share).
+
+**Validation on fresh seeds.** Calhoun's pen, seeds 9721–9768, the two members alternating by
+seed. * = the record is outside the 5–95 % range. For the contested landmarks the range is
+compared with the record's own range.
+
+| target | record | M5d | M5e | member A | member B |
+|---|---|---|---|---|---|
+| first litters | 77 (50–104) | 50 [38, 55] | 49.5 [47, 52] | 47 * | 51 |
+| N@315 | 620 | 1025 [498, 1489] | 974 [521, 1604] | 797 | 1240 * |
+| adults @315 | 150 | 574 * | 379 [214, 773] * | 289 * | 595 * |
+| peak N | 2200 | 1875 [1466, 2523] | 2480 [1877, 3089] | 2480 * | 2407 |
+| plateau onset | 560 | 553 [444, 601] | 567 [504, 645] | 566 | 583 |
+| N@736 / 811 / 960 | 2056 / 1871 / 1650 | 1727 / 1622 / 1368 | 2189 / 1932 / 1587 | 2189 / 1924 / 1587 | 2163 / 2064 / 1585 |
+| last surviving birth | 600 | 1060 [627, 1573] * | 915 [718, 1245] * | 845 * | 972 * |
+| last conception | 920 | 1482 [954, 1599] * | 1297 [1178, 1581] * | 1244 * | 1387 * |
+| N@1444 | 122 | 221 [46, 543] | 168 [95, 377] | 157 | 220 |
+| N@1588 | 27 | 120 [11, 404] | 53 [28, 203] * | 46 * | 88 |
+| phase-B / C doubling | 55 / 125 (105–145) | 44 * / 285 | 46 / 205 | 50 / 156 | 41 * / 249 * |
+| male share @315 / @1444 | 0.40 / 0.18 | 0.47 * / 0.45 * | 0.49 * / 0.49 * | 0.50 * / 0.51 * | 0.47 * / 0.48 * |
+| empty boxes @560 | 0.25 | 0.48 * | 0.44 [0.33, 0.58] * | 0.44 * | 0.45 * |
+| withdrawn @560 | 0.32 | 0.63 [0, 0.78] | 0.21 [0, 0.62] | 0.00 * | 0.55 * |
+| never fought or mated @800 | 0.53 | 0.17 * (any age) | 0.07 [0, 0.37] * (as adults) | 0.00 * | 0.27 * |
+| brood groups by 315 | 14 | 26.5 * | 28 * | 27 * | 30 * |
+| inside, of 20 | | 11 | 11 | 8 | 8 |
+
+- **11 of 20 are inside, as in M5d, but each member alone has only 8.**
+  - The two members differ, so pooling them widens the ranges.
+  - The withdrawn share is inside only because member A has none (0.00 [0.00, 0.00]) and member
+    B has too many (0.55 [0.44, 0.64]).
+  - The peak, N@315, the doubling times and the first litters are inside the same way: each fits
+    one member only.
+- **The arc is common on fresh seeds: 43 of 48 runs** (member A 21 of 24, member B 22 of 24;
+  M5d 20 of 48). 46 runs peak above 1,800, 47 collapse, and 45 have a gap of at least 150 days.
+- **Reproduction ends after a long phase without surviving young, but late.**
+  - It ends (last conception before day 1,500) in 42 of 48 runs (M5d 25).
+  - The median gap is 415 days (record 320; M5d 389), and 41 of the 42 have at least 150 days.
+  - But the last surviving birth comes about 300 days after the record's, and the last
+    conception about 380 days after.
+- **The two members reach the arc by different routes.** Adult females' median maternal
+  capacity on days 315 / 560 / 736 / 1,444:
+  - member A: 0.92 / 0.53 / 0.15 / 0.04. It has no developmental withdrawal, so its arc comes
+    from the decline of maternal care across generations alone;
+  - member B: 0.29 / 0.21 / 0.20 / 0.18, with heavy withdrawal;
+  - M5d's ensemble, for comparison: 0.51 / 0.31 / 0.28 / 0.21.
+- **Both members miss the categories, in every run.**
+  - No fresh-seed run has both categories inside.
+  - The any-age share is below 0.01 in all 48 runs, as in M8.
+
+**Sibling universes** (seeds 9769–9816; a consistency check):
+
+| | 1 cell | 2 | 4 | 8 | 16 |
+|---|---|---|---|---|---|
+| record, per cell later | 180 | 175 | 130 | 142 | 138 |
+| M5d, per cell later | 152 | 140 | 145 | 114 | 108 |
+| M5e, per cell later | 212 | 191 | 167 | 135 | 132 |
+| M5e record points inside | 3 of 3 | 3 of 3 | 0 of 3 | 2 of 3 | 3 of 3 |
+
+- 11 of 15 record points are inside (M5d 11).
+- The 4-cell pen holds too many mice at all three times: 621 [338, 1,013] at T230, against 143.
+- The 8-cell pen holds too many early: 512 [301, 834] at T190, against 240.
+- The 16-cell pen's last point is now inside.
+
+**Marsden transfer** (member A; seeds 9817–9828; 16 females moved on day 870; medians [range]):
+
+| | record | M5d best member | M5e member A |
+|---|---|---|---|
+| with colony males: females conceiving | 0 | 1.5 [0, 9] | 4 [0, 6] |
+| with stock males: females conceiving | 6 | 10 [8, 12] | 4 [0, 6] |
+| with stock males: litters | 3 | 10 [8, 12] | 4 [0, 6] |
+| with stock males: pups reaching 14 days | 5 | 0 [0, 0] | 0 [0, 0] |
+| transferred females' competence | | 0.81 | 0.95 |
+
+- **The colony's own males sire.** As many females conceive with them as with stock males: 4 of
+  16 in both arms. The colony's males keep their courtship capacity (0.93); nothing has eroded
+  it.
+- **M8's colony-male target (at most 1) is missed.** Both stock-male targets are met: at least 3
+  females conceive, and at most 10 pups reach 14 days.
+- In 2 of the 12 seeds almost no female conceives in either arm (0 and 1).
+
+**Reading.**
+- **The registered criterion is met for the first time.**
+  - Two of 24 members pass on training seeds.
+  - On fresh seeds the arc is common (43 of 48 runs). Reproduction ends after a long phase
+    without surviving young.
+- **But the passing members do not reproduce the record's structure.**
+  - On fresh seeds each member has 8 of 20 pen targets inside. The ensemble's 11 come partly
+    from pooling two different members.
+  - The arc comes late: the last surviving birth about 300 days after the record's, and the last
+    conception about 380 days after.
+  - Member A passes with the categories as its one failed target. It has no withdrawn young and
+    no beautiful ones, and its arc comes from the decline of maternal care across generations
+    alone. In the transfer, its colony's males sire.
+- **In this model the categories and the arc do not occur together.**
+  - 2,976 calibration runs (M5d and M5e) and 96 fresh-seed runs were checked. None has the
+    record's withdrawn share and its young adults who never fought or mated, together with the
+    arc.
+  - With M8 on, the arc comes either with no imprinting or with too many withdrawn young (a
+    median of 0.71 in arc runs).
+- **Not met: the validation standard.**
+- **The stop rule.** Members passed, so the replica line does not end automatically. Jason
+  decides.
+- **Recommendation:** keep the frozen 2m colony as the reference, and end the replica line here.
+  - Each recalibration since M5b has moved some targets in and others out: 13, 13, 11 and 11 of
+    20 pen targets inside.
+  - With M8 on, the categories and the arc never co-occurred in this calibration's 1,488 runs. So
+    more calibration within this structure is unlikely to give both.
+  - A later experiment may need a colony that grows past 1,800 and then collapses after a long
+    phase without surviving young. For that, member A is the most reliable replica of the arc so
+    far (21 of 24 fresh seeds), with the misses above.
+
 ## 2026-11-12 — Replica v2 M8: with the beautiful ones disengaged and fertility apart from competence, the categories and the transfer come within reach, but not together with the record's growth; the structure test fails
 
 **Design.** Jason: "Yes, design it" (split the competence trait). A pre-spec diagnostic changed

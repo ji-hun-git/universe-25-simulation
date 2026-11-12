@@ -861,6 +861,28 @@ social competence (Jason, 2026-11-12: "Yes, design it"; fixed before code).**
   - the categories (adult and any-age shares) and the withdrawn share;
   - in the transfer, whether the colony's own males sire.
 - **Cost:** about 1,500 runs (about 35 CPU-hours), plus validation.
+- **Done 2026-11-13** (NOTES; 1,488 runs, 33.8 CPU-hours; fresh seeds 9721–9828).
+  - **Two members pass, the first in any M5 calibration** (`configs/replica_v2_ensemble_m5e.json`).
+    - Member A: I₂ 2.92, with the arc in 12 of 12 seeds. It passes with the categories as its
+      one failed target (4.7): no withdrawn young, and no young adult who never fought or mated.
+    - Member B: I₂ 2.98, with the arc in 7 of 12.
+  - **Paired wave 1.** M8 raises the arc from 53 to 81 of 720 runs. The adult share is inside in
+    42 % of runs (M5d's any-age share: 5 %). But the withdrawn share is mostly too high.
+  - **The categories and the arc never occur together.** In 1,488 M5e runs, 24 have both
+    categories inside, and none of them shows the arc. In M5d no run had both inside.
+  - **On fresh seeds the arc is common** (43 of 48 runs; M5d 20). Reproduction ends after a long
+    phase without surviving young, but late: last surviving birth 915, last conception 1,297
+    (record 600 and 920).
+  - **11 of 20 pen targets are inside** (M5d 11), but each member alone has 8. The siblings have
+    11 of 15 inside.
+  - **Both members miss the categories in every fresh-seed run.**
+    - Member A has no withdrawn young (0.00) and no beautiful ones (0.00).
+    - Member B has too many withdrawn (0.55) and too few beautiful ones (0.27).
+  - **In the transfer, the colony's own males sire.** 4 of 16 females conceive with them, as
+    many as with stock males (record 0 and 6). No pup reaches 14 days.
+  - **Not met: the validation standard.**
+  - Members passed, so the line does not end automatically: Jason decides. Recommendation: keep
+    2m as the reference, and end the replica line.
 
 ## Validation standard (fixed now; applied from M2 on)
 

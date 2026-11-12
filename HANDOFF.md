@@ -76,8 +76,16 @@
 >     mated) and the stock-male transfer (6.5 of 16 conceive, no pup survives) together.
 >   - But at that setting the colony does not grow (peak 1,218), and the colony's males sire in
 >     the transfer. The pre-registered structure test fails.
->   The validation standard is not met, and the frozen 2m colony remains the reference. Next,
->   Jason's call: recalibrate with M8 on (M5e), or stop the replica line here.
+>   The validation standard is not met, and the frozen 2m colony remains the reference.
+>   M5e (2026-11-13) recalibrates with M8 on (fresh seeds 9721–9828).
+>   - Two ensemble members pass, a first (`configs/replica_v2_ensemble_m5e.json`).
+>   - On fresh seeds the arc is common (43 of 48 runs) but late: last surviving birth 915,
+>     against the record's 600.
+>   - 11 of 20 pen targets are inside, but each member alone has 8.
+>   - The categories and the arc never occur together (0 of 1,488 runs). The best member has no
+>     withdrawn young, and in the transfer the colony's own males sire.
+>   The validation standard is not met. Next, Jason's call: end the replica line with 2m as the
+>   reference (recommended), or adopt the M5e ensemble.
 > - Tier 2 done (2026-11-11): P4-15 failed its primary test, and the program-level stop rule
 >   applies (no further substrate change for PPO learners). Next: H-g / playground-off, `evo`,
 >   or replica v2 (Tier 3) — Jason's call.
