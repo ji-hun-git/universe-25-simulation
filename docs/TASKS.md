@@ -620,6 +620,14 @@ Design: `docs/PHASE4_DESIGN.md` §4.2.
 
 ## P4-16 — H-g and the playground-off arm
 
+> **Done 2026-11-13:**
+> - 72 runs on seeds 9877–9888 (3,696 s on 8 workers), with no stop.
+> - **H-g is falsified** by the preregistered rule: four of six cells rise through phase D at
+>   p(rise) ≤ 0.002, and no cell is supported.
+> - Playground off: the differential prediction passes, the locomotor rate rises through D
+>   under all three policies, and every colony grows faster and peaks earlier.
+> - NOTES 2026-11-13.
+
 **Goal:** test H-g (breakdown suppresses play-likeness) and run the playground-off arm. Neither
 needs a form, as P4-15's stop rule directs. Design: `docs/PHASE4_DESIGN.md` §4.3 (fixed
 2026-11-13 before any run).

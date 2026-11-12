@@ -1264,6 +1264,21 @@ read.
   replication.
 - An episode rate is a rate of candidate behaviour, not of play. PlayScore stays unvalidated.
 
+**Result (2026-11-13, NOTES): H-g is falsified.**
+- Four of six cells meet the falsifier (T_D > 0, p(rise) ≤ 0.002): the learned net's object
+  and locomotor rates, the heuristic's object rate and the random net's locomotor rate. No
+  cell is supported.
+- The learned net's object rate is lower in C / D than in B (T_BCD −0.136, p 0.001), but it
+  rises again through D.
+- Playground off:
+  - the differential prediction passes (no object event in any window, and at least 10
+    locomotor episodes in every detector window);
+  - the locomotor rate rises through D under all three policies;
+  - every colony grows faster and peaks earlier (N@315 × 1.15 to × 4.4, the peak 21–174 d
+    earlier).
+- Exploratory: the object rises follow the contact share. The learned net's locomotor rise is
+  more, shorter episodes over less fast locomotion.
+
 ## 5. Determinism (two tiers, never cross-tier identity)
 
 - **Reference tier (NumPy, CPU):** `need_driven`, `mlp_frozen` and `evo` are bit-identical run

@@ -1,5 +1,174 @@
 # Universe25 Play — NOTES
 
+## 2026-11-13 — H-g falsified: the detectors' episode rates rise through phase D in four of six cells and fall as predicted in none; the playground-off arm passes its pipeline check, and without the playground every colony grows faster
+
+**Question.**
+- H-g (PLAN §15.1, preregistered 2026-11-04): breakdown suppresses play-likeness. Detector rates
+  fall in phases C / D under every policy; falsified if they rise in phase D.
+- Its operationalization was fixed in `docs/PHASE4_DESIGN.md` §4.3 (fac76eb) before any code or
+  run, and the tooling was committed before any evaluation seed was run (3fc9bbe).
+- *Arms:* the heuristic, the learned `pretrain_v2` net and a random net of the same
+  architecture, each with the playground on and off, on fresh seeds 9877–9888 (paired).
+  - That makes 72 runs of 1,600 d with 12 sub-steps.
+  - Each run has 29 ten-day trace windows with every fourth individual.
+- *Response:* object and locomotor episode onsets (rules v9) per weaned individual-day.
+  - Phases come from each run's own first-litter and peak days, in the record's proportions.
+  - Per run: τ_BCD (rate against phase order B, C, D) and τ_D (rate against time within D).
+  - T is the mean over seeds, tested by an exact sign-flip.
+- *Decision,* per policy × kind with the playground on:
+  - falsified if T_D > 0 at p(rise) < 0.0042;
+  - supported if T_BCD < 0 and T_D < 0, each at p(fall) < 0.025;
+  - H-g needs all six cells.
+
+**Run.**
+- 72 runs took 3,696 s wall on 8 workers.
+- No stop rule fired: no NaN, no H2 term, no object event with the playground off.
+- Every cell has 12 seeds with defined statistics. Each playground-on run has 25–28 entered
+  windows, 13–21 of them in phase D (playground off: 26–29 and 18–23).
+
+**Result: H-g is falsified by the preregistered rule.**
+
+| policy | kind | T_BCD | p(fall) | T_D | p(rise) | seeds with τ_D > 0 | reading |
+|---|---|---|---|---|---|---|---|
+| learned | object | −0.136 ± 0.029 | 0.0010 | +0.685 ± 0.020 | 0.0002 | 12 | **falsified** |
+| learned | locomotor | +0.474 ± 0.035 | 1.0000 | +0.635 ± 0.022 | 0.0002 | 12 | **falsified** |
+| heuristic | object | +0.139 ± 0.049 | 0.9905 | +0.549 ± 0.037 | 0.0002 | 12 | **falsified** |
+| heuristic | locomotor | +0.281 ± 0.048 | 0.9995 | −0.019 ± 0.055 | 0.6360 | 5 | not supported |
+| random | object | +0.062 ± 0.078 | 0.7930 | +0.119 ± 0.079 | 0.0791 | 8 | not supported |
+| random | locomotor | +0.265 ± 0.060 | 0.9998 | +0.280 ± 0.065 | 0.0020 | 10 | **falsified** |
+
+The table gives the mean ± se over 12 seeds. A p(rise) of 0.0002 is 1 / 4,096: all 12 seeds
+rise, the smallest p an exact sign-flip over 12 seeds can give.
+
+- Four cells meet the falsifier, and between them they cover all three policies.
+- No cell is supported.
+  - The heuristic's locomotor rate is flat through D (T_D −0.019).
+  - The random net's object rate rises, but not significantly (p 0.079).
+- There is one fall. The learned net's object rate is lower in C / D than in B (T_BCD −0.136,
+  p 0.001; 11 of 12 seeds). It bottoms out in the first 100 days after the peak and climbs back
+  through D, so the cell is falsified by the rise.
+
+**What the phases contain** (reported beside; mean over seeds of each run's phase mean,
+playground on).
+- Stress and withdrawal rise through the phases, as H-g intends.
+  - The stressed share of weaned rows is 0 in B, 0.20–0.33 in C and 0.29–0.45 in D.
+  - The withdrawn share is 0.09–0.14 in B, 0.37–0.57 in C and 0.84–0.94 in D.
+  - Juveniles are 0.43–0.61 of the weaned rows in B and at most 0.012 in D.
+- The relaxed share falls (B → C → D):
+  - learned 0.30 → 0.20 → 0.17;
+  - heuristic 0.13 → 0.10 → 0.08;
+  - random 0.14 → 0.11 → 0.10.
+- The rates do not fall with them. In episodes per weaned individual-day:
+
+| policy | object B / C / D | locomotor B / C / D |
+|---|---|---|
+| learned | 0.32 / 0.23 / 0.25 | 0.96 / 0.92 / 1.02 |
+| heuristic | 0.18 / 0.19 / 0.20 | 0.27 / 0.29 / 0.30 |
+| random | 0.33 / 0.35 / 0.35 | 0.91 / 0.94 / 0.95 |
+
+- *By days since the peak* (100-day bins):
+  - the learned net's object rate runs 0.36 at 400–300 days before the peak, 0.17 in the first
+    100 days after it, and 0.35 at 900–1,000 days after;
+  - the heuristic's object rate rises slowly, from 0.18 to 0.22;
+  - the random net's stays near 0.34.
+- *Late D minus early D* (peak + 600 against peak + 150, paired):
+  - learned object +0.048 (p 0.002), locomotor +0.035 (p 0.0005);
+  - heuristic object +0.034 (p 0.0005), locomotor −0.009 (p 0.005);
+  - random object +0.019 (p 0.18), locomotor +0.011 (p 0.13).
+
+**What the rise is made of** (exploratory, not preregistered). Each figure is a Kendall τ against
+the window midpoint over a run's D windows, averaged over seeds.
+- *Object episodes:* the share of weaned rows in object contact rises with the rate (learned
+  τ +0.60, heuristic +0.54). Object events have no threshold, so late-D animals spend more of
+  their time at the objects, not just the same time in more pieces.
+- *The learned net's locomotion is different.* Its rate rises, but:
+  - the share of rows in locomotor events falls (τ −0.71);
+  - events per episode fall (−0.89);
+  - the window's threshold falls (−0.92).
+
+  So the rise is more, shorter episodes over less fast locomotion. The same holds with the
+  playground off (−0.62, −0.79, −0.86).
+- *The random net's locomotion, and the heuristic's without the playground,* rise with the event
+  share (τ +0.29 to +0.40). Their threshold stays at 2.0 through C and D.
+- Within D, time since the peak, colony size, age and the withdrawn share all move together.
+  This design cannot say which of them drives the rise.
+
+**The detector vector by phase** (beside; rules v9 on four windows per run).
+- With the playground on, C stays between 2.0 and 3.0 in every phase, for every policy and kind.
+- Criteria 3 and 4 are met in no window, as has been the case since rules v6.
+- The only phase movement is in criterion 5 (relaxed field), under the learned net.
+  - Its object c5 is met in 12 of 12 B windows, 1 in C, 0 in early D and 1 in late D, so C goes
+    2.83 → 2.08 → 2.00 → 2.08.
+  - As in H-e, c5 follows the relaxed share.
+
+**The playground-off arm** (preregistered; not part of the H-g decision).
+1. *The differential prediction passes.*
+   - No object event occurs in any of the 1,044 playground-off windows.
+   - The locomotor kind has at least 10 episodes in all 144 playground-off detector windows.
+2. *H-g's rule for locomotion with the playground off reads falsified for all three policies.*
+   - T_D is +0.842 ± 0.019 (learned), +0.339 ± 0.052 (heuristic) and +0.361 ± 0.050 (random).
+     Each has 12 of 12 seeds rising, p(rise) 0.0002.
+   - So the locomotor rise does not depend on the playground. The heuristic's locomotor rate,
+     flat through D with the playground on, rises without it.
+3. *The locomotor rate on − off, paired by seed* (each p 0.0005 unless given):
+   - the playground raises it for the learned net (B +0.019, p 0.31; C +0.059; D +0.081);
+   - it raises it for the random net by +0.17 to +0.18 in every phase;
+   - it lowers it for the heuristic, by −0.11 to −0.14 in every phase.
+4. *The colony without the playground* (median [range] over 12 seeds):
+
+| arm | N@315 | peak N | peak day | last young | last conception | N@1,444 | N@1,588 |
+|---|---|---|---|---|---|---|---|
+| heuristic, on | 374 [228, 551] | 2,276 [2,201, 2,327] | 536 [482, 590] | 584 [521, 655] | 940 [830, 1,012] | 132 [97, 219] | 22 [12, 41] |
+| heuristic, off | 1,012 [772, 1,247] | 2,377 [2,331, 2,449] | 450 [411, 503] | 548 [487, 629] | 914 [882, 945] | 76 [38, 96] | 14 [3, 30] |
+| learned, on | 878 [674, 1,088] | 2,356 [2,302, 2,436] | 463 [429, 522] | 480 [452, 541] | 901 [864, 944] | 54 [36, 119] | 6 [3, 17] |
+| learned, off | 1,010 [769, 1,280] | 2,451 [2,339, 2,540] | 442 [402, 513] | 486 [435, 555] | 910 [882, 980] | 52 [37, 133] | 5 [1, 23] |
+| random, on | 108 [44, 338] | 2,049 [1,962, 2,171] | 752 [653, 935] | 1,074 [714, 1,578] | 1,346 [1,107, 1,599] | 658 [279, 955] | 313 [76, 1,169] |
+| random, off | 478 [189, 731] | 2,329 [2,260, 2,416] | 578 [489, 702] | 754 [573, 938] | 1,000 [948, 1,051] | 249 [124, 356] | 82 [29, 115] |
+
+   First litters fall on days 102–104 in every arm.
+   - Without the playground, every colony grows faster, peaks earlier and peaks higher.
+     - N@315 is 2.7 times the playground-on value for the heuristic, 1.15 times for the learned
+       net and 4.4 times for the random net.
+     - The peak comes 86, 21 and 174 days earlier.
+   - The playground delays the random net's arc the most. With it, the random colony still has
+     658 mice on day 1,444; without it, 249.
+   - On fresh seeds the heuristic reproduces its reference arc: peak 2,276 on day 536, against
+     2,252 on day 534 on 8000–8011.
+   - The learned net's peak comes 73 days earlier than the heuristic's, and the random net's
+     216 days later (H-d: −69 d and +240 d).
+
+**Warnings in the log.**
+- NumPy printed RuntimeWarnings (overflow in `hypot`, invalid value in subtract) from
+  `detectors.form_resim`.
+- The cause: its position buffers come from `np.empty`, so the padding slots of shorter episodes
+  hold arbitrary memory. Those slots are masked before any count.
+- Checked: one detector window (learned, playground on, seed 9877, early D) was re-run with those
+  buffers filled with 1e308, and again with zeros. Both reproduce the sweep's output exactly, so
+  no result changes.
+- The module is left as is, because rules v9 are frozen. Zero-filling the buffers would silence
+  the warning.
+
+**What this means.**
+- In this simulator, breakdown does not suppress the detectors' candidate episodes.
+  - Through the decline, object episodes become more frequent under the learned net and the
+    heuristic.
+  - The locomotor episode rate rises under both nets, with or without the playground.
+- The one fall, in the learned net's object rate before and around the peak, reverses in D.
+- H-g was a prediction about this simulator, not a replication: Calhoun did not score play.
+- An episode rate counts candidate behaviour, not play, and PlayScore stays unvalidated.
+- Nothing here says that play-like behaviour returns late in D. Late-D colonies are small, old and
+  mostly withdrawn, and this design cannot separate those from time.
+
+**Outputs** (not committed).
+- `_output/hg_sweep/`: per run `hg_run.json`, `hg_rates.json` and `hg_detect.json`, plus
+  `hg_analysis.json`.
+- Logs: `_output/hg_sweep_log.txt` and `_output/hg_analysis_log.txt`.
+- To re-analyse: `python scripts/analyse_hg.py`.
+
+**Next** (Jason's call).
+- Of the lines P4-15's stop rule left open, `evo` (P4-4) remains.
+- H-f stays unread.
+
 ## 2026-11-13 — Replica v2 ends: M5d's best member is the final replica, with 10 of 20 pen targets inside and the arc in 45 of 48 fresh-seed runs, but late and without the categories; the frozen 2m colony stays the reference
 
 **Decision.** Jason, after M5e: "End the line".

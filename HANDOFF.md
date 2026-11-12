@@ -92,8 +92,10 @@
 >     9829–9876 it has 10 of 20 pen targets inside (M5e's member A: 8), and the arc in 45 of 48
 >     runs. But the arc comes late (last surviving birth 687, against the record's 600), and the
 >     categories miss.
->   - Next (Jason, 2026-11-13): H-g with the playground-off arm, preregistered in
->     `docs/PHASE4_DESIGN.md` §4.3 (card P4-16).
+>   - H-g with the playground-off arm (P4-16, 2026-11-13; `docs/PHASE4_DESIGN.md` §4.3):
+>     **H-g is falsified.** Four of six cells rise through phase D (p(rise) ≤ 0.002), and
+>     none falls as predicted. Without the playground, object events vanish, locomotor
+>     episodes persist, and every colony grows faster. Next: `evo` (P4-4), Jason's call.
 > - Tier 2 done (2026-11-11): P4-15 failed its primary test, and the program-level stop rule
 >   applies (no further substrate change for PPO learners). Next: H-g / playground-off, `evo`,
 >   or replica v2 (Tier 3) — Jason's call.
@@ -918,7 +920,7 @@ in the peak count (N@736 3–4 % low) and the slow realisations' late tail (N@14
 - [x] Action space v2 (P4-12, 2026-11-09: four movement primitives plus heading, observation v3; bit-identical arms; `pretrain_v3` mixes the primitives like the random v3 net; the form test has a mechanical baseline under v2; guard not preserved, arc late)
 - [x] Ball physics + detector rules v7 (P4-13, 2026-11-09: v7 passes every check and is frozen; `pretrain_v4` ignores the balls, no form; physics is not calibration-neutral for the heuristic)
 - [ ] Novelty-based curiosity (P4-14, 2026-11-09: built, bit-identical when off; relief matching missed its 10 % rule (best g = 8, +23 %), stopped before the guard and `pretrain_v5` - Jason's call)
-- [ ] Sweep: policy kind × abundance / scarcity × playground on / off × 12 seeds (P4-6); H-d … H-g answered or marked untested in NOTES
+- [ ] Sweep: policy kind × abundance / scarcity × playground on / off × 12 seeds (P4-6); H-d … H-g answered or marked untested in NOTES (2026-11-13: H-d, H-e and H-g answered, H-g falsified; H-f unread after P4-15; the scarcity arms not run)
 - [ ] H2 audit extended to observation, learner and detector code with a negative test (P4-7); no ICM / RND bonus; the heuristic is never distilled
 
 ### Phase 5 — Paper-grade release hygiene

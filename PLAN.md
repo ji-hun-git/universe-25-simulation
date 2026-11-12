@@ -378,6 +378,11 @@ development reading, before any evaluation seed.
     - H-g needs every cell.
   - *Playground off:* object events must vanish and locomotor episodes persist. H-g's rule for
     locomotion and the colony's landmarks are reported beside.
+  - **Result (2026-11-13): H-g is falsified.** Four of six cells rise through D at
+    p(rise) ≤ 0.002 (learned object and locomotor, heuristic object, random locomotor), and
+    none is supported. With the playground off, object events vanish, locomotor episodes
+    persist and rise through D under every policy, and every colony grows faster. Open next
+    (Jason): `evo` (P4-4). NOTES 2026-11-13.
 
 ### 15.2 Arms
 
