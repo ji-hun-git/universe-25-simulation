@@ -495,6 +495,53 @@ fixed before any run).**
     - brood groups, empty boxes, the sex ratios;
     - the female side of the transfer.
 
+**M7 — intergenerational transmission of maternal care (Jason, 2026-11-12: "네, 설계해 줘";
+fixed before code).**
+- **The gap it addresses.** In the record, the last surviving young was born on day 600, while
+  conceptions went on to about day 920: 320 days of pregnancies with no young surviving.
+  - Mothers had rejected essentially all young prematurely by mid-phase C, about day 437
+    (Calhoun 1973 p. 85).
+  - After transfer to fresh pens, colony females mated with competent stock males (6 of 16
+    conceived), but only 5 pups of about 100 potential survived to day 14 (Marsden 1972). The
+    deficit was in the females' rearing, and it was irreversible.
+  - The model couples conceiving and rearing. Both scale with one competence trait and with
+    current stress, so young survive almost until conceptions end. The M5b gap has a median of
+    6–186 days, and transferred females rear 42 pups.
+- **The mechanism** (`biology.maternal_transmission` τ ∈ [0, 1], default 0 = off). Maternal
+  behaviour is passed on through the care received, not the genes. In rats, daughters of
+  low-licking mothers become low-licking mothers, and cross-fostering shows the effect follows
+  the foster mother (Francis, Diorio, Liu & Meaney 1999, *Science* 286: 1155).
+  - *Care received.* Every pup accumulates the nursing weight it receives over its life before
+    weaning: the w of the nursing relaxation, i.e. maternal investment × milk share ×
+    disturbance, summed over its box's mothers in contact, times dt. Its care index is that sum
+    divided by `weaning_days`, the mean w. A pup without a box receives none.
+  - *Transmission.* At weaning, a daughter's maternal capacity becomes
+    `(1 − τ) + τ · min(1, care index / care_ref)`. Stress erosion in adulthood applies as before.
+  - Conception does not depend on maternal capacity (the replica's `fertility_cap_floor` is 1).
+    A female reared on poor care conceives normally. Her low capacity enters her investment at
+    birth, her NURSE choice and her nursing, so her pups starve.
+  - Once care declines in phase C, it compounds: poorly reared daughters rear their own
+    daughters worse. This is the cumulative, multi-generational mechanism M5 named as a
+    candidate.
+  - *care_ref* (`biology.care_ref`) is a normalisation, so that a typical phase-B daughter
+    reaches full capacity. It is the median care index of daughters weaned on days 100–300 in
+    the M5b best member, with transmission off, on training seeds 7000–7002. It is measured once,
+    before any run with transmission on, and recorded here.
+- *Development report* (the M5b best member as the base; training seeds 7000–7011, 1,600 d).
+  - Arms: the base; + transmission τ = 1 (= M7); + τ = 0.5 (sensitivity).
+  - Reported:
+    - the landmarks;
+    - the gap between the last surviving birth and the last conception;
+    - adult females' maternal capacity at days 315 / 560 / 736;
+    - the Marsden transfer with M7 (training seeds; development, not validation).
+- *M7 targets* (reported, not fitted):
+  - a gap of at least 150 days (record 320);
+  - transfer with stock males: females still conceive (at least 3 of 16), but at most 10 pups
+    reach 14 days (record 5);
+  - whether growth to the record's size and the collapse survive.
+- *Afterwards.* If the phase appears, recalibrate with τ and care_ref among the parameters
+  (M5c) and validate on fresh seeds: Jason's call.
+
 ## Validation standard (fixed now; applied from M2 on)
 
 **Population landmarks.** Calhoun's value must lie inside the replica's 90 % prediction interval
