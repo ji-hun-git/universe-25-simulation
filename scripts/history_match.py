@@ -328,9 +328,11 @@ def sample_nroy(em: Emulators, n: int, seed: int, max_rounds: int = 12) -> tuple
 
 def write_ensemble(runs: list[dict], path: Path) -> None:
     """Score each ensemble member (wave 99) on the mean of its seeds' outputs, on the
-    comparison scale, with the seed noise of the final emulators divided by the number of
-    seeds. Members pass if the second-largest implausibility is <= CUT. If none pass, the
-    12 best are written with fallback = true (and the report says so)."""
+    comparison scale. The record is one realization, so the variance is one run's seed noise
+    plus that of the k-seed mean, V_s (1 + 1/k), with V_s from the final emulators' nuggets.
+    (Until M5d this used V_s / k only, which leaves out the record's own realization and is
+    too strict; docs/REPLICA_V2.md M5d.) Members pass if the second-largest implausibility is
+    <= CUT. If none pass, the 12 best are written with fallback = true."""
     em = Emulators([r for r in runs if r["wave"] != 99])
     groups: dict[str, list[dict]] = {}
     for r in runs:
@@ -349,7 +351,8 @@ def write_ensemble(runs: list[dict], path: Path) -> None:
             yt = float(np.mean(transform(name, ys)))
             means[name] = yt
             z, var = target(name)
-            vn = (em.gp[name].n2 * em.gp[name].sd ** 2 / ys.size) if name in em.gp else 0.0
+            vs = em.gp[name].n2 * em.gp[name].sd ** 2 if name in em.gp else 0.0
+            vn = vs * (1.0 + 1.0 / ys.size)
             Ii.append(abs(z - yt) / np.sqrt(var + vn))
         Ii = np.array(Ii)
         scored.append({"u": rs[0]["u"], "params": rs[0]["params"],
@@ -360,7 +363,8 @@ def write_ensemble(runs: list[dict], path: Path) -> None:
     passing = [m for m in scored if m["i2"] <= CUT]
     members = passing or scored[:12]
     path.write_text(json.dumps({
-        "criterion": f"second-largest implausibility <= {CUT} on the mean of the member's seeds",
+        "criterion": f"second-largest implausibility <= {CUT} on the mean of the member's seeds"
+                     " (variance V_s (1 + 1/k))",
         "n_sampled": len(scored), "n_pass": len(passing), "fallback": not passing,
         "members": members}, indent=1, default=float), encoding="utf-8")
     print(f"{len(scored)} members scored, {len(passing)} pass; wrote {len(members)} to {path}")
