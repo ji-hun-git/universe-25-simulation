@@ -47,6 +47,13 @@
 >   - It is still missing a phase of conceptions without surviving young (day 600 → 920), and
 >     the categories.
 >   The fallback ensemble is `configs/replica_v2_ensemble_nofac.json`.
+>   M7 (2026-11-12) adds intergenerational transmission of maternal care
+>   (`biology.maternal_transmission`, `biology.care_ref`).
+>   - Maternal capacity declines across generations.
+>   - At the specified values reproduction never ends.
+>   - With a stricter reference (post hoc) the record's phase of conceptions without surviving
+>     young appears, but in a colony peaking at about 800.
+>   Next, Jason's call: a joint recalibration (M5c).
 > - Tier 2 done (2026-11-11): P4-15 failed its primary test, and the program-level stop rule
 >   applies (no further substrate change for PPO learners). Next: H-g / playground-off, `evo`,
 >   or replica v2 (Tier 3) — Jason's call.

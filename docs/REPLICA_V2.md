@@ -544,6 +544,14 @@ fixed before code).**
   - whether growth to the record's size and the collapse survive.
 - *Afterwards.* If the phase appears, recalibrate with τ and care_ref among the parameters
   (M5c) and validate on fresh seeds: Jason's call.
+- **Done 2026-11-12** (NOTES; training seeds; development).
+  - **At the specified values** (τ = 1, care_ref 0.888), maternal capacity declines across
+    generations: 0.89 → 0.67 → 0.56 → 0.37 at days 315 / 560 / 736 / 1,444. But no run ends
+    reproduction, so the gap does not appear.
+  - **Transfer pups with stock males:** 17.5, against 42.5 in M5b and 5 in the record.
+  - **Post hoc, care_ref 1.8:** the phase appears (444 days of conceptions after the last
+    surviving birth, record 320), but the colony then peaks at about 800.
+  - **Next:** a joint recalibration (M5c), Jason's call.
 
 ## Validation standard (fixed now; applied from M2 on)
 

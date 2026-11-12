@@ -1,5 +1,68 @@
 # Universe25 Play — NOTES
 
+## 2026-11-12 — Replica v2 M7: passing maternal care down the generations can produce the record's phase without surviving young, but at the M5b parameters only in a much smaller colony
+
+**Design.** Jason: "네, 설계해 줘". The spec was fixed before code (9132a71; code 2f01e10).
+- *The mechanism* (after Francis, Diorio, Liu & Meaney 1999). Every pup accumulates the nursing
+  weight it receives before weaning. At weaning, a daughter's maternal capacity becomes
+  `(1 − τ) + τ · min(1, care index / care_ref)`.
+- Conception does not depend on maternal capacity. Poorly reared daughters therefore conceive
+  but rear poorly, and the deficit can compound across generations.
+- *care_ref* was measured once, before any transmission run: **0.888**, the median care index of
+  773 daughters weaned on days 100–300 (M5b best member, seeds 7000–7002, transmission off).
+- *Checks.*
+  - With the flag off, all golden arms are unchanged.
+  - `test_m7_maternal_transmission` covers care accumulation (exact) and the capacity set at
+    weaning (daughters only).
+  - The fast tier passes.
+
+**Development report** (training seeds 7000–7011; the base is the M5b best member; medians;
+`_output/replica_report_m7.json`):
+
+| | base | M7 (τ = 1) | τ = 0.5 |
+|---|---|---|---|
+| peak N | 1775 | 1618 | 1780 |
+| N@736 | 1681 | 1545 | 1689 |
+| N@1588 | 1278 | 1111 | 1146 |
+| runs ending reproduction | 1 of 12 | 0 of 12 | 2 of 12 |
+| adult females' maternal capacity, days 315 / 560 / 736 / 1444 | 1.00 / 0.99 / 0.99 / 1.00 | 0.89 / 0.67 / 0.56 / 0.37 | 0.94 / 0.84 / 0.78 / 0.79 |
+
+**Marsden transfer** (M7, training seeds; development):
+- With stock males, 11.5 of 16 females conceived and 17.5 [0, 39] pups reached 14 days. M5b
+  had 42.5 pups; the record has 6 of 16 conceived and 5 pups.
+- With the colony's males: 8 conceptions and 0.5 pups.
+
+**Post-hoc sensitivity** (τ = 1, stricter care_ref; training seeds; exploration, not a test;
+`_output/replica_report_m7_sens.json`):
+
+| care_ref | maternal capacity @560 | runs ending reproduction | last surviving birth / last conception (medians) | gap where reproduction ended | peak | N@1588 |
+|---|---|---|---|---|---|---|
+| 0.888 (spec) | 0.67 | 0 of 12 | 1578 / 1599 | — | 1618 | 1111 |
+| 1.3 | 0.46 | 0 of 12 | 1573 / 1599 | — | 1202 | 568 |
+| 1.8 (about the 90th percentile) | 0.30 | 3 of 12 | 994 / 1468 | 444 d | 794 | 50 |
+
+**Against the M7 targets** (reported, not fitted):
+- **A gap of at least 150 days: not met at the specified care_ref,** because no run ends
+  reproduction. With care_ref 1.8 it appears: 444 days where reproduction ended, against the
+  record's 320. That finding is post hoc.
+- **Transfer: partly met.** The females conceive (11.5 of 16), but 17.5 pups survive against
+  the target of at most 10.
+- **Growth and collapse:** M7 lowers the peak. Where the phase appears (care_ref 1.8), the
+  colony peaks at about 800.
+
+**Reading.**
+- **The mechanism does what it is meant to.** Maternal capacity declines generation by
+  generation, from 1.0 to 0.37 by day 1,444. The transfer females rear fewer pups. With a strict
+  enough reference, the record's phase appears: conceptions go on for over a year after the last
+  surviving birth.
+- **At the specified reference it is too weak.** It also runs into a negative feedback: the pups
+  of poor mothers die, density falls, and the remaining mothers nurse better.
+- **At the M5b parameters it competes with growth:** the stricter the reference, the smaller
+  the colony.
+- **Those parameters were fitted without M7.** Whether the phase, growth to 2,200 and the
+  collapse can co-occur needs a joint recalibration, with τ and care_ref among the parameters
+  (M5c), then fresh-seed validation. That is Jason's call.
+
 ## 2026-11-12 — Replica v2 M5b: without hopper facilitation the replica reaches the record's size and can collapse; structure still misses
 
 **Design.** Jason: "Yes, recalibrate". The spec was fixed before any run (9748d33; tooling
