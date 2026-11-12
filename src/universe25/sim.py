@@ -181,6 +181,7 @@ class Universe25Sim:
         self._fought = np.zeros(cap, dtype=bool)
         self._mated = np.zeros(cap, dtype=bool)
         self._littered = np.zeros(cap, dtype=bool)
+        self._fought_adult = np.zeros(cap, dtype=bool)  # M8: either side, from maturity on
         # replica v2 M7: nursing weight received before weaning (bookkeeping; it sets daughters'
         # maternal capacity only when biology.maternal_transmission > 0)
         self._care = np.zeros(cap, dtype=np.float64)
@@ -251,6 +252,7 @@ class Universe25Sim:
         self._sire[slot] = -1
         self._preg_sire[slot] = -1
         self._fought[slot] = self._mated[slot] = self._littered[slot] = False
+        self._fought_adult[slot] = False
         self._care[slot] = 0.0
         if self._visit_t is not None:  # a new animal knows no place yet
             self._visit_t[slot] = -np.inf
@@ -510,6 +512,9 @@ class Universe25Sim:
         allowed[pup, ACT_NEST] = True
         allowed[:, ACT_MATE] &= adult & (st < 0.75) & (role != ROLE_WITHDRAWN) & (en > 0.4)
         allowed[:, ACT_NURSE] &= (sex == SEX_F) & (mat > 0.0)
+        if bio.withdrawn_disengage:  # replica v2 M8: the beautiful ones do not fight
+            allowed[:, ACT_AGGRESS] &= ~(
+                adult & (a.competence[idx] < bio.withdrawn_competence_threshold))
         if not self.world.playground_enabled:
             allowed[:, ACT_MANIPULATE] = False
         # Action space v2: the movement primitives are allowed wherever their family is (the
@@ -1147,19 +1152,27 @@ class Universe25Sim:
         alive = a.alive & (np.arange(a.capacity) != i)
         if not alive.any():
             return
+        bio = self.cfg.biology
         d2 = (a.x - a.x[i]) ** 2 + (a.y - a.y[i]) ** 2
         rk = a.rank if rank_ref is None else rank_ref
         cand = alive & (d2 < 36.0) & (rk < rk[i])
-        if self.cfg.biology.aggression_targets == "by_sex":  # replica v2 M4
+        if bio.aggression_targets == "by_sex":  # replica v2 M4
             if a.sex[i] == SEX_M:
                 cand &= a.sex == SEX_M
             elif a.role[i] != ROLE_NURSING:
                 return
+        if bio.withdrawn_disengage:  # replica v2 M8: the beautiful ones neither fight nor are
+            thr = bio.withdrawn_competence_threshold  # fought (the mask also stops AGGRESS)
+            if a.age_days[i] >= bio.maturity_days and a.competence[i] < thr:
+                return
+            cand &= ~((a.age_days >= bio.maturity_days) & (a.competence < thr))
         near = np.flatnonzero(cand)
         if len(near) == 0:
             return
         j = int(self.rng.choice(near))
         self._fought[i] = self._fought[j] = True
+        self._fought_adult[i] |= bool(a.age_days[i] >= bio.maturity_days)
+        self._fought_adult[j] |= bool(a.age_days[j] >= bio.maturity_days)
         a.wounds[j] = min(1.5, a.wounds[j] + 0.15)
         a.stress[j] = min(1.5, a.stress[j] + 0.1)
         a.rank[j] = max(0.0, a.rank[j] - 0.05)
@@ -1244,7 +1257,10 @@ class Universe25Sim:
             return
         partner_sex = SEX_M if a.sex[i] == SEX_F else SEX_F
         cand = a.alive & (a.sex == partner_sex) & (a.age_days >= bio.maturity_days)
-        cand &= a.role != ROLE_WITHDRAWN
+        if partner_sex == SEX_F and not bio.fertility_from_competence:  # replica v2 M8
+            cand &= (a.role != ROLE_WITHDRAWN) | (a.competence < bio.withdrawn_competence_threshold)
+        else:
+            cand &= a.role != ROLE_WITHDRAWN
         cand &= a.gestating == 0
         if partner_sex == SEX_F:
             cand &= a.age_days <= bio.female_fertile_max_age_days
@@ -1564,6 +1580,7 @@ class Universe25Sim:
                 a.rank[win] = min(1.0, float(a.rank[win]) + 0.05)
                 self._contests += 1
                 self._fought[o] = self._fought[ch] = True
+                self._fought_adult[o] = self._fought_adult[ch] = True  # contestants are adults
                 if win == ch:
                     owners.discard(o)
                     self._set_owner(c, ch, owners)
@@ -1609,13 +1626,17 @@ class Universe25Sim:
         p_base = float(bio.breeding_p_base) * max(0.02, 1.0 - dens / max(1e-6, bio.menopause_density_threshold))
         if bio.breakdown_scope == "individual":  # replica v2 M4: no colony-density term
             p_base = float(bio.breeding_p_base)
+        fert_comp = bool(bio.fertility_from_competence)
+        not_wd = a.role != ROLE_WITHDRAWN
+        if not fert_comp:  # replica v2 M8: withdrawn for low competence, she can still conceive
+            not_wd = not_wd | (a.competence < bio.withdrawn_competence_threshold)
         females = np.flatnonzero(
             alive
             & (a.sex == SEX_F)
             & (a.age_days >= bio.maturity_days)
             & (a.age_days <= bio.female_fertile_max_age_days)
             & (a.gestating == 0)
-            & (a.role != ROLE_WITHDRAWN)
+            & not_wd
             & (a.stress < 0.8)
             & (a.energy > 0.35)
         )
@@ -1651,9 +1672,9 @@ class Universe25Sim:
             cands = male_cells.get(int(a.cell_id[f]), [])
             if not cands:
                 continue
-            c_f = float(a.competence[f])
+            c_f = float(a.competence[f])  # her investment below scales with it in any case
             p = p_base * (1.0 - float(bio.breeding_stress_coef) * float(a.stress[f]))
-            p *= c_f * male_comp[int(a.cell_id[f])]
+            p *= (c_f if fert_comp else 1.0) * male_comp[int(a.cell_id[f])]
             if floor < 1.0:  # fertility follows her own breakdown state
                 p *= floor + (1.0 - floor) * float(a.maternal_cap[f])
             if width > 0.0:

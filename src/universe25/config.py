@@ -207,6 +207,14 @@ class BiologyConfig(_Strict):
     # weaning_days. Conception does not depend on maternal capacity. 0 = off.
     maternal_transmission: float = Field(default=0.0, ge=0.0, le=1.0)
     care_ref: float = Field(default=0.0, ge=0.0)
+    # Replica v2 M8. withdrawn_disengage: adults whose developmental competence is below
+    # withdrawn_competence_threshold (withdrawn for life, Calhoun's "beautiful ones") neither
+    # fight nor are fought; animals withdrawn by stress alone fight as before.
+    # fertility_from_competence False: a female's conception no longer scales with her
+    # developmental competence, and a female withdrawn for low competence can still conceive;
+    # male courtship and maternal investment still scale with competence.
+    withdrawn_disengage: bool = False
+    fertility_from_competence: bool = True
 
     def breakdown_threshold(self) -> float:
         if self.breakdown_density_threshold is not None:
@@ -417,6 +425,8 @@ class SimConfig(_Strict):
                 raise ValueError("maternal_transmission needs care_ref > 0")
             if self.backend == "warp":
                 raise ValueError("maternal_transmission is NumPy-path only")
+        if (b.withdrawn_disengage or not b.fertility_from_competence) and self.backend == "warp":
+            raise ValueError("withdrawn_disengage / fertility_from_competence are NumPy-path only")
         if g.disperse_at_maturity and not g.box_choice:
             raise ValueError("disperse_at_maturity needs geometry.box_choice")
         if g.open_cells is not None:

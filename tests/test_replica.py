@@ -495,6 +495,93 @@ def test_m7_maternal_transmission() -> None:
     assert np.isclose(a.maternal_cap[pups[0]], 0.5) and a.maternal_cap[pups[1]] == 1.0
 
 
+def test_m8_categories() -> None:
+    """Replica v2 M8: both fields are refused on Warp; with disengagement an adult below the
+    competence threshold is never a target and never attacks, and its AGGRESS is masked; the
+    adult fight marks skip the young; with the fertility split a female withdrawn for low
+    competence conceives (her investment still scales with competence) and males court her."""
+    from universe25.agents.state import (
+        ACT_AGGRESS,
+        ROLE_SUBORDINATE_MALE,
+        ROLE_WITHDRAWN,
+        SEX_F,
+        SEX_M,
+    )
+
+    for bad in ({"withdrawn_disengage": True}, {"fertility_from_competence": False}):
+        try:
+            _cfg(backend="warp", geometry={"layout": "grid"}, biology=bad)
+        except ValueError:
+            continue
+        raise AssertionError(f"{bad} on Warp must be refused")
+    base = dict(seed=7100, days=5.0, ticks_per_day=6, backend="numpy", device="cpu",
+                log_every_ticks=6, snapshot_every_days=0)
+
+    def make(**bio):
+        cfg = _cfg(**base, biology={"aggression_targets": "by_sex", "territories": True,
+                                    "founder_age_days": 100.0, "first_conception_min_day": 0.0,
+                                    "breakdown_scope": "individual", **bio})
+        return Universe25Sim(cfg, Path(tempfile.mkdtemp(prefix="u25rep_"))), cfg
+
+    # disengagement: the incompetent adult is no target and does not attack
+    sim, cfg = make(withdrawn_disengage=True)
+    a, bio = sim.agents, cfg.biology
+    a.alive[:] = False
+    A, B, J = (int(v) for v in a.free_slots(3))
+    for k, age in ((A, 100.0), (B, 100.0), (J, bio.maturity_days - 5.0)):
+        sim._spawn(k, sex=SEX_M, age=age, x=30.0, y=30.0, nest_id=0, cell_id=0, role=0)
+    a.rank[[A, B, J]] = (0.9, 0.5, 0.4)
+    a.competence[B] = 0.0
+    a.alive[J] = False
+    sim._aggress(A)
+    assert not sim._fought[A] and not sim._fought[B]
+    sim._aggress(B)
+    assert not sim._fought[B]
+    a.alive[J] = True  # a juvenile target: both marked fought, only the attacker as an adult
+    sim._aggress(A)
+    assert sim._fought[A] and sim._fought[J] and not sim._fought[B]
+    assert sim._fought_adult[A] and not sim._fought_adult[J]
+    # the mask: the incompetent adult never chooses AGGRESS, however aggressive and stressed;
+    # the same animal without disengagement does
+    for on in (True, False):
+        sim.cfg.biology.withdrawn_disengage = on
+        a.alive[[A, J]] = False
+        a.aggression[B], a.stress[B], a.energy[B] = 1.5, 1.5, 0.9
+        a.hunger[B] = a.thirst[B] = a.fatigue[B] = 0.0
+        picks = set()
+        for t in range(200):
+            sim.tick = t * sim.ticks_per_decision
+            picks.add(int(sim._select_actions(a.alive.copy())[B]))
+        assert (ACT_AGGRESS in picks) == (not on), (on, picks)
+    # fertility split: a withdrawn, incompetent female conceives only with the split
+    got = {}
+    for split in (False, True):
+        sim, cfg = make(fertility_from_competence=not split)
+        a, bio = sim.agents, cfg.biology
+        f = int(np.flatnonzero(a.alive & (a.sex == SEX_F))[0])
+        m = int(np.flatnonzero(a.alive & (a.sex == SEX_M))[0])
+        a.cell_id[[f, m]] = 2
+        a.stress[[f, m]] = 0.0
+        a.energy[f] = 0.9
+        a.competence[f], a.role[f], a.maternal[f] = 0.0, ROLE_WITHDRAWN, 0.0
+        sim._set_owner(2, m, set())
+        sim.rng, real = _FixedDraw(0.3), sim.rng
+        sim._daily_breeding_pass(a.alive.copy())
+        sim.rng = real
+        got[split] = bool(a.gestating[f] > 0)
+        if split:
+            assert a.maternal[f] == 0.0, a.maternal[f]
+        # courtship: the male approaches her only with the split
+        a.alive[:] = False
+        a.alive[[f, m]] = True
+        a.gestating[f] = 0.0
+        a.x[f], a.y[f], a.x[m], a.y[m] = 20.0, 20.0, 30.0, 20.0
+        a.role[m] = ROLE_SUBORDINATE_MALE
+        sim._approach_mate(m)
+        assert (a.x[m] < 30.0) == split, (split, a.x[m])
+    assert got == {False: False, True: True}, got
+
+
 if __name__ == "__main__":
     test_grid_cells_of_is_the_old_arithmetic()
     test_calhoun_pen()
@@ -505,4 +592,5 @@ if __name__ == "__main__":
     test_m4_mechanisms()
     test_methods_fixes()
     test_m7_maternal_transmission()
+    test_m8_categories()
     print("test_replica: OK")

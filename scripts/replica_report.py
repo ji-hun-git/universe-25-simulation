@@ -140,6 +140,9 @@ def run_one(job: tuple[str, str, dict, int, float]) -> tuple[str, int, dict]:
                 wad = wd & (a.age_days >= bio.maturity_days)
                 struct[str(d)]["beautiful_share"] = (
                     float(np.mean(~sim._fought[cat] & ~sim._mated[cat])) if cat.any() else np.nan)
+                struct[str(d)]["beautiful_share_adult"] = (  # M8: fights from maturity on
+                    float(np.mean(~sim._fought_adult[cat] & ~sim._mated[cat])) if cat.any()
+                    else np.nan)
                 struct[str(d)]["withdrawn_fought"] = (float(np.mean(sim._fought[wad]))
                                                       if wad.any() else np.nan)
                 adf = al & (a.sex == SEX_F) & (a.age_days >= bio.maturity_days)
@@ -230,7 +233,7 @@ def main() -> int:
     keys = ("n", "empty_box_share", "centre_share", "withdrawn_share", "withdrawn_centre",
             "male_share", "max_cell_share", "owned_cells", "excluded_centre",
             "hopper_max_share", "owner_ring_dist", "subs_per_owner", "beautiful_share",
-            "withdrawn_fought", "maternal_cap_f")
+            "beautiful_share_adult", "withdrawn_fought", "maternal_cap_f")
     for d in SNAP_DAYS:
         print(f"\nday {d}: " + " | ".join(names))
         out["struct"][str(d)] = {}
