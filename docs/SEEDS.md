@@ -41,7 +41,8 @@ passed to the generator, not simulation seeds.
 | 9721–9768 | replica v2 M5e validation (registered 2026-11-12, before use) | the M5e ensemble (M5d with M8 on) in Calhoun's pen, one member per seed |
 | 9769–9816 | replica v2 M5e sibling universes (registered 2026-11-12, before use) | 1, 2, 4 and 8 open cells, 12 seeds each in that order; a consistency check |
 | 9817–9828 | replica v2 M5e Marsden transfer (registered 2026-11-12, before use) | the best M5e member |
-| 9096–9099, 9112–9199, 9416–9499, 9829–9999 | **reserved, fresh** | substrate-variant confirmation (24 seeds per variant) and future references |
+| 9829–9876 | replica v2 final-replica comparison (registered 2026-11-13, before use) | M5d's best member and M5e's member A, each alone in Calhoun's pen on all 48 seeds (paired) |
+| 9096–9099, 9112–9199, 9416–9499, 9877–9999 | **reserved, fresh** | substrate-variant confirmation (24 seeds per variant) and future references |
 
 ## Random-network init seeds (`MlpFrozenPolicy.random_init(s)`)
 

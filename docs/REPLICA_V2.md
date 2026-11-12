@@ -884,6 +884,47 @@ social competence (Jason, 2026-11-12: "Yes, design it"; fixed before code).**
   - Members passed, so the line does not end automatically: Jason decides. Recommendation: keep
     2m as the reference, and end the replica line.
 
+**End of the replica line (Jason, 2026-11-13: "End the line"; fixed before any run).**
+- **The decision.** The replica line ends with M5e: no further replica milestone. The frozen 2m
+  colony stays the reference for new work. M5e's stop rule says what happens when the line ends
+  without a passing member, and it is applied here as well: the best member of M5d or M5e,
+  whichever does better on fresh seeds, is documented with its misses as the final replica.
+- **Why one more run.** Neither best member has 48 fresh seeds of its own. The validations gave
+  the members the seeds in turn: M5d's 12 members had 4 seeds each, and M5e's 2 members had 24
+  each.
+- **The two members:**
+  - M5d's best: the first member of `configs/replica_v2_ensemble_m5d.json` (I₂ 3.14, a fallback
+    member; M8 off);
+  - M5e's best: member A, the first member of `configs/replica_v2_ensemble_m5e.json` (I₂ 2.92;
+    M8 on).
+- **Runs.** Each member alone in Calhoun's pen, 1,600 days, on the same 48 fresh seeds
+  9829–9876, registered now before use: 96 runs (`scripts/replica_validate.py --part pen`).
+- **Measure.** The validation standard's pen table: for each of the 20 targets, is the record
+  inside the member's 5–95 % range over its 48 runs, with the contested ranges? The categories
+  target counts as the adult share for both members, which is Calhoun's definition (as in M5e).
+  The any-age share is reported beside it.
+- **Rule.** The first difference decides:
+  1. more of the 20 pen targets inside;
+  2. more of the six structural targets of M7 and M8 met, in seed medians:
+     - a gap of at least 150 days between the last surviving birth and the last conception;
+     - never fought as adults or mated (131–320 days old, day 800): 0.38–0.68;
+     - the withdrawn share of the weaned on day 560: 0.22–0.42;
+     - in the transfer with the colony's males, at most 1 female conceives;
+     - with stock males, at least 3 of 16 females conceive, and at most 10 pups reach 14 days.
+
+     The transfer numbers come from each member's validation transfer on its registered seeds
+     (M5d 9709–9720, M5e 9817–9828). The transfer is not rerun.
+  3. the arc in more of the 48 runs;
+  4. otherwise member A, which passed the member criterion.
+- **Not rerun:** the sibling universes, a consistency check since M5b.
+- **Reported:**
+  - both pen tables;
+  - the arc count, and the landmarks given the arc;
+  - the structural targets;
+  - the final replica's misses.
+
+  The final member is written to `configs/replica_v2_final.json`.
+
 ## Validation standard (fixed now; applied from M2 on)
 
 **Population landmarks.** Calhoun's value must lie inside the replica's 90 % prediction interval
