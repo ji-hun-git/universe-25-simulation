@@ -688,6 +688,28 @@ fixed before any run).**
   - the M6 tables and the transfer.
 - **Cost:** about 1,500 runs (about 30 CPU-hours), plus validation.
 - Jason decides afterwards whether an ensemble replaces 2m as the reference.
+- **Done 2026-11-12** (NOTES; 1,488 runs, 34.0 CPU-hours; fresh seeds 9613–9720).
+  - **The arc becomes common where it is selected for.** On fresh seeds 20 of 48 runs show
+    growth above 1,800, a gap of at least 150 days and a collapse (M5c: 1). Its frequency is a
+    property of the parameter set: the ensemble's seed halves give 45 and 38 of 144 runs
+    (Spearman 0.73 over members).
+  - **τ is constrained only where the arc is frequent:** a median of 0.81 in the 10 % of NROY
+    with the highest emulated p, and 1.2 % below 0.2. Over the whole NROY the share below 0.2 is
+    0.208, as in the prior.
+  - **No member passes** (best I₂ 3.14). The fallback is `configs/replica_v2_ensemble_m5d.json`.
+    Post hoc, the two design points that passed on their six seeds score 3.41 and 3.51 on
+    twelve.
+  - **On fresh seeds 11 of 20 pen targets are inside** (M5c: 13). The ensemble's arc follows
+    faster early growth than the record's and comes late: last surviving birth 1,060, last
+    conception 1,482 (record 600 and 920). The siblings have 11 of 15 inside.
+  - **The transfer shows the record's route.** The best member's females are competent (0.81)
+    and conceive with stock males (10 of 16; record 6), and no pup reaches 14 days (record 5).
+    Both M7 transfer targets are met.
+  - **Not met: the validation standard.** The remaining misses are mostly the categories.
+    - One developmental competence value governs withdrawal, courtship, conception and care.
+    - So weak imprinting leaves almost no withdrawn young, and no young that never fought or
+      mated. Strong imprinting (M5c) leaves females that cannot conceive.
+    - Next: Jason's call.
 
 ## Validation standard (fixed now; applied from M2 on)
 

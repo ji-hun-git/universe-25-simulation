@@ -1,5 +1,220 @@
 # Universe25 Play — NOTES
 
+## 2026-11-12 — Replica v2 M5d: scored as a frequency, the record's arc becomes common and ends reproduction the record's way, but it comes late and the behavioural categories miss; no member passes
+
+**Design.** Jason: "네, 방법 바꿔 보정". The spec was fixed before any run (cf385bf; tooling
+a270483; the scoring fix 957971e).
+- Every design point runs 6 training seeds (7000–7005), and each ensemble point runs 12
+  (7000–7011).
+- Three kinds of target:
+  - 15 mean targets, emulated by their seed mean and log seed variance;
+  - the arc's frequency p, emulated on each point's share of arc seeds. The arc is a peak above
+    1,800, a gap of at least 150 days from the last surviving birth to the last conception, and
+    a collapse below 300 by day 1,588;
+  - 5 targets given the arc, scored in the ensemble on its arc seeds.
+- Runs: 1,488 on training seeds, 34.0 CPU-hours (`_output/hm_m5d/`).
+- Validation: fresh seeds 9613–9720, registered before use.
+
+**A correction to M5–M5c** (957971e). Their ensemble scoring divided a member's seed variance
+by its number of seeds. The record is one realization, so one run's variance belongs in the
+denominator too: V_s (1 + 1/k). Re-scored:
+
+| | members passing, before → after | best I₂, before → after |
+|---|---|---|
+| M5 | 0 → 2 | 3.95 → 2.94 |
+| M5b | 0 → 0 | 3.70 → 3.29 |
+| M5c | 0 → 0 | 4.00 → 3.00 |
+
+The two M5 members pass only because the record falls between their two seeds. In each, one
+seed holds 1,290–1,470 mice on day 1,588 and the other falls to 8 or 401, and no seed grows past
+1,600. The committed ensemble files stay as they were.
+
+**Waves** (6 seeds per point):
+
+| | wave 1 | wave 2 |
+|---|---|---|
+| points, drawn from | 120, M5c's NROY | 80, M5d's NROY |
+| runs with the arc | 53 of 720 (7.4 %) | 37 of 480 (7.7 %) |
+| points with the arc in 0 / 1–2 / 3–5 / 6 of 6 seeds | 101 / 11 / 5 / 3 | 69 / 3 / 6 / 2 |
+
+- **Emulators.** Every leave-one-out check passes: at most 5 % of points lie beyond 3 sd, and
+  for the arc share 3.3 % and 2.5 %.
+- **NROY** is 1.6 % of the box after wave 1 and 1.5 % after wave 2 (17 % of M5c's NROY).
+  - The mean targets do all of the cutting.
+  - The frequency rule removes almost nothing: 5 of 6,465 candidates after wave 1, none after
+    wave 2. The share emulator's upper bound (mean + 3 sd) stays above 0.05 almost everywhere.
+- **Emulated p over the mean-target NROY** after wave 2: median 0.02, 95th percentile 0.32,
+  maximum 0.96. It is at least 0.1 on 23 % of it and at least 0.2 on 12 %.
+
+**τ is constrained only where the arc is frequent.**
+- Over the whole NROY, τ is 0.05 / 0.49 / 0.95 (5 / 50 / 95 %), and the share below 0.2 is
+  0.208, as in the prior. The mean targets do not need transmission.
+- In the 10 % of NROY with the highest emulated p, τ is 0.46 / 0.81 / 0.98, and 1.2 % is below
+  0.2. All 24 ensemble members have τ between 0.62 and 1.00.
+- Over the 120 wave-1 points, τ is the parameter most correlated with the number of arc seeds
+  (Spearman +0.33).
+- care_ref is not constrained (0.54 / 1.15 / 2.37 over NROY; 0.53 / 1.04 / 2.32 in its high-p
+  part). The high-p part has weaker imprinting (`imprint_rate` median 0.021, against 0.036).
+
+**The arc comes with fast early growth.** Over all 1,488 runs, the share with the arc rises with
+the number of adults on day 315 (record: 150):
+
+| adults on day 315 | below 200 | 200–400 | 400–700 | 700 and more |
+|---|---|---|---|---|
+| runs | 54 | 392 | 665 | 377 |
+| share with the arc | 2 % | 7 % | 10 % | 20 % |
+
+**Ensemble** (24 points drawn from the top 10 % of emulated p, p ≥ 0.24; 12 seeds each):
+- **The arc occurs in 83 of 288 runs (29 %).** The emulated mean was 39 %. Emulated and observed
+  shares correlate (r = 0.50), but 9 of the 24 members never show the arc in 12 seeds.
+- **The frequency is a property of the parameter set.** The arc occurs in 45 of 144 runs on
+  seeds 7000–7005 and 38 of 144 on 7006–7011. Over members, the Spearman correlation between the
+  two halves' counts is 0.73.
+- **No member passes** (best I₂ 3.14).
+  - That member shows the arc in 11 of 12 seeds. Its worst targets are the categories: on day
+    800 every mouse aged 131–320 days has fought or mated, in all 12 seeds (record: 53 % had
+    done neither); then the male share on day 1,444 and the brood groups.
+  - 14 members show the arc in at least 2 seeds.
+  - `configs/replica_v2_ensemble_m5d.json` holds the 12 best, marked `fallback: true`. Their τ
+    runs from 0.73 to 0.97. On the training seeds they show the arc in 67 of 144 runs (47 %).
+- **Given the arc, it comes late.** The 83 arc runs (medians, [5 %, 95 %]):
+
+  | | record | arc runs |
+  |---|---|---|
+  | peak N | 2,200 | 2,117 [1,836, 4,014] |
+  | plateau onset | 560 | 515 [368, 625] |
+  | last surviving birth | 600 | 913 [475, 1,229] |
+  | last conception | 920 | 1,408 [964, 1,599] |
+  | N@1,444 / N@1,588 | 122 / 27 | 185 / 79 |
+  | adults on day 315 | 150 | 640 [316, 899] |
+  | male share on day 1,444 | 0.18 | 0.42 |
+  | never fought or mated on day 800 | 0.53 | 0.17 |
+
+  - The last conception (in 17 of 24 members), the adults on day 315 (11) and the last surviving
+    birth (11) are the most frequent among a member's two worst targets.
+  - Of the 173 arc runs among all 1,488, 11 have both the last surviving birth and the last
+    conception within 100 days of the record's (43 within 150 days).
+
+**Post hoc** (not part of the registered criterion).
+- Two wave-2 design points met the member criterion on their own six seeds: the arc in 6 of 6,
+  I₂ 2.89 and 2.90 (τ 0.98 and 0.96; care_ref 0.52 and 0.67).
+- On seeds 7006–7011 they keep the arc (4 and 6 of 6). Scored on all 12 seeds as the members
+  were, their I₂ rises to 3.41 and 3.51. So the six-seed passes were partly the luck of picking
+  the best of 200. With the design points' pooled arc variance instead of the members', the
+  first scores 2.87.
+- Both have the same worst target: no mouse aged 131–320 days on day 800 that never fought or
+  mated, in any seed.
+
+**Validation on fresh seeds** (the M5d fallback ensemble; Calhoun's pen, seeds 9613–9660, one
+member per seed; M5c for comparison; * = the record is outside the 5–95 % range):
+
+| target | record | M5c | M5d |
+|---|---|---|---|
+| peak N | 2200 | 1760 [1316, 2921] | 1875 [1466, 2523] |
+| plateau onset | 560 | 543 [407, 685] | 553 [444, 601] |
+| N@736 / 811 / 960 | 2056 / 1871 / 1650 | 1675 / 1545 / 1221 | 1727 / 1622 / 1368 |
+| N@1444 | 122 | 267 [57, 1521] | 221 [46, 543] |
+| N@1588 | 27 | 135 [13, 1595] | 120 [11, 404] |
+| last conception | 920 | 1394 [714, 1599] | 1482 [954, 1599] * |
+| last surviving birth | 600 | 1100 [666, 1578] * | 1060 [627, 1573] * |
+| phase-B doubling | 55 | 45 [41, 53] * | 44 [39, 54] * |
+| adults @315 | 150 | 482 * | 574 * |
+| male share @315 / @1444 | 0.40 / 0.18 | 0.48 * / 0.43 * | 0.47 * / 0.45 * |
+| empty boxes @560 | 0.25 | 0.49 [0.24, 0.64] | 0.48 [0.31, 0.59] * |
+| withdrawn @560 | 0.32 | 0.63 [0.05, 0.87] | 0.63 [0, 0.78] |
+| never fought or mated @800 | 0.53 | 0.13 * | 0.17 * |
+| brood groups by 315 | 14 | 26 * | 26.5 * |
+| inside, of 20 | | 13 | 11 |
+
+First litters, N@315 and the phase-C doubling time are inside for both.
+- **The arc is common on fresh seeds.** 20 of 48 runs show all three (M5c: 1 of 48), close to
+  the 47 % the training seeds predicted. 29 runs peak above 1,800, 43 collapse, and 38 have a gap
+  of at least 150 days.
+- **Reproduction ends the record's way.** It ends (last conception before day 1,500, as in M5c)
+  in 25 of 48 runs. Where it ends, the median gap is 389 days (record 320; M5c 22), and 22 of
+  the 25 have at least 150 days (M5c: 8 of 26).
+- **Maternal capacity falls across generations.** Adult females' median capacity is 0.51 / 0.31
+  / 0.28 / 0.21 on days 315 / 560 / 736 / 1,444 (M5c: 0.79 / 0.65 / 0.60 / 0.58).
+- **The ranges are narrower, and two targets drop out:** the last conception (its interval now
+  starts at day 954) and empty boxes. 11 of 20 are inside (M5b and M5c: 13).
+- **The best member shows the arc on all 4 of its fresh seeds:**
+  - N@315 543–769, plateau onset on days 517–569, and peaks of 2,254–2,559;
+  - doubling times of 48–56 days in phase B (record 55) and 113–126 in phase C (record 125);
+  - the last surviving birth on days 652–819, the last conception on days 1,041–1,158, and
+    16–40 mice on day 1,588.
+
+  Its misses are the categories:
+  - 0–1 % never fought or mated on day 800;
+  - 7–12 % withdrawn on day 560 (record 32 %);
+  - 23–30 brood groups;
+  - a male share of 0.37–0.45 on day 1,444.
+
+**Sibling universes** (seeds 9661–9708; a consistency check):
+
+| | 1 cell | 2 | 4 | 8 | 16 |
+|---|---|---|---|---|---|
+| record, per cell later | 180 | 175 | 130 | 142 | 138 |
+| M5c, per cell later | 138 | 126 | 138 | 98 | 105 |
+| M5d, per cell later | 152 | 140 | 145 | 114 | 108 |
+| M5d record points inside | 3 of 3 | 2 of 3 | 2 of 3 | 2 of 3 | 2 of 3 |
+
+- 11 of 15 record points are inside (M5c 10, M5b 11).
+- As before, the misses are early: at the end of phase B the 2-, 4- and 8-cell pens hold more
+  mice than the record's. The 16-cell pen's last point is also out (1,722 [1,366, 2,230], against
+  2,250).
+
+**Marsden transfer** (the best member; seeds 9709–9720; 16 females moved on day 870; medians
+[range]):
+
+| | record | M5c best member | M5d best member |
+|---|---|---|---|
+| with colony males: females conceiving | 0 | 0 | 1.5 [0, 9] |
+| with stock males: females conceiving | 6 | 0 | 10 [8, 12] |
+| with stock males: litters | 3 | 0 | 10 [8, 12] |
+| with stock males: pups reaching 14 days | 5 | 0 | 0 [0, 0] |
+| transferred females' competence | | 0.007 | 0.81 |
+
+- **Both M7 transfer targets are met:** at least 3 of 16 conceive with stock males, and at most
+  10 pups reach 14 days.
+- **The route is now the record's.** The females are competent, conceive and give birth (a
+  median of 91.5 pups per transfer with stock males), but no pup survives two weeks. In this
+  member's pen, adult females' maternal capacity is 0.83–0.87 on day 315 and 0.06–0.07 by day
+  736.
+- The failure is stronger than the record's: 10 litters and no surviving pup, against 3 litters
+  and 5 pups.
+
+**Reading.**
+- **The method change did what it was designed to do.** Scored as a frequency over replicate
+  seeds, the record's arc became something history matching can select.
+  - On fresh seeds it is common: 20 of 48 runs (M5c: 1).
+  - Where reproduction ends, it ends after a long phase without surviving young.
+- **The arc needs strong transmission.** Where it is frequent, τ is about 0.8–0.9. The other
+  targets alone leave τ at its prior.
+- **The transfer now shows the record's route:** competent females that conceive and then fail
+  to rear. M5c's best member reached similar counts with females that could not conceive.
+- **The ensemble does not fit the record's timing.**
+  - Its arc follows faster early growth than the record's.
+  - Its phase without surviving young starts and ends late.
+  - The best member is close on the population arc, 50–240 days late on the two landmarks.
+  - But no member passes, and 11 of 20 pen targets are inside.
+- **The categories are now the main miss, and they look structural.** M5c's and M5d's best
+  members bracket the record:
+  - with strong imprinting (M5c), the females cannot conceive at all;
+  - with weak imprinting (M5d, `imprint_rate` 0.007), the young keep their competence, so few
+    withdraw and almost none stays without fighting or mating.
+
+  The record had both: young adults who never fought or mated, and females who conceived with
+  stock males. In the model, one developmental competence value governs withdrawal, male
+  courtship, female conception and maternal investment. Within this structure, more
+  calibration is unlikely to give both. Separating them would be a model change: a new
+  milestone with its own spec.
+- **Not met: the validation standard.**
+- **Recommendation:** keep the frozen 2m colony as the reference.
+  - M5d's best member is the closest replica so far of the record's population arc, and of its
+    route in the transfer, with the misses above.
+  - Whether to continue (separate the competence traits, then recalibrate) or stop the replica
+    line here is Jason's call.
+
 ## 2026-11-12 — Replica v2 M5c: transmission makes the record's whole arc more frequent, but history matching cannot select for it, and the best member ends reproduction the wrong way
 
 **Design.** Jason: "네, 재보정". The spec was fixed before any run (462b4c2; tooling 827b435,

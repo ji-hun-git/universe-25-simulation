@@ -59,9 +59,17 @@
 >   - History matching cannot constrain τ: the phase's targets are bimodal across seeds.
 >   - No ensemble member passes. On fresh seeds 13 of 20 are inside, as in M5b.
 >   - In the transfer, the best member's females cannot conceive at all (record: 6 of 16).
->   The fallback ensemble is `configs/replica_v2_ensemble_m7.json`. The validation standard is
->   not met, and the frozen 2m colony remains the reference. Next, Jason's call: a method change
->   (score the phase as a frequency over replicate seeds), or stop the replica line here.
+>   The fallback ensemble is `configs/replica_v2_ensemble_m7.json`.
+>   M5d (2026-11-12) scores the arc as a frequency over replicate seeds
+>   (`scripts/history_match_rep.py`; fresh seeds 9613–9720).
+>   - The arc becomes common on fresh seeds (20 of 48 runs; M5c 1) and needs strong
+>     transmission (τ about 0.8–0.9).
+>   - The transfer shows the record's route: competent females conceive and lose their litters.
+>   - No member passes, and 11 of 20 pen targets are inside. The arc comes late, and the
+>     categories miss: one competence value governs withdrawal, courtship, conception and care.
+>   The fallback ensemble is `configs/replica_v2_ensemble_m5d.json`. The validation standard is
+>   not met, and the frozen 2m colony remains the reference. Next, Jason's call: separate the
+>   competence traits (a model change) and recalibrate, or stop the replica line here.
 > - Tier 2 done (2026-11-11): P4-15 failed its primary test, and the program-level stop rule
 >   applies (no further substrate change for PPO learners). Next: H-g / playground-off, `evo`,
 >   or replica v2 (Tier 3) — Jason's call.
