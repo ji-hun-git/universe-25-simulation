@@ -1141,6 +1141,129 @@ H-d and the verdicts already reported keep their rule.
 - *Purpose:* identifiability — how many directions the landmarks actually constrain. No pass
   condition, and no parameter changes.
 
+### 4.3 H-g and the playground-off arm (fixed 2026-11-13 before any code or run)
+
+**Why.**
+- P4-15's stop rule moved the play programme to H-g, the playground-off arm and `evo`. Jason
+  chose H-g with the playground-off arm on 2026-11-13, after the replica line ended. The frozen
+  2m colony is the reference.
+- H-g (PLAN §15.1, preregistered 2026-11-04): breakdown suppresses play-likeness. Detector
+  rates fall in phases C / D under every policy, with a monotone decline after the plateau;
+  falsified if the rates rise in phase D. Its measure and its phases were never fixed in
+  numbers. This section fixes them before any code or run.
+- Neither question needs a form (criteria 3 / 4), which no policy has shown (rules v6–v9).
+
+**Arms.**
+- *Policies* (as in H-e):
+  - the heuristic (`need_driven`);
+  - the learned net (`mlp_frozen`, `_output/pretrain/pretrain_v2/policy_final.npz`, the net of
+    H-d and H-e);
+  - a random net of the same architecture (`MlpFrozenPolicy.random_init(7000)`,
+    `_output/policy_random_v2_7000.npz`).
+- *Playground:* on (`configs/default.yaml`, ABUND-PG) and off (the same with
+  `playground.enabled: false`, ABUND-NOPG).
+- *Runs:* 1,600 d at 6 ticks per day, NumPy, 12 free-time sub-steps (mode `auto`: the
+  heuristic continues, the nets re-choose), as in H-e.
+- *Seeds:* 9877–9888 (12, fresh), the same seeds in all six arms (paired); 72 runs.
+- *Not included:* the later learners (v3–v5, A0, A1).
+  - They need the substrate variants of P4-12 – P4-14, which move the curve.
+  - A1's colony peaks near 420 and never breaks down.
+  - The stop rule ended that line.
+- *Why not 8000–8011:* the H-e sweep read those seeds with these policies at days 400, 700 and
+  1,000 (episode counts and criteria by window). They are not fresh for a question about
+  phases. As in P4-15, a decisive test uses a fresh band.
+
+**Traces.** Ten-day windows start every 50 days from day 150 to day 1,550 (29 windows), with
+every fourth individual, as in H-e.
+
+**Phases, per run, from its own population series.** They come from the landmarks of
+`metrics/calibration.py`, never from a detector.
+- t_fl is the first-litter day and t_pk the peak day (31-day smoothing).
+- b = t_fl + 0.4627 (t_pk − t_fl). This places the record's day 315 in the record's own
+  proportions: (315 − 104) / (560 − 104).
+- A window's phase is set by its midpoint m: A if m < t_fl, B if t_fl ≤ m < b, C if
+  b ≤ m ≤ t_pk, D if m > t_pk.
+- A window enters if it has at least 10 traced weaned individuals (age ≥ 21 d). Phase A windows
+  never enter.
+
+**Response: the detector rate.** Per kind (object, locomotor), the onset rate r is the number of
+episodes per weaned individual-day. It uses the rules-v9 events, gap criterion and
+segmentation, over every traced individual of the window (no 400 cap, and no surrogates are
+needed).
+- *Why not the criteria count C:*
+  - under rules v6–v9 no policy on this substrate meets criterion 3 or 4 (P4-11);
+  - criterion 2 is close to automatic in the simulator, because exogenous triggers are rare
+    (NOTES 2026-11-08);
+  - so C would vary mainly through criteria 1 and 5, and criterion 5's statistic follows the
+    relaxed share in every policy, the random net included (Tier 1).
+- C by phase is reported beside.
+
+**Statistics, per run and kind.**
+- τ_BCD: Kendall τ-b between phase order (B 0, C 1, D 2) and r, over the run's entered windows
+  (they must cover at least two phases).
+- τ_D: Kendall τ-b between window midpoint and r, over the run's entered D windows (at least 3).
+- T: the mean over seeds. A run with an undefined τ is left out. A constant r gives τ = 0, as in
+  H-e.
+- Test: an exact sign-flip test over the seeds (all 2^n sign patterns), one-sided in the stated
+  direction.
+
+**Decision** (playground on; six cells, policy × kind).
+- *Falsified:* T_D > 0 with p(rise) < 0.025 / 6 = 0.0042, meaning the rates rise in phase D.
+  The threshold is Bonferroni over the six cells, because one such cell falsifies a hypothesis
+  stated for every policy.
+- *Supported:* T_BCD < 0 with p(fall) < 0.025, and T_D < 0 with p(fall) < 0.025. The rates are
+  lower in C / D than in B and keep falling through D.
+- *Otherwise:* not supported.
+- **H-g** is supported if all six cells are supported, falsified if any cell is falsified, and
+  not supported otherwise.
+
+**The playground-off arm** (preregistered; not part of the H-g decision).
+1. *Differential prediction* (§2, validation plan, ablation 1):
+   - with the playground off, no window has an object event (one would be a pipeline defect:
+     stop and report);
+   - the locomotor kind keeps at least 10 episodes in every playground-off detector window
+     (below), so its criteria are still evaluated.
+2. *H-g's rule for the locomotor kind* with the playground off (three cells, the same
+   thresholds): does the locomotor reading depend on the playground?
+3. *The colony without the playground,* per policy: first litters, N@315, peak, peak day, last
+   young, last conception, N@1444 and N@1588, as median [range] over seeds. The review found
+   that the heuristic's curve moves without the playground (K = 1, training seeds; NOTES
+   2026-11-11, M1).
+
+**Reported beside** (not decisive).
+- *Detector vector by phase:* rules v9, 1,000 surrogates, at most 400 individuals, detector
+  seed 0, without the legacy v7 pass. It runs on four windows per run:
+  - the entered B window nearest the middle of B;
+  - the entered C window nearest the middle of C;
+  - the entered D windows nearest t_pk + 150 and t_pk + 600.
+
+  The criteria flags and count C are reported per policy × arm × kind × phase.
+- *Per window:*
+  - N and the traced weaned individuals;
+  - the relaxed share of weaned rows;
+  - the stressed share (stress ≥ 0.4) and the withdrawn share (role);
+  - the juvenile share of weaned rows (age < 64 d, the maturity age), since phase B's colony is
+    young;
+  - the rate per eligible weaned individual-day;
+  - the share of weaned rows in events;
+  - the locomotor threshold.
+- *Shape:* rates against days since the peak, per policy, and late D (t_pk + 600) minus early D
+  (t_pk + 150), paired.
+- *Playground contrast:* the locomotor rate on − off by phase, paired by seed.
+
+**Budget and stops.**
+- 72 runs take about 12 CPU-h, the rates about 2 CPU-h, and the 288 detector windows about
+  10 CPU-h. At most 16 h wall (§15.4).
+- Stop on a NaN, an H2 term, or an object event with the playground off.
+
+**Development.** A harness smoke on training seed 7000 (at most 300 d). No statistic from it is
+read.
+
+**Limits, recorded now.**
+- Calhoun did not score play (§2), so H-g is a prediction about this simulator, not a
+  replication.
+- An episode rate is a rate of candidate behaviour, not of play. PlayScore stays unvalidated.
+
 ## 5. Determinism (two tiers, never cross-tier identity)
 
 - **Reference tier (NumPy, CPU):** `need_driven`, `mlp_frozen` and `evo` are bit-identical run

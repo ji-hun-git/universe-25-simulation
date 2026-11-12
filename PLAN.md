@@ -366,6 +366,18 @@ development reading, before any evaluation seed.
 - **Replica v2 ran first (2026-11-11 to 2026-11-13) and ended** without meeting its validation
   standard (`docs/REPLICA_V2.md`; NOTES 2026-11-13). The frozen 2m colony stays the reference.
   Open next (Jason): H-g / the playground-off arm, or `evo`.
+- **H-g and the playground-off arm (Jason chose them 2026-11-13; fixed the same day before any
+  run; `PHASE4_DESIGN.md` §4.3).**
+  - *Arms:* the heuristic, the learned `pretrain_v2` net and a random net × playground on / off ×
+    fresh seeds 9877–9888; 1,600 d, 12 sub-steps.
+  - *Phases* per run, from its own first-litter and peak days in the record's proportions.
+  - *Response:* episodes per weaned individual-day, per kind, in 29 ten-day windows.
+  - *Decision* (playground on, per policy × kind):
+    - falsified if the rate rises through phase D (Kendall τ, sign-flip p < 0.0042);
+    - supported if it is lower in C / D than in B and falls through D (both p < 0.025);
+    - H-g needs every cell.
+  - *Playground off:* object events must vanish and locomotor episodes persist. H-g's rule for
+    locomotion and the colony's landmarks are reported beside.
 
 ### 15.2 Arms
 

@@ -618,6 +618,22 @@ Design: `docs/PHASE4_DESIGN.md` §4.2.
 
 ---
 
+## P4-16 — H-g and the playground-off arm
+
+**Goal:** test H-g (breakdown suppresses play-likeness) and run the playground-off arm. Neither
+needs a form, as P4-15's stop rule directs. Design: `docs/PHASE4_DESIGN.md` §4.3 (fixed
+2026-11-13 before any run).
+
+**Files:** `src/universe25/metrics/phase_rates.py`, `scripts/sweep_hg.py`, `scripts/analyse_hg.py`,
+`tests/test_phase_rates.py`, `NOTES.md`, `docs/SEEDS.md`
+
+**Acceptance criteria:**
+- 72 runs on seeds 9877–9888; H-g answered by the preregistered rule; the playground-off checks
+  reported
+- negatives reported; `tests/run_tests.py` green; H2 audit clean
+
+---
+
 ## P4-6 — Phase 4 sweep harness
 
 > **2026-11-08:** survival condition decided (H-e amended to a state-based dose-response, PLAN

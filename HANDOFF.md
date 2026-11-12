@@ -92,7 +92,8 @@
 >     9829–9876 it has 10 of 20 pen targets inside (M5e's member A: 8), and the arc in 45 of 48
 >     runs. But the arc comes late (last surviving birth 687, against the record's 600), and the
 >     categories miss.
->   - Next, Jason's call: H-g with the playground-off arm, or `evo`.
+>   - Next (Jason, 2026-11-13): H-g with the playground-off arm, preregistered in
+>     `docs/PHASE4_DESIGN.md` §4.3 (card P4-16).
 > - Tier 2 done (2026-11-11): P4-15 failed its primary test, and the program-level stop rule
 >   applies (no further substrate change for PPO learners). Next: H-g / playground-off, `evo`,
 >   or replica v2 (Tier 3) — Jason's call.
