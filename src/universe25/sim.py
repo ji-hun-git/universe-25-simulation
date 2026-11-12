@@ -181,6 +181,9 @@ class Universe25Sim:
         self._fought = np.zeros(cap, dtype=bool)
         self._mated = np.zeros(cap, dtype=bool)
         self._littered = np.zeros(cap, dtype=bool)
+        # replica v2 M7: nursing weight received before weaning (bookkeeping; it sets daughters'
+        # maternal capacity only when biology.maternal_transmission > 0)
+        self._care = np.zeros(cap, dtype=np.float64)
         oc = cfg.geometry.open_cells
         self._open = np.zeros(nc, dtype=bool) if oc is not None else np.ones(nc, dtype=bool)
         if oc is not None:
@@ -248,6 +251,7 @@ class Universe25Sim:
         self._sire[slot] = -1
         self._preg_sire[slot] = -1
         self._fought[slot] = self._mated[slot] = self._littered[slot] = False
+        self._care[slot] = 0.0
         if self._visit_t is not None:  # a new animal knows no place yet
             self._visit_t[slot] = -np.inf
         a.age_days[slot] = age
@@ -361,6 +365,12 @@ class Universe25Sim:
                 bd = np.clip(bd, 0, self._surv_births_by_day.size - 1)
                 np.add.at(self._surv_births_by_day, bd, 1)
                 self._surv_births_cum += int(crossed.sum())
+                tau = float(self.cfg.biology.maternal_transmission)
+                if tau > 0.0:  # replica v2 M7: a daughter mothers as she was mothered
+                    cf = np.flatnonzero(crossed & (a.sex == SEX_F))
+                    ci = self._care[cf] / float(self.cfg.biology.weaning_days)
+                    a.maternal_cap[cf] = (1.0 - tau) + tau * np.minimum(
+                        1.0, ci / float(self.cfg.biology.care_ref))
 
         self.tick += 1
         self.day = self.tick * self.dt_days
@@ -1216,6 +1226,7 @@ class Universe25Sim:
             if coef > 0.0:
                 invest = invest * disturb[m_sel]
             w = (contact * (invest * share)[:, None]).sum(axis=0)
+            self._care[pj] += w * dt  # replica v2 M7 bookkeeping (no effect on this step)
             f = np.exp(-rate * w * dt)
             a.hunger[pj] = a.hunger[pj] * f
             a.thirst[pj] = a.thirst[pj] * f

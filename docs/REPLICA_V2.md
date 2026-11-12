@@ -527,6 +527,9 @@ fixed before code).**
     reaches full capacity. It is the median care index of daughters weaned on days 100–300 in
     the M5b best member, with transmission off, on training seeds 7000–7002. It is measured once,
     before any run with transmission on, and recorded here.
+  - **Measured 2026-11-12: care_ref = 0.888.** That is the median of 773 daughters; the seed
+    medians are 0.878, 1.011 and 0.845. The care index exceeds 1 when several mothers of a box
+    nurse the same pup.
 - *Development report* (the M5b best member as the base; training seeds 7000–7011, 1,600 d).
   - Arms: the base; + transmission τ = 1 (= M7); + τ = 0.5 (sensitivity).
   - Reported:

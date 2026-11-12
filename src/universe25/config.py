@@ -201,6 +201,12 @@ class BiologyConfig(_Strict):
     exclusion_stress: float = Field(default=0.0, ge=0.0)
     aggression_targets: Literal["any", "by_sex"] = "any"
     wound_mortality_scale: float = Field(default=0.02, ge=0.0)
+    # Replica v2 M7: intergenerational transmission of maternal care (Francis et al. 1999). Every
+    # pup accumulates the nursing weight it receives; at weaning a daughter's maternal capacity
+    # becomes (1 - tau) + tau * min(1, care index / care_ref), care index = accumulated weight /
+    # weaning_days. Conception does not depend on maternal capacity. 0 = off.
+    maternal_transmission: float = Field(default=0.0, ge=0.0, le=1.0)
+    care_ref: float = Field(default=0.0, ge=0.0)
 
     def breakdown_threshold(self) -> float:
         if self.breakdown_density_threshold is not None:
@@ -406,6 +412,11 @@ class SimConfig(_Strict):
               or b.aggression_targets != "any" or b.wound_mortality_scale != 0.02)
         if m4 and self.backend == "warp":
             raise ValueError("the M4 biology fields are NumPy-path only")
+        if b.maternal_transmission > 0.0:
+            if b.care_ref <= 0.0:
+                raise ValueError("maternal_transmission needs care_ref > 0")
+            if self.backend == "warp":
+                raise ValueError("maternal_transmission is NumPy-path only")
         if g.disperse_at_maturity and not g.box_choice:
             raise ValueError("disperse_at_maturity needs geometry.box_choice")
         if g.open_cells is not None:

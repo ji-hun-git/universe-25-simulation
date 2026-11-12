@@ -460,6 +460,41 @@ def test_methods_fixes() -> None:
     assert sim._cell_counts_tick == -1
 
 
+def test_m7_maternal_transmission() -> None:
+    """Replica v2 M7: transmission needs care_ref; a pup nursed by a lactating mother in its box
+    accumulates her investment x dt as care; at weaning a daughter's maternal capacity becomes
+    (1 - tau) + tau * min(1, care index / care_ref), and a son's is untouched."""
+    from universe25.agents.state import ROLE_NURSING, ROLE_PUP, SEX_F, SEX_M
+
+    try:
+        _cfg(biology={"maternal_transmission": 1.0})
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("maternal_transmission without care_ref must be refused")
+    cfg = _cfg(seed=7100, days=5.0, ticks_per_day=6, backend="numpy", device="cpu",
+               log_every_ticks=6, snapshot_every_days=0,
+               biology={"maternal_transmission": 1.0, "care_ref": 0.5})
+    sim = Universe25Sim(cfg, Path(tempfile.mkdtemp(prefix="u25rep_")))
+    a, bio = sim.agents, cfg.biology
+    mom = int(np.flatnonzero(a.alive & (a.sex == SEX_F))[0])
+    nest = sim.world.nests[int(a.nest_id[mom])]
+    a.role[mom] = ROLE_NURSING
+    a.maternal[mom] = 0.9
+    a.x[mom], a.y[mom] = nest.x, nest.y
+    pups = [int(s) for s in a.free_slots(2)]
+    for s, sex in zip(pups, (SEX_F, SEX_M)):
+        sim._spawn(s, sex=sex, age=bio.weaning_days - 0.5 * sim.dt_days, x=nest.x, y=nest.y,
+                   nest_id=nest.id, cell_id=nest.cell_id, role=ROLE_PUP)
+    sim._feed_by_nest(np.array([mom]), np.array(pups), radius2=64.0, dt=sim.dt_days)
+    assert np.allclose(sim._care[pups], 0.9 * sim.dt_days), sim._care[pups]
+    sim._care[pups] = 0.25 * bio.weaning_days  # care index 0.25 = half of care_ref
+    a.maternal_cap[pups] = 1.0
+    sim.step()  # both pups cross weaning in this tick
+    assert a.age_days[pups[0]] >= bio.weaning_days
+    assert np.isclose(a.maternal_cap[pups[0]], 0.5) and a.maternal_cap[pups[1]] == 1.0
+
+
 if __name__ == "__main__":
     test_grid_cells_of_is_the_old_arithmetic()
     test_calhoun_pen()
@@ -469,4 +504,5 @@ if __name__ == "__main__":
     test_m3_mechanisms()
     test_m4_mechanisms()
     test_methods_fixes()
+    test_m7_maternal_transmission()
     print("test_replica: OK")

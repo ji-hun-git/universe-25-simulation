@@ -24,6 +24,7 @@ Structural numbers per snapshot day:
                       those entering adulthood in mid-phase D)
   withdrawn_fought    share of withdrawn adults who ever fought (Calhoun's withdrawn males were
                       wounded; his "beautiful ones" never fought)
+  maternal_cap_f      mean maternal capacity of adult females (M7)
 Territory numbers per run (M2, biology.territories on):
   brood groups        sires (owners) of the young born by day 338, their count and the young
                       per group (Calhoun 1971: 842 young in 14 groups, 111 ... 13)
@@ -49,6 +50,13 @@ sys.path.insert(0, str(ROOT / "src"))
 SNAP_DAYS = (315, 560, 736, 800, 1444)
 DEFAULT_ARMS = ("frozen_grid=default.yaml", "grid_nopg=default.yaml;playground.enabled=false",
                 "replica=replica_v2.yaml")
+
+
+def _deep(base: dict, over: dict) -> dict:
+    out = dict(base)
+    for k, v in over.items():
+        out[k] = _deep(out[k], v) if isinstance(v, dict) and isinstance(out.get(k), dict) else v
+    return out
 
 
 def parse_arm(spec: str) -> tuple[str, str, dict]:
@@ -77,7 +85,7 @@ def run_one(job: tuple[str, str, dict, int, float]) -> tuple[str, int, dict]:
     from universe25.config import load_config
     from universe25.metrics.calibration import landmarks_from_series
     from universe25.sim import Universe25Sim
-    from universe25.agents.state import ACT_FORAGE, ROLE_WITHDRAWN, SEX_M
+    from universe25.agents.state import ACT_FORAGE, ROLE_WITHDRAWN, SEX_F, SEX_M
 
     base = dict(seed=seed, days=days, ticks_per_day=6, backend="numpy", device="cpu",
                 log_every_ticks=10**9, snapshot_every_days=0)
@@ -134,6 +142,9 @@ def run_one(job: tuple[str, str, dict, int, float]) -> tuple[str, int, dict]:
                     float(np.mean(~sim._fought[cat] & ~sim._mated[cat])) if cat.any() else np.nan)
                 struct[str(d)]["withdrawn_fought"] = (float(np.mean(sim._fought[wad]))
                                                       if wad.any() else np.nan)
+                adf = al & (a.sex == SEX_F) & (a.age_days >= bio.maturity_days)
+                struct[str(d)]["maternal_cap_f"] = (float(a.maternal_cap[adf].mean())
+                                                    if adf.any() else np.nan)
                 fo = al & (a.last_action == ACT_FORAGE)
                 fc = np.bincount(a.cell_id[fo].astype(int), minlength=sim.world.n_cells)
                 struct[str(d)]["hopper_max_share"] = (float(fc.max() / fc.sum()) if fc.sum()
@@ -180,10 +191,15 @@ def main() -> int:
     p.add_argument("--days", type=float, default=1600.0)
     p.add_argument("--workers", type=int, default=6)
     p.add_argument("--arms", nargs="+", default=list(DEFAULT_ARMS))
+    p.add_argument("--members", help="M5 ensemble file: every arm starts from its first (best) "
+                                     "member's params; the arm's own overrides win")
     a = p.parse_args()
     lo, hi = (int(v) for v in a.seeds.split("-"))
     seeds = list(range(lo, hi + 1))
     arms = [parse_arm(s) for s in a.arms]
+    if a.members:
+        best = json.loads(Path(a.members).read_text(encoding="utf-8"))["members"][0]["params"]
+        arms = [(n, c, _deep(best, o)) for n, c, o in arms]
     jobs = [(n, c, o, s, a.days) for n, c, o in arms for s in seeds]
     t0 = time.perf_counter()
     with ProcessPoolExecutor(max_workers=a.workers) as ex:
@@ -214,7 +230,7 @@ def main() -> int:
     keys = ("n", "empty_box_share", "centre_share", "withdrawn_share", "withdrawn_centre",
             "male_share", "max_cell_share", "owned_cells", "excluded_centre",
             "hopper_max_share", "owner_ring_dist", "subs_per_owner", "beautiful_share",
-            "withdrawn_fought")
+            "withdrawn_fought", "maternal_cap_f")
     for d in SNAP_DAYS:
         print(f"\nday {d}: " + " | ".join(names))
         out["struct"][str(d)] = {}
