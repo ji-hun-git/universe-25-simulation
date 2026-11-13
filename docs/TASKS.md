@@ -665,6 +665,15 @@ needs a form, as P4-15's stop rule directs. Design: `docs/PHASE4_DESIGN.md` §4.
 
 ## P4-17 — Norm-matched check of criterion 3 (H-i)
 
+> **Done 2026-11-13:**
+> - 72 runs on seeds 9905–9928 (about 67 min on 8 workers), with no stop. 10 runs died out
+>   before day 1,600, and their empty windows give no reading (a tooling fix made before any
+>   H-i statistic was read).
+> - **H-i is supported** by the preregistered rule, at the smallest margin the design can
+>   detect: 6 of 17 tested colonies are positive, none negative, p(rise) 1/64. The dose and
+>   the genome norms are reported.
+> - NOTES 2026-11-13.
+
 **Goal:** test whether weight size alone produces criterion 3 on nets (H-i), after H-h found
 it in neutral-drift nets as often as in evolved ones. Design: `docs/PHASE4_DESIGN.md` §4.5
 (fixed 2026-11-13 before any code or run).

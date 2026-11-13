@@ -409,6 +409,10 @@ development reading, before any evaluation seed.
     lineage's neutral drift, for λ = 0, ½ and 1. The jump is the same in every arm.
   - *H-i:* the criterion-3 share at λ = 1 minus that at λ = 0, colony by colony. Supported if
     the mean > 0 at sign-flip p < 0.025; falsified if no λ = 1 reading meets criterion 3.
+  - **Result (2026-11-13): H-i is supported, at the smallest margin the design can detect.**
+    Criterion 3 is met in 18 of 113 λ = 1 readings and in none of 176 at λ = 0. 6 of the 17
+    tested colonies are positive and none negative (p(rise) 1/64). 7 of the 24 λ = 1 colonies
+    died out. NOTES 2026-11-13.
 
 ### 15.2 Arms
 

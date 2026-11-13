@@ -1,5 +1,219 @@
 # Universe25 Play — NOTES
 
+## 2026-11-13 — H-i is supported at the smallest margin the design can detect: one random jump of the neutral drift's size gives criterion 3 in 6 of 17 colonies, generation 0 in none, and a third of the jumped colonies fail
+
+**Question.**
+- H-i (PLAN §15.1, added 2026-11-13 before any code or run): criterion 3 on nets follows weight
+  size.
+  - In H-h, criterion 3 (rules v9) was met as often by neutral-drift nets as by evolved ones,
+    and never by generation 0.
+  - The drifted nets differ from generation 0 in two ways: their weights are larger, and they
+    form a genealogy.
+- The design was fixed in `docs/PHASE4_DESIGN.md` §4.5 (87520c8) before any code or run. The
+  tooling was committed before any evaluation seed was run (a9f85b2).
+- *Arms:* 24 colonies on fresh seeds 9905–9928 (colony c on 9904 + c).
+  - Colony c starts from generation-0 genome (c − 1) div 8 of lineage ((c − 1) mod 8) + 1. It
+    draws one random jump ε_c, one standard normal per value.
+  - Its genome at size λ is b + λ · 0.02 · √G · ε_c, where G is the lineage's number of neutral
+    generations (226–263).
+  - S0 (λ = 0) is generation 0. S1 (λ = 1) has the neutral drift's per-value variance, without
+    its genealogy and without selection. S½ lies halfway.
+  - All 8 founders carry the colony's one genome. The evaluation is H-h's pipeline.
+- *Decision:*
+  - d_c = s1(c) − s0(c), the difference in the criterion-3 share of readings with at least 10
+    episodes. It is taken over the colonies with both shares defined, and at least 16 are needed,
+    else H-i is untested.
+  - The test is an exact one-sided sign-flip over colonies. **Supported** if the mean d > 0 at
+    p < 0.025; **falsified** if no S1 reading meets criterion 3; **not supported** otherwise.
+
+**Run.**
+- 72 runs of 1,600 d took about 67 min on 8 workers. Simulation and rates used 4.8 CPU-h, under
+  the 15 CPU-h budget, because the jumped colonies are smaller.
+- No stop rule fired: no NaN, no H2 term and no failed determinism test. 17 colonies have
+  readings at both S0 and S1, and 16 are needed.
+- **A tooling fix, made before any H-i statistic was read.**
+  - 10 runs died out before day 1,600: 7 at S1, 3 at S½ and none at S0. None of H-h's 64 runs
+    had died out.
+  - The trace writer writes no file for a window without traced rows. The sweep's rates stage
+    stopped at the first missing file.
+  - The fix (`scripts/sweep_nm.py`): a window without a trace file is an empty window, with no
+    individuals and no episodes. Like any window with fewer than 10 weaned individuals, it is not
+    entered and gives no reading.
+  - The 10 runs were finished from their kept simulations. The other 62 were rewritten from their
+    kept stages.
+- **A count fixed before reading.**
+  - When two labels pick the same window (early and late D both at the last window), H-h's count
+    counts that window twice. 7 runs here have such a window, and 3 in H-h.
+  - H-h's count stays the decisive one, as preregistered ("as in H-h"). A count with each window
+    once is reported beside it.
+- *The manipulation, by construction* (genome norms, mean over the 24 colonies):
+
+| arm | \|W1\| | \|b1\| | \|W2\| | \|b2\| |
+|---|---|---|---|---|
+| S0 | 8.00 | 0.00 | 0.04 | 0.00 |
+| S½ | 10.53 | 0.87 | 3.40 | 0.62 |
+| S1 | 15.79 | 1.73 | 6.80 | 1.24 |
+| NEU (H-h's pools) | 15.74 | 1.81 | 6.92 | 1.18 |
+
+  S1 matches the neutral pools in every layer.
+
+**Result: H-i is supported.**
+
+| colony | lineage, genome | S0 | S½ | S1 | d |
+|---|---|---|---|---|---|
+| 1 | 1, 0 | 0 / 8 | 4 / 8 | 4 / 8 | +0.500 |
+| 2 | 2, 0 | 0 / 8 | 0 / 4 | 0 / 8 | 0 |
+| 3 | 3, 0 | 0 / 4 | 0 / 8 | 0 / 0 † | — |
+| 4 | 4, 0 | 0 / 8 | 0 / 8 | 0 / 8 | 0 |
+| 5 | 5, 0 | 0 / 8 | 0 / 0 † | 0 / 0 † | — |
+| 6 | 6, 0 | 0 / 8 | 0 / 0 | 0 / 4 | 0 |
+| 7 | 7, 0 | 0 / 4 | 0 / 8 | 0 / 0 | — |
+| 8 | 8, 0 | 0 / 8 | 1 / 4 | 4 / 7 | +0.571 |
+| 9 | 1, 1 | 0 / 8 | 0 / 8 | 0 / 6 † | 0 |
+| 10 | 2, 1 | 0 / 4 | 0 / 4 | 0 / 0 † | — |
+| 11 | 3, 1 | 0 / 8 | 0 / 4 | 0 / 0 † | — |
+| 12 | 4, 1 | 0 / 8 | 0 / 8 | 0 / 8 | 0 |
+| 13 | 5, 1 | 0 / 8 | 0 / 4 | 0 / 4 | 0 |
+| 14 | 6, 1 | 0 / 8 | 0 / 8 | 0 / 8 | 0 |
+| 15 | 7, 1 | 0 / 8 | 0 / 8 | 0 / 4 | 0 |
+| 16 | 8, 1 | 0 / 8 | 4 / 7 | 4 / 7 | +0.571 |
+| 17 | 1, 2 | 0 / 8 | 0 / 0 † | 0 / 6 | 0 |
+| 18 | 2, 2 | 0 / 8 | 0 / 8 | 0 / 7 | 0 |
+| 19 | 3, 2 | 0 / 8 | 0 / 8 | 0 / 4 | 0 |
+| 20 | 4, 2 | 0 / 4 | 0 / 8 | 1 / 8 | +0.125 |
+| 21 | 5, 2 | 0 / 8 | 1 / 8 | 1 / 8 | +0.125 |
+| 22 | 6, 2 | 0 / 8 | 0 / 8 | 0 / 0 † | — |
+| 23 | 7, 2 | 0 / 8 | 0 / 0 † | 0 / 0 † | — |
+| 24 | 8, 2 | 0 / 8 | 2 / 4 | 4 / 8 | +0.500 |
+| all | | 0 / 176 | 12 / 135 | 18 / 113 | mean +0.141 ± 0.056 |
+
+Each cell gives the readings with criterion 3 met over the readings with at least 10 episodes.
+"Lineage, genome" is the generation-0 pool the colony's genome comes from and its index there. †
+marks a colony that died out before day 1,600.
+- Over the 17 colonies with readings at both sizes, the mean d is +0.141 ± 0.056. 6 colonies are
+  positive, 11 are zero and none is negative.
+- p(rise) is 1/64 = 0.0156 < 0.025, so H-i is supported. It is not falsified: 18 S1 readings meet
+  criterion 3.
+- *This is the smallest margin the design can detect.* S0 never meets criterion 3, so no d can be
+  negative, and the exact p is 2^−k for k positive colonies, however many are zero. The power note
+  recorded that 6 would be needed. With 5 the p would have been 1/32, and H-i not supported.
+- *The untested colonies cannot weaken it.* 7 colonies have no S1 reading: 6 died out, and
+  colony 7 shrank to 11 animals. Each could only have added a zero or a positive d.
+- *Each window once:* the same reading (17 colonies, 6 positive, p 1/64). 17 S1 readings meet
+  criterion 3 instead of 18.
+- An independent re-derivation from the raw run files gives the same table, and the same p in
+  exact fractions.
+  - It reads criterion 3 from the detector records at the picked windows, and checks that every
+    picked window was entered.
+  - It computes the sign-flip by counting all 2^17 sums.
+  - It checks the pools: S0 is generation 0 bit for bit; S1 is the base plus 0.02 √G ε, with ε
+    regenerated from its seed; S½'s jump is half of S1's; and every pool holds 8 identical
+    founders.
+
+**Where criterion 3 is met** (reported beside).
+- *The dose:* at S½ it is met in 5 colonies (1, 8, 16, 21 and 24), and all 5 are positive at S1
+  too. S1 adds colony 20.
+  - S½ − S0: mean +0.097 over 20 colonies, p(rise) 1/32 = 0.031.
+  - S1 − S½: mean +0.030 over 15 colonies, p(rise) 0.25.
+  - s0 ≤ s½ ≤ s1 holds in all 15 colonies with all three shares.
+
+  So half the jump already gives most of the effect.
+- *By lineage* (descriptive): three of the six colonies are lineage 8's (colonies 8, 16 and 24).
+  - They are three generation-0 genomes, each drawn on its own, with independent jumps. They share
+    only G = 253.
+  - The other three come from lineages 1, 4 and 5, so 4 of the 8 lineages have a positive colony.
+- *Kind:* 28 of the 30 criterion-3 readings at S½ and S1 are locomotor, with one object reading in
+  each arm. In H-h it was 37 of 40.
+- *Recurrence:* at S1, colonies 1, 8, 16 and 24 meet it in all four windows: B, C, early D and
+  late D.
+- *Strength:* the form excess is 0.15–0.41 at S1 (median z 35.5) and 0.12–0.25 at S½ (median z
+  26.7), against 0.10–0.25 in H-h. The three largest z (103–120) are colony 16's.
+- Criterion 4 agrees with criterion 3 in 423 of 424 readings. All five flags are met in 3
+  readings, all of them S1 colony 24's locomotion (B, early D and late D).
+- *The detector vector* (rules v9, four windows per run):
+  - criterion 1 is met in 0.82–1.00 and criterion 2 in 1.00 of the readings, in every arm and
+    window;
+  - criteria 3 and 4 are met in 0.25–0.36 of S1's locomotor readings per window and in 0.14–0.20
+    of S½'s, in at most 0.09 of object readings, and never at S0;
+  - criterion 5 is met in at most 0.14;
+  - the median form excess lies between −0.19 and +0.01.
+- *Not a mark of failing colonies:* the six S1 colonies that meet it peak at 726–2,277 animals.
+  Colony size does not produce it either: S1 colonies 4, 12, 14 and 18 peak at 2,040–2,367
+  without a single criterion-3 reading.
+
+**The jump costs viability** (reported beside; not in the design).
+- *Died out before day 1,600:* none at S0, 3 colonies at S½ (last day 952–1,398) and 7 at S1
+  (843–1,283). None of H-h's 64 runs did, NEU included.
+- *Peaked below 100 animals:* none at S0 (the smallest peak is 983), 4 colonies at S½ and 8 at
+  S1.
+- A possible reason, not tested: every founder carries the colony's one genome, so a jump that
+  breaks the biology breaks every animal. A NEU colony in H-h mixed 8 related genomes.
+
+| arm | N@315 | peak N | peak day | N@1,588 |
+|---|---|---|---|---|
+| S0 | 81 [21, 227] | 1,704 [983, 1,995] | 1,246 [855, 1,585] | 1,160 [427, 1,694] |
+| S½ | 94 [7, 249] | 1,431 [30, 2,163] | 1,129 [118, 1,585] | 832 [1, 1,624] |
+| S1 | 62 [7, 417] | 668 [24, 2,363] | 859 [118, 1,585] | 452 [10, 1,398] |
+
+Median [range] over colonies; N@1,588 is over the colonies still alive then. First litters fall
+on days 102–111 in every arm.
+
+**Free time** (reported beside).
+- *Action shares of the trace rows* (median over colonies; S0 / S½ / S1):
+  - free time 0.239 / 0.228 / 0.197 (H-h's GEN0 / NEU / SEL: 0.236 / 0.197 / 0.182);
+  - the locomotor family 0.102 / 0.090 / 0.085;
+  - the object family 0.102 / 0.095 / 0.078;
+  - social 0.034 / 0.029 / 0.021;
+  - nesting 0.100 / 0.090 / 0.085;
+  - resting 0.183 / 0.199 / 0.208.
+- *Episode rates by phase* (episodes per weaned individual-day, B / C / D):
+
+| arm | object | locomotor |
+|---|---|---|
+| S0 | 0.20 / 0.19 / 0.19 | 1.30 / 1.31 / 1.31 |
+| S½ | 0.21 / 0.20 / 0.21 | 1.31 / 1.31 / 1.28 |
+| S1 | 0.20 / 0.16 / 0.18 | 1.19 / 1.21 / 1.21 |
+
+**Warnings in the log.** The log shows the same RuntimeWarnings as H-g and H-h (overflow in
+`hypot`, invalid value in subtract). They come from the `np.empty` padding in
+`detectors.form_resim`, which H-h checked to be masked before use.
+
+**What this means.**
+- By the preregistered reading, criterion 3 on these nets follows weight size.
+  - Generation-0 nets given one random jump of the neutral drift's size meet it in 18 of 113
+    readings. That is close to H-h's evolved pools (18 of 125) and neutral pools (22 of 114).
+  - Generation 0 meets it in none of 176 readings here, and none of 128 in H-h.
+  - The jump has no genealogy and no selection.
+- So H-h's SEL ≈ NEU needs no genealogy: the size of the drifted weights is enough. This does not
+  show that genealogy plays no part.
+- As the design recorded for this outcome: criterion 3 met by a net says how large and
+  state-dependent its weights are. It says nothing about a selected form, still less about play.
+  Any future reading of criterion 3 on nets needs a random control at matched per-layer size and
+  matched population structure.
+- The support is narrow.
+  - It is the smallest margin the design can detect, and half of it is one lineage's colonies.
+  - It rests on one architecture and three sizes.
+  - Only 6 of the 17 tested net types meet it at all: a jump of this size makes criterion 3
+    possible, not certain.
+- Calhoun did not score play, and nothing here is play. PlayScore stays unvalidated.
+
+**Outputs** (not committed).
+- `_output/nm_sweep/pools/`: the 72 founder pools and `manifest.json` (their norms).
+- `_output/nm_sweep/<arm>_c<cc>_<seed>/`: `nm_run.json`, `evo_rates.json`, `evo_detect.json`,
+  `nm_actions.json`, `evo_policy.json` and the traces. The analysis is in
+  `_output/nm_sweep/nm_analysis.json`.
+- Logs: `_output/nm_sweep_log.txt` (the first pass, which stopped at the missing traces),
+  `_output/nm_sweep_resume_log.txt` and `_output/nm_analysis_log.txt`.
+- To re-analyse: `python scripts/analyse_nm.py`.
+
+**Next** (Jason's call).
+- P4-17 is done.
+- SCARCE-PG for `evo` is still the design's follow-up from H-h, and it needs its own manipulation
+  check. Any criterion-3 reading in it would now need a matched-size random control.
+- The criterion itself: why a random net of this size passes the form test is untested. H-h
+  suggested that the even-mix null does not condition on state. A state-conditioned null would
+  say whether criterion 3 can be read on nets at all.
+
 ## 2026-11-13 — `evo` and H-h: selection adapts the colony in all eight lineages, but criterion 3 is no more common under selection than under mutation alone; H-h is not supported
 
 **Question.**

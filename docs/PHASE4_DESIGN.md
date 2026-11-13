@@ -1578,6 +1578,26 @@ for timing only; no statistic from it is read.
   a little during the run, as GEN0 did in H-h.
 - Criterion 3 is a candidate structural criterion, not play, and PlayScore stays unvalidated.
 
+**Result (2026-11-13, NOTES): H-i is supported, at the smallest margin the design can detect.**
+- 72 runs, and no stop rule fired. 10 runs died out before day 1,600: 7 at S1, 3 at S½ and none
+  at S0. A window without traced rows has no trace file, and it is read as empty: not entered,
+  no reading. This tooling fix was made before any H-i statistic was read.
+- *H-i:* criterion 3 is met in 0 of 176 S0 readings, 12 of 135 S½ readings and 18 of 113 S1
+  readings.
+  - Over the 17 colonies with readings at both S0 and S1, the mean d is +0.141: 6 colonies are
+    positive, 11 zero and none negative, so p(rise) is 1/64 = 0.0156.
+  - Since S0 never meets criterion 3, no d is negative. The 7 untested colonies (no S1 reading;
+    6 died out) could not have weakened the p.
+  - H-h's count is the decisive one; counting each window once gives the same.
+- *Dose:* S½ already meets it in 5 colonies (S½ − S0, p 1/32); S1 − S½ is +0.030 (p 0.25).
+  Three of the six colonies are lineage 8's, and 28 of the 30 readings at S½ and S1 are
+  locomotor.
+- *Beside:* the jump costs viability. 7 of 24 S1 colonies and 3 of 24 S½ colonies died out,
+  against none of H-h's runs.
+- *Meaning, as recorded above:* criterion 3 on a net follows its weight size. Any reading of it
+  on nets needs a random control at matched per-layer size and population structure, and weight
+  size explains H-h's SEL ≈ NEU without genealogy.
+
 ## 5. Determinism (two tiers, never cross-tier identity)
 
 - **Reference tier (NumPy, CPU):** `need_driven`, `mlp_frozen` and `evo` are bit-identical run
