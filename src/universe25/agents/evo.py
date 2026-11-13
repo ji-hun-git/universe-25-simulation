@@ -47,6 +47,10 @@ FOUNDER_STREAM = 7_300_001
 LINEAGE_STREAM = 7_400_001
 NEUTRAL_STREAM = 7_500_001
 JUMP_STREAM = 7_600_001  # the norm-matched check (PHASE4_DESIGN.md 4.5)
+# SCARCE-PG evo (PHASE4_DESIGN.md 4.6): the scarce lineages' founder draws between epochs, and
+# the extra key element of their policy streams inside an epoch, key (lineage, epoch, SCARCE_KEY)
+SCARCE_LINEAGE_STREAM = 7_700_001
+SCARCE_KEY = 2
 SEX_ANY = -1  # a pool entry that may found either sex (neutral pools)
 
 

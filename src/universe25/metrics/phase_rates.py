@@ -22,7 +22,16 @@ from typing import Any
 
 import numpy as np
 
-from universe25.agents.state import ROLE_WITHDRAWN
+from universe25.agents.state import (
+    ACT_EXPLORE,
+    ACT_FORAGE,
+    ACT_RUN_ON,
+    ACT_SOCIAL,
+    ACT_TURN_BACK,
+    N_ACTIONS,
+    OBJECT_FAMILY,
+    ROLE_WITHDRAWN,
+)
 from universe25.metrics.detectors import KINDS, event_mask, gap_criterion, prepare, segment
 from universe25.metrics.dose_response import kendall_tau_b
 
@@ -38,6 +47,9 @@ D_EARLY_DAYS = 150.0  # detector-vector windows: days after the peak
 D_LATE_DAYS = 600.0
 ALPHA = 0.025
 N_CELLS = 6  # policy x kind with the playground on (Bonferroni for the falsifier)
+# The simulator's free-time set (sim._free_pre: the decisions that run as sub-steps; the object
+# family only with the playground on). The time budget of PHASE4_DESIGN.md 4.6 reads it.
+FREE_TIME_ACTIONS = (ACT_EXPLORE, ACT_SOCIAL, ACT_RUN_ON, ACT_TURN_BACK) + tuple(OBJECT_FAMILY)
 
 
 def phase_b_end(t_fl: float, t_pk: float) -> float:
@@ -107,6 +119,40 @@ def window_rates(trace: dict[str, Any], weaned_age: float = WEANED_AGE,
             "event_share_weaned": share(ev),
         }
     return out
+
+
+def window_budget(trace: dict[str, Any], weaned_age: float = WEANED_AGE) -> dict[str, Any]:
+    """The time budget of one trace window (PHASE4_DESIGN.md 4.6), over every traced individual:
+    the rows counted by action where a free action was eligible at the decision (weaned and no
+    reflex in force: the detectors' v8 eligibility), the same within the relaxed eligible rows,
+    and over all weaned rows. A decision is K trace rows, and the rows of a free decision are its
+    sub-steps (all free-time actions), so row counts are decision counts times K."""
+    S = prepare(trace)
+    act = S.action
+    ok = (act >= 0) & (act < N_ACTIONS)
+
+    def counts(mask: np.ndarray) -> list[int]:
+        return np.bincount(act[mask & ok], minlength=N_ACTIONS).astype(np.int64).tolist()
+
+    return {"rows_per_decision": int(S.K), "n_eligible_rows": int((S.eligible & ok).sum()),
+            "eligible": counts(S.eligible), "eligible_relaxed": counts(S.eligible & S.relaxed),
+            "weaned": counts(S.age >= weaned_age)}
+
+
+def empty_budget() -> dict[str, Any]:
+    """The time budget of a window without traced rows (no file; PHASE4_DESIGN.md 4.5)."""
+    z = [0] * N_ACTIONS
+    return {"rows_per_decision": 0, "n_eligible_rows": 0, "eligible": list(z),
+            "eligible_relaxed": list(z), "weaned": list(z), "empty": True}
+
+
+def budget_shares(counts: Any) -> dict[str, float]:
+    """F (FORAGE) and T (the free-time actions) as shares of the counted rows; NaN without rows."""
+    c = np.asarray(counts, dtype=np.float64)
+    n = float(c.sum())
+    if n <= 0.0:
+        return {"F": float("nan"), "T": float("nan")}
+    return {"F": float(c[ACT_FORAGE] / n), "T": float(c[list(FREE_TIME_ACTIONS)].sum() / n)}
 
 
 def label_windows(windows: list[dict[str, Any]], t_fl: float, t_pk: float) -> None:

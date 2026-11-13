@@ -16,7 +16,7 @@ Object readings with criterion 3 are listed from the stored fields.
 
 No rule, threshold or stored output changes. Writes _output/form_mix.json.
 
-usage: python scripts/form_mix.py [--workers 6]
+usage: python scripts/form_mix.py [--workers 6] [--sweeps nm_sweep evo_sweep] [--out F]
 """
 from __future__ import annotations
 
@@ -86,11 +86,12 @@ def rebuild(job: tuple[str, str, str]) -> dict:
     }
 
 
-def readings() -> tuple[list[tuple[str, str, str]], dict, list[dict]]:
+def readings(sweeps: tuple[str, ...] = SWEEPS
+             ) -> tuple[list[tuple[str, str, str]], dict, list[dict]]:
     """Locomotor jobs (each window once, at least 10 episodes), their stored records, and the
     object readings with criterion 3 met."""
     jobs, stored, obj = [], {}, []
-    for sweep in SWEEPS:
+    for sweep in sweeps:
         base = ROOT / "_output" / sweep
         if not base.exists():
             continue
@@ -124,7 +125,7 @@ def _q(v) -> str:
     return f"{np.median(x):+.3f} [{x.min():+.3f}, {x.max():+.3f}]"
 
 
-def report(res: list[dict], obj: list[dict]) -> dict:
+def report(res: list[dict], obj: list[dict], sweeps: tuple[str, ...] = SWEEPS) -> dict:
     out: dict = {}
     rev = np.array([r["reversal"] for r in res])
     st = np.array([r["seq_struct_reversal_unvalidated"] for r in res])
@@ -133,7 +134,7 @@ def report(res: list[dict], obj: list[dict]) -> dict:
     print(f"readings: {len(res)} locomotor (each window once); rebuilt vs stored reversal: "
           f"max |diff| {out['rebuilt_vs_stored_max_abs']}")
     groups = {}
-    for sweep in SWEEPS:
+    for sweep in sweeps:
         for arm in sorted({r["arm"] for r in res if r["sweep"] == sweep}):
             for flag in (True, False):
                 g = [r for r in res if r["sweep"] == sweep and r["arm"] == arm and r["c3"] == flag]
@@ -193,19 +194,23 @@ def report(res: list[dict], obj: list[dict]) -> dict:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--workers", type=int, default=6)
+    ap.add_argument("--sweeps", nargs="+", default=list(SWEEPS),
+                    help="sweep folders under _output/ (default: H-i and H-h)")
+    ap.add_argument("--out", default=str(OUT))
     args = ap.parse_args()
-    jobs, stored, obj = readings()
+    sweeps = tuple(args.sweeps)
+    jobs, stored, obj = readings(sweeps)
     if not jobs:
-        print("no readings found under _output/nm_sweep or _output/evo_sweep")
+        print(f"no readings found under _output/ {list(sweeps)}")
         return 1
     with ProcessPoolExecutor(max_workers=args.workers) as ex:
         res = list(ex.map(rebuild, jobs, chunksize=2))
     for r, j in zip(res, jobs):
         r.update(stored[j])
-    out = report(res, obj)
+    out = report(res, obj, sweeps)
     out["readings"] = res
-    OUT.write_text(json.dumps(out, default=float, indent=1), encoding="utf-8")
-    print(f"wrote {OUT}")
+    Path(args.out).write_text(json.dumps(out, default=float, indent=1), encoding="utf-8")
+    print(f"wrote {args.out}")
     return 0
 
 

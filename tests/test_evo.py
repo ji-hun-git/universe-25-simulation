@@ -1,11 +1,13 @@
 """The inherited-weight policy `evo` (P4-4; docs/PHASE4_DESIGN.md 4.4): genome layout and
 generation 0, the per-animal forward pass, one-parent inheritance with mutation, founders,
 the neutral control, the norm-matched jump genome (4.5), epoch founder sampling, a short
-deterministic run whose hooks cover every conception and birth, and the H2 audit of the new
-modules (no reward, no play-named identifier)."""
+deterministic run whose hooks cover every conception and birth, the scarce epochs of SCARCE-PG
+evo (4.6: their streams, read-only probes and the generation-matched stop), and the H2 audit of
+the new modules (no reward, no play-named identifier)."""
 from __future__ import annotations
 
 import io
+import json
 import sys
 import tempfile
 import tokenize
@@ -32,6 +34,8 @@ from universe25.agents.evo import (  # noqa: E402
     S_W1,
     S_W2,
     SAMPLING_STREAM,
+    SCARCE_KEY,
+    SCARCE_LINEAGE_STREAM,
     SEX_ANY,
     EvoPolicy,
     jump_genome,
@@ -43,7 +47,12 @@ from universe25.agents.evo import (  # noqa: E402
 )
 from universe25.agents.state import SEX_F, SEX_M  # noqa: E402
 from universe25.config import PolicyConfig, load_config  # noqa: E402
-from universe25.learn.evolution import generation0, sample_founders  # noqa: E402
+from universe25.learn.evolution import (  # noqa: E402
+    evolve_lineage,
+    generation0,
+    run_epoch,
+    sample_founders,
+)
 from universe25.sim import Universe25Sim  # noqa: E402
 
 
@@ -153,8 +162,8 @@ def test_jump_genome_scales_one_random_jump() -> None:
     expect = step * np.sqrt(N_HID * N_OUT)  # |W2| of a neutral line after 245 generations
     assert abs(float(np.linalg.norm(g1[S_W2])) - expect) < 0.1 * expect
     ids = {SAMPLING_STREAM, GENETICS_STREAM, FOUNDER_STREAM, LINEAGE_STREAM, NEUTRAL_STREAM,
-           JUMP_STREAM}
-    assert len(ids) == 6  # its own stream
+           JUMP_STREAM, SCARCE_LINEAGE_STREAM}
+    assert len(ids) == 7  # its own stream, and the scarce lineages' (4.6)
 
 
 def test_epoch_founders_by_sex_in_slot_order() -> None:
@@ -202,6 +211,62 @@ def test_short_run_is_deterministic_and_hooks_cover_every_birth() -> None:
         s2.logger.close()
 
 
+SCARCE_FOOD = {"resources": {"mode": "scarce", "scarce_supply": "capacity",
+                             "scarce_capacity_animals": 100.0}}
+
+
+def _strip(stats: dict) -> dict:
+    return {k: v for k, v in stats.items() if k not in ("wall_s", "probe")}
+
+
+def test_scarce_epochs_keep_their_streams_and_probes_read_only() -> None:
+    """SCARCE-PG evo (PHASE4_DESIGN.md 4.6): a scarce epoch is deterministic, its probes change
+    nothing, its extra key gives other streams, and the default call is H-h's epoch."""
+    founders = generation0(np.random.default_rng(12), 8)
+    kw = dict(days=30.0, sim_seed=7100)
+    p1, s1 = run_epoch(founders, 1, 0, overrides=SCARCE_FOOD, key_extra=(SCARCE_KEY,),
+                       probe=True, **kw)
+    p2, s2 = run_epoch(founders, 1, 0, overrides=SCARCE_FOOD, key_extra=(SCARCE_KEY,),
+                       probe=True, **kw)
+    p3, s3 = run_epoch(founders, 1, 0, overrides=SCARCE_FOOD, key_extra=(SCARCE_KEY,),
+                       probe=False, **kw)
+    assert np.array_equal(p1["genomes"], p2["genomes"]) and _strip(s1) == _strip(s2)
+    assert s1["probe"] == s2["probe"] and s1["probe"]["days"] == 30
+    assert np.array_equal(p1["genomes"], p3["genomes"]) and _strip(s1) == _strip(s3)
+    assert "probe" not in s3  # read-only: the probes change no draw and no state
+    _, s4 = run_epoch(founders, 1, 0, overrides=SCARCE_FOOD, **kw)
+    assert s4["decision_action_shares"] != s1["decision_action_shares"]  # other streams
+    d1, h1 = run_epoch(founders, 1, 0, **kw)
+    d2, h2 = run_epoch(founders, 1, 0, overrides={}, key_extra=(), probe=False, **kw)
+    assert np.array_equal(d1["genomes"], d2["genomes"]) and _strip(h1) == _strip(h2)
+    try:
+        run_epoch(founders, 1, 0, overrides={"policy": {"kind": "evo"}}, **kw)
+        raise AssertionError("an override of the policy must be refused")
+    except ValueError:
+        pass
+
+
+def test_scarce_lineage_loads_generation0_and_stops_at_its_depth() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        g0 = generation0(np.random.default_rng(13), 8)
+        src = Path(tmp) / "gen0.npz"
+        save_pool(src, g0["genomes"], g0["depth"], g0["sex"])
+        summ = evolve_lineage(1, Path(tmp) / "out", epochs=3, days=30.0, sim_seed=7100,
+                              overrides=SCARCE_FOOD, key_extra=(SCARCE_KEY,),
+                              lineage_stream=SCARCE_LINEAGE_STREAM, gen0_pool=src,
+                              stop_depth=0.0, neutral=False, probe=True)
+        d = Path(tmp) / "out" / "lineage_1"
+        rows = (d / "epochs.jsonl").read_text(encoding="utf-8").splitlines()
+        assert len(rows) == 1  # the founders are adults of depth 0 on day 30: stop at once
+        assert summ["depth_reached"] and summ["stop_depth"] == 0.0 and summ["ended"] is None
+        assert (d / "pool_final.npz").exists() and not (d / "pool_neu.npz").exists()
+        with np.load(d / "pool_gen0.npz") as z:
+            assert np.array_equal(z["genomes"], g0["genomes"])  # generation 0 as given
+        assert summ["setup"]["lineage_stream"] == SCARCE_LINEAGE_STREAM
+        assert summ["setup"]["key_extra"] == [SCARCE_KEY]
+        assert "probe" in json.loads(rows[0])
+
+
 def test_evo_modules_have_no_play_named_identifier_and_no_reward() -> None:
     allowed = {"playground", "play_objects", "PlayObject", "playground_enabled",
                "playground_bounds", "in_playground"}
@@ -226,5 +291,7 @@ if __name__ == "__main__":
     test_jump_genome_scales_one_random_jump()
     test_epoch_founders_by_sex_in_slot_order()
     test_short_run_is_deterministic_and_hooks_cover_every_birth()
+    test_scarce_epochs_keep_their_streams_and_probes_read_only()
+    test_scarce_lineage_loads_generation0_and_stops_at_its_depth()
     test_evo_modules_have_no_play_named_identifier_and_no_reward()
     print("test_evo: OK")

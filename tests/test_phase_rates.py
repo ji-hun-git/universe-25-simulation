@@ -1,7 +1,8 @@
 """H-g rates and phases (metrics/phase_rates.py; PHASE4_DESIGN.md section 4.3): phase boundaries
 follow the record's proportions, episode counts match the detectors' own segmentation, the trend
 statistics and the exact sign-flip test behave as preregistered, the decision rule reads each
-case as written, and the module is eval-only with no play-named identifier (H2)."""
+case as written, the time budget of SCARCE-PG evo (section 4.6) counts the detectors' eligible
+rows, and the module is eval-only with no play-named identifier (H2)."""
 from __future__ import annotations
 
 import io
@@ -21,10 +22,22 @@ from universe25.metrics.detectors import (  # noqa: E402
     prepare,
     segment,
 )
+from universe25.agents.state import (  # noqa: E402
+    ACT_EXPLORE,
+    ACT_FORAGE,
+    ACT_RUN_ON,
+    ACT_SOCIAL,
+    ACT_TURN_BACK,
+    N_ACTIONS,
+    OBJECT_FAMILY,
+)
 from universe25.metrics.phase_rates import (  # noqa: E402
+    FREE_TIME_ACTIONS,
     PHASE_B_FRACTION,
+    budget_shares,
     cell_decision,
     detector_windows,
+    empty_budget,
     label_windows,
     overall,
     phase_b_end,
@@ -32,6 +45,7 @@ from universe25.metrics.phase_rates import (  # noqa: E402
     run_taus,
     sign_flip,
     sign_flip_low_memory,
+    window_budget,
     window_rates,
 )
 from universe25.metrics.synthetic_traces import make_colony  # noqa: E402
@@ -165,6 +179,33 @@ def test_detector_windows_pick_the_preregistered_four() -> None:
     assert none["B"] is None and none["C"] is None and none["D_late"] == 605.0
 
 
+def test_window_budget_counts_the_eligible_rows_by_action() -> None:
+    tr = make_colony("all_criteria_k12", n_individuals=12, days=6, seed=5)
+    b = window_budget(tr)
+    S = prepare(tr)
+    ok = (S.action >= 0) & (S.action < N_ACTIONS)
+    assert b["rows_per_decision"] == S.K == 12
+    assert b["n_eligible_rows"] == int((S.eligible & ok).sum()) > 0
+    assert b["eligible"] == np.bincount(S.action[S.eligible & ok], minlength=N_ACTIONS).tolist()
+    assert all(r <= e for r, e in zip(b["eligible_relaxed"], b["eligible"]))
+    assert sum(b["weaned"]) == int(((S.age >= 21.0) & ok).sum()) >= sum(b["eligible"])
+    sh = budget_shares(b["eligible"])
+    n = float(sum(b["eligible"]))
+    assert abs(sh["F"] - b["eligible"][ACT_FORAGE] / n) < 1e-12
+    assert abs(sh["T"] - sum(b["eligible"][a] for a in FREE_TIME_ACTIONS) / n) < 1e-12
+    e = empty_budget()
+    assert e["n_eligible_rows"] == 0 and np.isnan(budget_shares(e["eligible"])["F"])
+    one = [0] * N_ACTIONS
+    one[ACT_FORAGE], one[ACT_EXPLORE] = 3, 1
+    assert budget_shares(one) == {"F": 0.75, "T": 0.25}
+    # the free-time set is the simulator's own (sim._free_pre)
+    assert set(FREE_TIME_ACTIONS) == {ACT_EXPLORE, ACT_SOCIAL, ACT_RUN_ON, ACT_TURN_BACK,
+                                      *OBJECT_FAMILY}
+    src = (ROOT / "src" / "universe25" / "sim.py").read_text(encoding="utf-8")
+    assert "free = np.isin(act, (ACT_EXPLORE, ACT_SOCIAL, ACT_RUN_ON, ACT_TURN_BACK))" in src
+    assert "free |= np.isin(act, OBJECT_FAMILY)" in src
+
+
 def test_phase_rates_is_eval_only_and_has_no_play_named_identifier() -> None:
     allowed = {"playground", "play_objects", "PlayObject", "playground_enabled",
                "playground_bounds", "in_playground"}
@@ -188,5 +229,6 @@ if __name__ == "__main__":
     test_sign_flip_low_memory_is_the_same_exact_test()
     test_decision_rule_reads_each_case()
     test_detector_windows_pick_the_preregistered_four()
+    test_window_budget_counts_the_eligible_rows_by_action()
     test_phase_rates_is_eval_only_and_has_no_play_named_identifier()
     print("test_phase_rates: OK")

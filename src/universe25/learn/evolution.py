@@ -16,6 +16,12 @@ pool_final.npz (the adults alive at the end of the last epoch), pool_neu.npz (th
 Wright-Fisher control matched in pedigree depth), summary.json; state.json / state.npz make a
 lineage resumable at every epoch. Nothing here reads a detector, a trace or a PlayScore field,
 and there is no reward anywhere (H2).
+
+SCARCE-PG evo (PHASE4_DESIGN.md 4.6) uses the same epochs with optional arguments, all off by
+default (H-h's lineages are unchanged): config overrides (the scarce food rule), an extra key
+element for the policy streams, a lineage stream of its own, generation 0 loaded from a given
+pool, a stop once the day-360 adults reach a mean pedigree depth, no neutral pool, and
+read-only daily probes of the weaned animals' hunger.
 """
 from __future__ import annotations
 
@@ -52,6 +58,8 @@ EPOCHS = 150
 NEUTRAL_SIZE = 64
 MUTATION_SD = 0.02
 CHECKPOINT_EVERY = 25  # founders kept for inspection every this many epochs
+PROBE_HUNGRY = 0.85  # the forced-foraging reflex (sim._select_actions)
+PROBE_STARVING = 1.2  # the starvation hazard's threshold (sim mortality)
 
 
 def lineage_seed(lineage: int) -> int:
@@ -90,11 +98,50 @@ def sample_founders(rng: np.random.Generator, pool: dict[str, np.ndarray],
             "sex": pool["sex"][order]}
 
 
+def _probe_row(sim: Universe25Sim) -> tuple[float, int, float, float, float]:
+    """Read-only: day, weaned count, the weaned animals' mean hunger and the shares of them
+    above the forced-foraging reflex and above starvation."""
+    a = sim.agents
+    w = a.alive & (a.age_days >= sim.cfg.biology.weaning_days)
+    n = int(w.sum())
+    if n == 0:
+        return float(sim.day), 0, float("nan"), float("nan"), float("nan")
+    h = a.hunger[w].astype(np.float64)
+    return (float(sim.day), n, float(h.mean()), float((h > PROBE_HUNGRY).mean()),
+            float((h > PROBE_STARVING).mean()))
+
+
+def _finite_mean(x: np.ndarray) -> float | None:
+    x = x[np.isfinite(x)]
+    return float(x.mean()) if x.size else None
+
+
+def _probe_summary(rows: list[tuple[float, int, float, float, float]],
+                   days: float) -> dict[str, Any]:
+    """The probes of one epoch: the weaned count on its last day, and means over its second
+    half (days after days / 2) of the weaned count, mean hunger and the two shares."""
+    if not rows:
+        return {"days": 0, "weaned_end": 0}
+    P = np.asarray(rows, dtype=np.float64)
+    half = P[:, 0] > 0.5 * float(days)
+    starving = P[:, 4][np.isfinite(P[:, 4])]
+    return {"days": int(P.shape[0]), "weaned_end": int(P[-1, 1]),
+            "weaned_mean_2h": _finite_mean(P[half, 1]),
+            "hunger_mean_2h": _finite_mean(P[half, 2]),
+            "hungry_share_2h": _finite_mean(P[half, 3]),
+            "starving_share_2h": _finite_mean(P[half, 4]),
+            "starving_share_max": float(starving.max()) if starving.size else None}
+
+
 def run_epoch(founders: dict[str, np.ndarray], lineage: int, epoch: int,
               days: float = EPOCH_DAYS, sim_seed: int | None = None,
-              mutation_sd: float = MUTATION_SD) -> tuple[dict[str, np.ndarray], dict[str, Any]]:
+              mutation_sd: float = MUTATION_SD, *, overrides: dict[str, Any] | None = None,
+              key_extra: tuple[int, ...] = (),
+              probe: bool = False) -> tuple[dict[str, np.ndarray], dict[str, Any]]:
     """One founding epoch; returns the adults alive at its end (genomes, depth, sex) and the
-    epoch's statistics."""
+    epoch's statistics. `overrides` are merged into the epoch's config (never `policy`),
+    `key_extra` is appended to the policy streams' key (lineage, epoch), and `probe` adds the
+    read-only daily hunger probes; the defaults are H-h's epoch."""
     tmp = Path(tempfile.mkdtemp(prefix="u25evo_"))
     try:
         fpath = tmp / "founders.npz"
@@ -106,12 +153,20 @@ def run_epoch(founders: dict[str, np.ndarray], lineage: int, epoch: int,
                     free_substeps=12,
                     policy={"kind": "evo", "founders": str(fpath), "founder_mode": "ordered",
                             "mutation_sd": float(mutation_sd),
-                            "genetics_key": [int(lineage), int(epoch)]})
+                            "genetics_key": [int(lineage), int(epoch),
+                                             *(int(k) for k in key_extra)]})
+        if overrides:
+            if "policy" in overrides:
+                raise ValueError("epoch overrides may not replace the policy")
+            over.update(overrides)
         cfg = load_config(BASE, over)
         t0 = time.perf_counter()
         sim = Universe25Sim(cfg, tmp / "run")
-        for _ in range(int(round(float(days) * cfg.ticks_per_day))):
+        probes: list[tuple[float, int, float, float, float]] = []
+        for t in range(int(round(float(days) * cfg.ticks_per_day))):
             sim.step()
+            if probe and (t + 1) % cfg.ticks_per_day == 0:
+                probes.append(_probe_row(sim))
             if sim.agents.n_alive == 0:
                 break
         pol = sim.policy
@@ -133,6 +188,8 @@ def run_epoch(founders: dict[str, np.ndarray], lineage: int, epoch: int,
             "decision_action_shares": (hist / max(hist.sum(), 1.0)).round(5).tolist(),
             "wall_s": time.perf_counter() - t0,
         }
+        if probe:
+            stats["probe"] = _probe_summary(probes, days)
         sim.logger.close()
         return {k: pool[k] for k in ("genomes", "depth", "sex")}, stats
     finally:
@@ -142,12 +199,23 @@ def run_epoch(founders: dict[str, np.ndarray], lineage: int, epoch: int,
 def evolve_lineage(lineage: int, out_dir: Path, epochs: int = EPOCHS, days: float = EPOCH_DAYS,
                    pairs: int = PAIRS, mutation_sd: float = MUTATION_SD,
                    sim_seed: int | None = None,
-                   progress: Callable[[dict[str, Any]], None] | None = None) -> dict[str, Any]:
-    """Run (or resume) one lineage to `epochs` epochs, then build its neutral control."""
+                   progress: Callable[[dict[str, Any]], None] | None = None, *,
+                   overrides: dict[str, Any] | None = None, key_extra: tuple[int, ...] = (),
+                   lineage_stream: int = LINEAGE_STREAM, gen0_pool: Path | None = None,
+                   stop_depth: float | None = None, neutral: bool = True,
+                   probe: bool = False) -> dict[str, Any]:
+    """Run (or resume) one lineage to `epochs` epochs, then build its neutral control.
+
+    The keyword arguments are SCARCE-PG evo's (PHASE4_DESIGN.md 4.6) and default to H-h's
+    lineage: `overrides` and `key_extra` go to every epoch (run_epoch); founders between epochs
+    are drawn from `stream(lineage_seed, lineage_stream)`; `gen0_pool` gives generation 0 (in
+    slot order) instead of drawing it; with `stop_depth` the lineage stops after the first epoch
+    whose day-360 adults have at least that mean pedigree depth (`epochs` is then the cap);
+    `neutral` False skips the neutral pool; `probe` records the daily hunger probes."""
     out = Path(out_dir) / f"lineage_{int(lineage)}"
     out.mkdir(parents=True, exist_ok=True)
     st_json, st_npz, log = out / "state.json", out / "state.npz", out / "epochs.jsonl"
-    rng = stream(lineage_seed(lineage), LINEAGE_STREAM)
+    rng = stream(lineage_seed(lineage), lineage_stream)
     if st_json.exists():
         st = json.loads(st_json.read_text(encoding="utf-8"))
         e0, ended = int(st["next_epoch"]), st.get("ended")
@@ -158,23 +226,35 @@ def evolve_lineage(lineage: int, out_dir: Path, epochs: int = EPOCHS, days: floa
                     if r.strip() and json.loads(r)["epoch"] < e0]
             log.write_text("".join(r + "\n" for r in rows), encoding="utf-8")
     else:
-        founders = generation0(rng, pairs)
+        if gen0_pool is None:
+            founders = generation0(rng, pairs)
+        else:
+            g0 = load_pool(gen0_pool)
+            founders = {k: g0[k] for k in ("genomes", "depth", "sex")}
+            if founders["genomes"].shape[0] != 2 * int(pairs):
+                raise ValueError(f"generation 0 {gen0_pool}: {founders['genomes'].shape[0]} "
+                                 f"genomes for {pairs} pairs")
         save_pool(out / "pool_gen0.npz", founders["genomes"], founders["depth"],
                   founders["sex"])
         e0, ended = 0, None
     pool = None
+    reached = False
     t_start = time.perf_counter()
     for e in range(e0, int(epochs)):
         if ended:
             break
-        pool, stats = run_epoch(founders, lineage, e, days, sim_seed, mutation_sd)
+        pool, stats = run_epoch(founders, lineage, e, days, sim_seed, mutation_sd,
+                                overrides=overrides, key_extra=key_extra, probe=probe)
         with open(log, "a", encoding="utf-8") as f:
             f.write(json.dumps(stats) + "\n")
         if progress:
             progress(stats)
         if stats["nan_count"]:
             ended = f"NaN in epoch {e}"
-        if e == int(epochs) - 1 or ended:
+        depth = stats["adult_depth_mean"]
+        reached = bool(stop_depth is not None and depth is not None
+                       and depth >= float(stop_depth))
+        if e == int(epochs) - 1 or ended or reached:
             save_pool(out / "pool_final.npz", pool["genomes"], pool["depth"], pool["sex"],
                       epoch=e)
             break
@@ -193,18 +273,28 @@ def evolve_lineage(lineage: int, out_dir: Path, epochs: int = EPOCHS, days: floa
             break
     summ: dict[str, Any] = {"lineage": int(lineage), "epochs_target": int(epochs),
                             "ended": ended, "wall_s_this_call": time.perf_counter() - t_start}
+    if stop_depth is not None:
+        summ.update(stop_depth=float(stop_depth), depth_reached=bool(reached))
+    if overrides or key_extra or gen0_pool is not None or lineage_stream != LINEAGE_STREAM:
+        summ["setup"] = {"overrides": overrides or {}, "key_extra": [int(k) for k in key_extra],
+                         "lineage_stream": int(lineage_stream),
+                         "gen0_pool": None if gen0_pool is None else str(gen0_pool)}
     fin = out / "pool_final.npz"
     if fin.exists() and not ended:
         final = load_pool(fin)
-        g = int(round(float(final["depth"].mean())))
         gen0 = load_pool(out / "pool_gen0.npz")
-        neu = neutral_pool(gen0["genomes"], g, NEUTRAL_SIZE, mutation_sd,
-                           stream(lineage_seed(lineage), NEUTRAL_STREAM))
-        save_pool(out / "pool_neu.npz", neu, np.full(NEUTRAL_SIZE, g, np.int64),
-                  np.full(NEUTRAL_SIZE, SEX_ANY, np.int64))
-        summ.update(final_adults=int(final["depth"].size), final_depth_mean=float(
-            final["depth"].mean()), neutral_generations=g,
-            final_norms=genome_norms(final["genomes"]), neutral_norms=genome_norms(neu),
-            gen0_norms=genome_norms(gen0["genomes"]))
+        summ.update(final_adults=int(final["depth"].size),
+                    final_depth_mean=float(final["depth"].mean()))
+        if neutral:
+            g = int(round(float(final["depth"].mean())))
+            neu = neutral_pool(gen0["genomes"], g, NEUTRAL_SIZE, mutation_sd,
+                               stream(lineage_seed(lineage), NEUTRAL_STREAM))
+            save_pool(out / "pool_neu.npz", neu, np.full(NEUTRAL_SIZE, g, np.int64),
+                      np.full(NEUTRAL_SIZE, SEX_ANY, np.int64))
+            summ.update(neutral_generations=g, final_norms=genome_norms(final["genomes"]),
+                        neutral_norms=genome_norms(neu))
+        else:
+            summ.update(final_norms=genome_norms(final["genomes"]))
+        summ.update(gen0_norms=genome_norms(gen0["genomes"]))
     (out / "summary.json").write_text(json.dumps(summ, indent=1), encoding="utf-8")
     return summ
