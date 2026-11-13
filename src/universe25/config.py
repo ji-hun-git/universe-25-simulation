@@ -337,9 +337,18 @@ class PolicyConfig(_Strict):
     # inference; weights from `weights` (.npz) or a seeded orthogonal init when null). Learned
     # kinds never receive a play-named observation, reward or goal (H2) and sample from their
     # own RNG stream.
-    kind: Literal["need_driven", "mlp_frozen", "mlp_ppo"] = "need_driven"
+    # "evo" (P4-4, PHASE4_DESIGN.md 4.4): a genome per animal, inherited from one parent with
+    # Gaussian mutation; no reward, no learner (agents/evo.py).
+    kind: Literal["need_driven", "mlp_frozen", "mlp_ppo", "evo"] = "need_driven"
     weights: str | None = None  # path to an .npz with W1 b1 W2 b2 W3 b3 (mlp kinds)
     hidden: int = 128  # hidden width for a random init (ignored when weights is set)
+    # evo: the founders' genomes (.npz with genomes, depth, sex; null = independent generation-0
+    # genomes), taken in slot order ("ordered") or drawn by sex ("sample"); the mutation sd per
+    # value at every birth; extra entropy for the evo streams (e.g. lineage and epoch)
+    founders: str | None = None
+    founder_mode: Literal["sample", "ordered"] = "sample"
+    mutation_sd: float = Field(0.02, ge=0.0)
+    genetics_key: list[int] = Field(default_factory=list)
     # Free-time sub-steps (SimConfig.free_substeps > 1): "continue" repeats the decision action
     # at every sub-step (distributionally the same reach and relief as the decision), "rechoose"
     # lets the policy choose among the free actions at every sub-step. "auto" = continue for

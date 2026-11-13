@@ -211,4 +211,8 @@ def make_policy(cfg: PolicyConfig, seed: int = 7000) -> Policy:
         if cfg.weights:
             return MlpFrozenPolicy.from_npz(cfg.weights, seed)
         return MlpFrozenPolicy.random_init(seed, hidden=int(cfg.hidden))
+    if cfg.kind == "evo":  # inherited genomes, no reward (P4-4)
+        from universe25.agents.evo import EvoPolicy
+
+        return EvoPolicy(cfg, seed)
     raise ValueError(f"unknown policy kind {cfg.kind!r}")

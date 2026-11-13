@@ -80,6 +80,9 @@ class Universe25Sim:
         self._forage_prev = np.zeros(self.world.n_cells, dtype=np.int64)  # by target hopper
         self.agents = AgentSoA.create(cfg.max_agents)
         self.policy = make_policy(cfg.policy, cfg.seed)  # chooses among eligible actions
+        # inherited genomes (policy kind evo, P4-4): founding, conception and birth hooks on the
+        # policy's own streams; for every other kind nothing is called (bit-identical)
+        self._genetics = hasattr(self.policy, "birth")
         self.tick = 0
         self.day = 0.0
         self.dt_days = 1.0 / cfg.ticks_per_day
@@ -231,6 +234,8 @@ class Universe25Sim:
                 role=ROLE_BREEDING_FEMALE if sex == SEX_F else ROLE_TERRITORIAL_MALE,
             )
         self.agents.n_alive = int(self.agents.alive.sum())
+        if self._genetics:
+            self.policy.found(self, slots)
 
     def _spawn(
         self,
@@ -1688,6 +1693,8 @@ class Universe25Sim:
                 if bio.territories:
                     self._preg_sire[f] = self._serial[cands[0]]
                     self._mated[cands[0]] = True
+                if self._genetics:  # evo: the sire's genome goes into the pregnancy
+                    self.policy.conceive(self, int(f), cands)
                 self._mated[f] = True
                 self._conceptions += 1
                 self._last_conception_day = self.day
@@ -1750,6 +1757,8 @@ class Universe25Sim:
                     role=ROLE_PUP,
                 )
                 self._sire[int(s)] = sire
+                if self._genetics:  # evo: one parent's genome with mutation
+                    self.policy.birth(self, int(i), int(s))
                 self._births += 1
                 self._last_young_day = self.day
             a.role[i] = ROLE_NURSING

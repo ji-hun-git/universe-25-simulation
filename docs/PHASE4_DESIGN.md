@@ -43,7 +43,7 @@ survives a learned policy is an **empirical question** (§4), not a tuning targe
 | `need_driven` | phase 1/2 utility softmax | one draw per deciding agent from the sim stream | done, bit-identical |
 | `mlp_frozen` | NumPy float32 MLP inference (48 → 128 → 128 → 11), weights from an `.npz` or a seeded orthogonal init; learning off | own `make_rng(seed + 1_000_003)` stream; keeps its own cell counts (never the simulation's per-tick cache; fixed 2026-11-06) | done (P4-0, 2026-11-04) |
 | `mlp_ppo` | same net, PPO updates every `rollout_ticks` decisions in torch (CUDA); sub-steps re-chosen; eight-drive reward | init from a seeded torch.Generator; sampling from `seed + 1_000_003` (decisions) or the sub-step stream; minibatches `seed + 4_000_003` | done (P4-2, 2026-11-06) |
-| `evo` | per-agent weights inherited at birth with Gaussian mutation; no reward, no learner | sim stream for mutation draws (biology-ordered) | to build (P4-4) |
+| `evo` | a genome per animal (observation v5 → 32 → 15); at birth one parent's genome (mother or sire) with Gaussian mutation; no reward, no learner | its own sampling, genetics and founder streams (`SeedSequence([seed, stream])`), genetics draws in biology order | built (P4-4, 2026-11-13; §4.4) |
 
 Rule for every learned kind: the policy never consumes the biology RNG stream for *sampling*
 (so two policy versions see the same biology draws for the same state sequence), and it never
