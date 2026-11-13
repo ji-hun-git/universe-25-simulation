@@ -11,6 +11,9 @@ PHASE4_DESIGN.md 4.5 (2026-11-13, before any code or run).
 3. Beside: the dose (S05 = lambda 1/2), colonies with a criterion-3 reading, criteria 4 and 5,
    the form excess and z, the detector vector by window, landmarks, action shares of the trace
    rows, episode rates by phase, and H-h's shares (other seeds: descriptive only).
+Also beside (added after the first sweep, before any H-i statistic was read): the colonies that
+died out before day 1,600, and H-i's rule with each detector window counted once (H-h's count,
+the decisive one, counts a window twice when two labels pick it).
 Writes <sweep>/nm_analysis.json.
 
 usage: python scripts/analyse_nm.py [--sweep _output/nm_sweep] [--colonies 1-24]
@@ -61,6 +64,37 @@ DEV_SEED = 7000
 LAYERS = ("w1", "b1", "w2", "b2")
 
 
+def readings_once(run: dict) -> list[dict[str, Any]]:
+    """Sensitivity only: readings() with each detector window counted once. H-h's readings()
+    (the decisive count) takes the four labels; when two pick the same window (D_early and
+    D_late both at the last window, say) that window counts twice. Here only the first label
+    in B, C, D_early, D_late order is kept."""
+    pick = run.get("detector_windows") or {}
+    seen: set[float] = set()
+    keep: set[str] = set()
+    for label in LABELS:
+        m = pick.get(label)
+        if m is not None and m not in seen:
+            seen.add(m)
+            keep.add(label)
+    return [x for x in readings(run) if x["label"] in keep]
+
+
+def died_out(run: dict | None) -> bool:
+    return bool(run) and int(run["run_summary"].get("final_n", 1)) == 0
+
+
+def h_i_rule(sf: dict[str, Any], s1_total: int) -> str:
+    """H-i's rule (PHASE4_DESIGN.md 4.5)."""
+    if sf["n"] < MIN_COLONIES:
+        return f"untested (only {sf['n']} colonies with readings at both S0 and S1)"
+    if s1_total == 0:
+        return "falsified (no S1 reading meets criterion 3)"
+    if sf["mean"] > 0 and sf["p_rise"] < ALPHA:
+        return "supported"
+    return "not supported"
+
+
 def rng_str(v: list[float], fmt: str = ".2f") -> str:
     v = [x for x in v if x is not None and np.isfinite(x)]
     if not v:
@@ -96,6 +130,21 @@ def main() -> int:
     out["stops"] = [x for r in runs.values() if r for x in r.get("stop", [])]
     if missing:
         print(f"missing runs: {len(missing)} ({', '.join(missing[:6])} ...)")
+    if out["stops"]:
+        print("STOP (preregistered): " + "; ".join(out["stops"]))
+
+    print("Colonies that died out before day 1,600 (no trace rows after; those windows are empty)")
+    died: dict[str, Any] = {}
+    for arm in ARMS:
+        have = [c for c in colonies if runs[(arm, c)]]
+        gone = [c for c in have if died_out(runs[(arm, c)])]
+        days = [float(runs[(arm, c)]["run_summary"]["days_simulated"]) for c in gone]
+        died[arm] = {"colonies": gone, "days": days, "of": len(have),
+                     "empty_windows": [int(runs[(arm, c)].get("empty_windows", 0)) for c in gone]}
+        print(f"  {SHOW[arm]:3s} {len(gone)}/{len(have)}"
+              + (f": colonies {', '.join(str(c) for c in gone)}; last day {med(days)}"
+                 if gone else ""))
+    out["died_out"] = died
 
     # --- 1. genome norms (the manipulation, by construction) ---
     print("Genome norms per arm, mean [min, max] over colonies; neutral pools (NEU l) beside")
@@ -133,25 +182,45 @@ def main() -> int:
         if s1 is not None and sh is not None:
             d_top.append(s1 - sh)
         rows_h[c] = row
-        fmt = lambda r: f"{r['c3_met']}/{r['readings']}"  # noqa: E731
+        for arm in ARMS:
+            row[arm]["died_out"] = died_out(runs[(arm, c)])
+
+        def fmt(arm: str, r: dict = row) -> str:
+            return f"{r[arm]['c3_met']}/{r[arm]['readings']}" + ("†" if r[arm]["died_out"] else "")
+
         print(f"  colony {c:2d} (l{row['lineage']}, base {row['base_index']}, G "
-              f"{row['generations']}): S0 {fmt(row['S0']):>5s}  S½ {fmt(row['S05']):>5s}  "
-              f"S1 {fmt(row['S1']):>5s}  d {row.get('d', float('nan')):+.3f}")
+              f"{row['generations']}): S0 {fmt('S0'):>6s}  S½ {fmt('S05'):>6s}  "
+              f"S1 {fmt('S1'):>6s}  d {row.get('d', float('nan')):+.3f}")
+    print("  († the colony died out before day 1,600)")
     sf = sign_flip_low_memory(d_main)
     s1_total = sum(rows_h[c]["S1"]["c3_met"] for c in colonies)
-    if sf["n"] < MIN_COLONIES:
-        reading = f"untested (only {sf['n']} colonies with readings at both S0 and S1)"
-    elif s1_total == 0:
-        reading = "falsified (no S1 reading meets criterion 3)"
-    elif sf["mean"] > 0 and sf["p_rise"] < ALPHA:
-        reading = "supported"
-    else:
-        reading = "not supported"
+    reading = h_i_rule(sf, s1_total)
     print(f"  mean d {sf['mean']:+.4f} ± {sf['se']:.4f} (n {sf['n']}), p(rise) "
           f"{sf['p_rise']:.6f}; S1 readings with criterion 3: {s1_total}")
     print(f"H-i (preregistered rule): {reading.upper()}")
+
+    # sensitivity (not decisive): each detector window once
+    d_once, s1_once = [], 0
+    for c in colonies:
+        s = {}
+        for arm in ("S0", "S1"):
+            rs = readings_once(runs[(arm, c)]) if runs[(arm, c)] else []
+            s[arm] = (sum(x["flags"][C3] for x in rs) / len(rs)) if rs else None
+            if arm == "S1":
+                s1_once += sum(x["flags"][C3] for x in rs)
+        if s["S0"] is not None and s["S1"] is not None:
+            d_once.append(s["S1"] - s["S0"])
+    sf_once = sign_flip_low_memory(d_once)
+    reading_once = h_i_rule(sf_once, s1_once)
+    n_dup = sum(1 for r in runs.values() if r and len(readings_once(r)) < len(readings(r)))
+    print(f"  sensitivity, each window once ({n_dup} runs with two labels on one window): "
+          f"mean d {sf_once['mean']:+.4f} (n {sf_once['n']}), p(rise) "
+          f"{sf_once['p_rise']:.6f}; S1 readings with criterion 3: {s1_once} -> {reading_once}")
     out["H_i"] = {"per_colony": rows_h, "sign_flip": sf, "s1_c3_total": s1_total,
-                  "reading": reading}
+                  "reading": reading,
+                  "sensitivity_each_window_once": {"sign_flip": sf_once, "s1_c3_total": s1_once,
+                                                   "reading": reading_once,
+                                                   "runs_with_shared_window": n_dup}}
 
     # --- 3. beside ---
     print("\nThe dose (beside)")

@@ -14,6 +14,12 @@ the rules-v9 detector vector (1,000 surrogates, at most 400 individuals, detecto
 four windows of section 4.3. Each run also counts the trace rows by action. Resumable at each
 stage; stops on a NaN. Writes _output/nm_sweep/pools/ and <arm>_c<cc>_<seed>/nm_run.json.
 
+A window with no traced row has no trace file (the writer skips it), as after a colony dies out.
+It is an empty window: no individuals and no episodes, so it is not entered and gives no reading,
+like any window with too few individuals. (First sweep, 2026-11-13: 10 runs died out before the
+last window and the rates stage stopped on the missing files; fixed before any H-i statistic
+was read.)
+
 usage: python scripts/sweep_nm.py [--workers 8] [--colonies 1-24] [--arms S0 S05 S1]
        python scripts/sweep_nm.py --dev --colonies 1 --days 300 --out _output/nm_dev
 --dev runs every colony on the training seed 7000 (its jump drawn with seed 7000 too); it is the
@@ -102,15 +108,42 @@ def build_pools(evo: Path, pools: Path, colonies: list[int], dev: bool) -> dict:
     return manifest
 
 
-def _action_counts(d: Path, wins: list[tuple[float, float]]) -> list[int]:
+def _action_counts(paths: list[Path]) -> list[int]:
     from universe25.agents.state import N_ACTIONS
 
     counts = np.zeros(N_ACTIONS, np.int64)
-    for a, b in wins:
-        with np.load(_trace_path(d, a, b), allow_pickle=False) as z:
+    for path in paths:
+        with np.load(path, allow_pickle=False) as z:
             act = z["action"].astype(np.int64)
         counts += np.bincount(act[(act >= 0) & (act < N_ACTIONS)], minlength=N_ACTIONS)
     return counts.tolist()
+
+
+def _empty_window() -> dict:
+    """The rates record of a window without any traced row: zero individuals, events and
+    episodes, and NaN rates and shares (as window_rates sets them when no row is weaned)."""
+    from universe25.metrics.phase_rates import KINDS
+
+    nan = float("nan")
+    out: dict = {"n_rows": 0, "n_individuals": 0, "n_weaned_individuals": 0,
+                 "weaned_individual_days": 0.0, "eligible_individual_days": 0.0,
+                 "relaxed_share_weaned": nan, "stressed_share_weaned": nan,
+                 "withdrawn_share_weaned": nan, "juvenile_share_weaned": nan, "empty": True}
+    for kind in KINDS:
+        out[kind] = {"n_events": 0, "n_events_weaned": 0, "n_episodes": 0,
+                     "n_onsets_weaned": 0, "gap_criterion_steps": None,
+                     "episode_structure": False, "threshold": nan,
+                     "rate": nan, "rate_eligible": nan, "event_share_weaned": nan}
+    return out
+
+
+def _sim_done(d: Path) -> bool:
+    """The run finished (run.json is written last) and every trace file it wrote is there."""
+    f = d / "run.json"
+    if not f.exists():
+        return False
+    files = json.loads(f.read_text(encoding="utf-8")).get("trace_files") or []
+    return all((d / Path(x).name).exists() for x in files)
 
 
 def run_nm(job: tuple[str, int, int, str, str, float]) -> dict:
@@ -127,8 +160,10 @@ def run_nm(job: tuple[str, int, int, str, str, float]) -> dict:
     d = Path(out) / f"{arm}_c{colony:02d}_{seed}"
     wins = windows_for(days)
     t0 = time.perf_counter()
-    timing: dict[str, float] = {}
-    if not ((d / "run.json").exists() and all(_trace_path(d, a, b).exists() for a, b in wins)):
+    res_f = d / "nm_run.json"
+    timing: dict[str, float] = (json.loads(res_f.read_text(encoding="utf-8")).get("timing", {})
+                                if res_f.exists() else {})  # a rewrite keeps earlier timings
+    if not _sim_done(d):
         over = dict(seed=seed, days=days, ticks_per_day=6, backend="numpy", device="cpu",
                     log_every_ticks=6, snapshot_every_days=0, free_substeps=12,
                     trace={"windows": wins, "sample_every": 4},
@@ -144,6 +179,8 @@ def run_nm(job: tuple[str, int, int, str, str, float]) -> dict:
     stop = [f"NaN in {d.name}"] if summary.get("nan_count", 0) else []
     obs = calibrate(d / "metrics.parquet", summary)["observed"]
     t_fl, t_pk = float(obs["first_litters_day"]), float(obs["peak_day"])
+    written = {Path(x).name for x in summary.get("trace_files") or []}
+    traced = [_trace_path(d, a, b) for a, b in wins if _trace_path(d, a, b).name in written]
 
     rates_f = d / "evo_rates.json"
     if rates_f.exists():
@@ -153,10 +190,11 @@ def run_nm(job: tuple[str, int, int, str, str, float]) -> dict:
         days_s, ns = _series(d / "metrics.parquet")
         windows = []
         for a, b in wins:
-            r = window_rates(load_trace(_trace_path(d, a, b)))
+            path = _trace_path(d, a, b)
+            r = window_rates(load_trace(path)) if path.name in written else _empty_window()
             mid = 0.5 * (a + b)
-            r.update(start=a, end=b, mid=mid,
-                     n_alive=float(ns[int(np.argmin(np.abs(days_s - mid)))]))
+            alive = float(ns[int(np.argmin(np.abs(days_s - mid)))]) if mid <= days_s.max() else 0.0
+            r.update(start=a, end=b, mid=mid, n_alive=alive)
             windows.append(r)
         rates_f.write_text(json.dumps({"windows": windows}, default=float), encoding="utf-8")
         timing["rates_s"] = time.perf_counter() - t1
@@ -166,13 +204,14 @@ def run_nm(job: tuple[str, int, int, str, str, float]) -> dict:
     if act_f.exists():
         counts = json.loads(act_f.read_text(encoding="utf-8"))["counts"]
     else:
-        counts = _action_counts(d, wins)
+        counts = _action_counts(traced)
         act_f.write_text(json.dumps({"counts": counts}), encoding="utf-8")
 
     pick = detector_windows(windows, t_fl, t_pk)
     det_f = d / "evo_detect.json"
     det = json.loads(det_f.read_text(encoding="utf-8")) if det_f.exists() else {}
     t2 = time.perf_counter()
+    detected = False
     for mid in sorted({m for m in pick.values() if m is not None}):
         key = f"{mid:g}"
         if key in det and det[key].get("rules") == RULES:
@@ -182,7 +221,8 @@ def run_nm(job: tuple[str, int, int, str, str, float]) -> dict:
         det[key] = detect_trace(tr, n_surrogates=SURROGATES, seed=DET_SEED,
                                 max_individuals=MAX_INDIVIDUALS, legacy=False)
         det_f.write_text(json.dumps(det, default=float), encoding="utf-8")
-    if any(m is not None for m in pick.values()):
+        detected = True
+    if detected:
         timing["detect_s"] = time.perf_counter() - t2
     pol_f = d / "evo_policy.json"
     with np.load(pool, allow_pickle=False) as z:
@@ -195,8 +235,10 @@ def run_nm(job: tuple[str, int, int, str, str, float]) -> dict:
            "windows": windows, "detector_windows": pick,
            "detectors": {k: det[f"{m:g}"] for k, m in pick.items() if m is not None},
            "rules": RULES, "surrogates": SURROGATES, "max_individuals": MAX_INDIVIDUALS,
-           "detector_seed": DET_SEED, "action_counts": counts, "stop": stop, "timing": timing}
-    (d / "nm_run.json").write_text(json.dumps(res, default=float, indent=1), encoding="utf-8")
+           "detector_seed": DET_SEED, "action_counts": counts,
+           "empty_windows": sum(1 for a, b in wins if _trace_path(d, a, b).name not in written),
+           "stop": stop, "timing": timing}
+    res_f.write_text(json.dumps(res, default=float, indent=1), encoding="utf-8")
     return {"name": d.name, "stop": stop, "timing": timing, "wall": time.perf_counter() - t0,
             "peak_n": summary.get("peak_n"), "t_pk": t_pk}
 
@@ -220,10 +262,17 @@ def main() -> int:
              a.days) for c in colonies for arm in a.arms]
     t0 = time.perf_counter()
     stops: list[str] = []
+    failed: list[str] = []
     with ProcessPoolExecutor(max_workers=a.workers) as ex:
         futs = {ex.submit(run_nm, j): j for j in jobs}
         for f in as_completed(futs):
-            r = f.result()
+            try:
+                r = f.result()
+            except Exception as e:  # report every failed run, not only the first
+                j = futs[f]
+                failed.append(f"{j[0]}_c{j[1]:02d}_{j[2]}")
+                print(f"FAILED {failed[-1]}: {type(e).__name__}: {e}", flush=True)
+                continue
             tm = " ".join(f"{k} {v:.0f}" for k, v in r.get("timing", {}).items()) or "kept"
             print(f"{r['name']}: peak {r['peak_n']} at {r['t_pk']:.0f}; {tm}; "
                   f"{r['wall']:.0f} s", flush=True)
@@ -233,9 +282,9 @@ def main() -> int:
                 for g in futs:
                     g.cancel()
                 break
-    print(f"sweep {'stopped' if stops else 'done'} in {time.perf_counter() - t0:.0f} s",
-          flush=True)
-    return 1 if stops else 0
+    state = "stopped" if stops else (f"failed ({len(failed)} runs)" if failed else "done")
+    print(f"sweep {state} in {time.perf_counter() - t0:.0f} s", flush=True)
+    return 1 if stops or failed else 0
 
 
 if __name__ == "__main__":
