@@ -151,6 +151,33 @@ def sign_flip(values: Any) -> dict[str, Any]:
             "p_fall": float(np.mean(m <= obs + 1e-12))}
 
 
+def sign_flip_low_memory(values: Any, block: int = 20) -> dict[str, Any]:
+    """The test of `sign_flip` for any n, without its 2^n x n pattern matrix (PHASE4_DESIGN.md
+    4.5: 24 colonies would need 3 GB). The sums over the first `block` values' sign patterns are
+    built by doubling, and the remaining values' patterns are looped over; every one of the 2^n
+    patterns is counted, so the test stays exact."""
+    v = np.asarray(values, dtype=np.float64)
+    v = v[np.isfinite(v)]
+    if v.size == 0:
+        return {"n": 0, "mean": float("nan"), "se": float("nan"),
+                "p_rise": float("nan"), "p_fall": float("nan")}
+    n = int(v.size)
+    obs = float(v.mean())
+    head, tail = v[:block], v[block:]
+    sums = np.zeros(1)
+    for x in head:
+        sums = np.concatenate([sums + x, sums - x])
+    rise = fall = 0
+    for signs in itertools.product((1.0, -1.0), repeat=tail.size):
+        m = (sums + float(np.dot(np.asarray(signs, np.float64), tail))) / n
+        rise += int(np.count_nonzero(m >= obs - 1e-12))
+        fall += int(np.count_nonzero(m <= obs + 1e-12))
+    total = 2.0 ** n
+    return {"n": n, "mean": obs,
+            "se": float(v.std(ddof=1) / np.sqrt(n)) if n > 1 else float("nan"),
+            "p_rise": rise / total, "p_fall": fall / total}
+
+
 def cell_decision(tau_bcd: Any, tau_d: Any, n_cells: int = N_CELLS,
                   alpha: float = ALPHA) -> dict[str, Any]:
     """One policy x kind cell: falsified if T_d > 0 with p_rise < alpha / n_cells; supported if

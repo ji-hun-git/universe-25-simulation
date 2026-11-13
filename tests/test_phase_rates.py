@@ -31,6 +31,7 @@ from universe25.metrics.phase_rates import (  # noqa: E402
     phase_of,
     run_taus,
     sign_flip,
+    sign_flip_low_memory,
     window_rates,
 )
 from universe25.metrics.synthetic_traces import make_colony  # noqa: E402
@@ -113,6 +114,25 @@ def test_sign_flip_is_exact() -> None:
     assert sign_flip([])["n"] == 0
 
 
+def test_sign_flip_low_memory_is_the_same_exact_test() -> None:
+    rng = np.random.default_rng(11)
+    cases = [rng.normal(0.1, 1.0, n) for n in (1, 2, 5, 9, 13)]
+    cases += [np.array([0.0, 0.25, 0.0, 0.5, -0.125, 0.25]),
+              np.array([1.0 / 3.0, 1.0 / 6.0, -0.5, 0.0]), np.zeros(7),
+              np.array([np.nan, 0.5, 0.5])]
+    for v in cases:
+        for block in (0, 3, 20):
+            a, b = sign_flip(v), sign_flip_low_memory(v, block=block)
+            assert a["n"] == b["n"] and a["mean"] == b["mean"], (v, block)
+            assert a["p_rise"] == b["p_rise"] and a["p_fall"] == b["p_fall"], (v, block)
+    # 24 colonies, 7 positive and none negative: p(rise) is 2^-7 exactly
+    v = np.zeros(24)
+    v[:7] = [0.125, 0.5, 0.25, 1.0, 0.375, 0.125, 0.75]
+    r = sign_flip_low_memory(v)
+    assert r["n"] == 24 and r["p_rise"] == 2.0 ** -7 and r["p_fall"] == 1.0
+    assert sign_flip_low_memory([])["n"] == 0
+
+
 def test_decision_rule_reads_each_case() -> None:
     neg = -0.5 * np.ones(12)
     pos = 0.5 * np.ones(12)
@@ -165,6 +185,7 @@ if __name__ == "__main__":
     test_window_rates_count_the_detectors_episodes()
     test_run_taus_read_falls_rises_and_undefined_cases()
     test_sign_flip_is_exact()
+    test_sign_flip_low_memory_is_the_same_exact_test()
     test_decision_rule_reads_each_case()
     test_detector_windows_pick_the_preregistered_four()
     test_phase_rates_is_eval_only_and_has_no_play_named_identifier()

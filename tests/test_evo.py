@@ -1,8 +1,8 @@
 """The inherited-weight policy `evo` (P4-4; docs/PHASE4_DESIGN.md 4.4): genome layout and
 generation 0, the per-animal forward pass, one-parent inheritance with mutation, founders,
-the neutral control, epoch founder sampling, a short deterministic run whose hooks cover every
-conception and birth, and the H2 audit of the new modules (no reward, no play-named
-identifier)."""
+the neutral control, the norm-matched jump genome (4.5), epoch founder sampling, a short
+deterministic run whose hooks cover every conception and birth, and the H2 audit of the new
+modules (no reward, no play-named identifier)."""
 from __future__ import annotations
 
 import io
@@ -18,20 +18,28 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from universe25.agents.evo import (  # noqa: E402
+    FOUNDER_STREAM,
+    GENETICS_STREAM,
+    JUMP_STREAM,
+    LINEAGE_STREAM,
     N_HID,
     N_IN,
     N_OUT,
     N_PARAM,
+    NEUTRAL_STREAM,
     S_B1,
     S_B2,
     S_W1,
     S_W2,
+    SAMPLING_STREAM,
     SEX_ANY,
     EvoPolicy,
+    jump_genome,
     logits,
     neutral_pool,
     random_genomes,
     save_pool,
+    stream,
 )
 from universe25.agents.state import SEX_F, SEX_M  # noqa: E402
 from universe25.config import PolicyConfig, load_config  # noqa: E402
@@ -131,6 +139,24 @@ def test_neutral_pool_is_drift_without_selection() -> None:
     assert np.array_equal(neutral_pool(z, 0, 64, 0.02, np.random.default_rng(4)), z)
 
 
+def test_jump_genome_scales_one_random_jump() -> None:
+    base = random_genomes(np.random.default_rng(8), 1)[0]
+    eps = stream(9905, JUMP_STREAM).standard_normal(N_PARAM)
+    assert np.array_equal(eps, stream(9905, JUMP_STREAM).standard_normal(N_PARAM))
+    g0 = jump_genome(base, eps, 245, 0.02, 0.0)
+    assert g0.dtype == np.float32 and np.array_equal(g0, base)  # lambda 0 is generation 0
+    step = 0.02 * np.sqrt(245)
+    g1 = jump_genome(base, eps, 245, 0.02, 1.0)
+    gh = jump_genome(base, eps, 245, 0.02, 0.5)
+    assert np.allclose(g1 - base, step * eps, atol=1e-5)
+    assert np.allclose(gh - base, 0.5 * step * eps, atol=1e-5)  # same direction, half the size
+    expect = step * np.sqrt(N_HID * N_OUT)  # |W2| of a neutral line after 245 generations
+    assert abs(float(np.linalg.norm(g1[S_W2])) - expect) < 0.1 * expect
+    ids = {SAMPLING_STREAM, GENETICS_STREAM, FOUNDER_STREAM, LINEAGE_STREAM, NEUTRAL_STREAM,
+           JUMP_STREAM}
+    assert len(ids) == 6  # its own stream
+
+
 def test_epoch_founders_by_sex_in_slot_order() -> None:
     rng = np.random.default_rng(6)
     g0 = generation0(rng, 8)
@@ -197,6 +223,7 @@ if __name__ == "__main__":
     test_one_parent_inheritance_with_mutation()
     test_founders_ordered_and_sampled()
     test_neutral_pool_is_drift_without_selection()
+    test_jump_genome_scales_one_random_jump()
     test_epoch_founders_by_sex_in_slot_order()
     test_short_run_is_deterministic_and_hooks_cover_every_birth()
     test_evo_modules_have_no_play_named_identifier_and_no_reward()

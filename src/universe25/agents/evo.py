@@ -46,6 +46,7 @@ GENETICS_STREAM = 7_200_001
 FOUNDER_STREAM = 7_300_001
 LINEAGE_STREAM = 7_400_001
 NEUTRAL_STREAM = 7_500_001
+JUMP_STREAM = 7_600_001  # the norm-matched check (PHASE4_DESIGN.md 4.5)
 SEX_ANY = -1  # a pool entry that may found either sex (neutral pools)
 
 
@@ -87,6 +88,17 @@ def neutral_pool(gen0: np.ndarray, generations: int, size: int, sd: float,
         parents = rng.integers(0, pop.shape[0], int(size))
         pop = mutate(rng, pop[parents], sd)
     return pop
+
+
+def jump_genome(base: np.ndarray, eps: np.ndarray, generations: int, sd: float,
+                lam: float) -> np.ndarray:
+    """The norm-matched check (PHASE4_DESIGN.md 4.5): `base` plus `lam` times one random jump
+    with the per-value variance of `generations` mutations of sd `sd` (`eps` standard normal).
+    At lam = 1 a genome has the size a neutral line reaches by drift, without its genealogy and
+    without selection; at lam = 0 it is `base` itself."""
+    step = float(lam) * float(sd) * float(np.sqrt(int(generations)))
+    out = np.asarray(base, np.float64) + step * np.asarray(eps, np.float64)
+    return out.astype(np.float32)
 
 
 def genome_norms(G: np.ndarray) -> dict[str, float]:
