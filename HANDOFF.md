@@ -95,7 +95,9 @@
 >   - H-g with the playground-off arm (P4-16, 2026-11-13; `docs/PHASE4_DESIGN.md` §4.3):
 >     **H-g is falsified.** Four of six cells rise through phase D (p(rise) ≤ 0.002), and
 >     none falls as predicted. Without the playground, object events vanish, locomotor
->     episodes persist, and every colony grows faster. Next: `evo` (P4-4), Jason's call.
+>     episodes persist, and every colony grows faster.
+>   - Next (Jason, 2026-11-13): `evo`, preregistered with H-h in `docs/PHASE4_DESIGN.md`
+>     §4.4 (card P4-4).
 > - Tier 2 done (2026-11-11): P4-15 failed its primary test, and the program-level stop rule
 >   applies (no further substrate change for PPO learners). Next: H-g / playground-off, `evo`,
 >   or replica v2 (Tier 3) — Jason's call.

@@ -43,7 +43,9 @@ passed to the generator, not simulation seeds.
 | 9817–9828 | replica v2 M5e Marsden transfer (registered 2026-11-12, before use) | the best M5e member |
 | 9829–9876 | replica v2 final-replica comparison (registered 2026-11-13, before use) | M5d's best member and M5e's member A, each alone in Calhoun's pen on all 48 seeds (paired) |
 | 9877–9888 | evaluation, H-g and the playground-off arm (registered 2026-11-13, before use) | three policies × playground on / off, 1,600 d, the same seeds in every arm (`PHASE4_DESIGN.md` §4.3) |
-| 9096–9099, 9112–9199, 9416–9499, 9889–9999 | **reserved, fresh** | substrate-variant confirmation (24 seeds per variant) and future references |
+| 7000–7009 | `evo` pre-evolution (P4-4, registered 2026-11-13) | the founding epochs of the 8 lineages cycle over these sim seeds; lineage ℓ's own streams come from `SeedSequence([7000 + ℓ − 1, stream])` |
+| 9889–9904 | evaluation, `evo` and H-h (registered 2026-11-13, before use) | 2 seeds per lineage (9889 + 2(ℓ − 1) and the next), paired across SEL, NEU and GEN0; the need-driven control on all 16 (`PHASE4_DESIGN.md` §4.4) |
+| 9096–9099, 9112–9199, 9416–9499, 9905–9999 | **reserved, fresh** | substrate-variant confirmation (24 seeds per variant) and future references |
 
 ## Random-network init seeds (`MlpFrozenPolicy.random_init(s)`)
 

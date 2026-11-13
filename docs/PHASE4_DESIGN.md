@@ -157,6 +157,9 @@ coupled to the calibrated demography (fecundity-related behaviour can drift; mon
 generation). This is the arm closest to Auerbach, Kanarek & Burghardt 2015, who evolved rather
 than trained.
 
+The design for the runs (pre-evolution in founding epochs, neutral controls, H-h) was fixed in
+§4.4 on 2026-11-13, before any code or run.
+
 ### 1.8 Action space v2: movement form (P4-12, fixed 2026-11-09 before implementation)
 
 **Why.** Under detector rules v6 no simulator policy meets criterion 3 or 4 anywhere, the
@@ -1278,6 +1281,177 @@ read.
     earlier).
 - Exploratory: the object rises follow the contact share. The learned net's locomotor rise is
   more, shorter episodes over less fast locomotion.
+
+### 4.4 `evo`: inherited weights without reward (fixed 2026-11-13 before any code or run)
+
+**Why.**
+- `evo` is the last line that P4-15's stop rule left open. H-g and the playground-off arm are
+  answered (NOTES 2026-11-13). Jason chose `evo` on 2026-11-13.
+- It is the reward-free arm of PLAN §15.2 and §1.7:
+  - each mouse carries its own net;
+  - a newborn inherits a parent's net with mutation;
+  - selection is the frozen biology's births and deaths.
+
+  There is no reward, no learner, and no imitation of any policy.
+- *The question (H-h):* can selection without reward produce free-time episodes with a form
+  beyond the mechanical baseline (criterion 3)? Under rules v7–v9, whose form test runs
+  against a re-simulated even mix, no policy read on this substrate has met it: not the
+  heuristic, not the PPO nets, and not the random nets. Under v6, a random net met it only
+  through the mechanical baseline that v7 removed.
+- P4-4's own acceptance is kept: `evo` is deterministic, and the calibration guard is run and
+  reported.
+
+**The policy.**
+- *Genome per animal:* observation v5 (59 floats) → 32 tanh → 15 logits (action space v2).
+  - Layers: W1 59 × 32, b1 32, W2 32 × 15, b2 15, for 2,415 float32 values.
+  - The genomes live in a capacity-sized buffer of the policy, indexed by SoA slot.
+- *Choice:* the masked softmax of the animal's own logits, sampled by inverse CDF with one uniform
+  per deciding animal from the policy's sampling stream. The free-time sub-steps re-choose
+  (mode `auto`) on the sub-step stream, as for every net.
+- *Generation 0:* the codebase's random init with one hidden layer of 32: W1 orthogonal with gain
+  √2, W2 orthogonal with gain 0.01, zero biases. Choices start near uniform, like the random nets
+  of H-e and H-g.
+- **Inheritance: one parent per pup.**
+  - At conception the sire is drawn uniformly among the eligible males in the female's cell (the
+    frozen biology's candidates; with `biology.territories`, the owner). His genome is copied
+    into her pregnancy.
+  - At birth each pup copies the genome of one parent, the mother or the sire with probability ½
+    each, and N(0, 0.02²) is added to every value (Hamon, Nisioti & Moulin-Frier 2023).
+  - Both sexes are under selection. There is no blending and no crossover: blending halves the
+    genetic variance each generation, and crossing unrelated nets breaks them.
+- *Streams.* The sire, parent and mutation draws come from the policy's own genetics stream, in
+  biology order (conceptions in the breeding pass's order, pups in birth order). They never
+  touch the biology stream. For every other policy kind the hooks do nothing (bit-identical).
+- *Bookkeeping:* each genome carries its pedigree depth, the number of births along its line of
+  descent.
+
+**Pre-evolution: serial founding epochs** (a nursery for selection, on training seeds only).
+- *Why:* a 1,600-day canonical run holds about 5–6 generations before reproduction ceases
+  (around day 600), two orders of magnitude fewer than Hamon's about 1,500 (§1.7).
+- *An epoch* is the canonical substrate (`configs/default.yaml`, ABUND-PG, 6 ticks per day,
+  NumPy, 12 sub-steps).
+  - It starts with 8 founder pairs, 2 per corner cell. Calhoun's 4 pairs would give a smaller
+    effective population.
+  - It runs 360 days under the calibrated conception gate: phases A–C, before reproduction
+    ceases.
+- *The next epoch's founders:* 8 females and 8 males, drawn uniformly without replacement from
+  the adults (age ≥ maturity) alive on day 360, by sex.
+  - If fewer than 8 adults of a sex are alive, all of them are taken and the rest are drawn
+    again from them, with replacement.
+  - Their genomes carry over.
+  - Their age, drives and development restart as founders.
+- *Generation 0:* 16 independent random genomes per lineage.
+- *Length:* 150 epochs per lineage (54,000 simulated days; an estimated 300 generations along a
+  line of descent).
+- *Lineages:* 8 independent lineages (SEL 1–8).
+  - Lineage ℓ's streams come from `SeedSequence([7000 + ℓ − 1, stream])`.
+  - Its epochs' simulation seeds cycle through the training band 7000–7009.
+- *Ending:* a lineage that cannot found an epoch (no adult female or no adult male on day 360)
+  ends, and this is reported.
+
+**Neutral controls (NEU: no selection at all).**
+- For each lineage, a Wright–Fisher pool of 64 genomes evolves outside any simulation.
+  - Its generation 0 is SEL ℓ's 16 initial genomes.
+  - Each generation samples 64 parents with replacement and adds the same N(0, 0.02²) mutation.
+  - It runs G_ℓ generations, where G_ℓ is the mean pedigree depth of SEL ℓ's final pool
+    (rounded).
+- So NEU ℓ has the same founders, the same mutation and the same number of mutations along a
+  line of descent as SEL ℓ, without selection.
+- *What NEU measures:* what mutation accumulation alone does to free-time form.
+  - A net whose weights grow by drift can switch deterministically with its state: approach when
+    far from an object, back off when close.
+  - The form test's null is an even mix of the family's actions, not conditioned on state, so it
+    could read that switching as form.
+
+**Evaluation: the canonical world on fresh seeds 9889–9904.**
+- *Arms, per lineage ℓ:* each lineage uses its own 2 seeds, 9889 + 2(ℓ − 1) and the next, paired
+  across arms.
+  - SEL ℓ: founders drawn from SEL ℓ's final pool, the adults alive on the last epoch's day 360:
+    4 females from its adult females and 4 males from its adult males.
+  - NEU ℓ: 8 founders drawn from NEU ℓ's final pool.
+  - GEN0 ℓ: founders drawn from lineage ℓ's generation 0 (no evolution): 4 of its 8 female and 4
+    of its 8 male genomes.
+  - The need-driven control without sub-steps, on all 16 seeds (landmarks only, for the guard).
+- *Founder draws* come from `SeedSequence([seed, stream])`, without replacement.
+- *Runs:* Calhoun's 4 pairs for 1,600 d, as in H-g.
+  - 29 ten-day trace windows, every fourth individual, with episode rates in every window.
+  - Phases come from each run's landmarks.
+  - The rules-v9 detector vector (1,000 surrogates, at most 400 individuals, detector seed 0)
+    runs on the four windows of §4.3: middle of B, middle of C, peak + 150 and peak + 600.
+- 48 evo runs and 16 control runs.
+
+**Manipulation check: did selection adapt the colony?**
+- Per lineage, d_ℓ = SEL ℓ − GEN0 ℓ in N@315 (the mean of its 2 seeds). The test is an exact
+  sign-flip over the lineages, one-sided.
+- It passes if the mean d > 0 with p < 0.025.
+- If it fails, H-h is not read: it is untested, because selection did not adapt the colony.
+
+**H-h (decisive): selection without reward produces free-time form beyond mutation
+accumulation.**
+- *A reading* is one detector window × kind (object, locomotor) of an evaluation run with at
+  least 10 episodes of that kind.
+  - Criterion 3 under rules v9 is met or not. It needs the reversal fraction, its excess over
+    serious sequences, and the form test against the re-simulated even mix.
+- s_A(ℓ) is the share of arm A's readings for lineage ℓ with criterion 3 met.
+- d_ℓ = s_SEL(ℓ) − s_NEU(ℓ), over lineages with both shares defined. At least 6 lineages are
+  needed, else H-h is untested.
+- The test is an exact sign-flip over the lineages, one-sided.
+- **Supported** if the mean d > 0 with p < 0.025. **Falsified** if no SEL reading meets
+  criterion 3. **Not supported** otherwise.
+
+**H-d for `evo`** (P4-4's acceptance; reported, not decisive here). Guard v2 (§4.1) for SEL (16
+seeds, lineages pooled) against the need-driven control on the same seeds, with the amended H-d
+table beside it.
+
+**Reported beside** (not decisive).
+- *Pre-evolution, per epoch:*
+  - colony size on day 360, births and surviving births;
+  - founder depth;
+  - genome norms (|W1|, |W2|, |b2|);
+  - action shares.
+- *Per arm:*
+  - landmarks (median [range]);
+  - action shares: the free-time share, and the object and locomotor families;
+  - episode rates by phase (§4.3);
+  - the detector vector by window;
+  - criterion 4 shares;
+  - the form excess and its z per reading;
+  - GEN0's criterion-3 share.
+
+**Budget and stops.**
+- *Pre-evolution:* 8 lineages × 150 epochs, estimated at 0.5–2 CPU-h per lineage, at most
+  24 CPU-h. If the development smoke projects more, the number of epochs is cut to fit before
+  any lineage runs, and the cut is recorded.
+- *Evaluation:* 48 evo runs with detectors and 16 control runs, about 12 CPU-h.
+- At most 8 workers (the machine is shared).
+- *Stops:*
+  - a NaN;
+  - an H2 term;
+  - a failed determinism test;
+  - more than 2 lineages ending (stop and report).
+
+**Development.** A harness smoke on training seed 7000: at most 3 epochs of one lineage, and one
+canonical run of at most 300 d. It is for timing only; no statistic from it is read.
+
+**Not included.**
+- *SCARCE-PG:* in this world food scarcity acts through mortality and leaves the survivors fed
+  (NOTES 2026-11-08), so an evolutionary scarcity arm needs its own manipulation check. It is a
+  follow-up if H-h's manipulation check passes.
+- *Substrate variants:* playground off, ball physics, novelty-based curiosity.
+- *A PPO net as the starting genome:* no distillation or imitation of any kind.
+- *Recombination.*
+
+**Limits, recorded now.**
+- In the frozen biology curiosity and boredom have no fitness consequence. Free-time actions are
+  selected only indirectly, through time (feeding, nursing, mating) and place (the nest, mates,
+  crowding). Free time that is close to neutral makes SEL ≈ NEU the expected outcome.
+- About 300 generations, one hidden layer, one-parent inheritance and 16 founders per epoch mean
+  weak selection on small effects.
+- The epochs are neither Calhoun's start nor his full arc: selection acts in phases A–C only.
+- Sires are assigned by a uniform draw among the eligible males of the female's cell. This is
+  bookkeeping on the genetics stream; the biology is unchanged.
+- Calhoun did not score play. Criterion 3 is a candidate structural criterion, not play, and
+  PlayScore stays unvalidated.
 
 ## 5. Determinism (two tiers, never cross-tier identity)
 

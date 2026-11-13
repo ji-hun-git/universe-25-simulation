@@ -316,17 +316,28 @@ agent-steps, checkpoints, a run manifest (torch / CUDA / Warp / numpy versions, 
 
 ## P4-4 — `evo` policy (inherited weights, no reward)
 
-**Goal:** per-agent weights (obs → 32 → 11) in a capacity-sized buffer; at spawn the child gets
-the mother's weights (or the parents' mean) plus N(0, 0.02) drawn from the **sim** stream at the
-spawn point (biology-ordered, so determinism holds); no reward, no learner; per-generation
-fecundity monitor; pre-evolution in nursery worlds (P4-3) because 1600 days is only ~15 generations.
+> **Design fixed 2026-11-13** (`docs/PHASE4_DESIGN.md` §4.4, H-h), before any code or run.
+> The earlier sketch (the mother's weights or the parents' mean, pre-evolution in nursery
+> worlds) is replaced by one-parent inheritance and serial founding epochs.
 
-**Files:** `src/universe25/agents/policy.py`, `src/universe25/agents/state.py` (weights buffer),
-`src/universe25/sim.py` (`_spawn` inheritance hook), `tests/test_policy.py`
+**Goal:** a genome per mouse (observation v5 → 32 → 15) in a capacity-sized buffer.
+- A pup copies one parent's genome (mother or sire, ½ each) plus N(0, 0.02²), drawn from the
+  policy's own genetics stream in biology order. No reward, no learner.
+- Pre-evolution: 8 lineages × 150 founding epochs on training seeds.
+- Neutral controls matched in pedigree depth.
+- Evaluation on fresh seeds 9889–9904: the manipulation check, H-h and the guard.
+
+**Files:** `src/universe25/agents/evo.py`, `src/universe25/agents/policy.py`,
+`src/universe25/config.py` (`PolicyConfig`), `src/universe25/sim.py` (founding, conception and
+birth hooks), `src/universe25/learn/evolution.py`, `scripts/evolve.py`, `scripts/sweep_evo.py`,
+`scripts/analyse_evo.py`, `tests/test_evo.py`, `NOTES.md`, `docs/SEEDS.md`
 
 **Acceptance criteria:**
-- `test_determinism` passes for `evo`; calibration guard (P4-1) run and reported
-- H2 clean by construction (no reward code path at all)
+- `evo` bit-identical run to run for a fixed seed; every other kind bit-identical to before
+  (golden hashes)
+- H2 clean by construction (no reward code path at all; audit of the new modules)
+- pre-evolution, the manipulation check, H-h and the guard reported by the preregistered
+  rules, negatives included
 
 ---
 

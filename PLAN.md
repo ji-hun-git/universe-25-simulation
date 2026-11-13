@@ -207,6 +207,7 @@ Environment schema frozen after first successful long run + NOTES entry; learnin
 | H-e | Surplus-resource dependence by state (amended 2026-11-08): the learned policy's play-likeness rises with the share of animals in the relaxed field | per episode kind, the number of criteria met in a window (0–5, detector rules v5) rises with that window's relaxed share at matched phase | stratified permutation test (amendment below) | pooled within-stratum Kendall τ ≤ 0 for both kinds (τ > 0 without one-sided p < 0.025 = not supported) |
 | H-f | Structure, not frequency: learned policies' object interactions differ from the heuristic's in sequence statistics (criteria 3 / 4), not only in rate | criterion 3 / 4 detectors differ from `need_driven` at matched free-choice V | time-shuffled and drive-shuffled surrogate bands | no difference beyond the surrogate band |
 | H-g | Breakdown suppresses play-likeness: detector rates fall in phases C / D (stress, withdrawal) under every policy | monotone decline after the plateau | detectors by phase | rates rise in phase D |
+| H-h (added 2026-11-13, before any code or run) | Selection without reward shapes free time: inherited-weight evolution (`evo`) produces free-time episodes with a form beyond mutation accumulation | criterion 3 (rules v9) is met more often in evolved lineages than in neutral-mutation controls of the same pedigree depth | detector readings per lineage, sign-flip over lineages (`PHASE4_DESIGN.md` §4.4) | no evolved reading meets criterion 3 |
 | H-c (kept) | No play reward: any playground use is drive spillover unless criteria 3 / 4 show structure | code audit; H2 string audit over policy, observation and reward code | | any play-named term |
 
 **Amendment to H-d — ADOPTED 2026-11-06 (Jason; proposed the same day, before
@@ -383,6 +384,19 @@ development reading, before any evaluation seed.
     none is supported. With the playground off, object events vanish, locomotor episodes
     persist and rise through D under every policy, and every colony grows faster. Open next
     (Jason): `evo` (P4-4). NOTES 2026-11-13.
+- **`evo` and H-h (Jason chose `evo` 2026-11-13; fixed the same day before any code or run;
+  `PHASE4_DESIGN.md` §4.4).**
+  - *Policy:* a genome per mouse (observation v5 → 32 → 15). A pup copies one parent's genome
+    (mother or sire, ½ each) with N(0, 0.02²) on every value. No reward, no learner.
+  - *Pre-evolution:* 8 lineages × 150 founding epochs (8 pairs, 360 d, ABUND-PG, training
+    seeds).
+  - *Controls:* neutral Wright–Fisher pools matched in pedigree depth (NEU), generation 0
+    (GEN0), and the need-driven control.
+  - *Evaluation:* the canonical world on fresh seeds 9889–9904, 2 per lineage.
+  - *Manipulation check:* SEL − GEN0 in N@315 > 0, sign-flip p < 0.025, else H-h is not
+    read.
+  - *H-h:* the criterion-3 share SEL − NEU > 0 at sign-flip p < 0.025 (supported); no SEL
+    reading meets criterion 3 (falsified). The guard v2 verdict for `evo` is reported.
 
 ### 15.2 Arms
 
