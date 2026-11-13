@@ -45,7 +45,8 @@ passed to the generator, not simulation seeds.
 | 9877–9888 | evaluation, H-g and the playground-off arm (registered 2026-11-13, before use) | three policies × playground on / off, 1,600 d, the same seeds in every arm (`PHASE4_DESIGN.md` §4.3) |
 | 7000–7009 | `evo` pre-evolution (P4-4, registered 2026-11-13) | the founding epochs of the 8 lineages cycle over these sim seeds; lineage ℓ's own streams come from `SeedSequence([7000 + ℓ − 1, stream])` |
 | 9889–9904 | evaluation, `evo` and H-h (registered 2026-11-13, before use) | 2 seeds per lineage (9889 + 2(ℓ − 1) and the next), paired across SEL, NEU and GEN0; the need-driven control on all 16 (`PHASE4_DESIGN.md` §4.4) |
-| 9096–9099, 9112–9199, 9416–9499, 9905–9999 | **reserved, fresh** | substrate-variant confirmation (24 seeds per variant) and future references |
+| 9905–9928 | evaluation, the norm-matched check of criterion 3 and H-i (registered 2026-11-13, before use) | colony c on seed 9904 + c, the same seed in S0, S½ and S1; the jump from `SeedSequence([seed, 7_600_001])` (`PHASE4_DESIGN.md` §4.5) |
+| 9096–9099, 9112–9199, 9416–9499, 9929–9999 | **reserved, fresh** | substrate-variant confirmation (24 seeds per variant) and future references |
 
 ## Random-network init seeds (`MlpFrozenPolicy.random_init(s)`)
 

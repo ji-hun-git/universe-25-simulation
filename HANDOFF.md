@@ -99,7 +99,9 @@
 >   - `evo` and H-h (P4-4, 2026-11-13; `docs/PHASE4_DESIGN.md` §4.4): selection adapts the
 >     colony (N@315 above generation 0 in 8 of 8 lineages), but **H-h is not supported**.
 >     Criterion 3 is met as often under mutation alone (22 of 114 readings) as under
->     selection (18 of 125). Guard v2 is inconclusive. Next: Jason's call.
+>     selection (18 of 125). Guard v2 is inconclusive.
+>   - Next (Jason, 2026-11-13): the norm-matched check of criterion 3, preregistered as H-i in
+>     `docs/PHASE4_DESIGN.md` §4.5 (card P4-17).
 > - Tier 2 done (2026-11-11): P4-15 failed its primary test, and the program-level stop rule
 >   applies (no further substrate change for PPO learners). Next: H-g / playground-off, `evo`,
 >   or replica v2 (Tier 3) — Jason's call.

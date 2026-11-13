@@ -1465,6 +1465,118 @@ canonical run of at most 300 d. It is for timing only; no statistic from it is r
   control.
 - *Guard:* v2 is inconclusive. The amended H-d table is not preserved: N@315 is 830 above the
   control, and the decline band at day 1,200 is missed (0.338 against 0.35–0.85).
+- Follow-up (Jason, 2026-11-13): the norm-matched check of criterion 3, §4.5 (H-i).
+
+### 4.5 The norm-matched check of criterion 3 (H-i; fixed 2026-11-13 before any code or run)
+
+**Why.**
+- In H-h (§4.4, NOTES 2026-11-13), criterion 3 (rules v9) was met by evolved nets (18 of 125
+  readings) and by neutral-drift nets (22 of 114), and never by generation 0 (0 of 128). Jason
+  chose this check on 2026-11-13.
+- Generation 0 and the drifted nets differ in two ways.
+  - *Weight size:* |W2| is 0.04 against about 7, and |W1| 8 against about 16.
+  - *History:* a drifted pool is a genealogy of related genomes. The pairwise correlation of W2
+    is 0.91–0.98 within the evolved pools and 0.46–0.82 within the neutral pools, against about
+    0 in generation 0.
+- *The question (H-i):* does weight size alone produce criterion 3?
+  - If it does, criterion 3 met by a net says how large and state-dependent its weights are, and
+    any reading of it on nets needs a control at matched size.
+  - It would also explain H-h's SEL ≈ NEU without any genealogy.
+
+**The arms: one random jump per colony, at three sizes.**
+- *Colonies:* c = 1 … 24, colony c on seed 9904 + c.
+  - Its lineage is ℓ(c) = ((c − 1) mod 8) + 1.
+  - Its base genome b_c is genome (c − 1) div 8 (0, 1 or 2) of lineage ℓ's generation-0 pool
+    (`_output/evo/lineage_ℓ/pool_gen0.npz`).
+- *The jump:* ε_c is one standard normal per value (2,415), drawn from
+  `SeedSequence([9904 + c, 7_600_001])`.
+- *The genome at size λ:* g_c(λ) = b_c + λ · 0.02 · √G_ℓ · ε_c, cast to float32. G_ℓ is the number
+  of generations of lineage ℓ's neutral pool (226–263).
+  - At λ = 1 every value has the variance it has in NEU ℓ after G_ℓ generations: one random jump
+    of the drift's size, without its genealogy and without selection.
+  - At λ = 0 the genome is generation 0.
+- *Arms:* S0 (λ = 0), S½ (λ = ½) and S1 (λ = 1). Within a colony the arms share the base genome,
+  the jump's direction and the seed; only the size of the jump differs.
+- *Founders: one genome per colony.* All 8 founders (4 females, 4 males) carry g_c(λ). Pups then
+  copy a parent with N(0, 0.02²), as in H-h.
+  - This makes each colony one net type, so the colonies are independent units.
+  - It matches the evolved pools' near-clonal structure, and the shared net of a PPO learner.
+  - It does not match the neutral pools' looser relatedness (see the limits).
+
+**Evaluation:** H-h's pipeline unchanged.
+- Calhoun's 4 pairs for 1,600 d: 6 ticks per day, NumPy, 12 sub-steps.
+- 29 ten-day trace windows, every fourth individual, with episode rates in every window.
+- The rules-v9 detector vector (1,000 surrogates, at most 400 individuals, detector seed 0) on
+  the four windows of §4.3: middle of B, middle of C, peak + 150 and peak + 600.
+- 72 runs.
+
+**H-i (decisive): criterion 3 on nets follows weight size.**
+- *A reading* is one detector window × kind (object, locomotor) of a run with at least 10
+  episodes of that kind, as in H-h.
+- s_λ(c) is the share of colony c's readings at size λ with criterion 3 met.
+- d_c = s_1(c) − s_0(c), over the colonies with both shares defined. At least 16 colonies are
+  needed, else H-i is untested.
+- The test is an exact sign-flip over the colonies, one-sided. It is the test of §4.3 and §4.4,
+  computed without the 2^n × n pattern matrix (24 colonies would need 3 GB).
+- **Supported** if the mean d > 0 with p < 0.025. **Falsified** if no S1 reading meets
+  criterion 3. **Not supported** otherwise.
+- *Power, recorded now:* in H-h about half of the colonies had a criterion-3 reading (SEL 8 of
+  16, NEU 6 of 16). If net types at the drifted size behave alike, about 10 of 24 S1 colonies
+  would. If S0 has none, the test needs 6 (p = 1/64).
+
+**Reported beside** (not decisive).
+- *The dose:*
+  - s_½ per colony;
+  - the paired differences S½ − S0 and S1 − S½ (sign-flip);
+  - per arm, the number of colonies with at least one criterion-3 reading.
+- *Per reading:* criterion 4, all five flags, and the form excess and its z.
+- *Per arm:*
+  - the detector vector by window;
+  - the genome norms, against NEU ℓ's;
+  - landmarks (median [range]);
+  - action shares of the trace rows;
+  - episode rates by phase.
+- *H-h's NEU and SEL shares beside S1.* These are other seeds and another population structure,
+  so the comparison is descriptive only.
+
+**What each outcome means** (recorded now).
+- *Supported:* criterion 3 on a net is a function of its weight size.
+  - Any reading of it on nets needs a random control at matched per-layer size and matched
+    population structure.
+  - Weight size also explains SEL ≈ NEU in H-h.
+- *Falsified:* weight size alone does not produce it. The drifted pools' criterion 3 then needs
+  their history or their relatedness, and a follow-up would have to say which.
+- *Not supported:* inconclusive at this size.
+
+**Budget and stops.**
+- 72 runs, about 15 CPU-h, at most 8 workers (about 2 h).
+- *Stops:*
+  - a NaN;
+  - an H2 term;
+  - a failed determinism test;
+  - fewer than 16 colonies with readings at both S0 and S1 (H-i is untested: stop and report).
+
+**Development.** A harness smoke on training seed 7000: one colony per arm, at most 300 d. It is
+for timing only; no statistic from it is read.
+
+**Not included.**
+- *Multiplying generation 0's weights:* its biases are zero and its W2 is orthogonal, so scaling
+  cannot reach the drifted biases.
+- *Unrelated founders:* a follow-up if the result calls for it.
+- Other architectures, and any selection.
+
+**Limits, recorded now.**
+- The jump matches NEU's per-value variance, not its genealogy.
+  - A colony here is one net type. A NEU colony mixes related genomes.
+  - In H-h, criterion 3 was common in NEU lineages 3 and 4, whose pools are the least related
+    (0.49 and 0.46), so relatedness may not be needed. This design does not test it.
+- Seeds 9905–9928 are fresh. H-h's readings are on other seeds, so comparisons with them are
+  descriptive.
+- Three sizes and one architecture (observation v5 → 32 → 15) only.
+- In-run mutation adds about 0.05 per value over 5–6 generations. That is small against the
+  jump at λ = 1 (sd about 0.31), but larger than generation 0's W2 entries, so S0 colonies drift
+  a little during the run, as GEN0 did in H-h.
+- Criterion 3 is a candidate structural criterion, not play, and PlayScore stays unvalidated.
 
 ## 5. Determinism (two tiers, never cross-tier identity)
 

@@ -663,6 +663,25 @@ needs a form, as P4-15's stop rule directs. Design: `docs/PHASE4_DESIGN.md` §4.
 
 ---
 
+## P4-17 — Norm-matched check of criterion 3 (H-i)
+
+**Goal:** test whether weight size alone produces criterion 3 on nets (H-i), after H-h found
+it in neutral-drift nets as often as in evolved ones. Design: `docs/PHASE4_DESIGN.md` §4.5
+(fixed 2026-11-13 before any code or run).
+
+**Files:** `src/universe25/agents/evo.py` (the jump genome),
+`src/universe25/metrics/phase_rates.py` (the exact sign-flip without the pattern matrix),
+`scripts/sweep_nm.py`, `scripts/analyse_nm.py`, `tests/test_evo.py`,
+`tests/test_phase_rates.py`, `NOTES.md`, `docs/SEEDS.md`
+
+**Acceptance criteria:**
+- 72 runs on seeds 9905–9928; H-i answered by the preregistered rule; the dose and the genome
+  norms reported
+- every other kind bit-identical (golden fast tier); `tests/run_tests.py` green; H2 audit
+  clean; negatives reported
+
+---
+
 ## P4-6 — Phase 4 sweep harness
 
 > **2026-11-08:** survival condition decided (H-e amended to a state-based dose-response, PLAN

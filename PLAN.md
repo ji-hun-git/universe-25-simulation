@@ -208,6 +208,7 @@ Environment schema frozen after first successful long run + NOTES entry; learnin
 | H-f | Structure, not frequency: learned policies' object interactions differ from the heuristic's in sequence statistics (criteria 3 / 4), not only in rate | criterion 3 / 4 detectors differ from `need_driven` at matched free-choice V | time-shuffled and drive-shuffled surrogate bands | no difference beyond the surrogate band |
 | H-g | Breakdown suppresses play-likeness: detector rates fall in phases C / D (stress, withdrawal) under every policy | monotone decline after the plateau | detectors by phase | rates rise in phase D |
 | H-h (added 2026-11-13, before any code or run) | Selection without reward shapes free time: inherited-weight evolution (`evo`) produces free-time episodes with a form beyond mutation accumulation | criterion 3 (rules v9) is met more often in evolved lineages than in neutral-mutation controls of the same pedigree depth | detector readings per lineage, sign-flip over lineages (`PHASE4_DESIGN.md` §4.4) | no evolved reading meets criterion 3 |
+| H-i (added 2026-11-13, before any code or run) | Criterion 3 on nets follows weight size: generation-0 nets given one random jump the size of the neutral pools' drift meet it, and generation 0 itself does not | criterion 3 (rules v9) is met more often at the drifted size than at generation 0's, colony by colony | detector readings per colony, sign-flip over colonies (`PHASE4_DESIGN.md` §4.5) | no reading at the drifted size meets criterion 3 |
 | H-c (kept) | No play reward: any playground use is drive spillover unless criteria 3 / 4 show structure | code audit; H2 string audit over policy, observation and reward code | | any play-named term |
 
 **Amendment to H-d — ADOPTED 2026-11-06 (Jason; proposed the same day, before
@@ -401,6 +402,13 @@ development reading, before any evaluation seed.
     not supported.** Criterion 3 is met in 18 of 125 SEL readings and 22 of 114 NEU readings
     (mean d −0.062, p(rise) 0.66), and never in GEN0. Guard v2 for `evo` is inconclusive, and
     the amended H-d table is not preserved. NOTES 2026-11-13.
+- **The norm-matched check of criterion 3 and H-i (Jason chose it 2026-11-13; fixed the same
+  day before any code or run; `PHASE4_DESIGN.md` §4.5).**
+  - *Arms:* 24 colonies on fresh seeds 9905–9928. All 8 founders of a colony share one
+    genome: a generation-0 genome plus λ times one random jump with the variance of its
+    lineage's neutral drift, for λ = 0, ½ and 1. The jump is the same in every arm.
+  - *H-i:* the criterion-3 share at λ = 1 minus that at λ = 0, colony by colony. Supported if
+    the mean > 0 at sign-flip p < 0.025; falsified if no λ = 1 reading meets criterion 3.
 
 ### 15.2 Arms
 
