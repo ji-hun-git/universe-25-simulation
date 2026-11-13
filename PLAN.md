@@ -424,6 +424,10 @@ development reading, before any evaluation seed.
     H-j is not read.
   - *H-j:* the free-time share SCARCE − ABUND < 0 at p(fall) < 0.025 (supported), or > 0 at
     p(rise) < 0.025 (falsified).
+  - **Result (2026-11-14): the manipulation check fails (3 of 8 lineages, p(rise) 0.36); H-j
+    is untested.** Food for 100 animals held every scarce colony at its limit with fed
+    survivors. In the common garden, voluntary foraging rose clearly in only 2 lineages.
+    NOTES 2026-11-14.
 
 ### 15.2 Arms
 

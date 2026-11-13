@@ -1791,6 +1791,30 @@ no statistic from it is read.
 - The time budget counts choices, not their consequences. Calhoun did not score play, nothing
   here is play, and PlayScore stays unvalidated.
 
+**Result (2026-11-14, NOTES): the manipulation check fails; H-j is untested.**
+- All 8 scarce lineages reached G_ℓ, in 143–164 epochs, and no stop rule fired. 48 runs; none
+  died out, and no window was empty.
+- *The epochs:* the limit held every colony at about its capacity (88–100 weaned animals on
+  day 360 over the last 10 epochs), and the survivors stayed fed (mean hunger 0.32–0.44).
+  - In lineages 1, 2, 5, 6 and 7, 0.6–0.8 % of weaned animals were above the reflex on an
+    average day.
+  - In lineages 3, 4 and 8, at most 0.14 % were.
+- *Manipulation check:* d^F is positive in 3 of 8 lineages (mean +0.016, p(rise) 91/256 =
+  0.36). So it fails, and H-j is not read. An independent re-derivation from the raw traces
+  gives the same numbers.
+- *Beside:*
+  - The garden's d^F follows the two lines' foraging difference in their own epochs (r +0.88
+    over the lineages). Foraging rose clearly in 2 lineages (5 and 6).
+  - In every lineage the two seeds agree in the sign of d^F and d^T, but the direction differs
+    between lineages. The scarce line has more AGGRESS in 4 lineages, more BACK_OFF in 6, and
+    less of the other free-time actions in most. Against NEU, neither line moves F or T at
+    p < 0.025.
+  - 5 of the 16 SCARCE colonies never boom: lineages 3 and 4, and one run of lineage 8.
+  - Criterion 3 is met in 37 of 61 SCARCE locomotor readings, 21 of 64 ABUND and 12 of 59 NEU,
+    mostly as a TURN_BACK preference (P4-18).
+  - *Exploratory:* scarce lineage 6 has locomotor order beyond its mix on both seeds (order
+    excess +0.10 to +0.18). No earlier reading on nets went above +0.072.
+
 ## 5. Determinism (two tiers, never cross-tier identity)
 
 - **Reference tier (NumPy, CPU):** `need_driven`, `mlp_frozen` and `evo` are bit-identical run

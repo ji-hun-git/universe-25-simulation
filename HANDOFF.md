@@ -110,8 +110,13 @@
 >     at least 0.5 in 48 of the 63 readings that meet it, and in none of the other 327. A null
 >     drawn from the animal's own moves would remove every locomotor reading. So criteria 3
 >     and 4 on nets need random nets of matched size, with the mix reported.
->   - Next (Jason, 2026-11-14): SCARCE-PG `evo`, preregistered as H-j in
->     `docs/PHASE4_DESIGN.md` §4.6 (card P4-19).
+>   - SCARCE-PG `evo` and H-j (P4-19, 2026-11-14; `docs/PHASE4_DESIGN.md` §4.6): food for 100
+>     animals held every scarce colony at its limit, with fed survivors. But **the
+>     manipulation check fails**: voluntary foraging is above ABUND in 3 of 8 lineages
+>     (p 0.36), so **H-j is untested**. Selection raised foraging clearly in 2 lineages.
+>     Exploratory: one scarce lineage shows locomotor order beyond its move mix.
+>   - Next: Jason's call. NOTES 2026-11-14 lists three options: a hungrier scarcity, a
+>     competition assay in the scarce world, and lineage 6's order.
 > - Tier 2 done (2026-11-11): P4-15 failed its primary test, and the program-level stop rule
 >   applies (no further substrate change for PPO learners). Next: H-g / playground-off, `evo`,
 >   or replica v2 (Tier 3) — Jason's call.
@@ -930,6 +935,7 @@ in the peak count (N@736 3–4 % low) and the slow realisations' late tail (N@14
 - [x] `evo` (P4-4, 2026-11-13: 8 lineages × 150 founding epochs; the manipulation check passes, H-h not supported (criterion 3 in 18 / 125 evolved and 22 / 114 neutral readings, never in generation 0); guard v2 inconclusive, amended H-d not preserved)
 - [x] Norm-matched check of criterion 3 (P4-17, 2026-11-13: H-i supported at the smallest detectable margin, 6 of 17 colonies, p 1/64; criterion 3 on nets follows weight size)
 - [x] State-conditioned null for the form test (P4-18, 2026-11-14: not built; locomotor criterion 3 on nets reads the primitive mix, a TURN_BACK preference)
+- [x] SCARCE-PG `evo` (P4-19, 2026-11-14: 8 scarce lineages matched in generations; the manipulation check fails (3 of 8 lineages, p 0.36), so H-j is untested; one scarce lineage shows locomotor order beyond its mix)
 - [x] Burghardt detectors per criterion with synthetic ground truth, ≥ 1,000 surrogates, thresholds fixed before any evaluation seed; V hopper fix (P4-5, 2026-11-06: rules v3 pass 12 / 12 preregistered checks on fresh seeds after v1 (11 / 12) and a falsifier failure in v2, all recorded; on the simulator both policies are non-functional and spontaneous but single-decision, so criteria 3 / 4 are not evaluable at 6 decisions per day) — **PlayScore eval-only, unvalidated**
 - [x] Finer decision grain for free-time behaviour (P4-8, 2026-11-06: `free_substeps`, `policy.substep_mode`; heuristic continue mode within 2 % of the control on every resolvable landmark, N@315 +13 % at one paired se; detectors have support; no arm meets all five criteria)
 - [x] H-d amendment adopted 2026-11-06 (drift > 10 % and > 2 paired se; heuristic with 12 sub-steps in continue mode preserved, random MLP not)

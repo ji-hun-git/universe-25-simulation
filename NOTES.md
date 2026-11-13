@@ -1,5 +1,277 @@
 # Universe25 Play — NOTES
 
+## 2026-11-14 — SCARCE-PG `evo` and H-j: food for 100 animals holds every scarce colony at its limit, but selection under it does not raise voluntary foraging in the common garden; the manipulation check fails, so H-j is untested
+
+**Question.**
+- H-j (PLAN §15.1, added 2026-11-14 before any code or run): survival pressure selects against
+  free time. Lineages evolved under food scarcity should spend less of their free choices in
+  free time than lineages evolved from the same founders under abundance. This is Burghardt's
+  surplus-resource theory as a time budget.
+- Its operationalization was fixed in `docs/PHASE4_DESIGN.md` §4.6 (dc979b4) before any code or
+  run. The tooling was committed before any lineage or evaluation seed was run (c1dbaba).
+- *Pre-evolution:*
+  - 8 lineages from the 16 generation-0 genomes of H-h's lineages, in H-h's epochs (8 pairs,
+    360 d, training seeds 7000–7009);
+  - food for 100 animals a day (the capacity rule), shared by weaned occupancy, with a scramble
+    at the hopper;
+  - each lineage runs until its day-360 adults reach the pedigree depth G_ℓ of H-h's lineage
+    (226–263), so both lines carry the same number of mutations.
+- *The common garden:* the canonical world (ABUND-PG, 1,600 d) on fresh seeds 9929–9944, 2 per
+  lineage, paired across three arms:
+  - SCARCE: 4 F + 4 M from the scarce lineage's final pool;
+  - ABUND: 4 F + 4 M from H-h's final pool;
+  - NEU: 8 founders from H-h's neutral pool.
+- *The two shares,* over the rows where a free action was eligible (weaned, no reflex):
+  - F: the FORAGE share;
+  - T: the share of the simulator's free-time actions (EXPLORE, SOCIAL, RUN_ON, TURN_BACK,
+    MANIPULATE, BACK_OFF and CIRCLE).
+
+  A run's share is the mean over its entered windows; a lineage's is the mean of its 2 runs.
+- *Decisions:*
+  - the manipulation check: d^F = F(SCARCE) − F(ABUND) > 0 at a one-sided exact sign-flip
+    p < 0.025 over at least 6 lineages. If it fails, H-j is untested.
+  - H-j: d^T = T(SCARCE) − T(ABUND). **Supported** if the mean d^T < 0 at p(fall) < 0.025;
+    **falsified** if it is > 0 at p(rise) < 0.025; **not supported** otherwise.
+
+**Run.**
+- *Pre-evolution:* all 8 lineages reached G_ℓ, in 143–164 epochs (1.43–1.84 generations per
+  epoch; H-h's 150 epochs gave 1.51–1.75). It took 2,469 s wall on 8 workers (4.9 CPU-h). No
+  lineage ended or reached 400 epochs.
+- *Evaluation:* 48 runs, 4,112 s wall on 8 workers (8.8 CPU-h, against the 7 estimated).
+- No stop rule fired: no NaN, no H2 term, no failed determinism test, no lineage ended.
+  - No run died out before day 1,600, and no window was empty.
+  - Every run has 15–29 entered windows.
+- The log shows the same RuntimeWarnings as H-g and H-h (overflow in `hypot`, invalid value in
+  subtract). They come from the `np.empty` padding in `detectors.form_resim`; H-h checked that
+  they leave the output unchanged.
+
+**Pre-evolution** (reported beside).
+- *The colony on day 360* (mean of the first 10 epochs → mean of the last 10):
+  - N went from 123–145 to 109–160, and the weaned count from 82–98 to 88–100.
+  - H-h's line over the same generations went from 238–396 to 600–2,584.
+  - So the limit held every scarce colony at about its capacity.
+  - Births per epoch went from 881–1,020 to 639–1,124. The epoch's peak went from 170–187 to
+    186–306.
+- *The hunger probes* (weaned animals, daily, over each epoch's second half):
+  - In every epoch the survivors were fed on average. The weaned animals' mean hunger in the
+    second half was 0.32–0.44 over all 1,218 epochs, as the spec recorded.
+  - *First 10 epochs:* every lineage stayed below the limit on average (52–68 weaned in the
+    second half). At most 0.07 % of weaned animals were above the forced-foraging reflex
+    (hunger 0.85).
+  - *Last 10 epochs, lineages 1, 2, 5, 6 and 7:* the colony lived at the limit (89–96 weaned
+    on average).
+    - On an average day, 0.61–0.84 % of weaned animals were above the reflex and 0.05–0.09 %
+      above starvation (1.2).
+    - The worst day of an epoch had 3.3–8.9 % above starvation (mean over the 10 epochs).
+  - *Last 10 epochs, lineages 3, 4 and 8:* the animals were rarely hungry (58–88 weaned). At
+    most 0.14 % were above the reflex, and the worst day had at most 0.7 % above starvation.
+  - The development look had found 2.7 % above the reflex for H-h's evolved founders put at the
+    same limit (one run on seed 7000, sampled every 10 days). The scarce line's own colonies, at
+    the end, were hungry less often than that.
+- *Executed-action shares over evolution* (all animals and ticks of an epoch, pups and reflexes
+  included, so not the garden's shares):
+  - FORAGE went from 0.137–0.147 to 0.126–0.196 (H-h's last 10 epochs: 0.138–0.170);
+  - free time went from 0.161–0.167 to 0.053–0.184 (H-h: 0.107–0.184).
+  - In the last 10 epochs, FORAGE was above H-h's in lineages 1, 2, 5 and 6: by at most 0.015
+    in 1 and 2, and by 0.039 and 0.041 in 5 and 6. Free time was below H-h's in 7 lineages.
+  - The two lines lived in different worlds, at about 100–160 against 600–2,600 animals, so
+    these differences are not a test.
+- *Genome norms of the final pools:*
+
+  | arm | W1 | W2 |
+  |---|---|---|
+  | SCARCE | 15.0–16.2 | 6.7–7.3 |
+  | ABUND | 15.3–16.4 | 6.7–7.2 |
+  | NEU | 15.2–16.1 | 6.5–7.2 |
+
+  Matched in generations, the three arms are matched in weight size. So NEU is the matched-size
+  random control that criteria 3 and 4 on nets need (H-i, P4-18).
+
+**Result 1: the manipulation check fails.**
+
+| lineage | F SCARCE | F ABUND | d^F | T SCARCE | T ABUND | d^T (not read) |
+|---|---|---|---|---|---|---|
+| 1 | 0.039 | 0.045 | −0.006 | 0.439 | 0.356 | +0.083 |
+| 2 | 0.012 | 0.037 | −0.025 | 0.184 | 0.329 | −0.145 |
+| 3 | 0.008 | 0.034 | −0.026 | 0.248 | 0.468 | −0.220 |
+| 4 | 0.074 | 0.054 | +0.020 | 0.135 | 0.351 | −0.215 |
+| 5 | 0.196 | 0.089 | +0.107 | 0.225 | 0.333 | −0.108 |
+| 6 | 0.218 | 0.013 | +0.205 | 0.391 | 0.213 | +0.179 |
+| 7 | 0.070 | 0.118 | −0.048 | 0.408 | 0.351 | +0.058 |
+| 8 | 0.004 | 0.106 | −0.103 | 0.611 | 0.359 | +0.252 |
+
+Each value is the mean of the lineage's 2 seeds.
+- The mean d^F is +0.016 ± 0.034. 3 of the 8 lineages are positive, and p(rise) is 91/256 =
+  0.36.
+- So the check fails. By the preregistered rule, H-j is not read: **H-j is untested.**
+- An independent re-derivation from the raw trace files gives the same per-lineage shares (max
+  difference 0) and the same p-values. It uses its own trace reading, eligibility, phases and
+  entered rule, and computes the sign-flip by enumeration in exact fractions.
+- The d^T column is shown for completeness, not read: mean −0.015 ± 0.064, 4 lineages negative,
+  p(fall) 13/32 = 0.41.
+- *Exploratory:* in every lineage the two seeds agree in the sign of d^F, and of d^T. So each
+  lineage's difference is a property of its pools; it is the direction that varies between
+  lineages.
+
+**Where the scarce line differs** (reported beside).
+- *Against drift (NEU),* paired by lineage:
+  - F: SCARCE − NEU −0.007 (p(rise) 0.58); ABUND − NEU −0.023 (p(rise) 0.78).
+  - T: SCARCE − NEU −0.082 (p(fall) 0.16); ABUND − NEU −0.067 (p(fall) 0.11).
+  - Neither line differs from drift in F or T at p < 0.025.
+- *T within relaxed rows and within the other eligible rows:* SCARCE − ABUND +0.014 (p(fall)
+  0.58) and −0.017 (p(fall) 0.40).
+- *The whole budget* (each action's share of the eligible rows: the mean over lineages of each
+  lineage's share; `scripts/scarce_beside.py`):
+
+  | action | SCARCE | ABUND | NEU | lineages SCARCE > ABUND |
+  |---|---|---|---|---|
+  | AGGRESS | 0.205 | 0.074 | 0.066 | 4 |
+  | BACK_OFF | 0.187 | 0.061 | 0.093 | 6 |
+  | NEST | 0.187 | 0.265 | 0.135 | 3 |
+  | FORAGE | 0.078 | 0.062 | 0.085 | 3 |
+  | DRINK | 0.077 | 0.056 | 0.077 | 4 |
+  | REST | 0.057 | 0.082 | 0.118 | 2 |
+  | WITHDRAW | 0.035 | 0.084 | 0.090 | 3 |
+  | CIRCLE | 0.033 | 0.031 | 0.037 | 4 |
+  | TURN_BACK | 0.029 | 0.058 | 0.055 | 2 |
+  | SOCIAL | 0.027 | 0.057 | 0.046 | 2 |
+  | NURSE | 0.026 | 0.023 | 0.008 | 3 |
+  | MANIPULATE | 0.020 | 0.049 | 0.057 | 2 |
+  | EXPLORE | 0.019 | 0.044 | 0.056 | 1 |
+  | RUN_ON | 0.014 | 0.045 | 0.068 | 2 |
+  | MATE | 0.006 | 0.009 | 0.010 | 4 |
+
+  - The scarce line fights more in lineages 3, 4, 7 and 8 (0.21–0.59 of the eligible rows,
+    against 0.01–0.19 in ABUND). It backs off from the objects more in 6 lineages.
+  - Most other free-time actions are lower in most lineages.
+  - So T has another composition: BACK_OFF is about 57 % of SCARCE's free time, against 18 % of
+    ABUND's.
+  - BACK_OFF is allowed wherever MANIPULATE is (anywhere while the playground is on). It moves
+    the animal away from the nearest object.
+  - Pooling the rows over runs (`analyse_scarce.py`'s table) weights the large colonies. It
+    shows the same BACK_OFF excess (0.199 against 0.057), but less of the AGGRESS excess (0.093
+    against 0.072), which sits in small colonies.
+- *Exploratory: the garden follows the epochs.*
+  - Over the 8 lineages, the garden's d^F correlates +0.88 with the two lines' FORAGE difference
+    in their last 10 epochs, and d^T correlates +0.87 with their free-time difference.
+  - The two lineages whose foraging rose most in the epochs (5 and 6) have the largest d^F
+    (+0.107 and +0.205).
+  - So the check fails in the evolution, not in the garden: the selection under this limit
+    raised foraging clearly in 2 of the 8 lineages.
+  - In the five lineages that lived at the limit with bouts of hunger (1, 2, 5, 6 and 7), d^F is
+    positive in 2.
+- *Episode rates by phase* (episodes per weaned individual-day, B / C / D):
+
+  | arm | object | locomotor |
+  |---|---|---|
+  | SCARCE | 0.033 / 0.038 / 0.036 | 0.690 / 0.661 / 0.703 |
+  | ABUND | 0.075 / 0.115 / 0.102 | 0.884 / 0.960 / 0.919 |
+  | NEU | 0.143 / 0.132 / 0.151 | 1.055 / 1.053 / 1.063 |
+
+  The scarce line has the fewest episodes of both kinds.
+
+**Criteria 3 and 4, with the locomotor mix** (reported beside; rules v9; each window counted
+once).
+- Criterion 1 is met in 0.60–1.00 of the readings per window, criterion 2 in all, and criterion
+  5 in at most 0.20. Criterion 4 agrees with criterion 3 in all 344 readings.
+- *Criterion 3:*
+  - locomotor: SCARCE 37 of 61 readings, ABUND 21 of 64, NEU 12 of 59;
+  - object: SCARCE 0 of 43, ABUND 2 of 61, NEU 4 of 56 (all NEU lineage 4, both seeds).
+  - SCARCE meets it in 7 lineages (all but 1), ABUND in 7 (all but 4), and NEU only in
+    lineages 3 and 4.
+- *The mix* (`scripts/form_mix.py --sweeps scarce_sweep`; P4-18):
+  - The rebuilt reversal fractions equal the stored ones.
+  - The locomotor readings that meet criterion 3 have a median TURN_BACK share of the episodes'
+    own moves of 0.59 (SCARCE), 0.59 (ABUND) and 0.51 (NEU), against 0.29, 0.35 and 0.23 in
+    the readings that do not.
+  - A share of at least 0.5 occurs in 49 of the 70 readings that meet criterion 3, and in 5 of
+    the other 114.
+  - The reversal fraction follows the closing moves' shares (R² 0.984 over 184 readings).
+  - Over the whole budget, TURN_BACK is 0.47 of the locomotor moves in SCARCE, 0.39 in ABUND and
+    0.31 in NEU, the order of their criterion-3 counts.
+  - So here too, criterion 3 on nets mostly reads a TURN_BACK preference. Against NEU, the
+    matched-size random control, the scarce line has more of that preference and more
+    criterion 3. No test was preregistered on this.
+- *Exploratory: order beyond the mix in scarce lineage 6.*
+  - On both seeds, 6 of its locomotor readings have an order excess of +0.10 to +0.18 (z
+    5.0–9.3). 3 of them meet criterion 3.
+  - In them TURN_BACK closes more direction pairs than its share of the moves gives: by 0.20 at
+    the median of the lineage's readings, against 0.01 in the others. It tends to follow a
+    directed move, a run-and-turn-back alternation.
+  - The largest order excess among the 390 locomotor readings of H-h and H-i was +0.072. Here
+    ABUND's largest is +0.044 and NEU's +0.062.
+  - One lineage cannot say whether scarcity selected this order. It is a sequence statistic of
+    one net's moves, not play.
+
+**Landmarks** (median [range] over the 16 runs of each arm).
+
+| arm | N@315 | peak N | peak day | last young | last conception | N@1,444 | N@1,588 |
+|---|---|---|---|---|---|---|---|
+| SCARCE | 910 [86, 1,688] | 2,161 [231, 2,589] | 497 [384, 1,585] | 949 [409, 1,578] | 1,081 [832, 1,599] | 80 [36, 1,610] | 38 [6, 1,737] |
+| ABUND | 1,381 [101, 1,816] | 2,428 [1,757, 2,706] | 504 [395, 1,029] | 574 [405, 1,575] | 880 [823, 1,599] | 100 [44, 983] | 28 [7, 706] |
+| NEU | 227 [15, 713] | 2,130 [127, 2,468] | 784 [495, 1,585] | 1,235 [563, 1,578] | 1,318 [944, 1,599] | 600 [13, 1,678] | 340 [4, 2,053] |
+
+First litters fall on days 102–103 in every arm.
+- ABUND and NEU come out close to H-h's SEL and NEU on fresh seeds (H-h: N@315 1,372 and 178,
+  peak N 2,449 and 2,150).
+- *Five of the 16 SCARCE runs never boom:*
+  - both runs of lineages 3 and 4, and lineage 8 on seed 9943, peak at 231–609;
+  - lineage 8's other run grows slowly, to 1,605 on day 1,585.
+  - These are the three lineages whose scarce animals were rarely hungry in the epochs.
+  - Their budgets are extreme: lineages 3 and 4 fight in 0.43 and 0.59 of the eligible rows,
+    and lineage 8 backs off in 0.43.
+- ABUND booms in all 16 runs (peak ≥ 1,757), and NEU in 14.
+- The scarce line's other five lineages boom like ABUND (peaks 2,033–2,589).
+- This run cannot say whether the limit selected the slow growth of lineages 3, 4 and 8 or only
+  stopped selecting for fast growth.
+
+**What this means.**
+- Food for 100 animals held every scarce colony at about its limit. But selection under it
+  clearly raised voluntary foraging in only 2 of 8 lineages (5 and 6). The design's reading of
+  this outcome, recorded in advance, holds:
+  - scarcity as it acts in this world (through mortality, with fed survivors) did not raise
+    voluntary foraging against abundance in these generations;
+  - so H-j is untested.
+- The scramble at the hopper that H-j relied on was mild.
+  - Even at the limit, fewer than 1 % of weaned animals were above the reflex on an average
+    day, and the mean hunger stayed near 0.4.
+  - In three lineages the colonies grew slowly and rarely met it at all.
+- The two lines did diverge. Within each lineage the divergence repeats on both seeds, but its
+  direction differs between lineages: more fighting in 4, more backing off in 6, less of the
+  other free-time actions in most.
+- Against drift, neither line moved F or T at p < 0.025. So free time under these two regimes
+  still looks close to neutral for fitness, as H-h found under abundance.
+- Criterion 3 on nets again mostly reads the TURN_BACK preference.
+  - One scarce lineage adds an order beyond the mix, which no earlier reading on nets showed.
+  - That is a lead from one lineage, not a result.
+- Calhoun did not score play, and nothing here is play. PlayScore stays unvalidated.
+
+**Outputs** (not committed).
+- `_output/evo_scarce/lineage_<l>/`: `epochs.jsonl`, the generation-0 and final pools, each
+  epoch's founders, and `summary.json`.
+- `_output/scarce_sweep/`:
+  - per run `scarce_run.json`, `evo_rates.json`, `evo_detect.json` and `evo_policy.json`;
+  - `scarce_analysis.json`, `form_mix.json` and `scarce_beside.json`.
+- Logs: `_output/evo_scarce_log.txt`, `_output/scarce_sweep_log.txt`,
+  `_output/scarce_analysis_log.txt`, `_output/scarce_form_mix_log.txt` and
+  `_output/scarce_beside_log.txt`.
+- To re-analyse:
+  - `python scripts/analyse_scarce.py`;
+  - `python scripts/form_mix.py --sweeps scarce_sweep --out _output/scarce_sweep/form_mix.json`;
+  - the exploratory `python scripts/scarce_beside.py`.
+
+**Next** (Jason's call).
+- P4-19 is done. H-j is untested, and the design's own reading of the failed check applies.
+- *A scarcity that leaves survivors hungry:* a ration per animal below need, for example, would
+  make foraging matter to every survivor and not only in bouts. It would need its own
+  preregistration and manipulation check.
+- *A competition assay in the scarce world:* mixed SCARCE and ABUND founders under the same
+  limit, scored by the scarce line's share of the adults on day 360. It would say whether the
+  scarce line adapted to the limit at all, through foraging or otherwise. §4.6 left it out.
+- *Lineage 6's order:* a preregistered look at whether order beyond the mix recurs. It could
+  come from re-evolving lineage 6 under scarcity on other streams, or from a check of the
+  scarce pools at matched size.
+
 ## 2026-11-14 — The state-conditioned null is not built: on nets, locomotor criterion 3 reads one preference among three moves, and a null drawn from the animal's own moves would remove every locomotor reading
 
 **Question.**
