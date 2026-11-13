@@ -691,6 +691,28 @@ it in neutral-drift nets as often as in evolved ones. Design: `docs/PHASE4_DESIG
 
 ---
 
+## P4-18 — State-conditioned null for the form test
+
+> **Closed 2026-11-14 without a build:**
+> - Before its design, the readings of H-h and H-i that meet criterion 3 were examined
+>   (exploratory, on outputs already read; `scripts/form_mix.py`).
+> - Locomotor criterion 3 reads the primitive mix, a stable preference for TURN_BACK. A null
+>   drawn from the animal's own moves would remove every locomotor reading, the scripted
+>   shuttle's included, so it was not built.
+> - NOTES 2026-11-14.
+
+**Goal:** a null for the form test that conditions on each animal's state, to say whether
+criterion 3 can be read on nets at all (NOTES 2026-11-13, H-i's Next). Chosen by Jason on
+2026-11-14.
+
+**Files:** `scripts/form_mix.py`, `NOTES.md`, `docs/PHASE4_DESIGN.md` §4.5
+
+**Acceptance criteria:**
+- what the form test reads on nets reported from the existing outputs, before any design
+- negatives reported; no rule changed; `tests/run_tests.py` green; H2 audit clean
+
+---
+
 ## P4-6 — Phase 4 sweep harness
 
 > **2026-11-08:** survival condition decided (H-e amended to a state-based dose-response, PLAN

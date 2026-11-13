@@ -1,5 +1,133 @@
 # Universe25 Play — NOTES
 
+## 2026-11-14 — The state-conditioned null is not built: on nets, locomotor criterion 3 reads one preference among three moves, and a null drawn from the animal's own moves would remove every locomotor reading
+
+**Question.**
+- Jason chose the state-conditioned null on 2026-11-14 (card P4-18). The H-i section's Next said
+  it "would say whether criterion 3 can be read on nets at all".
+- The idea came from H-h.
+  - A drifted net might switch its choice with its state, and the form test's null, an even
+    mix of the family's moves, does not condition on state. So the test might read the switching
+    as form.
+  - A null that draws each move from the animal's own mix in the same state would remove that.
+- Before writing the design, I checked what the form test reads in the readings that meet
+  criterion 3. This is exploratory and uses only outputs already read (the H-i and H-h sweeps).
+  No run, rule or stored output changed.
+
+**What the locomotor form test reads.**
+- *The test (rules v9):*
+  - Criterion 3's statistic is the reversal fraction: over consecutive own event moves of an
+    episode, the share whose direction relative to the episode's end point flips between
+    approach and withdrawal.
+  - The form test compares it with 1,000 replays in which each own event move is drawn evenly
+    from EXPLORE, RUN_ON and TURN_BACK. Criterion 3 needs an excess of at least 0.10 (and
+    z > 1.645).
+  - Every reading also records an order diagnostic (rules v8): the episode's own moves in a
+    random order. It was recorded in H-h and H-i but not examined until now.
+- *Readings:* 390 locomotor readings, each detector window counted once (H-i 207, H-h 183).
+  - 63 meet criterion 3: 26 in H-i (S½ 10, S1 16) and 37 in H-h (NEU 19, SEL 18).
+  - Rebuilt with the detector's own functions, every reversal fraction matches the stored one
+    exactly.
+- **The order of the moves adds nothing.** In the 63 readings the excess over the even mix is
+  +0.10 to +0.41 (median +0.185). The excess over the same moves in a random order is −0.044 to
+  +0.072 (median 0.000).
+- **The move mix is the statistic.**
+  - A direction pair closed by TURN_BACK reverses in 99.7 % of cases (median over the readings),
+    one closed by EXPLORE in 48 % and one closed by RUN_ON in 13 %.
+  - So the reversal fraction ≈ 0.08 + 0.96 × the TURN_BACK share + 0.41 × the EXPLORE share,
+    over the moves that close a pair. R² is 0.991 over the 390 readings.
+
+| arm | criterion 3 | readings | TURN_BACK | RUN_ON | EXPLORE | reversal fraction |
+|---|---|---|---|---|---|---|
+| S0 (H-i) | not met | 85 | 0.345 [0.317, 0.371] | 0.342 | 0.315 | 0.551 |
+| GEN0 (H-h) | not met | 62 | 0.345 [0.332, 0.365] | 0.342 | 0.313 | 0.551 |
+| S½ | met | 10 | 0.590 [0.527, 0.655] | 0.235 | 0.164 | 0.747 |
+| S½ | not met | 56 | 0.311 [0.135, 0.497] | 0.390 | 0.276 | 0.513 |
+| S1 | met | 16 | 0.764 [0.488, 0.924] | 0.094 | 0.119 | 0.894 |
+| S1 | not met | 40 | 0.264 [0.061, 0.454] | 0.452 | 0.295 | 0.441 |
+| NEU (H-h) | met | 19 | 0.537 [0.459, 0.663] | 0.225 | 0.222 | 0.710 |
+| NEU | not met | 39 | 0.152 [0.029, 0.435] | 0.506 | 0.329 | 0.346 |
+| SEL (H-h) | met | 18 | 0.476 [0.331, 0.604] | 0.084 | 0.379 | 0.710 |
+| SEL | not met | 45 | 0.341 [0.198, 0.481] | 0.378 | 0.268 | 0.506 |
+
+Shares of the episodes' own event moves, median [range] over the readings; the other columns
+are medians. The even-mix replays give 0.532–0.561.
+
+- *Where the line falls:*
+  - A TURN_BACK share of at least 0.5 occurs in 48 of the 63 readings that meet criterion 3,
+    and in none of the other 327.
+  - The other 15 have fewer RUN_ONs instead (0.02–0.31) and more EXPLOREs (median 0.39).
+- **A stable preference, not switching with the relaxed state.**
+  - In the readings that meet criterion 3, the TURN_BACK share in relaxed rows minus that in the
+    other rows has medians between −0.006 and +0.005 per arm.
+  - Successive moves are nearly independent there. The chance of repeating the previous move
+    exceeds the independent expectation by +0.03 to +0.04 (medians per arm).
+  - Whether the preference varies with other inputs (position, heading) was not checked. It
+    does not matter for the statistic, which reads only the mix.
+- *Why a random net of drifted size passes the form test:*
+  - A generation-0 net mixes the three moves evenly (TURN_BACK 0.345).
+  - A drifted or jumped net has a strong preference.
+  - When the preference falls on TURN_BACK, or against RUN_ON, its episodes shuttle back and
+    forth, and the even-mix null reads the shuttle as form.
+
+  This corrects one phrase of the H-i section ("how large and state-dependent its weights are"):
+  for locomotion, what shows is the preference that large weights produce, not switching with
+  the relaxed state.
+- *Object readings differ.* The 5 object readings with criterion 3 (2 in H-i, 3 in H-h) do have
+  order beyond their mix: an order excess of +0.11 to +0.23, z 2.1–4.1.
+
+**Why the state-conditioned null was not built.**
+- **It would remove every locomotor reading.**
+  - A null that draws each move from the animal's own mix, by state or not, reproduces that
+    mix, and for locomotion the mix is the statistic.
+  - The order diagnostic is such a null. Against it, none of the 63 readings reaches the 0.10
+    floor (the largest excess is +0.072).
+  - It would remove random, drifted and evolved nets' readings alike. It would also remove the
+    scripted TURN_BACK shuttle of `tests/test_actions_v2.py`, which every rule set since v7 has
+    had to pass.
+- **In this action space it could hardly be met.**
+  - A policy cannot direct EXPLORE, so the mix of its primitives and their order are all the
+    locomotor form it can show.
+  - The reversal fraction barely sees the order (the v8 amendment); the order effects it does
+    see stay within ±0.07 in these readings.
+- **The other choice is the current null.** A null that draws from the even mix in every state
+  is the even-mix null.
+- **The limit was recorded before.**
+  - The design recorded it in v7: "a policy that just prefers TURN_BACK, in any order, exceeds
+    it".
+  - v8 kept composition as form, because Burghardt's criterion 3 includes a modified form.
+  - What is new is that random weights of the drifted size produce that composition.
+- **An order-based statistic would not settle it either.**
+  - Drifted nets do show some order. In their readings without criterion 3, the chance of
+    repeating the previous move exceeds the independent expectation by +0.08 to +0.12 (medians
+    at S1, NEU and SEL; at most +0.22).
+  - A net sees its own last primitive, so order on nets would also come with weight size.
+
+**What this means.**
+- On nets, locomotor criterion 3 (rules v9) reads one property of the net: its preference among
+  the three locomotor moves.
+  - Criterion 4 needs the same form test, so the same holds for it.
+  - Whether a preference was selected, learned or drawn at random cannot be read from the
+    behaviour alone.
+- So criterion 3 or 4 met by nets can only be read against random nets of matched size, as H-i
+  concluded, with the primitive mix reported beside it.
+- The mechanism H-h suggested, switching with state, is not what produces the locomotor
+  readings. Whether it produces the 5 object readings is not tested.
+- Rules v9 stay frozen and unchanged. Calhoun did not score play, and nothing here is play.
+  PlayScore stays unvalidated.
+
+**Outputs.**
+- `scripts/form_mix.py` rebuilds the readings from the H-i and H-h outputs, with no simulation.
+  It writes `_output/form_mix.json` (not committed).
+
+**Next** (Jason's call).
+- P4-18 is closed without a build.
+- SCARCE-PG for `evo` remains the design's follow-up from H-h, with its own manipulation check.
+  Any criterion-3 or criterion-4 reading in it needs random nets of matched size, with the
+  primitive mix reported.
+- The 5 object readings with order beyond their mix could be checked against a null conditioned
+  on the distance to the object, but 5 readings are too few for a test.
+
 ## 2026-11-13 — H-i is supported at the smallest margin the design can detect: one random jump of the neutral drift's size gives criterion 3 in 6 of 17 colonies, generation 0 in none, and a third of the jumped colonies fail
 
 **Question.**

@@ -1598,6 +1598,26 @@ for timing only; no statistic from it is read.
   on nets needs a random control at matched per-layer size and population structure, and weight
   size explains H-h's SEL ≈ NEU without genealogy.
 
+**Follow-up (2026-11-14, NOTES): the state-conditioned null is not built (P4-18).**
+- Jason chose it on 2026-11-14, to say whether criterion 3 can be read on nets at all. Before
+  its design, the readings of H-h and H-i that meet criterion 3 were examined (exploratory, on
+  outputs already read; `scripts/form_mix.py`).
+- *Locomotor criterion 3 reads the primitive mix.*
+  - In the 63 locomotor readings that meet it, the excess over the same moves in a random order
+    (the order diagnostic) is at most +0.072.
+  - The reversal fraction follows the mix: R² 0.991 over 390 readings, and a pair closed by
+    TURN_BACK reverses in 99.7 % of cases.
+  - A TURN_BACK share of at least 0.5 occurs in 48 of the 63 and in none of the other 327. It
+    does not change between relaxed and other rows.
+- *Why it was not built:*
+  - A null drawn from the animal's own moves, in its state or not, reproduces the mix. It would
+    remove every locomotor reading, the scripted TURN_BACK shuttle's included.
+  - A null drawn from the even mix in every state is the current null.
+- *So:* on nets, locomotor criteria 3 and 4 read the net's preference among the three locomotor
+  moves. They can only be read against random nets of matched size, with the mix reported
+  beside them. The 5 object readings with criterion 3 have order beyond their mix, which this
+  does not explain. Rules v9 are unchanged.
+
 ## 5. Determinism (two tiers, never cross-tier identity)
 
 - **Reference tier (NumPy, CPU):** `need_driven`, `mlp_frozen` and `evo` are bit-identical run

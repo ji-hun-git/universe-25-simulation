@@ -105,6 +105,11 @@
 >     the neutral drift's size gives criterion 3 in 6 of 17 colonies (18 of 113 readings), and
 >     generation 0 never does. So criterion 3 on nets needs a control at matched weight size.
 >     The jump also costs viability: at full size, 7 of 24 colonies died out.
+>   - The state-conditioned null (P4-18, 2026-11-14): **not built**. On nets, locomotor
+>     criterion 3 reads one preference among the three locomotor moves: a TURN_BACK share of
+>     at least 0.5 in 48 of the 63 readings that meet it, and in none of the other 327. A null
+>     drawn from the animal's own moves would remove every locomotor reading. So criteria 3
+>     and 4 on nets need random nets of matched size, with the mix reported.
 >   - Next: Jason's call.
 > - Tier 2 done (2026-11-11): P4-15 failed its primary test, and the program-level stop rule
 >   applies (no further substrate change for PPO learners). Next: H-g / playground-off, `evo`,
@@ -923,6 +928,7 @@ in the peak count (N@736 3–4 % low) and the slow realisations' late tail (N@14
 - [x] Nursery pre-training (P4-3, 2026-11-06: harness + 10^8-step pre-training; the frozen policy on the canonical start crowds the colony into the founders' four cells and plateaus near 960 — no nursery episode showed a founding colony; next step pending)
 - [x] `evo` (P4-4, 2026-11-13: 8 lineages × 150 founding epochs; the manipulation check passes, H-h not supported (criterion 3 in 18 / 125 evolved and 22 / 114 neutral readings, never in generation 0); guard v2 inconclusive, amended H-d not preserved)
 - [x] Norm-matched check of criterion 3 (P4-17, 2026-11-13: H-i supported at the smallest detectable margin, 6 of 17 colonies, p 1/64; criterion 3 on nets follows weight size)
+- [x] State-conditioned null for the form test (P4-18, 2026-11-14: not built; locomotor criterion 3 on nets reads the primitive mix, a TURN_BACK preference)
 - [x] Burghardt detectors per criterion with synthetic ground truth, ≥ 1,000 surrogates, thresholds fixed before any evaluation seed; V hopper fix (P4-5, 2026-11-06: rules v3 pass 12 / 12 preregistered checks on fresh seeds after v1 (11 / 12) and a falsifier failure in v2, all recorded; on the simulator both policies are non-functional and spontaneous but single-decision, so criteria 3 / 4 are not evaluable at 6 decisions per day) — **PlayScore eval-only, unvalidated**
 - [x] Finer decision grain for free-time behaviour (P4-8, 2026-11-06: `free_substeps`, `policy.substep_mode`; heuristic continue mode within 2 % of the control on every resolvable landmark, N@315 +13 % at one paired se; detectors have support; no arm meets all five criteria)
 - [x] H-d amendment adopted 2026-11-06 (drift > 10 % and > 2 paired se; heuristic with 12 sub-steps in continue mode preserved, random MLP not)
