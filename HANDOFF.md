@@ -110,7 +110,8 @@
 >     at least 0.5 in 48 of the 63 readings that meet it, and in none of the other 327. A null
 >     drawn from the animal's own moves would remove every locomotor reading. So criteria 3
 >     and 4 on nets need random nets of matched size, with the mix reported.
->   - Next: Jason's call.
+>   - Next (Jason, 2026-11-14): SCARCE-PG `evo`, preregistered as H-j in
+>     `docs/PHASE4_DESIGN.md` §4.6 (card P4-19).
 > - Tier 2 done (2026-11-11): P4-15 failed its primary test, and the program-level stop rule
 >   applies (no further substrate change for PPO learners). Next: H-g / playground-off, `evo`,
 >   or replica v2 (Tier 3) — Jason's call.

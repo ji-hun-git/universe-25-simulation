@@ -209,6 +209,7 @@ Environment schema frozen after first successful long run + NOTES entry; learnin
 | H-g | Breakdown suppresses play-likeness: detector rates fall in phases C / D (stress, withdrawal) under every policy | monotone decline after the plateau | detectors by phase | rates rise in phase D |
 | H-h (added 2026-11-13, before any code or run) | Selection without reward shapes free time: inherited-weight evolution (`evo`) produces free-time episodes with a form beyond mutation accumulation | criterion 3 (rules v9) is met more often in evolved lineages than in neutral-mutation controls of the same pedigree depth | detector readings per lineage, sign-flip over lineages (`PHASE4_DESIGN.md` §4.4) | no evolved reading meets criterion 3 |
 | H-i (added 2026-11-13, before any code or run) | Criterion 3 on nets follows weight size: generation-0 nets given one random jump the size of the neutral pools' drift meet it, and generation 0 itself does not | criterion 3 (rules v9) is met more often at the drifted size than at generation 0's, colony by colony | detector readings per colony, sign-flip over colonies (`PHASE4_DESIGN.md` §4.5) | no reading at the drifted size meets criterion 3 |
+| H-j (added 2026-11-14, before any code or run) | Survival pressure selects against free time: lineages evolved under food scarcity spend less of their free choices in free time than lineages evolved from the same founders under abundance | in a common abundant garden, the free-time share of eligible decisions is lower in scarce-evolved than in abundance-evolved lineages, once a manipulation check finds more voluntary foraging | time budget per lineage, sign-flip over lineages (`PHASE4_DESIGN.md` §4.6) | the scarce-evolved free-time share is higher at p(rise) < 0.025 |
 | H-c (kept) | No play reward: any playground use is drive spillover unless criteria 3 / 4 show structure | code audit; H2 string audit over policy, observation and reward code | | any play-named term |
 
 **Amendment to H-d — ADOPTED 2026-11-06 (Jason; proposed the same day, before
@@ -413,6 +414,16 @@ development reading, before any evaluation seed.
     Criterion 3 is met in 18 of 113 λ = 1 readings and in none of 176 at λ = 0. 6 of the 17
     tested colonies are positive and none negative (p(rise) 1/64). 7 of the 24 λ = 1 colonies
     died out. NOTES 2026-11-13.
+- **SCARCE-PG `evo` and H-j (Jason chose it 2026-11-14; fixed the same day before any code or
+  run; `PHASE4_DESIGN.md` §4.6).**
+  - *Pre-evolution:* 8 lineages from H-h's generation-0 genomes, with food for 100 animals (the
+    capacity rule), each run to the pedigree depth H-h's lineage reached.
+  - *Evaluation:* the canonical abundant world on fresh seeds 9929–9944. Arms: SCARCE, ABUND
+    (H-h's evolved pools) and NEU (H-h's neutral pools).
+  - *Manipulation check:* voluntary foraging SCARCE − ABUND > 0 at sign-flip p < 0.025, else
+    H-j is not read.
+  - *H-j:* the free-time share SCARCE − ABUND < 0 at p(fall) < 0.025 (supported), or > 0 at
+    p(rise) < 0.025 (falsified).
 
 ### 15.2 Arms
 

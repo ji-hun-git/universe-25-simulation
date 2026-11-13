@@ -713,6 +713,29 @@ criterion 3 can be read on nets at all (NOTES 2026-11-13, H-i's Next). Chosen by
 
 ---
 
+## P4-19 — SCARCE-PG `evo` (H-j)
+
+**Goal:** evolve the inherited-weight policy under food scarcity from H-h's generation-0
+genomes, and test whether survival pressure selects against free time (H-j), after a
+manipulation check for more voluntary foraging. Chosen by Jason on 2026-11-14. Design:
+`docs/PHASE4_DESIGN.md` §4.6 (fixed 2026-11-14 before any code or run).
+
+**Files:** `src/universe25/learn/evolution.py` (scarce epochs, the generation-matched stop,
+read-only epoch probes), `src/universe25/agents/evo.py` (the scarce lineage stream),
+`src/universe25/metrics/phase_rates.py` (the time budget), `scripts/evolve_scarce.py`,
+`scripts/sweep_scarce.py`, `scripts/analyse_scarce.py`, `tests/test_evo.py`,
+`tests/test_phase_rates.py`, `NOTES.md`, `docs/SEEDS.md`
+
+**Acceptance criteria:**
+- H-h's epochs and every other kind bit-identical (golden fast tier); the scarce epochs
+  deterministic
+- 8 scarce lineages run to their generations (or the stop reported); 48 runs on seeds
+  9929–9944
+- the manipulation check and H-j answered by the preregistered rules; negatives reported
+- `tests/run_tests.py` green; H2 audit clean
+
+---
+
 ## P4-6 — Phase 4 sweep harness
 
 > **2026-11-08:** survival condition decided (H-e amended to a state-based dose-response, PLAN

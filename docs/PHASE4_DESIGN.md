@@ -1618,6 +1618,179 @@ for timing only; no statistic from it is read.
   beside them. The 5 object readings with criterion 3 have order beyond their mix, which this
   does not explain. Rules v9 are unchanged.
 
+### 4.6 SCARCE-PG `evo`: does survival pressure select against free time? (H-j; fixed 2026-11-14 before any code or run)
+
+**Why.**
+- Jason chose SCARCE-PG `evo` on 2026-11-14. §4.4 named it as the follow-up once H-h's
+  manipulation check passed, and it passed. It is the programme's contrast of abundance against
+  survival (PLAN §15), here for inherited weights.
+- *The question (H-j):* does survival pressure select against free time?
+  - This is the evolutionary form of Burghardt's surplus-resource theory: play needs spare time
+    and energy.
+  - So lineages that evolve under scarcity should spend less of their free choices in free time
+    than lineages that evolve from the same founders under abundance.
+- *Free time, not form.* Since P4-18 (NOTES 2026-11-14), criteria 3 and 4 on nets read the
+  net's preference among the locomotor moves, and they can only be read against random nets of
+  matched size. So H-j asks about free time itself, the raw material of play. The criteria are
+  reported beside.
+- *Why a check of its own.*
+  - In this world scarcity acts through mortality and leaves the survivors fed (NOTES
+    2026-11-08). The development look below finds the same in the epochs.
+  - So scarcity cannot select through survivors that stay hungry. It selects through who gets
+    food when a hopper's stock is short: the foragers present split it equally.
+  - The predicted response is more voluntary foraging. The check asks for it before H-j is read.
+
+**Scarcity in the epochs: food for 100 animals.**
+- *The rule:* the capacity rule of `configs/scarce.yaml` with `scarce_capacity_animals: 100`
+  instead of 1,000.
+  - Each day the colony receives food for 100 animals, shared out to the cells by weaned
+    occupancy. A cell's stock is capped at two days of its share.
+  - The foragers at a hopper in one decision split a short stock equally.
+  - Water is unlimited, the playground is on, and the biology and drives are the calibrated ones.
+- *The development look (2026-11-14, before this spec; training seed 7000 only):*
+  - One 360-day epoch per founder set and food level, sampled every 10 days.
+  - Founder sets: generation 0 of lineages 1 and 2, and 16 adults drawn from H-h lineage 2's
+    final pool. Food: abundant, or the capacity rule at 100, 200 and 400 animals.
+  - With abundant food, generation 0 reaches 109–140 weaned animals by day 360. The evolved
+    founders reach 2,028.
+  - At 100, the evolved colony is held at 52–128 weaned animals from day 200 on. Generation 0 is
+    barely limited (82 and 99 weaned on day 360).
+- *Why 100, not 200 or 1,000:*
+  - Food binds as soon as a lineage grows faster than generation 0, so the extra growth that
+    selection produces under abundance is never fed.
+  - At 100 the adults compete for food in bouts. In the evolved colony's second half, 2.7 % of
+    weaned animals were above the forced-foraging reflex (hunger 0.85) and 0.5 % above
+    starvation (1.2) on average, up to 29 % and 8 % on single days. That competition is the
+    mechanism H-j relies on.
+  - At 200 and 400 the cap held the colony (135–265 and 158–472 weaned animals) with almost no
+    hungry adults: 0.4 % above 0.85 and none above 1.2 on the sampled days. There the cap acts
+    through births and pups.
+  - At 1,000 it would bind only late in the epochs of fast-growing lineages, and never in
+    lineages 1 and 3, whose abundant epochs end at about 650 animals.
+  - In every run the survivors were fed on average: the mean hunger of weaned animals over the
+    sampled days was 0.37–0.41.
+
+**Pre-evolution under scarcity (the SCARCE line).**
+- *Lineages:* 8. Scarce lineage ℓ starts from the 16 generation-0 genomes of H-h's lineage ℓ
+  (`_output/evo/lineage_ℓ/pool_gen0.npz`, in their slot order). The two lines share their
+  founders and differ in food.
+- *The epoch is H-h's (§4.4) with scarce food:*
+  - 8 founder pairs, 2 per corner cell, 360 days under the calibrated conception gate;
+  - 6 ticks per day, NumPy, 12 sub-steps;
+  - the next epoch's founders are 8 females and 8 males drawn from the adults alive on day 360;
+  - pups copy one parent with N(0, 0.02²);
+  - the epochs' simulation seeds cycle through 7000–7009, as in H-h.
+- *Streams of its own:* the founder draws between epochs come from
+  `SeedSequence([7000 + ℓ − 1, 7_700_001])`. The policy streams inside epoch e carry the key
+  (ℓ, e, 2); H-h's key is (ℓ, e).
+- *Length, matched in generations:* a scarce lineage runs until the adults alive on day 360
+  have a mean pedigree depth of at least G_ℓ, at most 400 epochs.
+  - G_ℓ is the depth H-h's lineage ℓ reached: 236, 257, 226, 228, 252, 263, 249 and 253.
+  - Both lines then carry the same number of mutations along a line of descent. So H-h's neutral
+    pool NEU ℓ, G_ℓ generations of drift from the same generation 0, controls drift for both.
+- *Recorded per epoch* (read-only, with no effect on the trajectory):
+  - H-h's epoch record;
+  - the weaned count on day 360;
+  - once a day, the weaned count, the weaned animals' mean hunger, and the shares of them above
+    0.85 and above 1.2, averaged over the epoch's second half.
+- *Ending:* as in H-h, a lineage without an adult of each sex on day 360 ends, and this is
+  reported.
+
+**Evaluation: a common garden, the canonical world, on fresh seeds 9929–9944.**
+- *Seeds:* lineage ℓ uses 9929 + 2(ℓ − 1) and the next, paired across the arms.
+- *Arms per lineage ℓ:*
+  - SCARCE ℓ: 4 females and 4 males drawn from the adults of scarce lineage ℓ's final pool;
+  - ABUND ℓ: 4 females and 4 males drawn from H-h's final pool of lineage ℓ (H-h's SEL);
+  - NEU ℓ: 8 founders drawn from H-h's neutral pool of lineage ℓ.
+- *Runs:* H-h's pipeline (§4.4).
+  - Calhoun's 4 pairs for 1,600 d in ABUND-PG (`configs/default.yaml`): 6 ticks per day, NumPy,
+    12 sub-steps.
+  - 29 ten-day trace windows, every fourth individual, with episode rates in every window.
+  - The rules-v9 detector vector on the four windows of §4.3.
+  - A window without traced rows is empty (§4.5).
+- *Added per window: the time budget.* The trace rows are counted by action over the rows where
+  a free action was eligible at the decision: weaned, and no reflex in force (the detectors' v8
+  eligibility).
+- 48 runs.
+
+**The two shares.**
+- *F, voluntary foraging:* the share of the eligible rows with FORAGE.
+- *T, free time:* the share with one of the simulator's free-time actions: EXPLORE, SOCIAL,
+  RUN_ON, TURN_BACK, MANIPULATE, BACK_OFF and CIRCLE (the actions whose decisions run as
+  sub-steps).
+- A decision is 12 trace rows, and a free decision's sub-steps are all free actions, so row
+  shares are decision shares.
+- *Per run:* the mean over the run's entered windows (phase B, C or D, with at least 10 weaned
+  individuals; §4.3). *Per lineage and arm:* the mean of its two runs.
+
+**The manipulation check (decisive): selection under scarcity raised voluntary foraging.**
+- d^F_ℓ = F(SCARCE ℓ) − F(ABUND ℓ), over the lineages with both shares defined. At least 6 are
+  needed.
+- The test is the exact sign-flip over the lineages, one-sided.
+- It passes if the mean d^F > 0 with p < 0.025. If it fails, H-j is not read: it is untested.
+
+**H-j (decisive): survival pressure selects against free time.**
+- d^T_ℓ = T(SCARCE ℓ) − T(ABUND ℓ), with the same test.
+- **Supported** if the mean d^T < 0 with p(fall) < 0.025. **Falsified** if the mean d^T > 0
+  with p(rise) < 0.025. **Not supported** otherwise.
+- *Power, recorded now:* with 8 lineages the smallest p is 1/256, and p < 0.025 needs about 7
+  of the 8 in the predicted direction. H-h's manipulation check had all 8.
+
+**Reported beside** (not decisive).
+- SCARCE − NEU and ABUND − NEU for F and T: what selection did against drift under each regime.
+- The whole time budget (every action's share), and T within relaxed rows and within the other
+  eligible rows (whether a difference follows the colonies' states).
+- Episode rates by phase (§4.3) and the detector vector by window. Criteria 3 and 4 come with
+  the locomotor mix (P4-18), and NEU is their matched-size random control.
+- Landmarks (median [range]) and genome norms.
+- The epochs: their number, the generations per epoch, the colony and the weaned count on
+  day 360, the hunger probes, and the decision action shares across evolution in both lines.
+
+**What each outcome means** (recorded now).
+- *The check fails:* scarcity as it acts in this world (through mortality, with fed survivors)
+  did not raise voluntary foraging against abundance in these generations. H-j is untested.
+- *Supported:* in this substrate survival pressure selects against free time, from the same
+  founders over the same number of generations.
+  - That is the surplus-resource prediction as a time budget, reached by selection without
+    reward.
+  - It says nothing about the form of free time, and nothing about play.
+- *Falsified:* scarcity selects for more free time. That would need its own explanation.
+- *Not supported:* the extra foraging comes from another part of the budget, such as rest,
+  nesting or drinking.
+
+**Budget and stops.**
+- *Pre-evolution:* 8 lineages, each up to 400 epochs of about 15–20 s. That is at most 18 CPU-h,
+  and about 8 expected.
+- *Evaluation:* 48 runs, about 7 CPU-h. At most 8 workers (the machine is shared).
+- *Stops:*
+  - a NaN;
+  - an H2 term;
+  - a failed determinism test;
+  - more than 2 lineages ending;
+  - a lineage reaching 400 epochs short of G_ℓ (stop and report).
+
+**Development.** The look above set the food level. A harness smoke on training seed 7000 (at
+most 3 scarce epochs of one lineage, and one canonical run of at most 300 d) is for timing only;
+no statistic from it is read.
+
+**Not included.**
+- *A scarce garden (a reciprocal transplant):* under a capacity limit, colony size cannot show
+  which line is better adapted. That would need a competition assay with mixed founders.
+- *Famines, and capacity 1,000:* 1,000 rarely binds in the epochs.
+- Recombination and other architectures.
+
+**Limits, recorded now.**
+- One scarcity level and one rule. The survivors stay fed on average, so selection acts
+  through bouts of competition at the hopper and through who dies, not through survivors that
+  stay hungry.
+- Scarcity binds only once a colony outgrows the limit within an epoch. Before that, in the
+  first months of an epoch, it grows as under abundance.
+- The lines are matched in generations, not in epochs, so the scarce line may have more or
+  fewer rounds of founding.
+- H-h found free time close to neutral under abundance, and the garden here is abundant only.
+- The time budget counts choices, not their consequences. Calhoun did not score play, nothing
+  here is play, and PlayScore stays unvalidated.
+
 ## 5. Determinism (two tiers, never cross-tier identity)
 
 - **Reference tier (NumPy, CPU):** `need_driven`, `mlp_frozen` and `evo` are bit-identical run

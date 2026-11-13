@@ -46,7 +46,9 @@ passed to the generator, not simulation seeds.
 | 7000–7009 | `evo` pre-evolution (P4-4, registered 2026-11-13) | the founding epochs of the 8 lineages cycle over these sim seeds; lineage ℓ's own streams come from `SeedSequence([7000 + ℓ − 1, stream])` |
 | 9889–9904 | evaluation, `evo` and H-h (registered 2026-11-13, before use) | 2 seeds per lineage (9889 + 2(ℓ − 1) and the next), paired across SEL, NEU and GEN0; the need-driven control on all 16 (`PHASE4_DESIGN.md` §4.4) |
 | 9905–9928 | evaluation, the norm-matched check of criterion 3 and H-i (registered 2026-11-13, before use) | colony c on seed 9904 + c, the same seed in S0, S½ and S1; the jump from `SeedSequence([seed, 7_600_001])` (`PHASE4_DESIGN.md` §4.5) |
-| 9096–9099, 9112–9199, 9416–9499, 9929–9999 | **reserved, fresh** | substrate-variant confirmation (24 seeds per variant) and future references |
+| 7000–7009 | `evo` scarce pre-evolution (P4-19, registered 2026-11-14) | the scarce lineages' founding epochs cycle over these sim seeds as H-h's do; founder draws from `SeedSequence([7000 + ℓ − 1, 7_700_001])`, policy streams keyed (ℓ, e, 2) |
+| 9929–9944 | evaluation, SCARCE-PG `evo` and H-j (registered 2026-11-14, before use) | 2 seeds per lineage (9929 + 2(ℓ − 1) and the next), paired across SCARCE, ABUND and NEU (`PHASE4_DESIGN.md` §4.6) |
+| 9096–9099, 9112–9199, 9416–9499, 9945–9999 | **reserved, fresh** | substrate-variant confirmation (24 seeds per variant) and future references |
 
 ## Random-network init seeds (`MlpFrozenPolicy.random_init(s)`)
 
