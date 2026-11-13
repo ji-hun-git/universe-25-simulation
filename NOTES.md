@@ -1,5 +1,218 @@
 # Universe25 Play — NOTES
 
+## 2026-11-13 — `evo` and H-h: selection adapts the colony in all eight lineages, but criterion 3 is no more common under selection than under mutation alone; H-h is not supported
+
+**Question.**
+- H-h (PLAN §15.1, added 2026-11-13 before any code or run): selection without reward shapes
+  free time. Inherited-weight evolution (`evo`) produces free-time episodes with a form beyond
+  mutation accumulation.
+- Its operationalization was fixed in `docs/PHASE4_DESIGN.md` §4.4 (f22ddb3) before any code or
+  run. The tooling was committed before any lineage or evaluation seed was run (42a9eb1).
+- *The policy:* each mouse carries its own genome (observation v5 → 32 tanh → 15, 2,415 values).
+  - A pup copies one parent's genome, the mother's or the sire's with probability ½, and
+    N(0, 0.02²) is added to every value.
+  - There is no reward and no learner. Selection is the frozen biology's births and deaths.
+- *Pre-evolution:* 8 lineages × 150 founding epochs (8 pairs, 360 d, ABUND-PG, training seeds
+  7000–7009).
+- *Arms on fresh seeds 9889–9904* (2 per lineage, paired across arms):
+  - SEL: the lineage's final pool;
+  - NEU: a Wright–Fisher pool of 64 with the same founders, the same mutation and the same number
+    of generations, without selection;
+  - GEN0: the lineage's generation-0 genomes;
+  - the need-driven control (landmarks only, for the guard).
+- *Decisions:*
+  - the manipulation check: SEL − GEN0 in N@315 > 0 at a one-sided sign-flip p < 0.025, else
+    H-h is untested;
+  - H-h: d = the criterion-3 share (rules v9, readings with ≥ 10 episodes) of SEL minus NEU, per
+    lineage. **Supported** if the mean d > 0 at p < 0.025; **falsified** if no SEL reading meets
+    criterion 3; **not supported** otherwise.
+
+**Run.**
+- *Pre-evolution:* all 8 lineages completed 150 epochs (4,247 s wall on 8 workers, 8.0 CPU-h).
+  None ended.
+- *Evaluation:* 48 evo runs and 16 control runs (4,332 s wall on 8 workers, 9.5 CPU-h).
+- No stop rule fired: no NaN, no H2 term, no failed determinism test, no lineage ended.
+- *Pedigree depth at the end* (births along a line of descent): 226–263, against the design's
+  estimate of about 300. NEU ran the same number of generations for each lineage.
+- *Inheritance worked as specified:* in the evaluation runs 474,683 of 948,561 pups (0.500) copy
+  the sire.
+
+**Pre-evolution** (reported beside).
+- *Colony on day 360* (mean of the first 10 epochs → mean of the last 10):
+  - lineages 2 and 4–8: 238–396 → 2,252–2,584;
+  - lineages 1 and 3: 290 → 690 and 249 → 600. Both swing widely from epoch to epoch: lineage 3
+    fell to 116 at epoch 130, and lineage 1 ended at 169.
+- *Births per epoch:* 1,080–1,470 → 1,782–6,133.
+- *Genome norms grow by drift alone:*
+  - |W2| goes from 0.04 to 6.7–7.2 in SEL and 6.5–7.2 in NEU;
+  - |W1| goes from 8.0 to 15.3–16.4 and 15.2–16.1.
+  - Both match a random walk of G mutations of sd 0.02 (|W2| ≈ 0.02 √(480 G) ≈ 6.9). Selection
+    leaves no mark on the norms.
+
+**Result 1: the manipulation check passes.** Selection adapted the colony.
+
+| lineage | SEL N@315 | GEN0 N@315 | d |
+|---|---|---|---|
+| 1 | 151.0 | 38.5 | +112.5 |
+| 2 | 1,491.5 | 77.5 | +1,414.0 |
+| 3 | 398.5 | 56.0 | +342.5 |
+| 4 | 1,181.5 | 93.5 | +1,088.0 |
+| 5 | 1,714.5 | 59.0 | +1,655.5 |
+| 6 | 2,088.0 | 22.0 | +2,066.0 |
+| 7 | 1,180.0 | 125.5 | +1,054.5 |
+| 8 | 2,142.5 | 90.0 | +2,052.5 |
+
+Each value is the mean of the lineage's 2 seeds.
+- The mean d is +1,223 ± 256. All 8 lineages are positive, so p(rise) is 0.0039 (1 / 256), the
+  smallest p an exact sign-flip over 8 lineages can give.
+- *Exploratory:* SEL − NEU is positive in all 8 lineages too (mean +1,032, p 0.0039). So the faster
+  growth comes from selection, not from drift.
+
+**Result 2: H-h is not supported.**
+
+| lineage | SEL | NEU | GEN0 | d = s_SEL − s_NEU |
+|---|---|---|---|---|
+| 1 | 8 / 16 | 0 / 12 | 0 / 16 | +0.500 |
+| 2 | 2 / 16 | 0 / 15 | 0 / 16 | +0.125 |
+| 3 | 0 / 16 | 7 / 16 | 0 / 16 | −0.438 |
+| 4 | 0 / 15 | 11 / 16 | 0 / 16 | −0.688 |
+| 5 | 0 / 15 | 0 / 16 | 0 / 16 | 0.000 |
+| 6 | 6 / 16 | 4 / 8 | 0 / 16 | −0.125 |
+| 7 | 1 / 15 | 0 / 15 | 0 / 16 | +0.067 |
+| 8 | 1 / 16 | 0 / 16 | 0 / 16 | +0.062 |
+| all | 18 / 125 | 22 / 114 | 0 / 128 | mean −0.062 ± 0.128 |
+
+Each cell gives the readings with criterion 3 met over the readings with at least 10 episodes.
+- It is not falsified: 18 SEL readings meet criterion 3.
+- It is not supported: the evolved lineages meet it no more often than their neutral controls.
+  The mean d is −0.062 with p(rise) 0.66; 4 lineages are positive, 3 negative and 1 tied.
+- An independent re-derivation from the raw run files gives the same two tables and both
+  p-values. It reads N@315 from the metrics series and criterion 3 from the detector records,
+  and computes the sign-flip by enumeration.
+
+**Where criterion 3 is met** (reported beside).
+- This is the first time it is met on this substrate under rules v7–v9, whose form test runs
+  against a re-simulated even mix. Until now no policy had met it there: not the heuristic, not
+  the PPO nets, not the random nets.
+- 37 of the 40 readings are locomotor. The other 3 are object readings, all from NEU lineage 4 on
+  seed 9895.
+- They cluster by lineage, and the two seeds of a lineage agree:
+  - SEL lineage 1 meets it in all 8 of its locomotor readings, and SEL lineage 6 in 6 (C, early D
+    and late D on both seeds);
+  - NEU lineage 3 meets it in 7, NEU lineage 4 in 11 and NEU lineage 6 in 4;
+  - SEL lineages 2, 7 and 8 meet it in 1–2 readings each;
+  - GEN0 meets it in none of 128.
+
+  Every cluster spans both seeds of its lineage. Only the single readings of SEL lineages 7
+  and 8 come from one seed. So where criterion 3 is common, it is a property of the lineage's
+  genomes, with or without selection.
+- The form excess is 0.10–0.25. The form z is 2.2–39.9 (median 21.7 in SEL and 20.3 in NEU);
+  readings with thousands of episodes give large z.
+- Criterion 4 agrees with criterion 3 in all 367 readings; both need the form test.
+- All five flags are met in 3 readings, all locomotor: SEL lineage 1 seed 9889 in B and in late
+  D, and NEU lineage 6 seed 9900 in B. The neutral control reaches this too, so it is a reading
+  of the detectors, not play.
+
+**Free time in the three arms** (reported beside).
+- *Action shares of the trace rows* (median over 16 runs; GEN0 / NEU / SEL):
+  - free time 0.236 / 0.197 / 0.182;
+  - the locomotor family 0.101 / 0.096 / 0.082;
+  - the object family 0.101 / 0.095 / 0.071;
+  - social 0.034 / 0.017 / 0.025;
+  - nesting 0.104 / 0.145 / 0.154.
+- *Episode rates by phase* (episodes per weaned individual-day, B / C / D):
+
+| arm | object | locomotor |
+|---|---|---|
+| SEL | 0.09 / 0.14 / 0.11 | 0.94 / 0.96 / 0.93 |
+| NEU | 0.18 / 0.17 / 0.13 | 1.13 / 1.11 / 1.05 |
+| GEN0 | 0.21 / 0.19 / 0.18 | 1.30 / 1.31 / 1.31 |
+
+- *Exploratory,* paired by lineage over whole runs:
+  - SEL is below GEN0 (object −0.081, p(fall) 0.023; locomotor −0.374, 8 of 8 lineages,
+    p 0.0039);
+  - SEL is not significantly below NEU (object −0.056, p 0.15; locomotor −0.175, p 0.11).
+
+  So part of the fall from generation 0 is drift.
+- *The detector vector* (rules v9, four windows per run):
+  - criterion 1 is met in 0.79–1.00 and criterion 2 in 1.00 of the readings, in every arm and
+    window;
+  - criteria 3 and 4 are met in 0.25–0.31 of the readings per window in SEL locomotion, 0.31–0.38
+    in NEU locomotion, at most 0.08 in NEU objects, and never elsewhere;
+  - criterion 5 is met in at most 0.12;
+  - the median form excess lies between −0.17 and +0.03.
+
+**The guard for `evo`** (P4-4's acceptance; reported, not decisive here). SEL (16 seeds, lineages
+pooled) against the need-driven control on the same seeds:
+- *Guard v2: inconclusive.* Every landmark's 90 % CI overlaps its margin.
+  - peak N +162 [+74, +250] (margin ±113);
+  - N@736 +196 [+91, +297] (±98);
+  - peak day +40 [−69, +175] (±30);
+  - last young +152 [+7, +317] (±30);
+  - last conception +53 [−42, +164] (±40);
+  - doubling time −5.7 d [−10.1, −0.5] (±7.0);
+  - decline ratio −0.022 [−0.097, +0.063] (±0.07).
+- *The amended H-d table: not preserved.*
+  - N@315 drifts: +830 [+527, +1,123] (medians 1,372 against 440).
+  - The decline band at day 1,200 is missed: mean N@1,200 / mean peak is 0.338, against the band
+    0.35–0.85. The control's is 0.372.
+
+**Landmarks** (median [range] over the 16 runs of each arm).
+
+| arm | N@315 | peak N | peak day | last young | last conception | N@1,444 | N@1,588 |
+|---|---|---|---|---|---|---|---|
+| SEL | 1,372 [120, 2,434] | 2,449 [2,047, 2,748] | 476 [335, 1,552] | 555 [380, 1,576] | 881 [808, 1,599] | 104 [48, 1,988] | 30 [6, 2,015] |
+| NEU | 178 [22, 657] | 2,150 [372, 2,500] | 832 [500, 1,585] | 1,436 [644, 1,578] | 1,502 [940, 1,599] | 704 [155, 1,372] | 472 [33, 1,912] |
+| GEN0 | 56 [17, 200] | 1,749 [602, 1,965] | 1,295 [903, 1,529] | 1,576 [955, 1,578] | 1,599 [1,322, 1,599] | 1,566 [259, 1,791] | 1,400 [129, 1,644] |
+| control | 440 [261, 745] | 2,250 [2,178, 2,372] | 532 [492, 630] | 582 [530, 703] | 928 [858, 1,047] | 118 [68, 259] | 18 [8, 64] |
+
+First litters fall on days 102–107 in every arm.
+- Generation-0 colonies grow slowly, and most are still breeding near day 1,600. The evolved
+  colonies are three times the control's size on day 315 (medians 1,372 against 440). They peak
+  somewhat above the control (2,449 against 2,250) and then collapse as the control does.
+- One SEL run peaks late (lineage 3, seed 9893: day 1,552). Its lineage is one of the two whose
+  pre-evolution colony stayed small.
+
+**Warnings in the log.**
+- The log shows the same RuntimeWarnings as H-g (overflow in `hypot`, invalid value in subtract).
+  They come from the `np.empty` padding in `detectors.form_resim`.
+- Checked again here, on two windows where criterion 3 is met (SEL lineage 1 seed 9889 in B; NEU
+  lineage 4 seed 9895 in C). With the buffers filled with 1e308, and again with zeros, both
+  reproduce the sweep's output exactly.
+
+**What this means.**
+- Selection without reward adapts the colony on this substrate. In 226–263 generations every
+  lineage's colony came to grow faster than its generation 0 and faster than its neutral
+  control.
+- But nothing measured in free time separates SEL from NEU. The expectation recorded in the
+  design holds: free time that is close to neutral for fitness evolves like neutral free time.
+- Criterion 3 under rules v9 can be met without any selection.
+  - Neutral nets whose weights have drifted (|W1| doubled, |W2| from 0.04 to about 7) meet it as
+    often as evolved nets, and generation-0 nets never do.
+  - This fits the mechanism the NEU arm was included for: a drifted net can switch with its
+    state, and the even-mix null does not condition on state. This run does not test that
+    mechanism directly.
+  - So on its own, criterion 3 met by a net is evidence neither of selected form nor of play. A
+    future reading of it on nets needs a drifted or norm-matched control.
+- Calhoun did not score play, and nothing here is play. PlayScore stays unvalidated.
+
+**Outputs** (not committed).
+- `_output/evo/lineage_<l>/`: `epochs.jsonl`, the generation-0, final and neutral pools, each
+  epoch's founders, and `summary.json`.
+- `_output/evo_sweep/`: per run `evo_run.json`, `evo_rates.json`, `evo_detect.json` and
+  `evo_policy.json`; `control_<seed>/control_run.json`; and `evo_analysis.json`.
+- Logs: `_output/evo_log.txt`, `_output/evo_sweep_log.txt` and `_output/evo_analysis_log.txt`.
+- To re-analyse: `python scripts/analyse_evo.py`.
+
+**Next** (Jason's call).
+- P4-4 is done. Of the lines P4-15's stop rule left open, none remains unanswered. H-f stays
+  unread.
+- The design names SCARCE-PG as the follow-up if the manipulation check passes, and it did pass.
+  It needs its own manipulation check first: in this world scarcity acts through mortality and
+  leaves the survivors fed.
+- A norm-matched control (generation-0 nets scaled to the drifted norms) would tell whether
+  weight scale alone produces criterion 3.
+
 ## 2026-11-13 — H-g falsified: the detectors' episode rates rise through phase D in four of six cells and fall as predicted in none; the playground-off arm passes its pipeline check, and without the playground every colony grows faster
 
 **Question.**

@@ -316,6 +316,16 @@ agent-steps, checkpoints, a run manifest (torch / CUDA / Warp / numpy versions, 
 
 ## P4-4 — `evo` policy (inherited weights, no reward)
 
+> **Done 2026-11-13:**
+> - Pre-evolution: all 8 lineages × 150 epochs (4,247 s on 8 workers), and none ended.
+> - Evaluation: 48 evo runs and 16 control runs on 9889–9904 (4,332 s), with no stop.
+> - The manipulation check passes (8 of 8 lineages, p 0.0039). **H-h is not supported:**
+>   criterion 3 is met in 18 of 125 SEL and 22 of 114 NEU readings (mean d −0.062,
+>   p(rise) 0.66).
+> - Guard v2 is inconclusive, and the amended H-d table is not preserved (N@315, the decline
+>   band).
+> - NOTES 2026-11-13.
+
 > **Design fixed 2026-11-13** (`docs/PHASE4_DESIGN.md` §4.4, H-h), before any code or run.
 > The earlier sketch (the mother's weights or the parents' mean, pre-evolution in nursery
 > worlds) is replaced by one-parent inheritance and serial founding epochs.

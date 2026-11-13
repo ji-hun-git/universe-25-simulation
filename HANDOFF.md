@@ -96,8 +96,10 @@
 >     **H-g is falsified.** Four of six cells rise through phase D (p(rise) ≤ 0.002), and
 >     none falls as predicted. Without the playground, object events vanish, locomotor
 >     episodes persist, and every colony grows faster.
->   - Next (Jason, 2026-11-13): `evo`, preregistered with H-h in `docs/PHASE4_DESIGN.md`
->     §4.4 (card P4-4).
+>   - `evo` and H-h (P4-4, 2026-11-13; `docs/PHASE4_DESIGN.md` §4.4): selection adapts the
+>     colony (N@315 above generation 0 in 8 of 8 lineages), but **H-h is not supported**.
+>     Criterion 3 is met as often under mutation alone (22 of 114 readings) as under
+>     selection (18 of 125). Guard v2 is inconclusive. Next: Jason's call.
 > - Tier 2 done (2026-11-11): P4-15 failed its primary test, and the program-level stop rule
 >   applies (no further substrate change for PPO learners). Next: H-g / playground-off, `evo`,
 >   or replica v2 (Tier 3) — Jason's call.
@@ -913,7 +915,7 @@ in the peak count (N@736 3–4 % low) and the slow realisations' late tail (N@14
 - [x] Calibration guard (P4-1, 2026-11-04: `calib/policy_guard.py`, `scripts/policy_guard.py`; first run on seeds 8000–8011 at 1600 d — the control reproduces the record (peak 2252 ± 13 @ 534 ± 7, N@1444 127 ± 8, N@1588 19 ± 2), a random frozen MLP is **not preserved**: N@315 −61 %, peak −11 % and +240 d, surviving births +560 d, late tail 5–20×; the curve is not policy-invariant, see NOTES)
 - [x] Homeostatic reward + PPO (P4-2, 2026-11-06: bit-identical on the GPU; the seven-drive learner abandoned its young, so the reward gained an eighth drive, `maternal_need` (adopted by Jason), and entropy 0.05; 650-day nursery: learner mean D 0.25 vs 1.04 untrained vs 0.82 heuristic, 1.5 × 10^7 transitions, full-size colony)
 - [x] Nursery pre-training (P4-3, 2026-11-06: harness + 10^8-step pre-training; the frozen policy on the canonical start crowds the colony into the founders' four cells and plateaus near 960 — no nursery episode showed a founding colony; next step pending)
-- [ ] `evo` (P4-4)
+- [x] `evo` (P4-4, 2026-11-13: 8 lineages × 150 founding epochs; the manipulation check passes, H-h not supported (criterion 3 in 18 / 125 evolved and 22 / 114 neutral readings, never in generation 0); guard v2 inconclusive, amended H-d not preserved)
 - [x] Burghardt detectors per criterion with synthetic ground truth, ≥ 1,000 surrogates, thresholds fixed before any evaluation seed; V hopper fix (P4-5, 2026-11-06: rules v3 pass 12 / 12 preregistered checks on fresh seeds after v1 (11 / 12) and a falsifier failure in v2, all recorded; on the simulator both policies are non-functional and spontaneous but single-decision, so criteria 3 / 4 are not evaluable at 6 decisions per day) — **PlayScore eval-only, unvalidated**
 - [x] Finer decision grain for free-time behaviour (P4-8, 2026-11-06: `free_substeps`, `policy.substep_mode`; heuristic continue mode within 2 % of the control on every resolvable landmark, N@315 +13 % at one paired se; detectors have support; no arm meets all five criteria)
 - [x] H-d amendment adopted 2026-11-06 (drift > 10 % and > 2 paired se; heuristic with 12 sub-steps in continue mode preserved, random MLP not)
@@ -922,7 +924,7 @@ in the peak count (N@736 3–4 % low) and the slow realisations' late tail (N@14
 - [x] Action space v2 (P4-12, 2026-11-09: four movement primitives plus heading, observation v3; bit-identical arms; `pretrain_v3` mixes the primitives like the random v3 net; the form test has a mechanical baseline under v2; guard not preserved, arc late)
 - [x] Ball physics + detector rules v7 (P4-13, 2026-11-09: v7 passes every check and is frozen; `pretrain_v4` ignores the balls, no form; physics is not calibration-neutral for the heuristic)
 - [ ] Novelty-based curiosity (P4-14, 2026-11-09: built, bit-identical when off; relief matching missed its 10 % rule (best g = 8, +23 %), stopped before the guard and `pretrain_v5` - Jason's call)
-- [ ] Sweep: policy kind × abundance / scarcity × playground on / off × 12 seeds (P4-6); H-d … H-g answered or marked untested in NOTES (2026-11-13: H-d, H-e and H-g answered, H-g falsified; H-f unread after P4-15; the scarcity arms not run)
+- [ ] Sweep: policy kind × abundance / scarcity × playground on / off × 12 seeds (P4-6); H-d … H-g answered or marked untested in NOTES (2026-11-13: H-d, H-e and H-g answered, H-g falsified; H-h (`evo`) not supported; H-f unread after P4-15; the scarcity arms not run)
 - [ ] H2 audit extended to observation, learner and detector code with a negative test (P4-7); no ICM / RND bonus; the heuristic is never distilled
 
 ### Phase 5 — Paper-grade release hygiene

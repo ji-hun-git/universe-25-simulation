@@ -43,7 +43,7 @@ survives a learned policy is an **empirical question** (§4), not a tuning targe
 | `need_driven` | phase 1/2 utility softmax | one draw per deciding agent from the sim stream | done, bit-identical |
 | `mlp_frozen` | NumPy float32 MLP inference (48 → 128 → 128 → 11), weights from an `.npz` or a seeded orthogonal init; learning off | own `make_rng(seed + 1_000_003)` stream; keeps its own cell counts (never the simulation's per-tick cache; fixed 2026-11-06) | done (P4-0, 2026-11-04) |
 | `mlp_ppo` | same net, PPO updates every `rollout_ticks` decisions in torch (CUDA); sub-steps re-chosen; eight-drive reward | init from a seeded torch.Generator; sampling from `seed + 1_000_003` (decisions) or the sub-step stream; minibatches `seed + 4_000_003` | done (P4-2, 2026-11-06) |
-| `evo` | a genome per animal (observation v5 → 32 → 15); at birth one parent's genome (mother or sire) with Gaussian mutation; no reward, no learner | its own sampling, genetics and founder streams (`SeedSequence([seed, stream])`), genetics draws in biology order | built (P4-4, 2026-11-13; §4.4) |
+| `evo` | a genome per animal (observation v5 → 32 → 15); at birth one parent's genome (mother or sire) with Gaussian mutation; no reward, no learner | its own sampling, genetics and founder streams (`SeedSequence([seed, stream])`), genetics draws in biology order | built and evaluated (P4-4, 2026-11-13; §4.4: H-h not supported) |
 
 Rule for every learned kind: the policy never consumes the biology RNG stream for *sampling*
 (so two policy versions see the same biology draws for the same state sequence), and it never
@@ -1452,6 +1452,19 @@ canonical run of at most 300 d. It is for timing only; no statistic from it is r
   bookkeeping on the genetics stream; the biology is unchanged.
 - Calhoun did not score play. Criterion 3 is a candidate structural criterion, not play, and
   PlayScore stays unvalidated.
+
+**Result (2026-11-13, NOTES): the manipulation check passes; H-h is not supported.**
+- All 8 lineages completed 150 epochs (pedigree depth 226–263), and no stop rule fired.
+- *Manipulation check:* SEL − GEN0 in N@315 is positive in all 8 lineages (mean +1,223,
+  p 0.0039). Exploratory: SEL − NEU is too (mean +1,032, p 0.0039).
+- *H-h:* criterion 3 is met in 18 of 125 SEL readings, 22 of 114 NEU readings and 0 of 128
+  GEN0 readings. The mean d is −0.062 with p(rise) 0.66, so H-h is not supported; it is not
+  falsified, because SEL readings meet criterion 3.
+- In both SEL and NEU, criterion 3 clusters by lineage, almost all of it in locomotion. So
+  mutation accumulation alone reaches it, and on nets it needs a drifted or norm-matched
+  control.
+- *Guard:* v2 is inconclusive. The amended H-d table is not preserved: N@315 is 830 above the
+  control, and the decline band at day 1,200 is missed (0.338 against 0.35–0.85).
 
 ## 5. Determinism (two tiers, never cross-tier identity)
 

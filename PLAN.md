@@ -397,6 +397,10 @@ development reading, before any evaluation seed.
     read.
   - *H-h:* the criterion-3 share SEL − NEU > 0 at sign-flip p < 0.025 (supported); no SEL
     reading meets criterion 3 (falsified). The guard v2 verdict for `evo` is reported.
+  - **Result (2026-11-13): the manipulation check passes (8 of 8 lineages, p 0.0039); H-h is
+    not supported.** Criterion 3 is met in 18 of 125 SEL readings and 22 of 114 NEU readings
+    (mean d −0.062, p(rise) 0.66), and never in GEN0. Guard v2 for `evo` is inconclusive, and
+    the amended H-d table is not preserved. NOTES 2026-11-13.
 
 ### 15.2 Arms
 
