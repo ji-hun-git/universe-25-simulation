@@ -115,8 +115,10 @@
 >     manipulation check fails**: voluntary foraging is above ABUND in 3 of 8 lineages
 >     (p 0.36), so **H-j is untested**. Selection raised foraging clearly in 2 lineages.
 >     Exploratory: one scarce lineage shows locomotor order beyond its move mix.
->   - Next: Jason's call. NOTES 2026-11-14 lists three options: a hungrier scarcity, a
->     competition assay in the scarce world, and lineage 6's order.
+>   - Next (Jason, 2026-11-15): a hungrier scarcity, as small-meal `evo`, preregistered as
+>     H-k in `docs/PHASE4_DESIGN.md` §4.7 (card P4-20). A ration per animal cannot work
+>     here (a death spiral, NOTES 2026-11-08). So the food stays unlimited and each meal is
+>     small (0.375 of hunger), which keeps every survivor hungry.
 > - Tier 2 done (2026-11-11): P4-15 failed its primary test, and the program-level stop rule
 >   applies (no further substrate change for PPO learners). Next: H-g / playground-off, `evo`,
 >   or replica v2 (Tier 3) — Jason's call.

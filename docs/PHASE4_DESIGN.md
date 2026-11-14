@@ -1815,6 +1815,203 @@ no statistic from it is read.
   - *Exploratory:* scarce lineage 6 has locomotor order beyond its mix on both seeds (order
     excess +0.10 to +0.18). No earlier reading on nets went above +0.072.
 
+### 4.7 Small-meal `evo`: does a scarcity that keeps the survivors hungry select against free time? (H-k; fixed 2026-11-15 before any code or run)
+
+**Why.**
+- Jason chose a hungrier scarcity on 2026-11-15, after H-j went untested (NOTES 2026-11-14).
+  - Food for 100 animals held every colony at its limit but left the survivors fed (mean
+    hunger 0.32–0.44). Selection raised voluntary foraging clearly in only 2 of 8 lineages.
+  - H-k asks H-j's question under a scarcity that every survivor meets every day.
+- *Why not a ration per animal,* the example in the H-j report's Next:
+  - Need does not depend on behaviour here: hunger rises 1.2 a day for every weaned animal. A
+    meal is eaten until the hunger or the stock runs out.
+  - A supply that shrinks with the colony is a death spiral by construction. A ration of 85 %
+    of need starved the colony before day 100 (NOTES 2026-11-08).
+  - Every rule that limits the amount of food leaves the survivors fed, because the colony
+    shrinks until they are: the capacity rule with or without famines (NOTES 2026-11-08), and
+    food for 100 animals (H-j).
+- *Small meals instead:* the food stays unlimited, but one forage decision relieves at most m
+  of hunger.
+  - Hunger rises 0.2 per decision (6 a day). Under abundance a meal relieves all of it, about
+    0.85–1.05 at the reflex, so one meal lasts about four decisions.
+  - With small meals every animal must forage more often, and its hunger stays high. The
+    survivors are hungry because eating takes time, not because the food runs out.
+  - This is the time form of the surplus-resource argument: maintenance takes more of every
+    day, for every animal.
+- *Where the survival pressure comes from:* the hunger reflex overrides the thirst reflex.
+  - After a meal at hunger h, the next decision finds h − m + 0.2. The reflex fires above
+    0.85, so h is at most 1.05 when it fires.
+  - So below m = 0.4, an animal whose hunger crossed the reflex late (h > 0.65 + m) needs two
+    meals in a row and cannot drink in between. Thirst rises 0.25 per decision. If it was
+    already high, it crosses starvation (1.2, a hazard of 1 a day).
+  - At m ≥ 0.4 one meal always brings the hunger back under the reflex, and no animal starves.
+  - Foraging or drinking voluntarily, before the reflexes fire, avoids the trap. So selection
+    should raise voluntary maintenance (the manipulation check) and leave less room for free
+    time (H-k).
+
+**Small meals in the epochs: m = 0.375.**
+- *The rule:* a forager's meal relieves at most 0.375 of hunger (a new option,
+  `resources.meal_cap`, off by default). Everything else is H-h's epoch: unlimited food and
+  water, the playground on, the calibrated biology and drives.
+- *The development look (2026-11-15, before this spec; training seed 7000 only; a scratch copy
+  of the simulator with the cap):*
+  - One 360-day epoch per founder set and cap, sampled daily. The founders were generation 0 of
+    lineages 1 and 2 (all 8 lineages at 0.40, 0.375 and 0.35), and 16 adults drawn from H-h
+    lineage 2's final pool.
+
+  | cap | weaned animals' mean hunger (days 181–360) | above thirst 1.2, average day | generation-0 colonies on day 360 | evolved colony on day 360 |
+  |---|---|---|---|---|
+  | none | 0.38 | 0 | 169–215 | 2,366 |
+  | 0.6 | 0.59–0.61 | 0 | 280–375 | 2,078 |
+  | 0.45 | 0.62–0.63 | 0 | 136–379 | 1,036 |
+  | 0.40 | 0.59–0.63 | ≤ 0.01 % | 397–656 (all 8) | 809 |
+  | 0.375 | 0.65–0.66 | ≤ 0.04 % | 83–509 (all 8; ≥ 26 adults of each sex) | 856 |
+  | 0.35 | 0.66–0.69 | 0.15–0.46 % | 1–96 (2 of 8 end) | 336 |
+  | 0.3 | – | – | every colony dies out within about a month | dies out |
+
+  - No animal was above hunger 1.2 on any sampled day at any cap: the deaths come through
+    thirst, as the trap predicts.
+  - Generation-0 colonies grow at least as well with meals of 0.375–0.6 as under abundance. The
+    evolved colony grows less: H-h's adaptations to abundance do not carry over.
+- *Why 0.375:* below 0.4 the trap exists, so voluntary maintenance can matter for survival. And
+  0.375 is the lowest tested cap at which every generation-0 colony survived its first epoch;
+  at 0.35 two of eight ended.
+- *The pilot (2026-11-15, before this spec):*
+  - Lineages 1 and 2, 40 epochs each, at 0.375, at 0.40 and without a cap.
+  - The epochs' training seeds 7000–7009, but streams of their own (founder draws 7_799_001,
+    policy key (ℓ, e, 99)), so no epoch of the real run was previewed.
+  - It read only the colonies and the FORAGE and DRINK shares of the eligible decisions
+    (weaned animals with no reflex in force). Free time was not read.
+  - At 0.375 no lineage ended. Every day 360 had at least 15 adults of each sex, and about 1.4
+    generations passed per epoch.
+  - Voluntary maintenance (FORAGE + DRINK of the eligible decisions, mean of the first 10
+    epochs → mean of the last 10):
+
+    | cap | lineage 1 | lineage 2 |
+    |---|---|---|
+    | 0.375 | 0.138 → 0.145 | 0.135 → 0.141 |
+    | 0.40 | 0.156 → 0.094 | 0.143 → 0.135 |
+    | none | 0.147 → 0.133 | 0.153 → 0.105 |
+
+  - At 0.375, lineage 1's rise came in drinking and lineage 2's in foraging. So the check
+    counts both.
+  - These are shares in each world, from two lineages over about 55 generations. They hint that
+    the trap holds maintenance up where abundance lets it fall; they are not a result.
+
+**Pre-evolution with small meals (the SMALL line).**
+- *Lineages:* 8. Small-meal lineage ℓ starts from the 16 generation-0 genomes of H-h's lineage ℓ
+  (`_output/evo/lineage_ℓ/pool_gen0.npz`, in their slot order), as H-j's lineages did.
+- *The epoch is H-h's (§4.4) with small meals:*
+  - 8 founder pairs, 2 per corner cell, 360 days under the calibrated conception gate;
+  - 6 ticks per day, NumPy, 12 sub-steps;
+  - the next epoch's founders are 8 females and 8 males drawn from the adults alive on day 360;
+  - pups copy one parent with N(0, 0.02²);
+  - the simulation seeds cycle through 7000–7009.
+- *Streams of its own:* the founder draws between epochs come from
+  `SeedSequence([7000 + ℓ − 1, 7_800_001])`. The policy streams inside epoch e carry the key
+  (ℓ, e, 3). H-h's key is (ℓ, e), and H-j's (ℓ, e, 2).
+- *Length, matched in generations:* a lineage runs until the adults alive on day 360 have a mean
+  pedigree depth of at least G_ℓ, at most 400 epochs.
+  - G_ℓ is H-h's: 236, 257, 226, 228, 252, 263, 249 and 253.
+  - So H-h's neutral pool NEU ℓ controls drift for all three lines.
+- *Recorded per epoch* (read-only, with no effect on the trajectory):
+  - H-j's record: H-h's epoch record, the weaned count on day 360, and once a day the weaned
+    count, the weaned animals' mean hunger and the shares of them above 0.85 and above 1.2;
+  - added: the share of weaned animals above thirst 1.2, and the action shares of the eligible
+    decisions.
+- *Ending:* a lineage without an adult of each sex on day 360 ends, and this is reported.
+
+**Evaluation: a common garden, the canonical world, on fresh seeds 9945–9960.**
+- *Seeds:* lineage ℓ uses 9945 + 2(ℓ − 1) and the next, paired across the arms.
+- *Arms per lineage ℓ:*
+  - SMALL ℓ: 4 females and 4 males drawn from the adults of small-meal lineage ℓ's final pool;
+  - ABUND ℓ: 4 females and 4 males drawn from H-h's final pool of lineage ℓ;
+  - NEU ℓ: 8 founders drawn from H-h's neutral pool of lineage ℓ.
+- *Runs:* H-j's pipeline (§4.6), unchanged.
+  - Calhoun's 4 pairs for 1,600 d in ABUND-PG (`configs/default.yaml`, no meal cap).
+  - 29 ten-day trace windows, every fourth individual, with the episode rates and the time
+    budget in every window.
+  - The rules-v9 detector vector on the four windows of §4.3.
+  - A window without traced rows is empty (§4.5).
+- 48 runs.
+
+**The shares** (over the eligible rows: weaned, no reflex in force; §4.6).
+- *M, voluntary maintenance:* the share with FORAGE or DRINK.
+- *T, free time:* the share with one of the simulator's free-time actions, as in §4.6.
+- F and D, FORAGE and DRINK apart, are reported beside.
+- *Per run:* the mean over the run's entered windows. *Per lineage and arm:* the mean of its two
+  runs.
+
+**The manipulation check (decisive): selection with small meals raised voluntary maintenance.**
+- d^M_ℓ = M(SMALL ℓ) − M(ABUND ℓ), over the lineages with both shares defined. At least 6 are
+  needed.
+- The test is the exact sign-flip over the lineages, one-sided.
+- It passes if the mean d^M > 0 with p < 0.025. If it fails, H-k is not read: it is untested.
+
+**H-k (decisive): a scarcity that keeps the survivors hungry selects against free time.**
+- d^T_ℓ = T(SMALL ℓ) − T(ABUND ℓ), with the same test.
+- **Supported** if the mean d^T < 0 with p(fall) < 0.025. **Falsified** if the mean d^T > 0
+  with p(rise) < 0.025. **Not supported** otherwise.
+- *Power:* as for H-j. With 8 lineages the smallest p is 1/256, and p < 0.025 needs about 7 of
+  the 8 in the predicted direction.
+
+**Reported beside** (not decisive).
+- F and D apart, SMALL − ABUND.
+- SMALL − NEU and ABUND − NEU for M, F, D and T: what selection did against drift under each
+  regime.
+- The whole time budget, and T within relaxed rows and within the other eligible rows.
+- Episode rates by phase (§4.3) and the detector vector by window. Criteria 3 and 4 come with
+  the locomotor mix (P4-18), and NEU is their matched-size random control.
+- Landmarks (median [range]) and genome norms.
+- The epochs: their number, the generations per epoch, the colony and the weaned count on day
+  360, the hunger and thirst probes, and the eligible decisions' action shares across evolution
+  (the SMALL line only: H-h's epochs did not record them).
+
+**What each outcome means** (recorded now).
+- *The check fails:* small meals did not raise voluntary maintenance against abundance in these
+  generations. H-k is untested. Neither scarcity tried here then selects maintenance in the
+  animals' free choices, and this route to the time budget is closed on this substrate.
+- *Supported:* in this substrate a scarcity that keeps every survivor hungry selects against free
+  time, from the same founders over the same number of generations.
+  - That is the surplus-resource prediction as a time budget, reached by selection without
+    reward.
+  - It says nothing about the form of free time, and nothing about play.
+- *Falsified:* small meals select for more free time. That would need its own explanation.
+- *Not supported:* the extra maintenance comes from another part of the budget, such as rest,
+  nesting or social contact.
+
+**Budget and stops.**
+- *Pre-evolution:* 8 lineages, about 160–190 epochs each at about 15 s (the pilot: 1.4
+  generations and 14 s per epoch). That is about 6 CPU-h; 400 epochs would be 14.
+- *Evaluation:* 48 runs, about 9 CPU-h (H-j's took 8.8). At most 8 workers (the machine is
+  shared).
+- *Stops:*
+  - a NaN;
+  - an H2 term;
+  - a failed determinism test;
+  - more than 2 lineages ending;
+  - a lineage reaching 400 epochs short of G_ℓ (stop and report).
+
+**Development.** The look and the pilot above set the cap and the check. A harness smoke on
+training seed 7000 (at most 3 small-meal epochs of one lineage, and one canonical run of at most
+300 d) is for timing only; no statistic from it is read.
+
+**Not included.**
+- *A transplant assay* (SMALL against ABUND with small meals): it would say whether the line
+  adapted to small meals, but not through which part of the budget.
+- Other caps, small meals together with a food limit, and a small-meal garden.
+- Recombination and other architectures.
+
+**Limits, recorded now.**
+- One cap and one rule. The survival pressure is narrow: it comes from one interaction, the
+  hunger reflex overriding the thirst reflex, and the pilot's response was small.
+- The trap belongs to this model's reflex order. It is not a claim about mice.
+- The epochs change every animal's time budget, but the garden reads dispositions in an
+  abundant world, where the hunger follows another path.
+- The lines are matched in generations, not in epochs.
+- The time budget counts choices, not their consequences. Calhoun did not score play, nothing
+  here is play, and PlayScore stays unvalidated.
+
 ## 5. Determinism (two tiers, never cross-tier identity)
 
 - **Reference tier (NumPy, CPU):** `need_driven`, `mlp_frozen` and `evo` are bit-identical run

@@ -745,6 +745,31 @@ read-only epoch probes), `src/universe25/agents/evo.py` (the scarce lineage stre
 
 ---
 
+## P4-20 — Small-meal `evo` (H-k)
+
+**Goal:** evolve the inherited-weight policy with small meals, a scarcity that keeps the
+survivors hungry, from H-h's generation-0 genomes. Then test whether it selects against free
+time (H-k), after a manipulation check for more voluntary maintenance. Chosen by Jason on
+2026-11-15 (a hungrier scarcity, after H-j went untested). Design: `docs/PHASE4_DESIGN.md` §4.7
+(fixed 2026-11-15 before any code or run).
+
+**Files:** `src/universe25/config.py` and `src/universe25/sim.py` (the meal cap, off by default;
+a read-only count of the eligible decisions), `src/universe25/learn/evolution.py` (the thirst
+probe and the eligible shares in the epoch record), `src/universe25/agents/evo.py` (the
+small-meal lineage stream), `scripts/evolve_scarce.py`, `scripts/sweep_scarce.py`,
+`scripts/analyse_scarce.py` and `scripts/scarce_beside.py` (a regime option, defaults
+unchanged), `tests/test_scarcity.py`, `tests/test_evo.py`, `NOTES.md`, `docs/SEEDS.md`
+
+**Acceptance criteria:**
+- every other kind bit-identical (golden fast tier); H-j's analysis reproduces exactly; the
+  small-meal epochs deterministic
+- 8 small-meal lineages run to their generations (or the stop reported); 48 runs on seeds
+  9945–9960
+- the manipulation check and H-k answered by the preregistered rules; negatives reported
+- `tests/run_tests.py` green; H2 audit clean
+
+---
+
 ## P4-6 — Phase 4 sweep harness
 
 > **2026-11-08:** survival condition decided (H-e amended to a state-based dose-response, PLAN
