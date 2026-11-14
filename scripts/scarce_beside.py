@@ -105,6 +105,8 @@ def main() -> int:
         for lin in LINEAGES:
             for s in seeds_of(lin, seed0):
                 d = sweep / f"{arm}_l{lin}_{s}"
+                if not (d / "scarce_run.json").exists():  # e.g. a lineage that ended
+                    continue
                 r = json.loads((d / "scarce_run.json").read_text(encoding="utf-8"))
                 label_windows(r["windows"], r["t_fl"], r["t_pk"])
                 sh = run_shares(r)
@@ -119,7 +121,10 @@ def main() -> int:
         for s in seeds_of(lin, seed0):
             parts = [f"l{lin} {s}"]
             for arm in arms:
-                q = runs[(arm, lin, s)]
+                q = runs.get((arm, lin, s))
+                if q is None:
+                    parts.append(f"{arm[:3]} no run")
+                    continue
                 parts.append(f"{arm[:3]} F {q['F']:.3f} T {q['T']:.3f} w{q['n_windows']:2d} "
                              f"peak {q['peak_n']:.0f} on {q['peak_day']:.0f} "
                              f"N@315 {q['n_at_day_315']:.0f} elig {q['eligible_of_weaned']:.2f}")
@@ -129,19 +134,27 @@ def main() -> int:
 
     print(f"\nthe two seeds of a lineage: {chk}({X}) - {chk}(ABUND) and T({X}) - T(ABUND)")
     agree = {chk: 0, "T": 0}
+    n_pairs = 0
     for lin in LINEAGES:
         sl = seeds_of(lin, seed0)
+        if any((arm, lin, s) not in runs for arm in (X, "ABUND") for s in sl):
+            print(f"  l{lin}: no pair")
+            continue
         dF = [runs[(X, lin, s)][chk] - runs[("ABUND", lin, s)][chk] for s in sl]
         dT = [runs[(X, lin, s)]["T"] - runs[("ABUND", lin, s)]["T"] for s in sl]
         agree[chk] += int(np.sign(dF[0]) == np.sign(dF[1]))
         agree["T"] += int(np.sign(dT[0]) == np.sign(dT[1]))
+        n_pairs += 1
         out["seed_agreement"][str(lin)] = {f"d{chk}": dF, "dT": dT}
         print(f"  l{lin}: d{chk} {dF[0]:+.3f} {dF[1]:+.3f}   dT {dT[0]:+.3f} {dT[1]:+.3f}")
     out["seed_agreement"]["lineages_agreeing"] = agree
-    print(f"  lineages whose seeds agree in sign: {chk} {agree[chk]} of 8, T {agree['T']} of 8")
+    print(f"  lineages whose seeds agree in sign: {chk} {agree[chk]} of {n_pairs}, T "
+          f"{agree['T']} of {n_pairs}")
 
-    lin_bud = {(arm, lin): np.nanmean([runs[(arm, lin, s)]["budget"]
-                                       for s in seeds_of(lin, seed0)], axis=0)
+    lin_bud = {(arm, lin): (np.nanmean([runs[(arm, lin, s)]["budget"] for s in seeds_of(lin, seed0)
+                                        if (arm, lin, s) in runs], axis=0)
+                            if any((arm, lin, s) in runs for s in seeds_of(lin, seed0))
+                            else np.full(N_ACTIONS, np.nan))
                for arm in arms for lin in LINEAGES}
     out["budget"] = {f"{arm}/{lin}": lin_bud[(arm, lin)].tolist()
                      for arm in arms for lin in LINEAGES}
@@ -149,13 +162,15 @@ def main() -> int:
           " above ABUND, above NEU")
     for i, name in enumerate(ACTION_NAMES):
         v = {arm: np.array([lin_bud[(arm, lin)][i] for lin in LINEAGES]) for arm in arms}
-        above_a = int((v[X] > v["ABUND"]).sum())
+        above_a = int((v[X] > v["ABUND"]).sum())  # NaN compares False
         above_n = int((v[X] > v["NEU"]).sum())
-        out["budget_mean"][name] = {**{arm: float(v[arm].mean()) for arm in arms},
+        out["budget_mean"][name] = {**{arm: float(np.nanmean(v[arm])) for arm in arms},
                                     f"{X.lower()}_above_abund": above_a,
                                     f"{X.lower()}_above_neu": above_n}
-        print(f"  {name:10s} {v[X].mean():.3f} / {v['ABUND'].mean():.3f} / "
-              f"{v['NEU'].mean():.3f}   above ABUND {above_a}/8, above NEU {above_n}/8")
+        n_x = int(np.isfinite(v[X]).sum())
+        print(f"  {name:10s} {np.nanmean(v[X]):.3f} / {np.nanmean(v['ABUND']):.3f} / "
+              f"{np.nanmean(v['NEU']):.3f}   above ABUND {above_a}/{n_x}, "
+              f"above NEU {above_n}/{n_x}")
 
     print(f"\nepochs, last 10 ({X.lower()} minus H-h, each line in its own world) against the "
           "garden")
@@ -172,8 +187,11 @@ def main() -> int:
             ef += (drink(evo_s / f"lineage_{lin}" / "epochs.jsonl")
                    - drink(evo / f"lineage_{lin}" / "epochs.jsonl"))
         et = q["free_decisions_last10"] - q["abund_free_decisions_last10"]
-        gf = ana["manipulation_check"]["d"][str(lin)]
-        gt = ana[hyp]["d"][str(lin)]
+        gf = ana["manipulation_check"]["d"].get(str(lin))
+        gt = ana[hyp]["d"].get(str(lin))
+        if gf is None or gt is None:
+            print(f"  l{lin}: no garden pair")
+            continue
         xf.append(ef)
         xt.append(et)
         yf.append(gf)
@@ -185,7 +203,7 @@ def main() -> int:
               f"dT {gt:+.3f}")
     rf, rt = float(np.corrcoef(xf, yf)[0, 1]), float(np.corrcoef(xt, yt)[0, 1])
     out["epochs_vs_garden"]["r_forage"], out["epochs_vs_garden"]["r_free"] = rf, rt
-    print(f"  correlation over 8 lineages: {name} {rf:+.2f}, free time {rt:+.2f}")
+    print(f"  correlation over {len(xf)} lineages: {name} {rf:+.2f}, free time {rt:+.2f}")
 
     keys = PROBES + (THIRST if chk == "M" else ())
     print(f"\n{X.lower()} epochs over evolution (first / middle / last 10): weaned on day 360, "
