@@ -51,6 +51,9 @@ JUMP_STREAM = 7_600_001  # the norm-matched check (PHASE4_DESIGN.md 4.5)
 # the extra key element of their policy streams inside an epoch, key (lineage, epoch, SCARCE_KEY)
 SCARCE_LINEAGE_STREAM = 7_700_001
 SCARCE_KEY = 2
+# small-meal evo (PHASE4_DESIGN.md 4.7): the same two roles for its lineages, key (l, e, SMALL_KEY)
+SMALL_LINEAGE_STREAM = 7_800_001
+SMALL_KEY = 3
 SEX_ANY = -1  # a pool entry that may found either sex (neutral pools)
 
 

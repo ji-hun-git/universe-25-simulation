@@ -120,6 +120,8 @@ class Universe25Sim:
             )
             self.cuda_graph.bind_engine(self.warp_engine)
         self._action_hist = np.zeros(N_ACTIONS, dtype=np.int64)
+        # read-only: the decisions of weaned animals with no reflex in force, by action
+        self._eligible_hist = np.zeros(N_ACTIONS, dtype=np.int64)
         self._cell_food = np.array([c.food_xy for c in self.world.cells], dtype=np.float64)
         self._cell_water = np.array([c.water_xy for c in self.world.cells], dtype=np.float64)
         # free-time sub-steps (P4-8): 1 = off; their own stream, never the biology stream
@@ -543,6 +545,10 @@ class Universe25Sim:
             allowed[np.flatnonzero(fr), forced[fr]] = True
         chosen = self.policy.choose(self, idx, allowed)  # every row allows one action
         chosen = np.where(fr, forced, chosen).astype(np.int8)
+        el = ~pup & ~fr
+        if el.any():
+            self._eligible_hist += np.bincount(chosen[el].astype(np.int64),
+                                               minlength=N_ACTIONS)
         actions[idx] = chosen
         return actions
 
@@ -618,13 +624,16 @@ class Universe25Sim:
                 # always exceeds hunger, so the abundant arm is unchanged (bit-identical).
                 n_c = np.bincount(a.cell_id[ii].astype(int), minlength=self.world.n_cells)
                 share = self.food / np.maximum(n_c, 1)
+                # small meals (H-k): a meal relieves at most meal_cap of hunger
+                cap = self.cfg.resources.meal_cap
+                cap = float("inf") if cap is None else float(cap)
                 eats = (self._capacity_mask(ii, geo.hopper_meals_per_day)
                         if geo.hopper_meals_per_day > 0.0 and not box_feed else None)
                 for n_i, i in enumerate(ii):
                     if eats is not None and not eats[n_i]:
                         continue  # the hopper is full this decision (replica v2)
                     c = int(a.cell_id[i])
-                    take = min(float(a.hunger[i]), self.food[c], float(share[c]))
+                    take = min(float(a.hunger[i]), self.food[c], float(share[c]), cap)
                     self.food[c] -= take
                     a.hunger[i] = max(0.0, a.hunger[i] - take)
                     a.energy[i] = min(1.0, a.energy[i] + 0.25 * take + 0.1 * dt)

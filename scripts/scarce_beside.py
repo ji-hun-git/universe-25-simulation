@@ -12,8 +12,12 @@ changes). From the outputs of evolve_scarce.py, sweep_scarce.py and analyse_scar
 - the scarce epochs' hunger probes over evolution (first, middle and last 10 epochs).
 Writes _output/scarce_sweep/scarce_beside.json.
 
-usage: python scripts/scarce_beside.py [--sweep _output/scarce_sweep]
-       [--evo-scarce _output/evo_scarce]
+--regime small reads small-meal evo instead (PHASE4_DESIGN.md 4.7; arm SMALL, seeds 9945-9960,
+_output/small_sweep and _output/evo_small): the seeds' agreement and the epochs-against-garden
+comparison use the manipulation check's share M (FORAGE or DRINK) in place of F, and the probes
+add the thirst-starving share. Writes _output/small_sweep/small_beside.json.
+
+usage: python scripts/scarce_beside.py [--regime scarce|small] [--sweep DIR] [--evo-scarce DIR]
 """
 from __future__ import annotations
 
@@ -28,14 +32,15 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from analyse_scarce import ACTION_NAMES, ARMS, run_shares, seeds_of  # noqa: E402
+from analyse_scarce import ACTION_NAMES, REGIMES, run_shares, seeds_of  # noqa: E402
 
-from universe25.agents.state import N_ACTIONS  # noqa: E402
+from universe25.agents.state import ACT_DRINK, N_ACTIONS  # noqa: E402
 from universe25.metrics.phase_rates import label_windows  # noqa: E402
 
 LINEAGES = tuple(range(1, 9))
 PROBES = ("weaned_end", "weaned_mean_2h", "hunger_mean_2h", "hungry_share_2h",
           "starving_share_2h", "starving_share_max")
+THIRST = ("thirst_starving_share_2h", "thirst_starving_share_max")  # small-meal epochs on
 
 
 def run_budget(run: dict) -> tuple[np.ndarray, float]:
@@ -56,7 +61,12 @@ def run_budget(run: dict) -> tuple[np.ndarray, float]:
     return np.mean(shares, axis=0), float(np.nanmean(elig))
 
 
-def probe_course(evo_scarce: Path, lineage: int) -> dict[str, dict[str, float]]:
+def epoch_rows(path: Path) -> list[dict]:
+    return [json.loads(r) for r in path.read_text(encoding="utf-8").splitlines() if r.strip()]
+
+
+def probe_course(evo_scarce: Path, lineage: int,
+                 keys: tuple[str, ...] = PROBES) -> dict[str, dict[str, float]]:
     path = evo_scarce / f"lineage_{lineage}" / "epochs.jsonl"
     rows = [json.loads(r) for r in path.read_text(encoding="utf-8").splitlines() if r.strip()]
     mid = len(rows) // 2
@@ -64,7 +74,7 @@ def probe_course(evo_scarce: Path, lineage: int) -> dict[str, dict[str, float]]:
     for part, sl in (("first10", rows[:10]), ("middle10", rows[mid - 5:mid + 5]),
                      ("last10", rows[-10:])):
         rec = {}
-        for k in PROBES:
+        for k in keys:
             v = [(r.get("probe") or {}).get(k) for r in sl]
             v = [float(x) for x in v if x is not None and np.isfinite(x)]
             rec[k] = float(np.mean(v)) if v else float("nan")
@@ -77,19 +87,23 @@ def probe_course(evo_scarce: Path, lineage: int) -> dict[str, dict[str, float]]:
 
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--sweep", default=str(ROOT / "_output" / "scarce_sweep"))
-    p.add_argument("--evo-scarce", default=str(ROOT / "_output" / "evo_scarce"))
+    p.add_argument("--regime", choices=sorted(REGIMES), default="scarce")
+    p.add_argument("--sweep", default=None, help="default: by regime")
+    p.add_argument("--evo-scarce", default=None, help="default: by regime")
     a = p.parse_args()
-    sweep, evo_s = Path(a.sweep), Path(a.evo_scarce)
-    ana = json.loads((sweep / "scarce_analysis.json").read_text(encoding="utf-8"))
+    X, seed0, evo_dir, sweep_dir, ana_name, chk, hyp = REGIMES[a.regime]
+    arms = (X, "ABUND", "NEU")
+    sweep = Path(a.sweep) if a.sweep else ROOT / "_output" / sweep_dir
+    evo_s = Path(a.evo_scarce) if a.evo_scarce else ROOT / "_output" / evo_dir
+    ana = json.loads((sweep / ana_name).read_text(encoding="utf-8"))
     out: dict = {"runs": {}, "seed_agreement": {}, "budget": {}, "budget_mean": {},
                  "epochs_vs_garden": {}, "probes": {}}
 
     runs = {}
     print("per run: F, T, entered windows, peak N on day, N@315, eligible share of weaned rows")
-    for arm in ARMS:
+    for arm in arms:
         for lin in LINEAGES:
-            for s in seeds_of(lin):
+            for s in seeds_of(lin, seed0):
                 d = sweep / f"{arm}_l{lin}_{s}"
                 r = json.loads((d / "scarce_run.json").read_text(encoding="utf-8"))
                 label_windows(r["windows"], r["t_fl"], r["t_pk"])
@@ -98,12 +112,13 @@ def main() -> int:
                 lm = r["landmarks"]
                 runs[(arm, lin, s)] = {
                     "F": sh["F"], "T": sh["T"], "n_windows": sh["n_windows"],
+                    "D": sh["D"], "M": sh["M"],
                     "budget": bud, "eligible_of_weaned": elig, "peak_n": lm.get("peak_n"),
                     "peak_day": lm.get("peak_day"), "n_at_day_315": lm.get("n_at_day_315")}
     for lin in LINEAGES:
-        for s in seeds_of(lin):
+        for s in seeds_of(lin, seed0):
             parts = [f"l{lin} {s}"]
-            for arm in ARMS:
+            for arm in arms:
                 q = runs[(arm, lin, s)]
                 parts.append(f"{arm[:3]} F {q['F']:.3f} T {q['T']:.3f} w{q['n_windows']:2d} "
                              f"peak {q['peak_n']:.0f} on {q['peak_day']:.0f} "
@@ -112,65 +127,80 @@ def main() -> int:
     out["runs"] = {f"{k[0]}_l{k[1]}_{k[2]}": {**v, "budget": v["budget"].tolist()}
                    for k, v in runs.items()}
 
-    print("\nthe two seeds of a lineage: F(SCARCE) - F(ABUND) and T(SCARCE) - T(ABUND)")
-    agree = {"F": 0, "T": 0}
+    print(f"\nthe two seeds of a lineage: {chk}({X}) - {chk}(ABUND) and T({X}) - T(ABUND)")
+    agree = {chk: 0, "T": 0}
     for lin in LINEAGES:
-        dF = [runs[("SCARCE", lin, s)]["F"] - runs[("ABUND", lin, s)]["F"] for s in seeds_of(lin)]
-        dT = [runs[("SCARCE", lin, s)]["T"] - runs[("ABUND", lin, s)]["T"] for s in seeds_of(lin)]
-        agree["F"] += int(np.sign(dF[0]) == np.sign(dF[1]))
+        sl = seeds_of(lin, seed0)
+        dF = [runs[(X, lin, s)][chk] - runs[("ABUND", lin, s)][chk] for s in sl]
+        dT = [runs[(X, lin, s)]["T"] - runs[("ABUND", lin, s)]["T"] for s in sl]
+        agree[chk] += int(np.sign(dF[0]) == np.sign(dF[1]))
         agree["T"] += int(np.sign(dT[0]) == np.sign(dT[1]))
-        out["seed_agreement"][str(lin)] = {"dF": dF, "dT": dT}
-        print(f"  l{lin}: dF {dF[0]:+.3f} {dF[1]:+.3f}   dT {dT[0]:+.3f} {dT[1]:+.3f}")
+        out["seed_agreement"][str(lin)] = {f"d{chk}": dF, "dT": dT}
+        print(f"  l{lin}: d{chk} {dF[0]:+.3f} {dF[1]:+.3f}   dT {dT[0]:+.3f} {dT[1]:+.3f}")
     out["seed_agreement"]["lineages_agreeing"] = agree
-    print(f"  lineages whose seeds agree in sign: F {agree['F']} of 8, T {agree['T']} of 8")
+    print(f"  lineages whose seeds agree in sign: {chk} {agree[chk]} of 8, T {agree['T']} of 8")
 
-    lin_bud = {(arm, lin): np.nanmean([runs[(arm, lin, s)]["budget"] for s in seeds_of(lin)],
-                                      axis=0) for arm in ARMS for lin in LINEAGES}
+    lin_bud = {(arm, lin): np.nanmean([runs[(arm, lin, s)]["budget"]
+                                       for s in seeds_of(lin, seed0)], axis=0)
+               for arm in arms for lin in LINEAGES}
     out["budget"] = {f"{arm}/{lin}": lin_bud[(arm, lin)].tolist()
-                     for arm in ARMS for lin in LINEAGES}
-    print("\nwhole budget: mean over lineages per arm (SCARCE / ABUND / NEU); lineages with SCARCE"
+                     for arm in arms for lin in LINEAGES}
+    print(f"\nwhole budget: mean over lineages per arm ({X} / ABUND / NEU); lineages with {X}"
           " above ABUND, above NEU")
     for i, name in enumerate(ACTION_NAMES):
-        v = {arm: np.array([lin_bud[(arm, lin)][i] for lin in LINEAGES]) for arm in ARMS}
-        above_a = int((v["SCARCE"] > v["ABUND"]).sum())
-        above_n = int((v["SCARCE"] > v["NEU"]).sum())
-        out["budget_mean"][name] = {**{arm: float(v[arm].mean()) for arm in ARMS},
-                                    "scarce_above_abund": above_a, "scarce_above_neu": above_n}
-        print(f"  {name:10s} {v['SCARCE'].mean():.3f} / {v['ABUND'].mean():.3f} / "
+        v = {arm: np.array([lin_bud[(arm, lin)][i] for lin in LINEAGES]) for arm in arms}
+        above_a = int((v[X] > v["ABUND"]).sum())
+        above_n = int((v[X] > v["NEU"]).sum())
+        out["budget_mean"][name] = {**{arm: float(v[arm].mean()) for arm in arms},
+                                    f"{X.lower()}_above_abund": above_a,
+                                    f"{X.lower()}_above_neu": above_n}
+        print(f"  {name:10s} {v[X].mean():.3f} / {v['ABUND'].mean():.3f} / "
               f"{v['NEU'].mean():.3f}   above ABUND {above_a}/8, above NEU {above_n}/8")
 
-    print("\nepochs, last 10 (scarce minus H-h, each line in its own world) against the garden")
+    print(f"\nepochs, last 10 ({X.lower()} minus H-h, each line in its own world) against the "
+          "garden")
     pre = ana["pre_evolution"]
+    evo = Path(ana["evo"])
     xf, xt, yf, yt = [], [], [], []
     for lin in LINEAGES:
         q = pre[str(lin)]
         ef = q["forage_decisions_last10"] - q["abund_forage_decisions_last10"]
+        if chk == "M":  # the check's share: FORAGE and DRINK of the executed decisions
+            def drink(path: Path) -> float:
+                return float(np.mean([r["decision_action_shares"][ACT_DRINK]
+                                      for r in epoch_rows(path)[-10:]]))
+            ef += (drink(evo_s / f"lineage_{lin}" / "epochs.jsonl")
+                   - drink(evo / f"lineage_{lin}" / "epochs.jsonl"))
         et = q["free_decisions_last10"] - q["abund_free_decisions_last10"]
         gf = ana["manipulation_check"]["d"][str(lin)]
-        gt = ana["H_j"]["d"][str(lin)]
+        gt = ana[hyp]["d"][str(lin)]
         xf.append(ef)
         xt.append(et)
         yf.append(gf)
         yt.append(gt)
         out["epochs_vs_garden"][str(lin)] = {"epochs_forage": ef, "epochs_free": et,
                                              "garden_dF": gf, "garden_dT": gt}
-        print(f"  l{lin}: epochs FORAGE {ef:+.3f} free {et:+.3f} | garden dF {gf:+.3f} "
+        name = "FORAGE" if chk == "F" else "FORAGE+DRINK"
+        print(f"  l{lin}: epochs {name} {ef:+.3f} free {et:+.3f} | garden d{chk} {gf:+.3f} "
               f"dT {gt:+.3f}")
     rf, rt = float(np.corrcoef(xf, yf)[0, 1]), float(np.corrcoef(xt, yt)[0, 1])
     out["epochs_vs_garden"]["r_forage"], out["epochs_vs_garden"]["r_free"] = rf, rt
-    print(f"  correlation over 8 lineages: FORAGE {rf:+.2f}, free time {rt:+.2f}")
+    print(f"  correlation over 8 lineages: {name} {rf:+.2f}, free time {rt:+.2f}")
 
-    print("\nscarce epochs over evolution (first / middle / last 10): weaned on day 360, weaned,"
-          " hunger, hungry and starving shares (second half), worst day starving, N on day 360")
+    keys = PROBES + (THIRST if chk == "M" else ())
+    print(f"\n{X.lower()} epochs over evolution (first / middle / last 10): weaned on day 360, "
+          "weaned, hunger, hungry and starving shares (second half), worst day starving"
+          + (", thirst-starving (second half, worst day)" if chk == "M" else "")
+          + ", N on day 360")
     for lin in LINEAGES:
-        pc = probe_course(evo_s, lin)
+        pc = probe_course(evo_s, lin, keys)
         out["probes"][str(lin)] = pc
         for part, rec in pc.items():
-            print(f"  l{lin} {part:8s} " + " ".join(f"{rec[k]:8.4f}" for k in PROBES)
+            print(f"  l{lin} {part:8s} " + " ".join(f"{rec[k]:8.4f}" for k in keys)
                   + f" {rec['n_end']:6.0f}")
-    (sweep / "scarce_beside.json").write_text(json.dumps(out, default=float, indent=1),
-                                               encoding="utf-8")
-    print(f"\nwrote {sweep / 'scarce_beside.json'}")
+    name = "scarce_beside.json" if a.regime == "scarce" else f"{a.regime}_beside.json"
+    (sweep / name).write_text(json.dumps(out, default=float, indent=1), encoding="utf-8")
+    print(f"\nwrote {sweep / name}")
     return 0
 
 

@@ -94,6 +94,10 @@ class ResourceConfig(_Strict):
     scarce_famine_period_days: float = 0.0
     scarce_famine_days: float = 0.0
     scarce_famine_factor: float = 1.0
+    # Small meals (phase 4, H-k; PHASE4_DESIGN.md 4.7): one forage decision relieves at most
+    # meal_cap of hunger, in any mode; the food itself is unchanged. None: a meal relieves all
+    # of it, as before (bit-identical).
+    meal_cap: float | None = Field(None, gt=0.0)
 
 
 class BiologyConfig(_Strict):

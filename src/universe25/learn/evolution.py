@@ -98,17 +98,18 @@ def sample_founders(rng: np.random.Generator, pool: dict[str, np.ndarray],
             "sex": pool["sex"][order]}
 
 
-def _probe_row(sim: Universe25Sim) -> tuple[float, int, float, float, float]:
-    """Read-only: day, weaned count, the weaned animals' mean hunger and the shares of them
-    above the forced-foraging reflex and above starvation."""
+def _probe_row(sim: Universe25Sim) -> tuple[float, int, float, float, float, float]:
+    """Read-only: day, weaned count, the weaned animals' mean hunger, the shares of them above
+    the forced-foraging reflex and above starvation, and the share above thirst starvation."""
     a = sim.agents
     w = a.alive & (a.age_days >= sim.cfg.biology.weaning_days)
     n = int(w.sum())
     if n == 0:
-        return float(sim.day), 0, float("nan"), float("nan"), float("nan")
+        return float(sim.day), 0, float("nan"), float("nan"), float("nan"), float("nan")
     h = a.hunger[w].astype(np.float64)
+    th = a.thirst[w].astype(np.float64)
     return (float(sim.day), n, float(h.mean()), float((h > PROBE_HUNGRY).mean()),
-            float((h > PROBE_STARVING).mean()))
+            float((h > PROBE_STARVING).mean()), float((th > PROBE_STARVING).mean()))
 
 
 def _finite_mean(x: np.ndarray) -> float | None:
@@ -116,21 +117,25 @@ def _finite_mean(x: np.ndarray) -> float | None:
     return float(x.mean()) if x.size else None
 
 
-def _probe_summary(rows: list[tuple[float, int, float, float, float]],
+def _probe_summary(rows: list[tuple[float, int, float, float, float, float]],
                    days: float) -> dict[str, Any]:
     """The probes of one epoch: the weaned count on its last day, and means over its second
-    half (days after days / 2) of the weaned count, mean hunger and the two shares."""
+    half (days after days / 2) of the weaned count, mean hunger and the three shares, with the
+    largest daily starvation shares."""
     if not rows:
         return {"days": 0, "weaned_end": 0}
     P = np.asarray(rows, dtype=np.float64)
     half = P[:, 0] > 0.5 * float(days)
     starving = P[:, 4][np.isfinite(P[:, 4])]
+    thirsty = P[:, 5][np.isfinite(P[:, 5])]
     return {"days": int(P.shape[0]), "weaned_end": int(P[-1, 1]),
             "weaned_mean_2h": _finite_mean(P[half, 1]),
             "hunger_mean_2h": _finite_mean(P[half, 2]),
             "hungry_share_2h": _finite_mean(P[half, 3]),
             "starving_share_2h": _finite_mean(P[half, 4]),
-            "starving_share_max": float(starving.max()) if starving.size else None}
+            "starving_share_max": float(starving.max()) if starving.size else None,
+            "thirst_starving_share_2h": _finite_mean(P[half, 5]),
+            "thirst_starving_share_max": float(thirsty.max()) if thirsty.size else None}
 
 
 def run_epoch(founders: dict[str, np.ndarray], lineage: int, epoch: int,
@@ -162,7 +167,7 @@ def run_epoch(founders: dict[str, np.ndarray], lineage: int, epoch: int,
         cfg = load_config(BASE, over)
         t0 = time.perf_counter()
         sim = Universe25Sim(cfg, tmp / "run")
-        probes: list[tuple[float, int, float, float, float]] = []
+        probes: list[tuple[float, int, float, float, float, float]] = []
         for t in range(int(round(float(days) * cfg.ticks_per_day))):
             sim.step()
             if probe and (t + 1) % cfg.ticks_per_day == 0:
@@ -186,6 +191,8 @@ def run_epoch(founders: dict[str, np.ndarray], lineage: int, epoch: int,
             "births_from_sire": int(pol.n_from_sire), "policy_births": int(pol.n_births),
             "genome_norms_adults": genome_norms(pool["genomes"]),
             "decision_action_shares": (hist / max(hist.sum(), 1.0)).round(5).tolist(),
+            "eligible_action_shares": (sim._eligible_hist / max(sim._eligible_hist.sum(), 1))
+            .round(5).tolist(),
             "wall_s": time.perf_counter() - t0,
         }
         if probe:

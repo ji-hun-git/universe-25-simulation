@@ -37,6 +37,8 @@ from universe25.agents.evo import (  # noqa: E402
     SCARCE_KEY,
     SCARCE_LINEAGE_STREAM,
     SEX_ANY,
+    SMALL_KEY,
+    SMALL_LINEAGE_STREAM,
     EvoPolicy,
     jump_genome,
     logits,
@@ -45,7 +47,7 @@ from universe25.agents.evo import (  # noqa: E402
     save_pool,
     stream,
 )
-from universe25.agents.state import SEX_F, SEX_M  # noqa: E402
+from universe25.agents.state import ACT_FORAGE, N_ACTIONS, SEX_F, SEX_M  # noqa: E402
 from universe25.config import PolicyConfig, load_config  # noqa: E402
 from universe25.learn.evolution import (  # noqa: E402
     evolve_lineage,
@@ -162,8 +164,8 @@ def test_jump_genome_scales_one_random_jump() -> None:
     expect = step * np.sqrt(N_HID * N_OUT)  # |W2| of a neutral line after 245 generations
     assert abs(float(np.linalg.norm(g1[S_W2])) - expect) < 0.1 * expect
     ids = {SAMPLING_STREAM, GENETICS_STREAM, FOUNDER_STREAM, LINEAGE_STREAM, NEUTRAL_STREAM,
-           JUMP_STREAM, SCARCE_LINEAGE_STREAM}
-    assert len(ids) == 7  # its own stream, and the scarce lineages' (4.6)
+           JUMP_STREAM, SCARCE_LINEAGE_STREAM, SMALL_LINEAGE_STREAM}
+    assert len(ids) == 8  # its own stream, and the scarce (4.6) and small-meal (4.7) lineages'
 
 
 def test_epoch_founders_by_sex_in_slot_order() -> None:
@@ -267,6 +269,30 @@ def test_scarce_lineage_loads_generation0_and_stops_at_its_depth() -> None:
         assert "probe" in json.loads(rows[0])
 
 
+SMALL_MEALS = {"resources": {"meal_cap": 0.375}}
+
+
+def test_small_meal_epochs_keep_their_streams_and_records() -> None:
+    """Small-meal evo (PHASE4_DESIGN.md 4.7): a small-meal epoch is deterministic, its key gives
+    other streams, its record carries the thirst probe and the eligible decisions' shares, and
+    the small meals change the epoch."""
+    founders = generation0(np.random.default_rng(12), 8)
+    kw = dict(days=30.0, sim_seed=7100)
+    p1, s1 = run_epoch(founders, 1, 0, overrides=SMALL_MEALS, key_extra=(SMALL_KEY,),
+                       probe=True, **kw)
+    p2, s2 = run_epoch(founders, 1, 0, overrides=SMALL_MEALS, key_extra=(SMALL_KEY,),
+                       probe=True, **kw)
+    assert np.array_equal(p1["genomes"], p2["genomes"]) and _strip(s1) == _strip(s2)
+    assert s1["probe"] == s2["probe"]
+    assert {"thirst_starving_share_2h", "thirst_starving_share_max"} <= set(s1["probe"])
+    el = np.asarray(s1["eligible_action_shares"])
+    assert el.size == N_ACTIONS and abs(float(el.sum()) - 1.0) < 1e-3
+    _, s3 = run_epoch(founders, 1, 0, overrides=SMALL_MEALS, key_extra=(SCARCE_KEY,), **kw)
+    assert s3["decision_action_shares"] != s1["decision_action_shares"]  # other streams
+    _, s4 = run_epoch(founders, 1, 0, key_extra=(SMALL_KEY,), **kw)  # the same, full meals
+    assert s4["decision_action_shares"][ACT_FORAGE] < s1["decision_action_shares"][ACT_FORAGE]
+
+
 def test_evo_modules_have_no_play_named_identifier_and_no_reward() -> None:
     allowed = {"playground", "play_objects", "PlayObject", "playground_enabled",
                "playground_bounds", "in_playground"}
@@ -293,5 +319,6 @@ if __name__ == "__main__":
     test_short_run_is_deterministic_and_hooks_cover_every_birth()
     test_scarce_epochs_keep_their_streams_and_probes_read_only()
     test_scarce_lineage_loads_generation0_and_stops_at_its_depth()
+    test_small_meal_epochs_keep_their_streams_and_records()
     test_evo_modules_have_no_play_named_identifier_and_no_reward()
     print("test_evo: OK")

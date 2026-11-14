@@ -1,6 +1,7 @@
 """Scarcity tools (phase 4 survival condition): capacity supply follows weaned occupancy and is
 capped at two days of a cell's share; foragers at a hopper split a short stock equally; famine
-pulses scale the supply; the abundant arm is untouched by any of it."""
+pulses scale the supply; small meals cap the relief of one meal; the abundant arm is untouched
+by any of it."""
 from __future__ import annotations
 
 import sys
@@ -74,8 +75,33 @@ def test_foragers_split_a_short_stock_equally() -> None:
     assert abs(sim.food[c]) < 1e-9
 
 
+def test_small_meals_cap_the_relief_of_one_meal() -> None:
+    """Small meals (PHASE4_DESIGN.md 4.7): with meal_cap a meal relieves at most the cap of
+    hunger from an unlimited stock; without it the meal relieves all of it."""
+    for cap, after in ((0.375, 0.625), (None, 0.0)):
+        sim = _sim({} if cap is None else {"meal_cap": cap})
+        assert sim.cfg.resources.meal_cap == cap and sim.cfg.resources.mode == "abundant"
+        a = sim.agents
+        i = int(np.flatnonzero(a.alive)[0])
+        a.age_days[i] = 120.0
+        a.hunger[i] = 1.0
+        sim.food[:] = 1e9
+        mask = np.zeros(a.capacity, dtype=bool)
+        mask[i] = True
+        actions = np.zeros(a.capacity, dtype=np.int8)
+        actions[i] = ACT_FORAGE
+        sim._execute_actions(mask, actions)
+        assert abs(float(a.hunger[i]) - after) < 1e-6, (cap, float(a.hunger[i]))
+    try:
+        _sim({"meal_cap": 0.0})
+        raise AssertionError("a meal cap of 0 must be refused")
+    except ValueError:
+        pass
+
+
 if __name__ == "__main__":
     test_capacity_supply_follows_occupancy_and_is_capped()
     test_famine_pulses_scale_the_supply()
     test_foragers_split_a_short_stock_equally()
+    test_small_meals_cap_the_relief_of_one_meal()
     print("test_scarcity: OK")

@@ -15,7 +15,12 @@ is empty (section 4.5). Added: the time budget of every window (metrics/phase_ra
 window_budget), computed from the same loaded trace as its rates. Resumable at each stage;
 stops on a NaN. Writes _output/scarce_sweep/<arm>_l<l>_<seed>/scarce_run.json.
 
-usage: python scripts/sweep_scarce.py [--workers 8] [--lineages 1-8] [--arms SCARCE ABUND NEU]
+--regime small evaluates small-meal evo instead (PHASE4_DESIGN.md 4.7): arms SMALL (the
+small-meal lineage's final pool, _output/evo_small), ABUND and NEU, on fresh seeds 9945-9960
+(lineage l: 9945 + 2(l - 1) and the next); the same pipeline. Writes _output/small_sweep/.
+
+usage: python scripts/sweep_scarce.py [--regime scarce|small] [--workers 8] [--lineages 1-8]
+           [--arms SCARCE ABUND NEU]
        python scripts/sweep_scarce.py --dev --lineages 1 --days 300 \
            --evo-scarce _output/evo_scarce_dev --out _output/scarce_dev
 --dev runs one seed per lineage, the training seed 7000 (the harness smoke, for timing only; no
@@ -56,16 +61,21 @@ DAYS = 1600.0
 SEED0 = 9929
 DEV_SEED = 7000
 ARMS = ("SCARCE", "ABUND", "NEU")
+# regime: (the evolved arm, first seed, its lineages' folder, the sweep folder)
+REGIMES = {
+    "scarce": ("SCARCE", SEED0, EVO_SCARCE, OUT),
+    "small": ("SMALL", 9945, ROOT / "_output" / "evo_small", ROOT / "_output" / "small_sweep"),
+}
 
 
-def seeds_of(lineage: int, dev: bool = False) -> list[int]:
+def seeds_of(lineage: int, dev: bool = False, seed0: int = SEED0) -> list[int]:
     if dev:
         return [DEV_SEED]
-    return [SEED0 + 2 * (int(lineage) - 1), SEED0 + 2 * (int(lineage) - 1) + 1]
+    return [seed0 + 2 * (int(lineage) - 1), seed0 + 2 * (int(lineage) - 1) + 1]
 
 
 def pool_for(arm: str, lineage: int, evo: Path, evo_scarce: Path) -> Path:
-    if arm == "SCARCE":
+    if arm in ("SCARCE", "SMALL"):
         return evo_scarce / f"lineage_{lineage}" / "pool_final.npz"
     if arm == "ABUND":
         return evo / f"lineage_{lineage}" / "pool_final.npz"
@@ -170,25 +180,31 @@ def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--workers", type=int, default=8)
     p.add_argument("--lineages", type=str, default="1-8")
-    p.add_argument("--arms", nargs="+", default=list(ARMS))
+    p.add_argument("--regime", choices=sorted(REGIMES), default="scarce")
+    p.add_argument("--arms", nargs="+", default=None, help="default: by regime")
     p.add_argument("--evo", type=str, default=str(EVO))
-    p.add_argument("--evo-scarce", type=str, default=str(EVO_SCARCE))
-    p.add_argument("--out", type=str, default=str(OUT))
+    p.add_argument("--evo-scarce", type=str, default=None,
+                   help="the evolved arm's lineages (default: by regime)")
+    p.add_argument("--out", type=str, default=None, help="default: by regime")
     p.add_argument("--days", type=float, default=DAYS)
     p.add_argument("--dev", action="store_true")
     a = p.parse_args()
+    arm0, seed0, evo_x, out_x = REGIMES[a.regime]
+    arms = a.arms or [arm0, "ABUND", "NEU"]
+    evo_scarce = Path(a.evo_scarce) if a.evo_scarce else evo_x
     lo, _, hi = a.lineages.partition("-")
     lineages = list(range(int(lo), int(hi or lo) + 1))
-    out = Path(a.out)
+    out = Path(a.out) if a.out else out_x
     out.mkdir(parents=True, exist_ok=True)
     jobs = []
     for lin in lineages:
-        for arm in a.arms:
-            pool = pool_for(arm, lin, Path(a.evo), Path(a.evo_scarce))
+        for arm in arms:
+            pool = pool_for(arm, lin, Path(a.evo), evo_scarce)
             if not pool.exists():
                 print(f"missing pool for {arm} lineage {lin}: {pool}", flush=True)
                 return 1
-            jobs += [(arm, lin, s, str(pool), str(out), a.days) for s in seeds_of(lin, a.dev)]
+            jobs += [(arm, lin, s, str(pool), str(out), a.days)
+                     for s in seeds_of(lin, a.dev, seed0)]
     t0 = time.perf_counter()
     stops: list[str] = []
     failed: list[str] = []
