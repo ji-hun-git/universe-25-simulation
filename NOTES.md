@@ -1,5 +1,321 @@
 # Universe25 Play — NOTES
 
+## 2026-11-15 — Small-meal `evo` and H-k: small meals keep every survivor hungry, but selection under them does not raise voluntary maintenance in the common garden; the manipulation check fails, so H-k is untested
+
+**Question.**
+- H-k (PLAN §15.1, added 2026-11-15 before any code or run): a scarcity that keeps the survivors
+  hungry selects against free time. Lineages evolved with small meals should spend less of their
+  free choices in free time than lineages evolved from the same founders under abundance.
+- Jason chose a hungrier scarcity after H-j went untested (NOTES 2026-11-14): food for 100
+  animals had left the survivors fed.
+- Its operationalization was fixed in `docs/PHASE4_DESIGN.md` §4.7 (b0bc034) before any code or
+  run. The tooling was committed before any lineage or evaluation seed was run (2683e94).
+- *Small meals:* food and water stay unlimited, but one forage decision relieves at most 0.375 of
+  hunger (`resources.meal_cap`).
+  - Hunger rises 0.2 per decision, so every animal must forage more often, and its hunger stays
+    high.
+  - Below a cap of 0.4 there is a trap. An animal whose hunger crossed the reflex late needs two
+    meals in a row. The hunger reflex overrides the thirst reflex, so it cannot drink in
+    between, and if its thirst was already high it crosses starvation (1.2).
+  - Foraging or drinking voluntarily, before the reflexes fire, avoids the trap.
+- *Pre-evolution:*
+  - 8 lineages from the 16 generation-0 genomes of H-h's lineages, in H-h's epochs (8 pairs,
+    360 d, training seeds 7000–7009) with small meals;
+  - each lineage runs until its day-360 adults reach the pedigree depth G_ℓ of H-h's lineage
+    (226–263), so both lines carry the same number of mutations.
+- *The common garden:* the canonical world (ABUND-PG, 1,600 d, no cap) on fresh seeds 9945–9960,
+  2 per lineage, paired across three arms:
+  - SMALL: 4 F + 4 M from the small-meal lineage's final pool;
+  - ABUND: 4 F + 4 M from H-h's final pool;
+  - NEU: 8 founders from H-h's neutral pool.
+- *The two shares,* over the rows where a free action was eligible (weaned, no reflex):
+  - M, voluntary maintenance: the share with FORAGE or DRINK;
+  - T: the share of the simulator's free-time actions (EXPLORE, SOCIAL, RUN_ON, TURN_BACK,
+    MANIPULATE, BACK_OFF and CIRCLE).
+
+  A run's share is the mean over its entered windows; a lineage's is the mean of its 2 runs.
+- *Decisions:*
+  - the manipulation check: d^M = M(SMALL) − M(ABUND) > 0 at a one-sided exact sign-flip
+    p < 0.025 over at least 6 lineages. If it fails, H-k is untested.
+  - H-k: d^T = T(SMALL) − T(ABUND). **Supported** if the mean d^T < 0 at p(fall) < 0.025;
+    **falsified** if it is > 0 at p(rise) < 0.025; **not supported** otherwise.
+
+**Run.**
+- *Pre-evolution:* 7 of the 8 lineages reached G_ℓ, in 150–187 epochs (1.38–1.70 generations per
+  epoch). It took 2,915 s wall on 8 workers (5.9 CPU-h, against the 6 estimated). No lineage
+  reached 400 epochs, and none of the 1,318 epochs had a NaN.
+- *Lineage 6 ended* at epoch 171, at a mean adult depth of 218 of its 263. On day 360 it had 4
+  adult males and no female.
+  - Its colony had boomed and crashed for much of the run: day 360 found fewer than 50 animals in
+    14 of its 172 epochs and fewer than 100 in 24, down to 3.
+  - The spec stops only when more than 2 lineages end, and reports each ending. So the check and
+    H-k are read on 7 lineages. The smallest p is then 1/128, and p < 0.025 needs about 6 of the
+    7 in the predicted direction.
+- *Evaluation:* 46 runs. SMALL lineage 6 has no final pool, so its 2 runs could not be made.
+  - The sweep script stops when a pool is missing, and its first launch stopped before any run.
+    It was relaunched in three parts without a code change: lineages 1–5 and 7–8 with all arms,
+    and lineage 6 with ABUND and NEU.
+  - 5,074 s wall on 8 workers (9.7 CPU-h, against the 9 estimated).
+- No other stop rule fired: no NaN, no H2 term, no failed determinism test.
+- *Windows:* every SMALL and ABUND run has 25–29 entered windows.
+  - SMALL lineage 1 on seed 9945 died out before day 1,600, after its 25 windows.
+  - Two NEU runs died out with no entered window: lineage 1 on seed 9945 (peak 25 on day 118)
+    and lineage 6 on seed 9955 (peak 30 on day 403). The analysis takes those lineages' NEU
+    shares from their other run.
+- The log shows the same RuntimeWarnings as H-g, H-h and H-j (overflow in `hypot`, invalid value
+  in subtract), from the `np.empty` padding in `detectors.form_resim`.
+
+**Pre-evolution** (reported beside).
+- *Hunger:* small meals kept every survivor hungry.
+  - The weaned animals' mean hunger over each epoch's second half was 0.63–0.67 in all 1,318
+    epochs. The development look had found 0.38 without a cap.
+  - At the daily probe, no weaned animal was above the forced-foraging reflex (0.85) on any day
+    of any epoch's second half, and none was ever above hunger 1.2. The reflex brings an animal
+    back below 0.85 at once, and the food never runs out.
+  - *Thirst, the trap's route:* on an average day of the second half, 0.008–0.028 % of weaned
+    animals were above thirst 1.2 (each lineage's mean over its epochs). The worst day of an
+    epoch had 2.1–4.0 % on average, and at most 24 %, in small colonies.
+- *Executed decisions* (all animals, reflexes included): FORAGE was about 0.37 of all decisions
+  in every lineage from the first epoch on (0.35–0.41 in the last 10; H-h's last 10: 0.14–0.17).
+  Most of it was forced: the eligible decisions chose FORAGE in about 0.07 of their rows.
+- *The colony on day 360* (mean of the first 10 epochs → mean of the last 10):
+  - N went from 263–335 to 150–2,388 in the 7 lineages that reached G_ℓ.
+  - Against H-h's line over the same generations (238–396 to 600–2,584), the small-meal colony
+    ended smaller in lineages 2, 4, 5, 7 and 8 (150–1,334 against 2,252–2,556), and larger in
+    lineages 1 and 3 (2,388 and 726 against 690 and 600).
+- *The eligible decisions over evolution* (the SMALL line only: H-h's epochs did not record
+  them). Generation 0 chooses almost evenly, about 0.07 per action. Mean of the 8 lineages:
+
+  | action | first 10 epochs | last 10 | lineages where it rose |
+  |---|---|---|---|
+  | AGGRESS | 0.073 | 0.259 | 6 |
+  | NEST | 0.073 | 0.111 | 5 |
+  | BACK_OFF | 0.071 | 0.090 | 3 |
+  | REST | 0.077 | 0.085 | 4 |
+  | SOCIAL | 0.073 | 0.075 | 4 |
+  | FORAGE | 0.074 | 0.067 | 3 |
+  | WITHDRAW | 0.071 | 0.054 | 2 |
+  | CIRCLE | 0.075 | 0.046 | 2 |
+  | DRINK | 0.072 | 0.043 | 2 |
+  | NURSE | 0.018 | 0.035 | 3 |
+  | TURN_BACK | 0.070 | 0.034 | 1 |
+  | MANIPULATE | 0.075 | 0.033 | 0 |
+  | RUN_ON | 0.076 | 0.029 | 0 |
+  | EXPLORE | 0.072 | 0.024 | 0 |
+  | MATE | 0.028 | 0.014 | 0 |
+
+  - M rose in lineages 2 (0.139 → 0.248) and 5 (0.149 → 0.196), and fell in the other 6, to
+    0.009–0.140. T fell in 7 of the 8 (all but lineage 3).
+  - The largest single rise was AGGRESS in lineages 4, 6 and 7 (+0.28, +0.71 and +0.40), NEST in
+    1 and 8 (+0.17 and +0.23), BACK_OFF in 3 (+0.27), FORAGE in 2 (+0.17) and SOCIAL in 5
+    (+0.16).
+  - Lineage 6, the one that ended, chose AGGRESS in 0.78 of its eligible rows over its last 10
+    epochs.
+  - So in its own world, selection with small meals moved the free choices out of free time, but
+    mostly into fighting and nesting, not into maintenance. H-h's line has no such record in its
+    world, so this is not a comparison between the lines.
+- *Genome norms of the final pools:*
+
+  | arm | W1 | W2 |
+  |---|---|---|
+  | SMALL (7 lineages) | 15.5–16.2 | 6.6–7.2 |
+  | ABUND | 15.3–16.4 | 6.7–7.2 |
+  | NEU | 15.2–16.1 | 6.5–7.2 |
+
+  Matched in generations, the arms are matched in weight size. So NEU is the matched-size random
+  control that criteria 3 and 4 on nets need (H-i, P4-18).
+
+**Result 1: the manipulation check fails.**
+
+| lineage | M SMALL | M ABUND | d^M | T SMALL | T ABUND | d^T (not read) |
+|---|---|---|---|---|---|---|
+| 1 | 0.109 | 0.139 | −0.029 | 0.468 | 0.369 | +0.100 |
+| 2 | 0.243 | 0.091 | +0.152 | 0.382 | 0.329 | +0.054 |
+| 3 | 0.094 | 0.068 | +0.026 | 0.386 | 0.443 | −0.056 |
+| 4 | 0.226 | 0.159 | +0.067 | 0.436 | 0.347 | +0.089 |
+| 5 | 0.255 | 0.099 | +0.156 | 0.440 | 0.328 | +0.112 |
+| 6 | – | 0.023 | – | – | 0.217 | – |
+| 7 | 0.029 | 0.184 | −0.156 | 0.568 | 0.381 | +0.187 |
+| 8 | 0.264 | 0.233 | +0.031 | 0.228 | 0.356 | −0.129 |
+
+Each value is the mean of the lineage's 2 seeds. Lineage 6 has no SMALL pool.
+- The mean d^M is +0.035 ± 0.041 over 7 lineages. 5 are positive, and p(rise) is 25/128 =
+  0.195.
+- So the check fails. By the preregistered rule, H-k is not read: **H-k is untested.**
+- An independent re-derivation from the raw trace files gives the same per-lineage shares (max
+  difference 0) and the same p-values. It uses its own trace reading, eligibility, phases and
+  entered rule, and computes the sign-flip by enumeration in exact fractions.
+- The d^T column is shown for completeness, not read: mean +0.051 ± 0.041, 5 of 7 lineages
+  positive, p(rise) 16/128 = 0.125.
+- *Exploratory:* in every lineage the two seeds agree in the sign of d^M, and of d^T. So, as in
+  H-j, each lineage's difference is a property of its pools; it is the direction that varies
+  between lineages.
+
+**Where the small-meal line differs** (reported beside).
+- *Against drift (NEU),* paired by lineage:
+  - M: SMALL − NEU +0.044 (p(rise) 0.10); ABUND − NEU −0.009 (p(rise) 0.63).
+  - T: SMALL − NEU −0.003 (p(fall) 0.48); ABUND − NEU −0.080 (p(fall) 0.070).
+  - Neither line differs from drift in M or T at p < 0.025.
+  - *Exploratory:* ABUND − NEU in T was −0.067 (p(fall) 0.11) in H-j's garden, with the same
+    pools on other seeds. So the abundance line may spend a little less of its free choices in
+    free time than drift, but neither garden shows it at p < 0.025.
+- *F and D apart,* SMALL − ABUND: F +0.036 (p(rise) 0.23), D −0.001 (p(rise) 0.52).
+- *T within relaxed rows and within the other eligible rows:* SMALL − ABUND +0.053 (p(fall)
+  0.83) and +0.050 (p(fall) 0.87).
+- *The whole budget* (each action's share of the eligible rows: the mean over the lineages with
+  runs, 7 for SMALL and 8 for ABUND and NEU; `scripts/scarce_beside.py --regime small`):
+
+  | action | SMALL | ABUND | NEU | lineages SMALL > ABUND (of 7) |
+  |---|---|---|---|---|
+  | NEST | 0.113 | 0.268 | 0.127 | 2 |
+  | AGGRESS | 0.110 | 0.072 | 0.085 | 5 |
+  | FORAGE | 0.108 | 0.065 | 0.064 | 5 |
+  | BACK_OFF | 0.099 | 0.062 | 0.090 | 5 |
+  | REST | 0.085 | 0.084 | 0.131 | 4 |
+  | SOCIAL | 0.082 | 0.052 | 0.046 | 4 |
+  | WITHDRAW | 0.068 | 0.075 | 0.079 | 4 |
+  | DRINK | 0.066 | 0.059 | 0.069 | 3 |
+  | MANIPULATE | 0.062 | 0.051 | 0.056 | 5 |
+  | CIRCLE | 0.052 | 0.030 | 0.042 | 6 |
+  | TURN_BACK | 0.042 | 0.059 | 0.069 | 1 |
+  | EXPLORE | 0.040 | 0.046 | 0.056 | 3 |
+  | RUN_ON | 0.038 | 0.046 | 0.067 | 4 |
+  | NURSE | 0.027 | 0.022 | 0.008 | 4 |
+  | MATE | 0.008 | 0.008 | 0.011 | 4 |
+
+  - ABUND nests most (0.268, against 0.113 and 0.127), as in H-j's garden (0.265).
+  - SMALL forages more than ABUND in 5 of 7 lineages, but drinks about the same.
+  - Its free time has more CIRCLE (6 of 7 lineages), BACK_OFF and MANIPULATE (5 of 7) and less
+    TURN_BACK (1 of 7) than ABUND's.
+  - Pooling the rows over runs (`analyse_scarce.py`'s table) gives the same picture: NEST 0.127
+    against 0.278, FORAGE 0.109 against 0.062.
+- *Exploratory: the garden follows the epochs.*
+  - Over the 7 lineages, the garden's d^M correlates +0.90 with the change in the SMALL line's
+    own M over evolution (first 10 epochs → last 10).
+  - The two lineages whose M rose in the epochs, 2 and 5, have the largest d^M (+0.152 and
+    +0.156). Lineage 7, whose M fell most among the 7, has the lowest (−0.156).
+  - For T the correlation is +0.25.
+  - So, as with H-j, the check fails in the evolution, not in the garden: selection with small
+    meals raised voluntary maintenance in only 2 of the 8 lineages.
+  - The measure H-j used for this, the two lines' FORAGE and DRINK shares of all executed
+    decisions in their last 10 epochs, correlates only +0.34 with d^M here. With small meals
+    those shares are mostly the reflex's.
+- *Episode rates by phase* (episodes per weaned individual-day, B / C / D):
+
+  | arm | object | locomotor |
+  |---|---|---|
+  | SMALL | 0.132 / 0.136 / 0.151 | 0.981 / 1.034 / 1.059 |
+  | ABUND | 0.086 / 0.128 / 0.109 | 0.892 / 0.955 / 0.913 |
+  | NEU | 0.119 / 0.131 / 0.123 | 1.110 / 1.108 / 1.078 |
+
+  SMALL has more object episodes than ABUND in every phase, near NEU's. Its locomotor rates lie
+  between ABUND's and NEU's.
+
+**Criteria 3 and 4, with the locomotor mix** (reported beside; rules v9; each window counted
+once).
+- Criterion 1 is met in 0.80–1.00 of the readings per window, criterion 2 in all, and criterion
+  5 in at most 0.13. Criterion 4 agrees with criterion 3 in 339 of the 340 readings. The
+  exception, a locomotor reading of ABUND lineage 1 (seed 9946, day 355), meets 3 and not 4.
+- *Criterion 3:*
+  - locomotor: SMALL 16 of 55 readings, ABUND 17 of 62, NEU 20 of 53;
+  - object: SMALL 0, ABUND 2 (lineages 3 and 7), NEU 2 (lineage 4, both seeds).
+  - SMALL meets it only in lineages 1 and 4 (8 readings each). ABUND meets it in 6 lineages, and
+    NEU in 4.
+- *The mix* (`scripts/form_mix.py --sweeps small_sweep`; P4-18):
+  - The rebuilt reversal fractions equal the stored ones.
+  - The locomotor readings that meet criterion 3 have a median TURN_BACK share of the episodes'
+    own moves of 0.63 (SMALL), 0.56 (ABUND) and 0.56 (NEU), against 0.25, 0.36 and 0.25 in the
+    readings that do not.
+  - A share of at least 0.5 occurs in 43 of the 53 readings that meet criterion 3, and in 2 of
+    the other 117.
+  - The reversal fraction follows the closing moves' shares (R² 0.990 over 170 readings).
+  - The readings that meet criterion 3 have a median order excess of −0.007, at most +0.051: no
+    order beyond the mix.
+  - So criterion 3 on nets again mostly reads a TURN_BACK preference. Against NEU, the
+    matched-size random control, the small line has no more of it.
+- *Exploratory: the object readings recur.* The 4 object readings that meet criterion 3 come
+  from the same pools as in H-j's garden: ABUND lineages 3 and 7, and NEU lineage 4 on both
+  seeds. Their order excess is +0.11 to +0.15 here, and was +0.08 to +0.17 there. The same
+  pools on other seeds give them again, so they belong to those nets. No test was preregistered
+  on this.
+
+**Landmarks** (median [range] over the runs of each arm: 14 SMALL, 16 ABUND, 16 NEU).
+
+| arm | N@315 | peak N | peak day | last young | last conception | N@1,444 | N@1,588 |
+|---|---|---|---|---|---|---|---|
+| SMALL | 396 [62, 2,023] | 2,077 [1,384, 2,639] | 700 [354, 1,408] | 1,572 [393, 1,578] | 1,599 [837, 1,599] | 821 [18, 1,580] | 626 [1, 1,490] |
+| ABUND | 1,264 [42, 1,797] | 2,468 [2,046, 2,644] | 490 [365, 1,585] | 544 [420, 1,578] | 880 [833, 1,599] | 106 [49, 1,367] | 28 [7, 2,125] |
+| NEU | 166 [5, 871] | 2,088 [25, 2,460] | 770 [118, 1,567] | 1,026 [0, 1,578] | 1,128 [488, 1,599] | 956 [12, 1,627] | 442 [4, 1,884] |
+
+First litters fall on days 102–106 in every arm.
+- ABUND and NEU come out close to H-j's garden, the same pools on other seeds: N@315 1,264 and
+  166 (H-j: 1,381 and 227), peak N 2,468 and 2,088 (2,428 and 2,130), last young 544 and 1,026
+  (574 and 1,235).
+- The SMALL line grows more slowly in the abundant garden: N@315 396 against ABUND's 1,264, and
+  its peak comes on day 700 against 490.
+- *Exploratory: it keeps breeding.* In 8 of the 14 SMALL runs (lineages 2, 3, 5 and 7, both
+  seeds) the last young is born on days 1,571–1,578, and 605–1,490 animals are alive on day
+  1,588. ABUND does that in 2 of 16 runs (lineage 3), and NEU in 5 of 16.
+  - SMALL lineages 1, 4 and 8 stop breeding by days 393–896. Lineage 1 booms fastest (N@315
+    2,023 and 1,588) and crashes; its run on seed 9945 dies out.
+  - This run cannot say whether small meals selected the slow growth or only stopped selecting
+    for fast growth.
+
+**What this means.**
+- Small meals did what H-j's limit could not: every survivor stayed hungry (mean hunger
+  0.63–0.67, against 0.38 without a cap), and the trap made death by thirst possible.
+- But the survival pressure was as narrow as the spec's limits feared. On an average day about
+  0.02 % of weaned animals were above thirst 1.2, and the reflexes did most of the maintenance.
+- Selection under small meals raised voluntary maintenance in only 2 of 8 lineages, and in the
+  common garden the small line's maintenance is not above the abundance line's. The design's
+  reading of this outcome, recorded in advance, holds:
+  - small meals did not raise voluntary maintenance against abundance in these generations, so
+    H-k is untested;
+  - neither scarcity tried here selects maintenance in the animals' free choices, and this route
+    to the time budget is closed on this substrate.
+- The small line did change.
+  - In its own world its free choices moved into fighting and nesting, and the lineage that
+    ended chose AGGRESS in 0.78 of its eligible rows.
+  - In the common garden it grows more slowly, and in 4 of 7 lineages it is still breeding at
+    the end of the run.
+  - Its free time is at drift's level. The abundance line's is a little below drift in both
+    gardens, not at p < 0.025.
+- So across H-h, H-j and H-k, free time on this substrate looks close to neutral for fitness,
+  under abundance and under both scarcities.
+- Criterion 3 on nets again reads the TURN_BACK preference, and the small line has no more of
+  it than drift.
+- Calhoun did not score play, and nothing here is play. PlayScore stays unvalidated.
+
+**Outputs** (not committed).
+- `_output/evo_small/lineage_<l>/`: `epochs.jsonl`, the generation-0 and final pools (lineage 6
+  has no final pool), the founders every 25 epochs, the resume state and `summary.json`.
+- `_output/small_sweep/`:
+  - per run `scarce_run.json`, `evo_rates.json`, `evo_detect.json` and `evo_policy.json`;
+  - `small_analysis.json`, `form_mix.json` and `small_beside.json`.
+- Logs: `_output/evo_small_log.txt`, `_output/small_sweep_log.txt` (the stopped first launch:
+  `_output/small_sweep_log_first_attempt.txt`), `_output/small_analysis_log.txt`,
+  `_output/small_form_mix_log.txt` and `_output/small_beside_log.txt`.
+- To re-analyse:
+  - `python scripts/analyse_scarce.py --regime small`;
+  - `python scripts/form_mix.py --sweeps small_sweep --out _output/small_sweep/form_mix.json`;
+  - the exploratory `python scripts/scarce_beside.py --regime small`. It now skips the runs
+    that could not be made (SMALL lineage 6); its H-j output is unchanged.
+
+**Next** (Jason's call).
+- P4-20 is done. H-k is untested, and the design's own reading of the failed check applies:
+  this route to the time budget is closed on this substrate.
+- *A lead, not a result:* here the reflexes do most of the maintenance. About 0.37 of all
+  decisions were FORAGE, most of them forced, so a voluntary meal mostly changes when the animal
+  eats, and selection on the free choices has little to act on.
+- *A transplant assay under small meals:* SMALL and ABUND founders, mixed, in the small-meal
+  epoch, scored by the small line's share of the adults on day 360. It would say whether the
+  small line adapted to small meals at all, perhaps through fighting or nesting. §4.7 left it
+  out.
+- *Maintenance as a choice:* later reflexes would move maintenance into the free choices, where
+  selection could act on it. That changes the calibrated biology, so it would need the
+  calibration checks and its own preregistration.
+- *Stop the scarcity line* and summarise phase 4's selection results (H-h to H-k) as they stand.
+
 ## 2026-11-14 — SCARCE-PG `evo` and H-j: food for 100 animals holds every scarce colony at its limit, but selection under it does not raise voluntary foraging in the common garden; the manipulation check fails, so H-j is untested
 
 **Question.**

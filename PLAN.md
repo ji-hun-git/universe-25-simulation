@@ -440,6 +440,10 @@ development reading, before any evaluation seed.
     sign-flip p < 0.025, else H-k is not read.
   - *H-k:* the free-time share SMALL − ABUND < 0 at p(fall) < 0.025 (supported), or > 0 at
     p(rise) < 0.025 (falsified).
+  - **Result (2026-11-15): the manipulation check fails (5 of 7 lineages, p(rise) 0.195); H-k
+    is untested.** Small meals kept every survivor hungry, and one of the 8 lineages ended (as
+    the stop rule allows). Selection raised voluntary maintenance clearly in only 2 lineages.
+    NOTES 2026-11-15.
 
 ### 15.2 Arms
 

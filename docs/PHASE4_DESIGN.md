@@ -2012,6 +2012,30 @@ training seed 7000 (at most 3 small-meal epochs of one lineage, and one canonica
 - The time budget counts choices, not their consequences. Calhoun did not score play, nothing
   here is play, and PlayScore stays unvalidated.
 
+**Result (2026-11-15, NOTES): the manipulation check fails; H-k is untested.**
+- 7 of the 8 small-meal lineages reached G_ℓ, in 150–187 epochs. Lineage 6 ended at epoch 171
+  (no adult female on day 360), which the stop rule allows and reports. So 46 runs, and the
+  tests are read on 7 lineages. No other stop fired.
+- *The epochs:* every survivor stayed hungry (mean hunger 0.63–0.67 in all 1,318 epochs), and
+  the trap made death by thirst possible but rare. On an average day 0.008–0.028 % of weaned
+  animals were above thirst 1.2.
+- *Manipulation check:* d^M is positive in 5 of 7 lineages (mean +0.035, p(rise) 25/128 =
+  0.195). So it fails, and H-k is not read. An independent re-derivation from the raw traces
+  gives the same numbers.
+- *Beside:*
+  - The garden's d^M follows the change in the small line's own voluntary maintenance over
+    evolution (r +0.90 over the lineages). Maintenance rose in only 2 lineages (2 and 5). In its
+    own world the line's free choices moved mostly into fighting (AGGRESS rose in 6 of 8
+    lineages) and nesting.
+  - In every lineage the two seeds agree in the sign of d^M and d^T. Against NEU, neither line
+    moves M or T at p < 0.025.
+  - The small line grows more slowly in the garden, and 8 of its 14 runs still breed at the end
+    (ABUND: 2 of 16).
+  - Criterion 3 is met in 16 of 55 SMALL locomotor readings, 17 of 62 ABUND and 20 of 53 NEU,
+    mostly as a TURN_BACK preference (P4-18).
+- By the reading recorded above, neither scarcity tried selects maintenance in the free
+  choices, and this route to the time budget is closed on this substrate.
+
 ## 5. Determinism (two tiers, never cross-tier identity)
 
 - **Reference tier (NumPy, CPU):** `need_driven`, `mlp_frozen` and `evo` are bit-identical run

@@ -747,6 +747,18 @@ read-only epoch probes), `src/universe25/agents/evo.py` (the scarce lineage stre
 
 ## P4-20 — Small-meal `evo` (H-k)
 
+> **Done 2026-11-15:**
+> - 7 of 8 small-meal lineages reached their generations in 150–187 epochs (49 min on 8
+>   workers). Lineage 6 ended at epoch 171, which the stop rule allows and reports. Then 46 runs
+>   on seeds 9945–9960 (85 min).
+> - **The manipulation check fails** by the preregistered rule: d^M is positive in 5 of 7
+>   lineages, p(rise) 0.195. So **H-k is untested**.
+> - Reported beside: drift, the whole budget, the eligible decisions over evolution, the
+>   criteria with the move mix, landmarks, norms and the epochs. Exploratory: the small line
+>   keeps breeding in the garden, and the object readings that meet criterion 3 recur in the
+>   same pools as in H-j.
+> - NOTES 2026-11-15.
+
 **Goal:** evolve the inherited-weight policy with small meals, a scarcity that keeps the
 survivors hungry, from H-h's generation-0 genomes. Then test whether it selects against free
 time (H-k), after a manipulation check for more voluntary maintenance. Chosen by Jason on

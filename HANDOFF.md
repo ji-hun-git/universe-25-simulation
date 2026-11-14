@@ -115,10 +115,15 @@
 >     manipulation check fails**: voluntary foraging is above ABUND in 3 of 8 lineages
 >     (p 0.36), so **H-j is untested**. Selection raised foraging clearly in 2 lineages.
 >     Exploratory: one scarce lineage shows locomotor order beyond its move mix.
->   - Next (Jason, 2026-11-15): a hungrier scarcity, as small-meal `evo`, preregistered as
->     H-k in `docs/PHASE4_DESIGN.md` §4.7 (card P4-20). A ration per animal cannot work
->     here (a death spiral, NOTES 2026-11-08). So the food stays unlimited and each meal is
->     small (0.375 of hunger), which keeps every survivor hungry.
+>   - Small-meal `evo` and H-k (P4-20, 2026-11-15; `docs/PHASE4_DESIGN.md` §4.7): food stays
+>     unlimited but each meal relieves at most 0.375 of hunger, which kept every survivor
+>     hungry. One of 8 lineages ended, as the stop rule allows. But **the manipulation check
+>     fails**: voluntary maintenance is above ABUND in 5 of 7 lineages (p 0.195), so **H-k is
+>     untested**. Selection raised maintenance clearly in 2 lineages; in its own world the
+>     line moved its free choices mostly into fighting and nesting. By the reading recorded
+>     in advance, this route to the time budget is closed on this substrate.
+>   - Next: Jason's call (NOTES 2026-11-15 lists a transplant assay under small meals, later
+>     reflexes, or stopping the scarcity line).
 > - Tier 2 done (2026-11-11): P4-15 failed its primary test, and the program-level stop rule
 >   applies (no further substrate change for PPO learners). Next: H-g / playground-off, `evo`,
 >   or replica v2 (Tier 3) — Jason's call.
@@ -938,6 +943,7 @@ in the peak count (N@736 3–4 % low) and the slow realisations' late tail (N@14
 - [x] Norm-matched check of criterion 3 (P4-17, 2026-11-13: H-i supported at the smallest detectable margin, 6 of 17 colonies, p 1/64; criterion 3 on nets follows weight size)
 - [x] State-conditioned null for the form test (P4-18, 2026-11-14: not built; locomotor criterion 3 on nets reads the primitive mix, a TURN_BACK preference)
 - [x] SCARCE-PG `evo` (P4-19, 2026-11-14: 8 scarce lineages matched in generations; the manipulation check fails (3 of 8 lineages, p 0.36), so H-j is untested; one scarce lineage shows locomotor order beyond its mix)
+- [x] Small-meal `evo` (P4-20, 2026-11-15: every survivor hungry; 7 of 8 lineages matched in generations, one ended; the manipulation check fails (5 of 7 lineages, p 0.195), so H-k is untested; the small line keeps breeding in the garden)
 - [x] Burghardt detectors per criterion with synthetic ground truth, ≥ 1,000 surrogates, thresholds fixed before any evaluation seed; V hopper fix (P4-5, 2026-11-06: rules v3 pass 12 / 12 preregistered checks on fresh seeds after v1 (11 / 12) and a falsifier failure in v2, all recorded; on the simulator both policies are non-functional and spontaneous but single-decision, so criteria 3 / 4 are not evaluable at 6 decisions per day) — **PlayScore eval-only, unvalidated**
 - [x] Finer decision grain for free-time behaviour (P4-8, 2026-11-06: `free_substeps`, `policy.substep_mode`; heuristic continue mode within 2 % of the control on every resolvable landmark, N@315 +13 % at one paired se; detectors have support; no arm meets all five criteria)
 - [x] H-d amendment adopted 2026-11-06 (drift > 10 % and > 2 paired se; heuristic with 12 sub-steps in continue mode preserved, random MLP not)
