@@ -2036,6 +2036,238 @@ training seed 7000 (at most 3 small-meal epochs of one lineage, and one canonica
 - By the reading recorded above, neither scarcity tried selects maintenance in the free
   choices, and this route to the time budget is closed on this substrate.
 
+### 4.8 Late reflexes: when maintenance is a choice, does a scarcity that keeps the survivors hungry select against free time? (H-l; fixed 2026-11-16 before any code or run)
+
+**Why.**
+- Jason chose later reflexes on 2026-11-15, after H-k went untested, and a milder starvation
+  hazard with them on 2026-11-16 (NOTES 2026-11-16).
+  - In H-j and H-k the reflexes did most of the maintenance. With small meals, about 0.37 of
+    all decisions were FORAGE, most of them forced. So a scarcity reached the free choices only
+    through rare traps, and selection raised voluntary maintenance clearly in 2 of 8 lineages
+    each time.
+  - H-l asks H-k's question in a world where maintenance is a choice.
+- *The development look* (NOTES 2026-11-16; training seed 7000 only):
+  - A later reflex threshold alone has no workable middle. Needs rise in fixed steps (hunger
+    0.2 and thirst 0.25 per decision), and a full meal or drink resets them to 0.
+  - Below 1.0 the reflexes fire at the same moments as today for animals on these steps.
+  - From 1.0 up the forced drink comes at thirst 1.25, past starvation (1.2). When the hunger
+    reflex fires at the same decision it wins, and the animal starves for a tick at the full
+    hazard (1 a day). Every colony died out, generation 0 and H-h's evolved founders alike.
+  - With the starvation hazard 20 times milder (0.05 a day), a threshold of 1.0 keeps every
+    generation-0 colony alive with full meals and with small meals.
+- *What the late world makes of maintenance:*
+  - Relying on the reflexes saves decisions. On the need steps the meal comes every 6
+    decisions instead of 5, and the drink every 5 instead of 4.
+  - But whenever the two reflexes collide, the animal spends a tick starving. Eating or
+    drinking before the reflex fires is safe, but it takes more decisions.
+  - With small meals the hunger reflex fires more often, so collisions are more frequent. In
+    the pilot below, 4.1–5.8 % of weaned animals were above thirst 1.2 on an average day with
+    full meals, and 6.3–7.1 % with small meals at the chosen cap (9.8–19.0 % at the harsher caps, which ended lineages) with small meals.
+  - So the late world prices maintenance as time against risk, and the price differs between
+    full and small meals. That is the contrast H-k lacked.
+
+**The late world.**
+- Two options, both off by default (bit-identical):
+  - `drives.reflex_need` (new; default 0.85): the forage and drink reflexes fire when hunger,
+    or thirst, exceeds it. The late world uses 1.0. On the need steps the meal is forced at
+    hunger 1.2 and the drink at thirst 1.25, one step later than today (both at 1.0).
+  - `biology.starvation_hazard_per_day` (existing; default 1.0): the late world uses 0.05.
+- Everything else is H-h's epoch: unlimited food and water, the playground on, the
+  calibrated biology and drives. The hunger reflex still overrides the thirst reflex.
+- *Why 1.0 and 0.05:* at threshold 1.0, 0.05 is the harshest tested hazard at which every
+  generation-0 colony survived its first epoch with both meal sizes (development look; small
+  meals there at 0.375):
+
+  | threshold | hazard (per day) | full meals: ended, N on day 360 | small meals: ended, N on day 360 |
+  |---|---|---|---|
+  | 0.85 (today) | 1 | 0 of 8, 180–512 | 0 of 8, 136–452 |
+  | 1.0 to 1.35 (8 values) | 1 | 8 of 8 | 8 of 8 |
+  | 1.0 | 0.25 | 6 of 8 | not run |
+  | 1.0 | 0.1 | 0 of 8, 128–1,152 | 3 of 8 |
+  | **1.0** | **0.05** | **0 of 8, 1,188–2,214** | **0 of 8, 138–990** |
+  | 1.3 | 0.05 | 0 of 8, 135–1,255 | 8 of 8 |
+  | 1.3 | 0.02 | 0 of 8, 1,884–2,507 | 0 of 8, 203–642 |
+
+  - 1.3 / 0.02 also survives, but it puts 11–22 % of weaned animals above hunger 1.2 on an
+    average day; 1.0 / 0.05 never does (the meal reflex at 1.2 relieves hunger before the
+    hazard is read). So at 1.0 / 0.05 the risk comes only from the collisions.
+
+**The pilot (2026-11-16, before this spec).**
+- Lineages 1–4, 40 epochs each, in the late world with full meals and with small meals at caps
+  0.375, 0.40 and 0.45.
+  - The epochs' training seeds 7000–7009, but streams of their own (founder draws 7_899_001,
+    policy key (ℓ, e, 98)), shared by the worlds. So no epoch of the real run was previewed.
+  - It read only the colonies, the need probes and the FORAGE and DRINK shares of the eligible
+    decisions (M). Free time was not read.
+
+  | world | lineages ended (epoch) | N on day 360, last 10 epochs | generations per epoch | weaned above thirst 1.2, average day | M, first 10 epochs → last 10 |
+  |---|---|---|---|---|---|
+  | full meals | 0 of 4 | 1,754–2,116 | 1.87–2.09 | 4.1–5.8 % | 0.146 → 0.175, 0.154 → 0.176, 0.150 → 0.136, 0.151 → 0.154 |
+  | cap 0.375 | 2 of 4 (11, 14) | 277–539 (the other 2) | 1.80–1.86 (the other 2) | 9.8–11.2 % | 0.159 → 0.192, –, –, 0.154 → 0.215 |
+  | cap 0.40 | 2 of 4 (13, 31) | 476–541 (the other 2) | 1.70–1.76 (the other 2) | 11.9–19.0 % | –, –, 0.141 → 0.135, 0.154 → 0.222 |
+  | cap 0.45 | 0 of 4 | 1,300–1,846 | 1.79–2.00 | 6.3–7.1 % | 0.146 → 0.120, 0.147 → 0.149, 0.157 → 0.203, 0.140 → 0.103 |
+
+- *Caps below 0.45 are too harsh in the late world.*
+  - At 0.375 the two-meal trap returns: after a forced meal above hunger 1.175, the next
+    decision is forced again. With the late thirst reflex, the animal then starves for a
+    tick whenever its thirst has reached 1.25. Two of four lineages failed to breed and
+    ended; in epoch 11 of lineage 2 the 16 founders made 3 conceptions in 179 days, and no
+    birth.
+  - At 0.40 one meal brings the hunger back under the reflex, so there is no trap. Yet the
+    colonies stayed small (11 of its 126 epochs had fewer than 100 animals on day 360), and 2
+    of 4 lineages ended (epochs 13 and 31). So the trap is not the whole reason.
+  - At that rate most of 8 lineages would end before G_ℓ, and the stop rule allows 2.
+- *The rule, fixed before the cap-0.40 pilot was read:* the lowest tested cap at which no pilot
+  lineage ended within 40 epochs. That is 0.45. No epoch at 0.45 had fewer than 200 animals
+  on day 360.
+- *The contrast at 0.45 is mild:* 6.3–7.1 % of weaned animals above thirst 1.2 on an
+  average day, against 4.1–5.8 % with full meals.
+- *What the pilot hints about the check:* from the first 10 epochs to the last 10, M rose
+  in 3 of 4 full-meal lineages (by 0.003 to 0.029) and in 2 of 4 lineages at cap 0.45 (the
+  four changes from −0.037 to +0.046). That is no sign that small meals raise voluntary
+  maintenance more than full meals. These are shares in each world, from four lineages over
+  about 75 generations; they are not a result.
+
+**Pre-evolution: two new lines.**
+- *LF:* the late world with full meals.
+- *LS:* the late world with small meals: a meal relieves at most 0.45 of hunger (the pilot's
+  rule; H-k's 0.375 is too harsh here).
+- *Lineages:* 8 per line. Lineage ℓ of each line starts from the 16 generation-0 genomes of
+  H-h's lineage ℓ (`_output/evo/lineage_ℓ/pool_gen0.npz`, in their slot order), as H-j's and
+  H-k's lineages did.
+- *The epoch is H-h's (§4.4) in the late world:*
+  - 8 founder pairs, 2 per corner cell, 360 days under the calibrated conception gate;
+  - 6 ticks per day, NumPy, 12 sub-steps;
+  - the next epoch's founders are 8 females and 8 males drawn from the adults alive on day 360;
+  - pups copy one parent with N(0, 0.02²);
+  - the simulation seeds cycle through 7000–7009.
+- *Streams of their own:*
+  - LF: founder draws from `SeedSequence([7000 + ℓ − 1, 7_900_001])`, policy key (ℓ, e, 4);
+  - LS: founder draws from `SeedSequence([7000 + ℓ − 1, 8_000_001])`, policy key (ℓ, e, 5).
+- *Length, matched in generations:* a lineage runs until the adults alive on day 360 have a
+  mean pedigree depth of at least G_ℓ, at most 400 epochs. G_ℓ is H-h's: 236, 257, 226, 228,
+  252, 263, 249 and 253. So H-h's neutral pool NEU ℓ controls drift for every line.
+- *Recorded per epoch* (read-only): H-k's record (the eligible decisions' action shares and the
+  daily probes), with the hungry share now read above the epoch's own reflex threshold (1.0
+  here, 0.85 before, so H-h's to H-k's records are unchanged).
+- *Ending:* a lineage without an adult of each sex on day 360 ends, and this is reported.
+
+**Evaluation: a common garden in the late world, on fresh seeds 9961–9976.**
+- *The garden is the abundant version of the selection worlds,* as for H-j and H-k: the
+  canonical setup (`configs/default.yaml`, ABUND-PG, Calhoun's 4 pairs, 1,600 d) with the late
+  world's two options and full meals.
+- *Why not the canonical world:* there the reflexes fire at need 1.0. That is the state where
+  the late lines' choice was selected: an animal at thirst 1.0 or hunger 1.0 can drink or eat
+  before the late reflex fires a step later. A canonical garden would force exactly those
+  decisions and hide the choice.
+- *Seeds:* lineage ℓ uses 9961 + 2(ℓ − 1) and the next, paired across the arms.
+- *Arms per lineage ℓ:*
+  - LS ℓ: 4 females and 4 males drawn from the adults of LS lineage ℓ's final pool;
+  - LF ℓ: 4 females and 4 males drawn from LF lineage ℓ's final pool;
+  - NEU ℓ: 8 founders drawn from H-h's neutral pool of lineage ℓ;
+  - ABUND ℓ: 4 females and 4 males drawn from H-h's final pool of lineage ℓ (beside only: a
+    line evolved with today's reflexes, meeting the late world for the first time).
+- *Runs:* H-j's pipeline (§4.6), unchanged but for the two options.
+  - 29 ten-day trace windows, every fourth individual, with the episode rates and the time
+    budget in every window.
+  - The rules-v9 detector vector on the four windows of §4.3.
+  - A window without traced rows is empty (§4.5).
+  - *The eligible rows follow the run's reflexes.* The detectors' eligibility (the time
+    budget's rows, and criterion 5's) mirrors the simulator's mask, which hard-coded 0.85.
+    It now reads the run's threshold from the trace: a trace records it when it is not the
+    calibrated 0.85, so every earlier trace reads as before. Without this, the time budget
+    would drop the rows between need 0.85 and 1.0, where the late world's choice is made.
+    The rules (v9) are unchanged.
+- 64 runs.
+
+**The shares** (over the eligible rows: weaned, no reflex in force; §4.6).
+- *M, voluntary maintenance:* the share with FORAGE or DRINK.
+- *T, free time:* the share with one of the simulator's free-time actions, as in §4.6.
+- F and D, FORAGE and DRINK apart, are reported beside.
+- *Per run:* the mean over the run's entered windows. *Per lineage and arm:* the mean of its two
+  runs.
+
+**The manipulation check (decisive): small meals in the late world raised voluntary
+maintenance.**
+- d^M_ℓ = M(LS ℓ) − M(LF ℓ), over the lineages with both shares defined. At least 6 are needed.
+- The test is the exact sign-flip over the lineages, one-sided.
+- It passes if the mean d^M > 0 with p < 0.025. If it fails, H-l is not read: it is untested.
+
+**H-l (decisive): when maintenance is a choice, a scarcity that keeps the survivors hungry
+selects against free time.**
+- d^T_ℓ = T(LS ℓ) − T(LF ℓ), with the same test.
+- **Supported** if the mean d^T < 0 with p(fall) < 0.025. **Falsified** if the mean d^T > 0
+  with p(rise) < 0.025. **Not supported** otherwise.
+- *Power:* with 8 lineages the smallest p is 1/256, and p < 0.025 needs about 7 of the 8 in the
+  predicted direction.
+
+**Reported beside** (not decisive).
+- F and D apart, LS − LF.
+- LS − NEU and LF − NEU for M, F, D and T: what selection did against drift in each world.
+- LF − ABUND and LS − ABUND for M, F, D and T: what the late world did against the line evolved
+  with today's reflexes.
+- The whole time budget, and T within relaxed rows and within the other eligible rows.
+- Episode rates by phase (§4.3) and the detector vector by window. Criteria 3 and 4 come with
+  the locomotor mix (P4-18), and NEU is their matched-size random control.
+- Landmarks (median [range]) and genome norms.
+- The epochs of both lines: their number, the generations per epoch, the colony and the weaned
+  count on day 360, the hunger and thirst probes, and the eligible decisions' action shares
+  across evolution.
+- Exploratory: the two seeds of each lineage, and the garden's d^M against the two lines'
+  change in eligible M over evolution.
+
+**What each outcome means** (recorded now).
+- *The check fails:* even with maintenance a choice, small meals did not raise voluntary
+  maintenance in these generations. H-l is untested, and no scarcity tried on this substrate
+  (a food limit, small meals, small meals with late reflexes) has selected maintenance in the
+  free choices.
+- *Supported:* when maintenance is a choice, a scarcity that keeps every survivor hungry selects
+  against free time, from the same founders over the same number of generations.
+  - That is the surplus-resource prediction as a time budget, reached by selection without
+    reward, in the late world.
+  - It says nothing about the form of free time, and nothing about play.
+- *Falsified:* small meals in the late world select for more free time. That would need its own
+  explanation.
+- *Not supported:* the extra maintenance comes from another part of the budget, such as rest,
+  nesting, social contact or fighting.
+
+**Budget and stops.**
+- *Pre-evolution:* 16 lineages. The pilot ran 1.8–2.1 generations per epoch, so about 115–145
+  epochs each, at about 35 s per epoch with full meals and 25 s with small meals. That is
+  about 18 CPU-h; 400 epochs would be about 50.
+- *Evaluation:* 64 runs, about 20 CPU-h (the late world's colonies grow fast). At most 8
+  workers (the machine is shared).
+- *Stops:*
+  - a NaN;
+  - an H2 term;
+  - a failed determinism test;
+  - more than 2 lineages of either line ending;
+  - a lineage reaching 400 epochs short of G_ℓ (stop and report).
+
+**Development.** The look and the pilot above set the world and the check. A harness smoke on
+training seed 7000 (at most 3 epochs of one lineage per line, and one garden run of at most
+300 d) is for timing only; no statistic from it is read.
+
+**Not included.**
+- A garden in the canonical world (it would hide the choice; see above).
+- Other thresholds and hazards, the late world with today's hazard (every colony dies), and the
+  late world under a food limit.
+- A transplant assay, recombination and other architectures.
+
+**Limits, recorded now.**
+- Two changes to the physiology, chosen together: a later reflex and a starvation hazard 20
+  times milder. The late world is not the calibrated canonical world. Under it the colonies of
+  generation-0 founders grew far larger in their first year (1,188–2,214 animals on day 360,
+  against 180–512 today). H-l's answer is about this world.
+- The risk comes from one interaction, the hunger reflex overriding the thirst reflex; the
+  saving comes from the decisions the late reflexes free.
+- The world was set on one seed, with one epoch per founder set and setting, and the cap by
+  viability in a four-lineage pilot. At 0.45 the two worlds differ less in risk than the
+  development look suggested (6–7 % of weaned animals above thirst 1.2, against 4–6 %).
+- The lines are matched in generations, not in epochs.
+- The time budget counts choices, not their consequences. Calhoun did not score play, nothing
+  here is play, and PlayScore stays unvalidated.
+
 ## 5. Determinism (two tiers, never cross-tier identity)
 
 - **Reference tier (NumPy, CPU):** `need_driven`, `mlp_frozen` and `evo` are bit-identical run

@@ -782,6 +782,33 @@ unchanged), `tests/test_scarcity.py`, `tests/test_evo.py`, `NOTES.md`, `docs/SEE
 
 ---
 
+## P4-21 — Late-reflex `evo` (H-l)
+
+**Goal:** make maintenance a choice, with late reflexes and a milder starvation hazard, and
+evolve two lines from H-h's generation-0 genomes in that world, one with full meals and one
+with small meals. Then test whether the small meals select against free time (H-l), after a
+manipulation check for more voluntary maintenance. Chosen by Jason on 2026-11-15 (later
+reflexes) and 2026-11-16 (the milder hazard). Design: `docs/PHASE4_DESIGN.md` §4.8 (fixed
+2026-11-16 before any code or run).
+
+**Files:** `src/universe25/config.py` and `src/universe25/sim.py` (the reflex threshold,
+calibrated by default), `src/universe25/metrics/trace.py` and
+`src/universe25/metrics/detectors.py` (a trace records a threshold other than the calibrated
+one, and the eligibility reads it), `src/universe25/learn/evolution.py` (the hungry probe
+above the epoch's own threshold), `src/universe25/agents/evo.py` (the two lines' streams),
+`scripts/evolve_scarce.py` and `scripts/sweep_scarce.py` (late regimes and the garden's
+options, defaults unchanged), `scripts/analyse_late.py`, `tests/test_scarcity.py`,
+`tests/test_detectors.py`, `tests/test_evo.py`, `NOTES.md`, `docs/SEEDS.md`
+
+**Acceptance criteria:**
+- every other kind bit-identical (golden fast tier); H-j's and H-k's analyses reproduce
+  exactly; the late epochs deterministic
+- 16 lineages run to their generations (or the stop reported); 64 runs on seeds 9961–9976
+- the manipulation check and H-l answered by the preregistered rules; negatives reported
+- `tests/run_tests.py` green; H2 audit clean
+
+---
+
 ## P4-6 — Phase 4 sweep harness
 
 > **2026-11-08:** survival condition decided (H-e amended to a state-based dose-response, PLAN

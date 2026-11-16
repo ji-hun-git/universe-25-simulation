@@ -211,6 +211,7 @@ Environment schema frozen after first successful long run + NOTES entry; learnin
 | H-i (added 2026-11-13, before any code or run) | Criterion 3 on nets follows weight size: generation-0 nets given one random jump the size of the neutral pools' drift meet it, and generation 0 itself does not | criterion 3 (rules v9) is met more often at the drifted size than at generation 0's, colony by colony | detector readings per colony, sign-flip over colonies (`PHASE4_DESIGN.md` §4.5) | no reading at the drifted size meets criterion 3 |
 | H-j (added 2026-11-14, before any code or run) | Survival pressure selects against free time: lineages evolved under food scarcity spend less of their free choices in free time than lineages evolved from the same founders under abundance | in a common abundant garden, the free-time share of eligible decisions is lower in scarce-evolved than in abundance-evolved lineages, once a manipulation check finds more voluntary foraging | time budget per lineage, sign-flip over lineages (`PHASE4_DESIGN.md` §4.6) | the scarce-evolved free-time share is higher at p(rise) < 0.025 |
 | H-k (added 2026-11-15, before any code or run) | A scarcity that keeps the survivors hungry selects against free time: lineages evolved with small meals spend less of their free choices in free time than lineages evolved from the same founders under abundance | in a common abundant garden, the free-time share of eligible decisions is lower in small-meal than in abundance-evolved lineages, once a manipulation check finds more voluntary maintenance (foraging or drinking) | time budget per lineage, sign-flip over lineages (`PHASE4_DESIGN.md` §4.7) | the small-meal free-time share is higher at p(rise) < 0.025 |
+| H-l (added 2026-11-16, before any code or run) | When maintenance is a choice, a scarcity that keeps the survivors hungry selects against free time: in a world with late reflexes and a milder starvation hazard, lineages evolved with small meals spend less of their free choices in free time than lineages evolved from the same founders with full meals | in a common garden of that world with full meals, the free-time share of eligible decisions is lower in small-meal than in full-meal lineages, once a manipulation check finds more voluntary maintenance (foraging or drinking) | time budget per lineage, sign-flip over lineages (`PHASE4_DESIGN.md` §4.8) | the small-meal free-time share is higher at p(rise) < 0.025 |
 | H-c (kept) | No play reward: any playground use is drive spillover unless criteria 3 / 4 show structure | code audit; H2 string audit over policy, observation and reward code | | any play-named term |
 
 **Amendment to H-d — ADOPTED 2026-11-06 (Jason; proposed the same day, before
@@ -444,6 +445,21 @@ development reading, before any evaluation seed.
     is untested.** Small meals kept every survivor hungry, and one of the 8 lineages ended (as
     the stop rule allows). Selection raised voluntary maintenance clearly in only 2 lineages.
     NOTES 2026-11-15.
+- **Late-reflex `evo` and H-l (Jason chose later reflexes 2026-11-15 and a milder starvation
+  hazard 2026-11-16; fixed 2026-11-16 before any code or run; `PHASE4_DESIGN.md` §4.8).**
+  - *The late world:* the forage and drink reflexes fire above need 1.0 (today 0.85), and
+    the starvation hazard is 0.05 a day (today 1). Relying on the reflexes saves decisions
+    but risks a starving tick when they collide.
+  - *Pre-evolution:* two new lines from H-h's generation-0 genomes, LF (full meals) and LS
+    (small meals: a meal relieves at most 0.45 of hunger), each lineage run to the pedigree
+    depth H-h's lineage reached.
+  - *Evaluation:* the canonical setup with the late world's options and full meals, on fresh
+    seeds 9961–9976. Arms: LS, LF, NEU (H-h's neutral pools) and ABUND (H-h's evolved
+    pools, beside).
+  - *Manipulation check:* voluntary maintenance (FORAGE or DRINK) LS − LF > 0 at sign-flip
+    p < 0.025, else H-l is not read.
+  - *H-l:* the free-time share LS − LF < 0 at p(fall) < 0.025 (supported), or > 0 at
+    p(rise) < 0.025 (falsified).
 
 ### 15.2 Arms
 

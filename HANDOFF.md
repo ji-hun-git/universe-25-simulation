@@ -126,8 +126,9 @@
 >     reflex threshold alone either changes nothing (below 1.0) or kills every colony (1.0
 >     and up). With a starvation hazard 20 times milder (0.05 a day) a late reflex makes
 >     maintenance a choice, and every founder colony survives with full and small meals.
->     Next: Jason's call (late reflexes with the milder hazard as H-l, or stop the
->     time-budget line).
+>     Next (Jason, 2026-11-16): the milder hazard. Late-reflex `evo`, preregistered as H-l
+>     in `docs/PHASE4_DESIGN.md` §4.8 (card P4-21): two new lines in the late world, with
+>     full meals and with small meals (cap 0.45), read in a late-world garden.
 > - Tier 2 done (2026-11-11): P4-15 failed its primary test, and the program-level stop rule
 >   applies (no further substrate change for PPO learners). Next: H-g / playground-off, `evo`,
 >   or replica v2 (Tier 3) — Jason's call.

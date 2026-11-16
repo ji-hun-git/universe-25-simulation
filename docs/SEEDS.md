@@ -50,7 +50,9 @@ passed to the generator, not simulation seeds.
 | 9929–9944 | evaluation, SCARCE-PG `evo` and H-j (registered 2026-11-14, before use) | 2 seeds per lineage (9929 + 2(ℓ − 1) and the next), paired across SCARCE, ABUND and NEU (`PHASE4_DESIGN.md` §4.6) |
 | 7000–7009 | `evo` small-meal pre-evolution (P4-20, registered 2026-11-15) | the small-meal lineages' founding epochs cycle over these sim seeds as H-h's do; founder draws from `SeedSequence([7000 + ℓ − 1, 7_800_001])`, policy streams keyed (ℓ, e, 3). The design's pilot used the dev-only streams 7_799_001 and (ℓ, e, 99) |
 | 9945–9960 | evaluation, small-meal `evo` and H-k (registered 2026-11-15, before use) | 2 seeds per lineage (9945 + 2(ℓ − 1) and the next), paired across SMALL, ABUND and NEU (`PHASE4_DESIGN.md` §4.7) |
-| 9096–9099, 9112–9199, 9416–9499, 9961–9999 | **reserved, fresh** | substrate-variant confirmation (24 seeds per variant) and future references |
+| 7000–7009 | `evo` late-reflex pre-evolution (P4-21, registered 2026-11-16) | the two late lines' founding epochs cycle over these sim seeds as H-h's do; founder draws from `SeedSequence([7000 + ℓ − 1, 7_900_001])` (LF) and `SeedSequence([7000 + ℓ − 1, 8_000_001])` (LS), policy streams keyed (ℓ, e, 4) and (ℓ, e, 5). The design's development look used the dev-only key (ℓ, 0, 99) on seed 7000, and its pilot the dev-only streams 7_899_001 and (ℓ, e, 98) |
+| 9961–9976 | evaluation, late-reflex `evo` and H-l (registered 2026-11-16, before use) | 2 seeds per lineage (9961 + 2(ℓ − 1) and the next), paired across LS, LF, NEU and ABUND (`PHASE4_DESIGN.md` §4.8) |
+| 9096–9099, 9112–9199, 9416–9499, 9977–9999 | **reserved, fresh** | substrate-variant confirmation (24 seeds per variant) and future references |
 
 ## Random-network init seeds (`MlpFrozenPolicy.random_init(s)`)
 
