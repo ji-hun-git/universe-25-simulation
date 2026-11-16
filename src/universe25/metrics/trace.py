@@ -46,6 +46,7 @@ POST_FIELDS = ("x", "y", "hunger_post", "thirst_post", "fatigue_post", "stress_p
                "cum_contacts", "obj_x", "obj_y", "obj_r")
 FIELDS = PRE_FIELDS + POST_FIELDS
 SURV = ("hunger", "thirst", "fatigue", "stress")
+DEFAULT_REFLEX_NEED = 0.85  # config DriveConfig.reflex_need; the meta records any other
 
 
 def nearest_object(x: np.ndarray, y: np.ndarray, ox: np.ndarray, oy: np.ndarray,
@@ -103,6 +104,8 @@ class TraceRecorder:
             "world_height": float(w.height),
             "ball_physics": bool(getattr(sim, "ball_physics", False)),
         }
+        if float(sim.cfg.drives.reflex_need) != DEFAULT_REFLEX_NEED:  # late reflexes (H-l)
+            self.meta["reflex_need"] = float(sim.cfg.drives.reflex_need)
         self._buf: dict[str, list[np.ndarray]] = {k: [] for k in FIELDS}
         self._win: int | None = None
         self._cur: dict[str, Any] | None = None  # this decision: idx, pre state, free set

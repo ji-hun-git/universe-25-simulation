@@ -18,8 +18,16 @@ code or run): unlimited food, but a meal relieves at most 0.375 of hunger (resou
 founder draws from SeedSequence([7000 + l - 1, 7_800_001]) and policy streams keyed (l, epoch,
 3); everything else as above. Writes _output/evo_small/lineage_<l>/.
 
-usage: python scripts/evolve_scarce.py [--regime scarce|small] [--lineages 1-8] [--epochs 400]
-           [--workers 8]
+--regime late_full and --regime late_small run the two lines of late-reflex evo
+(PHASE4_DESIGN.md 4.8, fixed 2026-11-16 before any code or run) in the late world: the forage
+and drink reflexes fire above need 1.0 (drives.reflex_need) and the starvation hazard is 0.05 a
+day. late_full (LF) has full meals, founder draws from SeedSequence([7000 + l - 1, 7_900_001])
+and policy streams keyed (l, epoch, 4); late_small (LS) has meals of at most 0.45, draws from
+[7000 + l - 1, 8_000_001] and keys (l, epoch, 5). Everything else as above. Writes
+_output/evo_late_full/ and _output/evo_late_small/.
+
+usage: python scripts/evolve_scarce.py [--regime scarce|small|late_full|late_small]
+           [--lineages 1-8] [--epochs 400] [--workers 8]
        python scripts/evolve_scarce.py --dev --lineages 1 --epochs 3 --out _output/evo_scarce_dev
 --dev fixes every epoch's simulation seed to the training seed 7000 (the harness smoke, for
 timing only; no statistic of it is read).
@@ -37,6 +45,10 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from universe25.agents.evo import (  # noqa: E402
+    LATE_FULL_KEY,
+    LATE_FULL_LINEAGE_STREAM,
+    LATE_SMALL_KEY,
+    LATE_SMALL_LINEAGE_STREAM,
     SCARCE_KEY,
     SCARCE_LINEAGE_STREAM,
     SMALL_KEY,
@@ -52,10 +64,21 @@ MAX_ENDED = 2  # stop rule: more lineages ending than this
 SCARCE_FOOD = {"resources": {"mode": "scarce", "scarce_supply": "capacity",
                              "scarce_capacity_animals": CAPACITY}}
 SMALL_MEALS = {"resources": {"meal_cap": MEAL_CAP}}
+# the late world (PHASE4_DESIGN.md 4.8): later forage and drink reflexes, a milder starvation
+# hazard; the garden (sweep_scarce.py --regime late) uses it too, with full meals
+REFLEX_LATE = 1.0
+HAZARD_LATE = 0.05
+LATE_MEAL_CAP = 0.45  # LS's cap (the pilot's viability rule)
+LATE_WORLD = {"drives": {"reflex_need": REFLEX_LATE},
+              "biology": {"starvation_hazard_per_day": HAZARD_LATE}}
 # regime: (epoch overrides, extra policy key, lineage stream, default output folder)
 REGIMES = {
     "scarce": (SCARCE_FOOD, SCARCE_KEY, SCARCE_LINEAGE_STREAM, OUT),
     "small": (SMALL_MEALS, SMALL_KEY, SMALL_LINEAGE_STREAM, ROOT / "_output" / "evo_small"),
+    "late_full": (LATE_WORLD, LATE_FULL_KEY, LATE_FULL_LINEAGE_STREAM,
+                  ROOT / "_output" / "evo_late_full"),
+    "late_small": ({**LATE_WORLD, "resources": {"meal_cap": LATE_MEAL_CAP}}, LATE_SMALL_KEY,
+                   LATE_SMALL_LINEAGE_STREAM, ROOT / "_output" / "evo_late_small"),
 }
 
 

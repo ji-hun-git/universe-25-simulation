@@ -536,8 +536,9 @@ class Universe25Sim:
         # action is also the only one the mask allows, so a learning policy is never credited
         # for an action physiology overrode (same outcome, same draws: bit-identical).
         forced = np.full(m, -1, dtype=np.int64)
-        forced = np.where((th > 0.85) & ~pup, ACT_DRINK, forced)
-        forced = np.where((hung > 0.85) & ~pup, ACT_FORAGE, forced)
+        rth = float(self.cfg.drives.reflex_need)  # 0.85 calibrated (H-l: later, 4.8)
+        forced = np.where((th > rth) & ~pup, ACT_DRINK, forced)
+        forced = np.where((hung > rth) & ~pup, ACT_FORAGE, forced)
         forced = np.where((fat > 1.2) & (hung < 0.7) & (th < 0.7), ACT_REST, forced)
         fr = forced >= 0
         if fr.any():

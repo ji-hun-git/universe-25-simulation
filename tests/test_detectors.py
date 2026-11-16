@@ -125,6 +125,15 @@ def test_v9_rules() -> None:
                        np.array([0.9, 0.2, 0.2, 0.2, 0.75]), np.array([0.2, 0.2, 0.9, 0.2, 0.2]),
                        np.array([0.1, 1.3, 0.1, 0.1, 1.3]))
     assert elig.tolist() == [False, False, False, False, True]
+    # late reflexes (PHASE4_DESIGN.md 4.8): the mask follows the run's threshold
+    late = D._eligible(np.array([30.0, 30.0, 30.0, 30.0]), np.array([0.95, 0.2, 1.1, 0.2]),
+                       np.array([0.2, 1.0, 0.2, 1.25]), np.zeros(4), 1.0)
+    assert late.tolist() == [True, True, False, False]
+    fgt = make_colony("forced_gating", seed=35)
+    base = D.prepare(fgt).eligible
+    assert np.array_equal(D.prepare({**fgt, "meta": dict(fgt["meta"])}).eligible, base)
+    wide = D.prepare({**fgt, "meta": {**fgt["meta"], "reflex_need": 10.0}}).eligible
+    assert wide.sum() > base.sum() and np.all(wide | ~base)  # a superset of the rows
     fg = D.detect_trace(make_colony("forced_gating", seed=35), n_surrogates=200, seed=3)
     for kind in ("object", "locomotor"):
         assert not fg[kind]["decisions_unvalidated"]["c5_relaxed_field"], kind

@@ -2,8 +2,9 @@
 generation 0, the per-animal forward pass, one-parent inheritance with mutation, founders,
 the neutral control, the norm-matched jump genome (4.5), epoch founder sampling, a short
 deterministic run whose hooks cover every conception and birth, the scarce epochs of SCARCE-PG
-evo (4.6: their streams, read-only probes and the generation-matched stop), and the H2 audit of
-the new modules (no reward, no play-named identifier)."""
+evo (4.6: their streams, read-only probes and the generation-matched stop), the small-meal (4.7)
+and late-reflex (4.8) epochs, and the H2 audit of the new modules (no reward, no play-named
+identifier)."""
 from __future__ import annotations
 
 import io
@@ -23,6 +24,10 @@ from universe25.agents.evo import (  # noqa: E402
     FOUNDER_STREAM,
     GENETICS_STREAM,
     JUMP_STREAM,
+    LATE_FULL_KEY,
+    LATE_FULL_LINEAGE_STREAM,
+    LATE_SMALL_KEY,
+    LATE_SMALL_LINEAGE_STREAM,
     LINEAGE_STREAM,
     N_HID,
     N_IN,
@@ -47,7 +52,7 @@ from universe25.agents.evo import (  # noqa: E402
     save_pool,
     stream,
 )
-from universe25.agents.state import ACT_FORAGE, N_ACTIONS, SEX_F, SEX_M  # noqa: E402
+from universe25.agents.state import ACT_DRINK, ACT_FORAGE, N_ACTIONS, SEX_F, SEX_M  # noqa: E402
 from universe25.config import PolicyConfig, load_config  # noqa: E402
 from universe25.learn.evolution import (  # noqa: E402
     evolve_lineage,
@@ -164,8 +169,10 @@ def test_jump_genome_scales_one_random_jump() -> None:
     expect = step * np.sqrt(N_HID * N_OUT)  # |W2| of a neutral line after 245 generations
     assert abs(float(np.linalg.norm(g1[S_W2])) - expect) < 0.1 * expect
     ids = {SAMPLING_STREAM, GENETICS_STREAM, FOUNDER_STREAM, LINEAGE_STREAM, NEUTRAL_STREAM,
-           JUMP_STREAM, SCARCE_LINEAGE_STREAM, SMALL_LINEAGE_STREAM}
-    assert len(ids) == 8  # its own stream, and the scarce (4.6) and small-meal (4.7) lineages'
+           JUMP_STREAM, SCARCE_LINEAGE_STREAM, SMALL_LINEAGE_STREAM, LATE_FULL_LINEAGE_STREAM,
+           LATE_SMALL_LINEAGE_STREAM}
+    assert len(ids) == 10  # its own, the scarce (4.6), small-meal (4.7) and late (4.8) lineages'
+    assert len({SCARCE_KEY, SMALL_KEY, LATE_FULL_KEY, LATE_SMALL_KEY}) == 4
 
 
 def test_epoch_founders_by_sex_in_slot_order() -> None:
@@ -293,6 +300,40 @@ def test_small_meal_epochs_keep_their_streams_and_records() -> None:
     assert s4["decision_action_shares"][ACT_FORAGE] < s1["decision_action_shares"][ACT_FORAGE]
 
 
+LATE = {"drives": {"reflex_need": 1.0}, "biology": {"starvation_hazard_per_day": 0.05}}
+
+
+def test_late_reflex_epochs_keep_their_streams_and_records() -> None:
+    """Late-reflex evo (PHASE4_DESIGN.md 4.8): a late epoch is deterministic, the two lines' keys
+    give other streams, the late reflexes take fewer forced meals and drinks than today's, and
+    the hungry probe reads the epoch's own threshold."""
+    founders = generation0(np.random.default_rng(12), 8)
+    kw = dict(days=30.0, sim_seed=7100)
+    p1, s1 = run_epoch(founders, 1, 0, overrides=LATE, key_extra=(LATE_FULL_KEY,), probe=True,
+                       **kw)
+    p2, s2 = run_epoch(founders, 1, 0, overrides=LATE, key_extra=(LATE_FULL_KEY,), probe=True,
+                       **kw)
+    assert np.array_equal(p1["genomes"], p2["genomes"]) and _strip(s1) == _strip(s2)
+    assert s1["probe"] == s2["probe"]
+    small = {**LATE, "resources": {"meal_cap": 0.45}}
+    _, s3 = run_epoch(founders, 1, 0, overrides=small, key_extra=(LATE_SMALL_KEY,), **kw)
+    _, s3b = run_epoch(founders, 1, 0, overrides=small, key_extra=(LATE_FULL_KEY,), **kw)
+    assert s3["decision_action_shares"] != s3b["decision_action_shares"]  # other streams
+    _, s4 = run_epoch(founders, 1, 0, key_extra=(LATE_FULL_KEY,), **kw)  # today's reflexes
+    fd = [s[ACT_FORAGE] + s[ACT_DRINK] for s in (s1["decision_action_shares"],
+                                                   s4["decision_action_shares"])]
+    assert fd[0] < fd[1], fd  # one need step later: fewer forced meals and drinks
+    sim = Universe25Sim(load_config(ROOT / "configs" / "default.yaml",
+                                    dict(seed=7100, days=1.0, ticks_per_day=6, backend="numpy",
+                                         device="cpu", log_every_ticks=10**9,
+                                         snapshot_every_days=0, **LATE)),
+                        Path(tempfile.mkdtemp(prefix="u25late_")))
+    from universe25.learn.evolution import _probe_row
+    w = sim.agents.alive & (sim.agents.age_days >= sim.cfg.biology.weaning_days)
+    sim.agents.hunger[w] = 0.95  # above today's reflex, below the late one
+    assert _probe_row(sim)[3] == 0.0
+
+
 def test_evo_modules_have_no_play_named_identifier_and_no_reward() -> None:
     allowed = {"playground", "play_objects", "PlayObject", "playground_enabled",
                "playground_bounds", "in_playground"}
@@ -320,5 +361,6 @@ if __name__ == "__main__":
     test_scarce_epochs_keep_their_streams_and_probes_read_only()
     test_scarce_lineage_loads_generation0_and_stops_at_its_depth()
     test_small_meal_epochs_keep_their_streams_and_records()
+    test_late_reflex_epochs_keep_their_streams_and_records()
     test_evo_modules_have_no_play_named_identifier_and_no_reward()
     print("test_evo: OK")

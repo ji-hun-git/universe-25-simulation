@@ -54,6 +54,12 @@ SCARCE_KEY = 2
 # small-meal evo (PHASE4_DESIGN.md 4.7): the same two roles for its lineages, key (l, e, SMALL_KEY)
 SMALL_LINEAGE_STREAM = 7_800_001
 SMALL_KEY = 3
+# late-reflex evo (PHASE4_DESIGN.md 4.8): the same two roles for its two lines, LF (full meals)
+# and LS (small meals), keys (l, e, LATE_FULL_KEY) and (l, e, LATE_SMALL_KEY)
+LATE_FULL_LINEAGE_STREAM = 7_900_001
+LATE_FULL_KEY = 4
+LATE_SMALL_LINEAGE_STREAM = 8_000_001
+LATE_SMALL_KEY = 5
 SEX_ANY = -1  # a pool entry that may found either sex (neutral pools)
 
 

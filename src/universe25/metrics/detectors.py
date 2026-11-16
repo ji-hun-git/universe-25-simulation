@@ -129,7 +129,8 @@ N_SYM = 9  # movement symbols: 3 displacement bins x 3 radial directions
 KINDS = ("object", "locomotor")
 RULES = "v9"  # rule-set label written into every detector output
 # v8 eligibility: the simulator's reflex mask (sim._select_actions) and the weaning age
-REFLEX_DRIVE = 0.85  # thirst or hunger above this forces DRINK / FORAGE
+REFLEX_DRIVE = 0.85  # thirst or hunger above this forces DRINK / FORAGE (the calibrated
+# value; a trace whose meta has reflex_need was run with that threshold instead)
 REFLEX_FATIGUE = 1.2  # fatigue above this, with hunger and thirst below REFLEX_CLEAR, forces REST
 REFLEX_CLEAR = 0.7
 WEANED_AGE = 21.0  # biology.weaning_days of the calibrated colony
@@ -255,16 +256,19 @@ def prepare(trace: dict[str, Any], max_individuals: int | None = None,
         obj_y=col("obj_y") if "obj_y" in trace else np.full(n, np.nan),
         move=move_model(trace.get("meta", {}), k_sub),
         obj_r=col("obj_r") if "obj_r" in trace else np.full(n, np.nan),
-        eligible=_eligible(col("age"), col("hunger"), col("thirst"), col("fatigue"))[
+        eligible=_eligible(col("age"), col("hunger"), col("thirst"), col("fatigue"),
+                           float(trace.get("meta", {}).get("reflex_need", REFLEX_DRIVE)))[
             _decision_start(uid, step, k_sub)],
         sim_trace="synthetic_class" not in trace.get("meta", {}),
     )
 
 
 def _eligible(age: np.ndarray, hunger: np.ndarray, thirst: np.ndarray,
-              fatigue: np.ndarray) -> np.ndarray:
-    """v8: weaned and no reflex in force (the simulator's mask), from pre-decision drives."""
-    forced = ((thirst > REFLEX_DRIVE) | (hunger > REFLEX_DRIVE)
+              fatigue: np.ndarray, reflex: float = REFLEX_DRIVE) -> np.ndarray:
+    """v8: weaned and no reflex in force (the simulator's mask), from pre-decision drives.
+    `reflex` is the run's forage / drink threshold (the trace meta's reflex_need, else the
+    calibrated 0.85; late reflexes, PHASE4_DESIGN.md 4.8)."""
+    forced = ((thirst > reflex) | (hunger > reflex)
               | ((fatigue > REFLEX_FATIGUE) & (hunger < REFLEX_CLEAR) & (thirst < REFLEX_CLEAR)))
     return (age >= WEANED_AGE) & ~forced
 

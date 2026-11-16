@@ -296,6 +296,10 @@ class DriveConfig(_Strict):
     consequence_gain: float = Field(1.0, ge=0.0)
     aggression_baseline: float = 0.1
     aggression_scarce_boost: float = 0.5
+    # Late reflexes (phase 4, H-l; PHASE4_DESIGN.md 4.8): the forage and drink reflexes fire
+    # when hunger, or thirst, exceeds reflex_need (sim._select_actions; traces record it when
+    # it differs, for the detectors' eligibility). 0.85 is the calibrated value (bit-identical).
+    reflex_need: float = Field(0.85, gt=0.0)
 
 
 class PPOConfig(_Strict):

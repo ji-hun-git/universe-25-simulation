@@ -58,7 +58,8 @@ EPOCHS = 150
 NEUTRAL_SIZE = 64
 MUTATION_SD = 0.02
 CHECKPOINT_EVERY = 25  # founders kept for inspection every this many epochs
-PROBE_HUNGRY = 0.85  # the forced-foraging reflex (sim._select_actions)
+PROBE_HUNGRY = 0.85  # the calibrated forced-foraging reflex; the probe reads the epoch's own
+# threshold (drives.reflex_need: 1.0 in late-reflex evo, PHASE4_DESIGN.md 4.8)
 PROBE_STARVING = 1.2  # the starvation hazard's threshold (sim mortality)
 
 
@@ -100,7 +101,8 @@ def sample_founders(rng: np.random.Generator, pool: dict[str, np.ndarray],
 
 def _probe_row(sim: Universe25Sim) -> tuple[float, int, float, float, float, float]:
     """Read-only: day, weaned count, the weaned animals' mean hunger, the shares of them above
-    the forced-foraging reflex and above starvation, and the share above thirst starvation."""
+    the forced-foraging reflex (the epoch's threshold) and above starvation, and the share
+    above thirst starvation."""
     a = sim.agents
     w = a.alive & (a.age_days >= sim.cfg.biology.weaning_days)
     n = int(w.sum())
@@ -108,7 +110,8 @@ def _probe_row(sim: Universe25Sim) -> tuple[float, int, float, float, float, flo
         return float(sim.day), 0, float("nan"), float("nan"), float("nan"), float("nan")
     h = a.hunger[w].astype(np.float64)
     th = a.thirst[w].astype(np.float64)
-    return (float(sim.day), n, float(h.mean()), float((h > PROBE_HUNGRY).mean()),
+    reflex = float(sim.cfg.drives.reflex_need)
+    return (float(sim.day), n, float(h.mean()), float((h > reflex).mean()),
             float((h > PROBE_STARVING).mean()), float((th > PROBE_STARVING).mean()))
 
 
