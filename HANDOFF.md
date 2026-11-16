@@ -122,8 +122,12 @@
 >     untested**. Selection raised maintenance clearly in 2 lineages; in its own world the
 >     line moved its free choices mostly into fighting and nesting. By the reading recorded
 >     in advance, this route to the time budget is closed on this substrate.
->   - Next: Jason's call (NOTES 2026-11-15 lists a transplant assay under small meals, later
->     reflexes, or stopping the scarcity line).
+>   - Later reflexes (Jason, 2026-11-15), development look only (NOTES 2026-11-16): a later
+>     reflex threshold alone either changes nothing (below 1.0) or kills every colony (1.0
+>     and up). With a starvation hazard 20 times milder (0.05 a day) a late reflex makes
+>     maintenance a choice, and every founder colony survives with full and small meals.
+>     Next: Jason's call (late reflexes with the milder hazard as H-l, or stop the
+>     time-budget line).
 > - Tier 2 done (2026-11-11): P4-15 failed its primary test, and the program-level stop rule
 >   applies (no further substrate change for PPO learners). Next: H-g / playground-off, `evo`,
 >   or replica v2 (Tier 3) — Jason's call.

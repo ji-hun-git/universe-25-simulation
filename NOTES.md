@@ -1,5 +1,87 @@
 # Universe25 Play — NOTES
 
+## 2026-11-16 — Later reflexes, development look: a later reflex alone either changes nothing or kills every colony; with a milder starvation hazard it makes maintenance a choice
+
+**Question.**
+- Jason chose later reflexes on 2026-11-15 (NOTES 2026-11-15, Next). The idea: if the forage and
+  drink reflexes fired later, maintenance would move into the free choices, where selection
+  could act on it.
+- Before any spec, a development look on training seed 7000 only. A scratch copy of the
+  simulator makes the threshold of both reflexes an option (today 0.85). The repository is
+  unchanged.
+- *Setup:* one 360-day epoch per founder set and setting (H-h's epoch: 8 pairs, 6 ticks a day,
+  12 sub-steps), with policy key (ℓ, 0, 99), streams no real run uses.
+  - Founders: generation 0 of H-h's 8 lineages, and 8 F + 8 M drawn from H-h's final pools of
+    lineages 1 and 2.
+  - Meals full, or small (0.375, H-k's cap).
+
+**Result 1: a later threshold alone has no workable middle.**
+
+| threshold | meals | generation-0 colonies ended | their N on day 360 | H-h final pools l1, l2: N |
+|---|---|---|---|---|
+| 0.85 (today) | full | 0 of 8 | 180–512 | 383, 2,315 |
+| 0.85 | small | 0 of 8 | 136–452 | 575, 495 |
+| 0.95 | full | 0 of 8 | 123–246 | 1,047, 2,337 |
+| 0.95 | small | 0 of 8 | 220–410 | 967, 945 |
+| 1.0 to 1.35 (8 values) | both | 8 of 8 | – | 0, 0 |
+
+- From 1.0 up, no colony ever held more than its 16 founders, and all died out. That holds for
+  generation 0 and for H-h's evolved founders, with full or small meals.
+- *Why:* needs rise in fixed steps (hunger 0.2 and thirst 0.25 per decision), and a full meal or
+  drink resets them to 0.
+  - So any threshold below 1.0 forces the drink at thirst 1.0, as today, and with full meals the
+    meal at hunger 1.0. For animals on these steps the reflexes fire at the same moments. Only
+    animals off them (just weaned, or after a small meal) wait longer.
+  - With full meals the colonies at 0.95 came out smaller in 6 of 8 lineages; one seed cannot
+    say why. With small meals the mean hunger rose from 0.65 to 0.76.
+  - From 1.0 up the forced drink comes at thirst 1.25, past starvation (1.2). When the hunger
+    reflex fires at the same decision it wins, and the animal spends that tick starving at the
+    full hazard (1 a day). Animals that rely on the reflexes meet this every few days.
+
+**Result 2: with a milder starvation hazard, a late reflex makes maintenance a choice.**
+
+| threshold | starvation hazard (per day) | full meals: ended, N on day 360 | small meals: ended, N on day 360 | weaned above thirst 1.2, average day (full / small) |
+|---|---|---|---|---|
+| 1.0 | 0.25 | 6 of 8 (the others 32, 55) | not run | 4.0 % / – |
+| 1.0 | 0.1 | 0 of 8, 128–1,152 | 3 of 8 | 5.6 % / 9.8 % |
+| 1.0 | 0.05 | 0 of 8, 1,188–2,214 | 0 of 8, 138–990 | 5.4 % / 10.0 % |
+| 1.3 | 0.05 | 0 of 8, 135–1,255 | 8 of 8 | 16.3 % / 34.7 % |
+| 1.3 | 0.02 | 0 of 8, 1,884–2,507 | 0 of 8, 203–642 | 16.8 % / 22.3 % |
+
+- Two settings keep every generation-0 colony alive in both meal regimes: threshold 1.0 with
+  hazard 0.05, and 1.3 with 0.02. H-h's evolved founders survive there too.
+- At those settings, relying on the reflex saves decisions (fewer, larger meals and drinks) but
+  risks a starving tick. Eating or drinking before the reflex is safe but takes more decisions.
+  That is the choice the line needs.
+- With full meals the colonies grow far larger than today (1,188–2,214 against 180–512 at
+  1.0 / 0.05), likely because the reflexes take fewer decisions. With small meals starving ticks
+  are frequent: 10 % of weaned animals were above thirst 1.2 on an average day at 1.0 / 0.05.
+
+**What this means.**
+- On this substrate a later reflex alone cannot make maintenance a choice: either nothing
+  changes or every colony dies.
+- It works only together with a second change, a starvation hazard 20 times milder (0.05 instead
+  of 1 a day). That changes the physiology beyond what the later-reflexes option said.
+- Used in the selection epochs only, both changes would leave the canonical world and its
+  calibration untouched (off by default), as the meal cap did.
+- Nothing here is a test: one seed, one epoch per setting, and no statistic read for a
+  hypothesis.
+
+**Next** (Jason's call).
+- *Late reflexes with a milder hazard:* threshold 1.0 and hazard 0.05 in the selection epochs
+  only, the harshest tested setting at which every generation-0 colony survives with both meal
+  sizes.
+  - Two new lines from H-h's founders, one with full meals and one with small meals, matched in
+    generations. The garden stays the canonical world, as for H-j and H-k.
+  - Preregistered as H-l: a manipulation check for more voluntary maintenance in the small-meal
+    line, and H-l for less free time. A pilot first. About 30 CPU-h.
+- *Stop the time-budget line:* both scarcities failed their checks, and the reflex route needs a
+  second change to the physiology. Phase 4's selection results (H-h to H-k) would be summarised
+  as they stand.
+
+**Outputs** (not committed): `_output/reflex_dev/` (the scratch-copy builder, the two scripts,
+`reflex_dev.jsonl`, `reflex_dev2.jsonl` and the logs).
+
 ## 2026-11-15 — Small-meal `evo` and H-k: small meals keep every survivor hungry, but selection under them does not raise voluntary maintenance in the common garden; the manipulation check fails, so H-k is untested
 
 **Question.**
