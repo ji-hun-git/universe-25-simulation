@@ -27,7 +27,7 @@ record the reflex threshold, and the time budget's eligible rows follow it. Writ
 _output/late_sweep/.
 
 usage: python scripts/sweep_scarce.py [--regime scarce|small|late] [--workers 8]
-           [--lineages 1-8] [--arms SCARCE ABUND NEU]
+           [--lineages 1-8] [--arms SCARCE ABUND NEU] [--skip-missing]
        python scripts/sweep_scarce.py --dev --lineages 1 --days 300 \
            --evo-scarce _output/evo_scarce_dev --out _output/scarce_dev
        python scripts/sweep_scarce.py --regime late --dev --lineages 1 --days 300 \
@@ -213,6 +213,8 @@ def main() -> int:
     p.add_argument("--out", type=str, default=None, help="default: by regime")
     p.add_argument("--days", type=float, default=DAYS)
     p.add_argument("--dev", action="store_true")
+    p.add_argument("--skip-missing", action="store_true",
+                   help="skip, and report, the runs whose pool is missing (a lineage that ended)")
     a = p.parse_args()
     arms0, seed0, evolved0, out_x, garden = REGIMES[a.regime]
     arms = a.arms or list(arms0)
@@ -231,7 +233,10 @@ def main() -> int:
         for arm in arms:
             pool = pool_for(arm, lin, Path(a.evo), evolved)
             if not pool.exists():
-                print(f"missing pool for {arm} lineage {lin}: {pool}", flush=True)
+                print(f"missing pool for {arm} lineage {lin}: {pool}"
+                      + (" (skipped)" if a.skip_missing else ""), flush=True)
+                if a.skip_missing:
+                    continue
                 return 1
             jobs += [(arm, lin, s, str(pool), str(out), a.days, garden)
                      for s in seeds_of(lin, a.dev, seed0)]
