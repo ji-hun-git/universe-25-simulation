@@ -460,6 +460,11 @@ development reading, before any evaluation seed.
     p < 0.025, else H-l is not read.
   - *H-l:* the free-time share LS − LF < 0 at p(fall) < 0.025 (supported), or > 0 at
     p(rise) < 0.025 (falsified).
+  - **Result (2026-11-16): the manipulation check fails (2 of 8 lineages, p(rise) 0.73); H-l
+    is untested.** With full meals, selection in the late world raised voluntary maintenance
+    in every lineage. With small meals it raised it clearly in only 4 lineages, and in the
+    common garden the small-meal line maintains more than the full-meal line in 2 of 8.
+    NOTES 2026-11-16.
 
 ### 15.2 Arms
 

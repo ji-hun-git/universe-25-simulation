@@ -2268,6 +2268,29 @@ training seed 7000 (at most 3 epochs of one lineage per line, and one garden run
 - The time budget counts choices, not their consequences. Calhoun did not score play, nothing
   here is play, and PlayScore stays unvalidated.
 
+**Result (2026-11-16, NOTES): the manipulation check fails; H-l is untested.**
+- All 16 lineages reached G_ℓ (LF in 123–148 epochs, LS in 121–147), and none ended. So 64
+  runs, and the tests are read on 8 lineages. No stop fired.
+- *The epochs:*
+  - With full meals, voluntary maintenance rose in all 8 lineages (M +0.06 to +0.30).
+  - With small meals it rose by +0.17 to +0.48 in lineages 5–8, and hardly at all (+0.007 to
+    +0.042) in lineages 1–4. Their animals stayed hungry (0.73–0.76) and kept relying on the
+    reflexes.
+- *Manipulation check:* d^M is positive in 2 of 8 lineages (mean −0.051, p(rise) 47/64 =
+  0.734). So it fails, and H-l is not read. An independent re-derivation from the raw traces
+  gives the same numbers.
+- *Beside:*
+  - The garden's d^M follows the two lines' eligible M at the end of evolution (r +0.98 over
+    the lineages).
+  - Against drift, the full-meal line maintains more in 7 of 8 lineages (p(rise) 0.0078), and
+    the small-meal line not at p < 0.025. Neither line moves T against drift at p < 0.025.
+  - Criterion 3 is met in 15 of 60 LS locomotor readings, 16 of 64 LF, 8 of 60 ABUND and 10 of
+    56 NEU, as a preference in the move mix (more TURN_BACK or less RUN_ON; P4-18).
+  - 5 of the 16 LF runs stop breeding by days 438–925 and collapse. Every ABUND run that bred
+    breeds to the end, unlike in the canonical garden.
+- By the reading recorded above, no scarcity tried on this substrate has selected maintenance
+  in the free choices. The late world itself, with full meals, did.
+
 ## 5. Determinism (two tiers, never cross-tier identity)
 
 - **Reference tier (NumPy, CPU):** `need_driven`, `mlp_frozen` and `evo` are bit-identical run

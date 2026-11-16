@@ -126,9 +126,16 @@
 >     reflex threshold alone either changes nothing (below 1.0) or kills every colony (1.0
 >     and up). With a starvation hazard 20 times milder (0.05 a day) a late reflex makes
 >     maintenance a choice, and every founder colony survives with full and small meals.
->     Next (Jason, 2026-11-16): the milder hazard. Late-reflex `evo`, preregistered as H-l
->     in `docs/PHASE4_DESIGN.md` §4.8 (card P4-21): two new lines in the late world, with
->     full meals and with small meals (cap 0.45), read in a late-world garden.
+>     Jason chose the milder hazard on 2026-11-16.
+>   - Late-reflex `evo` and H-l (P4-21, 2026-11-16; `docs/PHASE4_DESIGN.md` §4.8): two new
+>     lines in the late world (reflexes above need 1.0, starvation hazard 0.05 a day), with
+>     full meals (LF) and with small meals (LS, cap 0.45). All 16 lineages were matched in
+>     generations, and none ended. With full meals voluntary maintenance rose in every
+>     lineage, and in the late garden LF maintains more than drift in 7 of 8 lineages
+>     (beside). But **the manipulation check fails**: LS maintains more than LF in 2 of 8
+>     lineages (p 0.73), so **H-l is untested**. By the reading recorded in advance, no
+>     scarcity tried on this substrate has selected maintenance in the free choices. Next:
+>     Jason's call (NOTES 2026-11-16, Next).
 > - Tier 2 done (2026-11-11): P4-15 failed its primary test, and the program-level stop rule
 >   applies (no further substrate change for PPO learners). Next: H-g / playground-off, `evo`,
 >   or replica v2 (Tier 3) — Jason's call.
@@ -949,6 +956,7 @@ in the peak count (N@736 3–4 % low) and the slow realisations' late tail (N@14
 - [x] State-conditioned null for the form test (P4-18, 2026-11-14: not built; locomotor criterion 3 on nets reads the primitive mix, a TURN_BACK preference)
 - [x] SCARCE-PG `evo` (P4-19, 2026-11-14: 8 scarce lineages matched in generations; the manipulation check fails (3 of 8 lineages, p 0.36), so H-j is untested; one scarce lineage shows locomotor order beyond its mix)
 - [x] Small-meal `evo` (P4-20, 2026-11-15: every survivor hungry; 7 of 8 lineages matched in generations, one ended; the manipulation check fails (5 of 7 lineages, p 0.195), so H-k is untested; the small line keeps breeding in the garden)
+- [x] Late-reflex `evo` (P4-21, 2026-11-16: late reflexes and a milder hazard make maintenance a choice; 16 lineages matched in generations, none ended; with full meals selection raised voluntary maintenance in every lineage; the manipulation check fails (2 of 8 lineages, p 0.73), so H-l is untested)
 - [x] Burghardt detectors per criterion with synthetic ground truth, ≥ 1,000 surrogates, thresholds fixed before any evaluation seed; V hopper fix (P4-5, 2026-11-06: rules v3 pass 12 / 12 preregistered checks on fresh seeds after v1 (11 / 12) and a falsifier failure in v2, all recorded; on the simulator both policies are non-functional and spontaneous but single-decision, so criteria 3 / 4 are not evaluable at 6 decisions per day) — **PlayScore eval-only, unvalidated**
 - [x] Finer decision grain for free-time behaviour (P4-8, 2026-11-06: `free_substeps`, `policy.substep_mode`; heuristic continue mode within 2 % of the control on every resolvable landmark, N@315 +13 % at one paired se; detectors have support; no arm meets all five criteria)
 - [x] H-d amendment adopted 2026-11-06 (drift > 10 % and > 2 paired se; heuristic with 12 sub-steps in continue mode preserved, random MLP not)

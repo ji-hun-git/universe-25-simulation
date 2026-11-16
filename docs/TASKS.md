@@ -784,6 +784,18 @@ unchanged), `tests/test_scarcity.py`, `tests/test_evo.py`, `NOTES.md`, `docs/SEE
 
 ## P4-21 — Late-reflex `evo` (H-l)
 
+> **Done 2026-11-16:**
+> - All 16 lineages reached their generations, LF in 123–148 epochs and LS in 121–147 (97 and
+>   54 min on 8 workers), and none ended. Then 64 runs on seeds 9961–9976 (124 min).
+> - **The manipulation check fails** by the preregistered rule: d^M is positive in 2 of 8
+>   lineages, p(rise) 0.734. So **H-l is untested**.
+> - Reported beside: drift and ABUND, the whole budget, the eligible decisions over evolution,
+>   the criteria with the move mix, landmarks, norms and the epochs (`scripts/late_beside.py`,
+>   exploratory).
+> - Exploratory: with full meals the late world raised voluntary maintenance against drift. In
+>   the garden 5 of 16 LF runs collapse, and the abundance line no longer does.
+> - NOTES 2026-11-16.
+
 **Goal:** make maintenance a choice, with late reflexes and a milder starvation hazard, and
 evolve two lines from H-h's generation-0 genomes in that world, one with full meals and one
 with small meals. Then test whether the small meals select against free time (H-l), after a

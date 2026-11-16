@@ -1,5 +1,363 @@
 # Universe25 Play — NOTES
 
+## 2026-11-16 — Late-reflex `evo` and H-l: with maintenance a choice, selection raises voluntary maintenance, but less with small meals than with full meals; the manipulation check fails, so H-l is untested
+
+**Question.**
+- H-l (PLAN §15.1, added 2026-11-16 before any code or run): when maintenance is a choice, a
+  scarcity that keeps the survivors hungry selects against free time.
+- Jason chose later reflexes after H-k went untested (NOTES 2026-11-15), and a milder starvation
+  hazard with them after the development look (NOTES 2026-11-16, below).
+- Its operationalization was fixed in `docs/PHASE4_DESIGN.md` §4.8 (7a91fda) before any code or
+  run. The tooling was committed before any lineage or evaluation seed was run (5ac241e, and
+  382e5e5, which lets the sweep skip and report a missing pool).
+- *The late world:* the forage and drink reflexes fire above need 1.0 (today 0.85), and the
+  starvation hazard is 0.05 a day (today 1).
+  - Relying on the reflexes saves decisions. But when both fire at the same decision, the
+    hunger reflex wins, and the animal spends a tick starving.
+  - Eating or drinking before the reflexes fire is safe, but takes more decisions.
+- *Pre-evolution:* two new lines, 8 lineages each, from the 16 generation-0 genomes of H-h's
+  lineages, in H-h's epochs (8 pairs, 360 d, training seeds 7000–7009) in the late world.
+  - LF: full meals.
+  - LS: small meals, a meal relieving at most 0.45 of hunger (the pilot's viability rule).
+  - Each lineage runs until its day-360 adults reach the pedigree depth G_ℓ of H-h's lineage
+    (226–263).
+- *The common garden:* the canonical setup (ABUND-PG, 4 pairs, 1,600 d) in the late world with
+  full meals, on fresh seeds 9961–9976, 2 per lineage, paired across four arms:
+  - LS and LF: 4 F + 4 M from each line's final pool;
+  - NEU: 8 founders from H-h's neutral pool;
+  - ABUND: 4 F + 4 M from H-h's final pool (beside only).
+- *The two shares,* over the rows where a free action was eligible (weaned, no reflex in force
+  at the run's own threshold):
+  - M, voluntary maintenance: the share with FORAGE or DRINK;
+  - T: the share of the simulator's free-time actions (EXPLORE, SOCIAL, RUN_ON, TURN_BACK,
+    MANIPULATE, BACK_OFF and CIRCLE).
+
+  A run's share is the mean over its entered windows; a lineage's is the mean of its 2 runs.
+- *Decisions:*
+  - the manipulation check: d^M = M(LS) − M(LF) > 0 at a one-sided exact sign-flip p < 0.025
+    over at least 6 lineages. If it fails, H-l is untested.
+  - H-l: d^T = T(LS) − T(LF). **Supported** if the mean d^T < 0 at p(fall) < 0.025;
+    **falsified** if it is > 0 at p(rise) < 0.025; **not supported** otherwise.
+
+**Run.**
+- *Pre-evolution:* all 16 lineages reached G_ℓ, and none ended.
+  - LF took 123–148 epochs (1.75–1.93 generations per epoch), and LS 121–147 (1.76–1.98):
+    1,061 epochs in each line.
+  - No lineage reached 400 epochs, and none of the 2,122 epochs had a NaN.
+  - LF took 5,844 s wall on 8 workers (12.3 CPU-h), and LS 3,222 s (6.2 CPU-h): 18.5 CPU-h
+    against the 18 estimated.
+- *Evaluation:* 64 runs, every pool present (the sweep skipped none). They took 7,433 s wall on 8
+  workers (16.0 CPU-h, against the 20 estimated).
+- No stop rule fired: no NaN, no H2 term, no failed determinism test, no lineage ended, and
+  none short of G_ℓ.
+- *Windows:* every run that bred has 24–29 entered windows.
+  - Four runs died out with no entered window: LS and ABUND lineage 6 on seed 9972, and NEU
+    lineages 2 (seed 9963) and 5 (seed 9969).
+  - In each, no young was born (at most 1 conception), and the last founder died between days
+    154 and 666. The records do not keep the cause of death.
+  - The analysis takes those lineages' shares from their other run.
+- The log shows the same RuntimeWarnings as H-g to H-k (overflow in `hypot`, invalid value in
+  subtract), from the `np.empty` padding in `detectors.form_resim`.
+
+**Pre-evolution** (reported beside).
+- *Hunger:* the weaned animals' mean hunger over each epoch's second half went from 0.461–0.470
+  in the first 10 epochs to 0.349–0.481 in the last 10 (LF), and from 0.740–0.744 to
+  0.518–0.761 (LS).
+  - At the daily probe, no weaned animal was above the hunger reflex (1.0), or above hunger 1.2,
+    on any day of any epoch's second half. The forced meal at hunger 1.2 comes before the
+    hazard is read.
+- *Thirst, the collisions' route:* on an average day of the second half, the share of weaned
+  animals above thirst 1.2 went from 5.1–5.9 % to 1.0–3.8 % (LF), and from 6.8–7.2 % to
+  1.9–7.3 % (LS).
+  - The worst day of an epoch had 11.7–25.9 % (LF) and 16.6–45.5 % (LS) on average over the
+    last 10 epochs, and at most 50 % and 67 %.
+- *Executed decisions* (all animals, reflexes included): FORAGE was 0.13–0.20 of all decisions
+  in LF's last 10 epochs, and 0.27–0.33 in LS's. H-k's small meals with today's reflexes had
+  0.35–0.41.
+- *The colony on day 360* (mean of the first 10 epochs → mean of the last 10): N went from
+  1,774–2,047 to 2,303–2,621 (LF), and from 1,071–1,480 to 1,006–2,207 (LS). In LS lineages
+  2, 4 and 8 it fell.
+- *The eligible decisions over evolution.* Generation 0 chooses almost evenly, about 0.073 per
+  action. Mean of the 8 lineages (`scripts/late_beside.py`):
+
+  | action | LF first 10 | LF last 10 | LF lineages rising | LS first 10 | LS last 10 | LS lineages rising |
+  |---|---|---|---|---|---|---|
+  | FORAGE | 0.076 | 0.166 | 7 | 0.073 | 0.199 | 4 |
+  | NEST | 0.074 | 0.141 | 4 | 0.074 | 0.132 | 6 |
+  | DRINK | 0.075 | 0.162 | 7 | 0.073 | 0.126 | 6 |
+  | BACK_OFF | 0.075 | 0.067 | 3 | 0.073 | 0.078 | 4 |
+  | AGGRESS | 0.073 | 0.042 | 1 | 0.074 | 0.071 | 3 |
+  | CIRCLE | 0.074 | 0.036 | 0 | 0.073 | 0.065 | 2 |
+  | REST | 0.072 | 0.065 | 3 | 0.072 | 0.061 | 2 |
+  | RUN_ON | 0.071 | 0.050 | 2 | 0.073 | 0.047 | 1 |
+  | EXPLORE | 0.074 | 0.043 | 1 | 0.074 | 0.046 | 1 |
+  | WITHDRAW | 0.073 | 0.052 | 2 | 0.073 | 0.044 | 1 |
+  | TURN_BACK | 0.071 | 0.053 | 2 | 0.074 | 0.036 | 1 |
+  | MANIPULATE | 0.072 | 0.023 | 0 | 0.074 | 0.031 | 0 |
+  | SOCIAL | 0.075 | 0.061 | 1 | 0.074 | 0.031 | 0 |
+  | NURSE | 0.025 | 0.027 | 5 | 0.024 | 0.024 | 4 |
+  | MATE | 0.020 | 0.011 | 1 | 0.022 | 0.009 | 1 |
+
+  - *M rose in all 16 lineages.* In LF it rose by +0.06 to +0.30.
+  - In LS it rose by only +0.007 to +0.042 in lineages 1–4, and by +0.17 to +0.48 in lineages
+    5–8.
+    - In lineages 5–8 the largest single rise was FORAGE (5, 6 and 7: +0.48, +0.18 and +0.48)
+      or DRINK (8: +0.19), and the mean hunger ended at 0.52–0.74.
+    - In lineages 1–4 the animals stayed at hunger 0.73–0.76. Their largest rise was NEST (1
+      and 3: +0.22 and +0.24), EXPLORE (2: +0.08) or AGGRESS (4: +0.15).
+  - *T fell in 7 of the 8 lineages of each line* (LF all but lineage 3, LS all but lineage 2).
+    Generation 0's near-even choice puts about half of its eligible rows in free time, so any
+    concentration on a few actions lowers T. The garden's drift control separates selection
+    from that (below).
+- *Genome norms of the final pools:*
+
+  | arm | W1 | W2 |
+  |---|---|---|
+  | LF | 15.2–16.5 | 6.5–7.4 |
+  | LS | 15.3–16.3 | 6.5–7.5 |
+  | ABUND | 15.3–16.4 | 6.7–7.2 |
+  | NEU | 15.2–16.1 | 6.5–7.2 |
+
+  Matched in generations, the arms are matched in weight size, so NEU is the matched-size random
+  control that criteria 3 and 4 on nets need (H-i, P4-18).
+
+**Result 1: the manipulation check fails.**
+
+| lineage | M LS | M LF | d^M | T LS | T LF | d^T (not read) |
+|---|---|---|---|---|---|---|
+| 1 | 0.196 | 0.214 | −0.018 | 0.400 | 0.337 | +0.063 |
+| 2 | 0.110 | 0.408 | −0.299 | 0.710 | 0.284 | +0.427 |
+| 3 | 0.175 | 0.205 | −0.030 | 0.402 | 0.527 | −0.126 |
+| 4 | 0.138 | 0.462 | −0.324 | 0.385 | 0.437 | −0.052 |
+| 5 | 0.602 | 0.378 | +0.224 | 0.254 | 0.184 | +0.070 |
+| 6 | 0.322 | 0.416 | −0.094 | 0.360 | 0.373 | −0.014 |
+| 7 | 0.510 | 0.284 | +0.226 | 0.254 | 0.403 | −0.150 |
+| 8 | 0.272 | 0.365 | −0.093 | 0.285 | 0.289 | −0.004 |
+
+Each value is the mean of the lineage's 2 seeds. LS lineage 6 has only seed 9971 (its run on
+9972 died out).
+- The mean d^M is −0.051 ± 0.072 over 8 lineages. 2 are positive, and p(rise) is 47/64 =
+  0.734.
+- So the check fails. By the preregistered rule, H-l is not read: **H-l is untested.**
+- An independent re-derivation from the raw trace files (`_output/late_sweep/late_verify.py`)
+  gives the same per-lineage shares of all four arms (max difference 0 over 64 values) and the
+  same p-values. It uses its own trace reading, eligibility at each trace's own threshold,
+  phases and entered rule, and computes the sign-flip by enumeration in exact fractions.
+- The d^T column is shown for completeness, not read: mean +0.027 ± 0.064, 3 of 8 lineages
+  positive, p(rise) 13/32 = 0.406.
+- *Exploratory:* in the 7 lineages with both seeds, the seeds agree in the sign of d^M in all 7,
+  and of d^T in 6 (not lineage 8: −0.017 and +0.009). So, as in H-j and H-k, each lineage's
+  difference is a property of its pools; it is the direction that varies between lineages.
+
+**Where the lines differ** (reported beside; paired by lineage; many comparisons, none
+decisive).
+- *Against drift (NEU):*
+  - M: LF − NEU +0.149, in 7 of 8 lineages (p(rise) 2/256 = 0.0078). LS − NEU +0.098
+    (p(rise) 0.16).
+  - F: LF − NEU +0.104 (p(rise) 0.035); LS − NEU +0.091 (0.23). D: +0.046 (0.25) and +0.008
+    (0.41).
+  - T: LF − NEU −0.050 (p(fall) 0.20); LS − NEU −0.023 (p(fall) 0.37).
+  - So with full meals, selection in the late world raised voluntary maintenance against drift.
+    With small meals it did not at p < 0.025. Neither line differs from drift in T at
+    p < 0.025.
+- *Against the line evolved with today's reflexes (ABUND):*
+  - M: LF − ABUND +0.213, in all 8 lineages (p(rise) 1/256); LS − ABUND +0.162 (p(rise)
+    0.016).
+  - T: LF − ABUND +0.023 (p(rise) 0.29); LS − ABUND +0.050 (0.25).
+  - ABUND − NEU: M −0.064 (p(fall) 0.094), T −0.074 (p(fall) 0.094).
+  - *Exploratory:* ABUND − NEU in T was −0.067 (p(fall) 0.11) in H-j's garden and −0.080
+    (0.070) in H-k's, the same pools on other seeds in the canonical world. Three gardens, the
+    same small deficit, never at p < 0.025.
+- *F and D apart,* LS − LF: F −0.013 (p(rise) 0.60), D −0.038 (p(rise) 0.75).
+- *T within relaxed rows and within the other eligible rows,* LS − LF: +0.068 (p(fall) 0.79)
+  and +0.024 (p(fall) 0.58).
+- *The whole budget* (each action's share of the eligible rows: the mean over the lineages;
+  `scripts/late_beside.py`):
+
+  | action | LS | LF | ABUND | NEU | lineages LS > LF (of 8) |
+  |---|---|---|---|---|---|
+  | FORAGE | 0.177 | 0.190 | 0.065 | 0.086 | 3 |
+  | NEST | 0.115 | 0.127 | 0.260 | 0.116 | 4 |
+  | DRINK | 0.114 | 0.152 | 0.064 | 0.106 | 3 |
+  | BACK_OFF | 0.083 | 0.074 | 0.051 | 0.078 | 3 |
+  | AGGRESS | 0.079 | 0.035 | 0.071 | 0.064 | 3 |
+  | CIRCLE | 0.061 | 0.039 | 0.029 | 0.036 | 5 |
+  | RUN_ON | 0.059 | 0.059 | 0.047 | 0.074 | 3 |
+  | EXPLORE | 0.059 | 0.057 | 0.047 | 0.060 | 4 |
+  | REST | 0.056 | 0.071 | 0.089 | 0.118 | 3 |
+  | WITHDRAW | 0.054 | 0.052 | 0.071 | 0.083 | 4 |
+  | SOCIAL | 0.044 | 0.046 | 0.057 | 0.048 | 3 |
+  | TURN_BACK | 0.041 | 0.051 | 0.053 | 0.059 | 3 |
+  | MANIPULATE | 0.033 | 0.030 | 0.047 | 0.050 | 5 |
+  | NURSE | 0.019 | 0.013 | 0.041 | 0.013 | 5 |
+  | MATE | 0.005 | 0.006 | 0.009 | 0.010 | 2 |
+
+  - The two late lines forage far more than ABUND and NEU: FORAGE 0.177 and 0.190, against
+    0.065 and 0.086. LF also drinks more (0.152, against 0.064 and 0.106); LS drinks about as
+    much as NEU.
+  - ABUND nests most (0.260, against 0.115–0.127), as in H-j's and H-k's gardens.
+  - LS fights more than LF on average (AGGRESS 0.079 against 0.035), but in only 3 of 8
+    lineages. It circles more in 5 of 8.
+  - REST is lowest in the late lines (0.056 and 0.071, against ABUND's 0.089 and NEU's 0.118).
+  - Pooling the rows over runs (`analyse_late.py`'s table) gives the same picture, except that
+    LS then forages a little more than LF (0.202 against 0.195).
+- *Exploratory: the garden follows the epochs.*
+  - Over the 8 lineages, d^M correlates +0.98 with LS − LF eligible M over their last 10
+    epochs, each line in its own world.
+  - That difference was positive only in lineages 5 and 7 (+0.354 and +0.350), the two
+    lineages with a positive d^M (+0.224 and +0.226).
+  - So, as in H-j and H-k, the check fails in the evolution, not in the garden: the small-meal
+    line ended evolution with more voluntary maintenance than the full-meal line in only 2 of
+    8 lineages.
+- *Episode rates by phase* (episodes per weaned individual-day, B / C / D):
+
+  | arm | object | locomotor |
+  |---|---|---|
+  | LS | 0.125 / 0.115 / 0.090 | 1.060 / 1.075 / 1.069 |
+  | LF | 0.061 / 0.093 / 0.081 | 1.068 / 1.104 / 1.104 |
+  | ABUND | 0.150 / 0.151 / 0.127 | 1.025 / 1.068 / 1.045 |
+  | NEU | 0.174 / 0.166 / 0.140 | 1.251 / 1.232 / 1.204 |
+
+  Both late lines have fewer object episodes than ABUND and NEU in every phase, LF fewest. NEU
+  has the most locomotor episodes.
+
+**Criteria 3 and 4, with the locomotor mix** (reported beside; rules v9; each window counted
+once).
+- Criterion 1 is met in 0.62–1.00 of the readings per window, and criterion 2 in all.
+  Criterion 5 is met in at most 0.13, except in one of LF's 4 object readings in window B.
+- Criterion 4 agrees with criterion 3 in 454 of the 455 readings. The exception, a locomotor
+  reading of NEU lineage 6 (seed 9972, window B), meets 3 and not 4.
+- *Criterion 3:*
+  - locomotor: LS 15 of 60 readings, LF 16 of 64, ABUND 8 of 60, NEU 10 of 56;
+  - object: LS 0 of 53, LF 5 of 52, ABUND 1 of 57, NEU 1 of 53.
+  - The locomotor readings come from LS lineages 1 and 8 (7 and 8 readings), LF lineages 3, 5,
+    7 and 8, ABUND lineages 1, 5 and 6, and NEU lineages 3, 4 and 6.
+- *The mix* (`scripts/form_mix.py --sweeps late_sweep`; P4-18):
+  - The rebuilt reversal fractions equal the stored ones.
+  - The locomotor readings that meet criterion 3 have a median TURN_BACK share of the episodes'
+    own moves of 0.57 (LS), 0.49 (LF), 0.48 (NEU) and 0.44 (ABUND). In the readings that do not
+    meet it, the shares are 0.22, 0.20, 0.28 and 0.38.
+  - A share of at least 0.5 occurs in 28 of the 49 readings that meet criterion 3, and in 7 of
+    the other 190.
+  - The other 21 (from ABUND, LF and NEU) have few RUN_ON moves: a median share of 0.20,
+    against 0.29–0.44 in the readings without criterion 3. ABUND's 8 have 0.05.
+  - The reversal fraction follows the closing moves' shares (R² 0.992 over 239 readings).
+    TURN_BACK closes a pair with a reversal 0.997 of the time, EXPLORE 0.49 and RUN_ON 0.11. So
+    fewer RUN_ON moves raise it, as more TURN_BACK moves do.
+  - The readings that meet criterion 3 have a median order excess of −0.009, at most +0.033: no
+    order beyond the mix.
+  - So criterion 3 on nets again reads the move mix: more TURN_BACK, or less RUN_ON, than an
+    even mix. LS and LF meet it in 0.25 of their locomotor readings, NEU (the matched-size
+    random control) in 0.18. No test was preregistered on this.
+- *Exploratory: the object readings recur.*
+  - Two come from pools that gave them in H-j's and H-k's gardens: ABUND lineage 3 (seed 9966,
+    day 405; order excess +0.25) and NEU lineage 4 (seed 9967, day 705; +0.12).
+  - A new pool gives the other 5: LF lineage 6, on both seeds (days 305–1,005), with order
+    excess +0.10 to +0.14 (z +3.0 to +6.4). The same pool gives them on two seeds, so they
+    belong to those nets.
+  - No test was preregistered on this.
+
+**Landmarks** (median [range] over the 16 runs of each arm; N@1,444 and N@1,588 over the runs
+still alive).
+
+| arm | N@315 | peak N | peak day | last young | last conception | N@1,444 | N@1,588 |
+|---|---|---|---|---|---|---|---|
+| LS | 369 [1, 933] | 2,321 [8, 2,544] | 540 [16, 1,441] | 1,578 [0, 1,578] | 1,599 [0, 1,599] | 1,621 [1,001, 2,317] | 1,870 [842, 2,110] |
+| LF | 974 [515, 1,826] | 2,568 [2,452, 2,753] | 414 [361, 450] | 1,576 [438, 1,578] | 1,599 [742, 1,599] | 1,674 [35, 2,558] | 1,537 [6, 2,269] |
+| ABUND | 296 [0, 743] | 2,474 [8, 2,743] | 472 [16, 706] | 1,578 [0, 1,578] | 1,599 [0, 1,599] | 1,720 [1,537, 2,110] | 1,849 [1,544, 2,023] |
+| NEU | 334 [1, 849] | 2,363 [8, 2,454] | 496 [16, 651] | 1,578 [0, 1,578] | 1,599 [82, 1,599] | 1,742 [1,525, 1,982] | 1,746 [1,594, 1,906] |
+
+First litters fall on days 102–114 in every arm. The lower ends of the ranges (peak 8, last
+young 0) are the four runs that died out.
+- LF grows fastest: N@315 974, against 296–369, with its peak on day 414, against 472–540.
+- *Exploratory: founders die before their first litters.*
+  - By day 95, before any birth, a median of 6 of the 8 founders are alive in the LS, ABUND and
+    NEU runs (range 2–8), and 7 in the LF runs (6–8).
+  - In H-k's canonical garden every run still had 7 or 8 then.
+  - The four runs that died out lost all their founders before any birth. As above, the cause
+    of death is not recorded.
+- *Exploratory: 5 of the 16 LF runs stop breeding early and collapse.*
+  - Lineage 4 on both seeds: last young on days 438 and 493, and 6 animals on day 1,588 in each.
+  - Lineage 8 on both seeds: last young on days 533 and 527, and 66 and 33 animals.
+  - Lineage 5 on seed 9970: last young on day 925, and 74 animals.
+  - In every other run that bred, in every arm, the last young was born on days 1,568–1,578.
+- *Exploratory: the late world removes the abundance line's collapse.*
+  - In H-k's canonical garden, the same ABUND pools stopped breeding by day 544 (median), with
+    28 animals left on day 1,588.
+  - Here all 15 ABUND runs that bred breed to the end, with 1,544–2,023 animals on day 1,588.
+  - §4.8's limits recorded that the late world is not the calibrated world. This shows how far
+    its colonies differ from it.
+
+**What this means.**
+- The late world did make maintenance a choice that selection acts on.
+  - With full meals, voluntary FORAGE and DRINK rose in every lineage in its own world (M
+    +0.06 to +0.30).
+  - In the late garden, the full-meal line maintains more than drift in 7 of 8 lineages, and
+    more than the line evolved with today's reflexes in all 8 (beside).
+- *But small meals did not add to it.*
+  - In 4 of the 8 small-meal lineages voluntary maintenance hardly changed (+0.007 to +0.042).
+    The animals stayed hungry (0.73–0.76) and kept relying on the reflexes. In the other 4 it
+    rose by +0.17 to +0.48.
+  - In 6 of 8 lineages the small-meal line ended evolution with less voluntary maintenance than
+    the full-meal line, and the garden repeats that (r +0.98).
+  - So the check fails, and H-l is untested.
+- The design's reading of this outcome, recorded in advance, holds:
+  - even with maintenance a choice, small meals did not raise voluntary maintenance in these
+    generations;
+  - no scarcity tried on this substrate (a food limit, small meals, small meals with late
+    reflexes) has selected maintenance in the free choices.
+  - What did select it here was the late world itself, with full meals.
+- *Free time:* in their own worlds both lines' T fell in 7 of 8 lineages. In the garden, neither
+  line differs from drift at p < 0.025 (LF −0.050, LS −0.023).
+  - So across H-h to H-l, free time on this substrate looks close to neutral for fitness,
+    under abundance, both scarcities and the late world.
+  - The abundance line is a little below drift in all three gardens (−0.067 to −0.080), never
+    at p < 0.025.
+- Criterion 3 on nets again reads the move mix, without order beyond it.
+- The late world is far from the calibrated world: it loses founders before their first
+  litters, its colonies then grow faster, and the abundance line no longer collapses in it.
+- Calhoun did not score play, and nothing here is play. PlayScore stays unvalidated.
+
+**Outputs** (not committed).
+- `_output/evo_late_full/lineage_<l>/` and `_output/evo_late_small/lineage_<l>/`:
+  `epochs.jsonl`, the generation-0 and final pools, the founders every 25 epochs, the resume
+  state and `summary.json`.
+- `_output/late_sweep/`:
+  - per run `scarce_run.json`, `evo_rates.json`, `evo_detect.json`, `evo_policy.json` and the
+    traces;
+  - `late_analysis.json`, `form_mix.json` and `late_beside.json`;
+  - the re-derivation `late_verify.py` and its log.
+- Logs: `_output/evo_late_full_log.txt`, `_output/evo_late_small_log.txt`,
+  `_output/late_sweep_log.txt`, `_output/late_analysis_log.txt`,
+  `_output/late_sweep/form_mix_log.txt` and `_output/late_beside_log.txt`. The chain that ran
+  them is `_output/late_chain.cmd`.
+- The pilot: `_output/late_pilot/` (its data, scripts and the spec draft).
+- To re-analyse:
+  - `python scripts/analyse_late.py`;
+  - `python -I _output/late_sweep/late_verify.py _output/late_sweep 1-8`;
+  - `python scripts/form_mix.py --sweeps late_sweep --out _output/late_sweep/form_mix.json`;
+  - the exploratory `python scripts/late_beside.py`.
+
+**Next** (Jason's call).
+- P4-21 is done. H-l is untested.
+  - All three scarcity checks have failed (H-j, H-k, H-l).
+  - By the reading recorded in advance, no scarcity tried on this substrate has selected
+    maintenance in the free choices.
+- *A lead, not a result:* with small meals a voluntary meal relieves at most 0.45, and the
+  reflexes still fire often. So a voluntary meal may buy less safety per decision than with full
+  meals. Nothing here tests that.
+- *Stop the scarcity line,* and summarise phase 4's selection results (H-h to H-l) as they
+  stand.
+- *The late world as the manipulation:* the full-meal late line raised voluntary maintenance
+  against drift (beside: 7 of 8 lineages, p 0.0078).
+  - A new preregistered test, on new lineages, could ask whether that selection takes time from
+    free time (LF against NEU in T; beside here −0.050, p(fall) 0.20).
+  - It would need more lineages for power, since the seeds of a lineage agree.
+  - The comparisons here were not preregistered as decisive, and cannot be re-read as that
+    test.
+- *A transplant assay* (left out by §4.7 and §4.8): founders of two lines, mixed, in one line's
+  epoch, scored by their share of the adults on day 360.
+
 ## 2026-11-16 — Later reflexes, development look: a later reflex alone either changes nothing or kills every colony; with a milder starvation hazard it makes maintenance a choice
 
 **Question.**
