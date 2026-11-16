@@ -465,6 +465,8 @@ development reading, before any evaluation seed.
     in every lineage. With small meals it raised it clearly in only 4 lineages, and in the
     common garden the small-meal line maintains more than the full-meal line in 2 of 8.
     NOTES 2026-11-16.
+- **The scarcity line stops here** (Jason, 2026-11-16). Phase 4's selection results, H-h to
+  H-l, are summarised in NOTES 2026-11-16 ("the state at the end of the line").
 
 ### 15.2 Arms
 

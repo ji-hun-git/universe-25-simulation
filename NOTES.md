@@ -1,5 +1,153 @@
 # Universe25 Play — NOTES
 
+## 2026-11-16 — Phase 4 selection (`evo`, H-h to H-l): the state at the end of the line
+
+**Why this section.**
+- After H-l, Jason stopped the scarcity line on 2026-11-16 and asked for phase 4's selection
+  results as they stand.
+- Nothing new was run, and no rule or stored output changed. Every number comes from the
+  sections below (2026-11-13 to 2026-11-16), which hold the details and the outputs. Two checks
+  of stored outputs were made for this summary (the order counts in result 5).
+
+**What was built.**
+- *`evo`, selection without reward:*
+  - each mouse carries its own genome (observation v5 → 32 tanh → 15, 2,415 values);
+  - a pup copies one parent's genome, the mother's or the sire's with probability ½, and
+    N(0, 0.02²) is added to every value;
+  - there is no reward, no learner and no imitation. Selection is the frozen biology's births
+    and deaths.
+- *Lines:* 8 lineages each. Lineage ℓ of every line starts from the same 16 generation-0
+  genomes, in H-h's epochs (8 pairs, 360 d, training seeds 7000–7009). Every line is matched
+  in generations to H-h's (pedigree depth 226–263).
+- *Controls:*
+  - GEN0, the generation-0 genomes;
+  - NEU, a Wright–Fisher pool with the same founders, mutation and generations, without
+    selection;
+  - random nets at matched weight size (H-i).
+- *World options for the selection epochs,* each off by default and bit-identical when off:
+  - a food limit (H-j);
+  - a meal cap (H-k);
+  - a later reflex threshold with a milder starvation hazard (H-l). The detectors' eligibility
+    reads the run's threshold.
+- *Evaluation:* common gardens on fresh registered seeds 9889–9976, 2 per lineage.
+  - The canonical world (ABUND-PG, 1,600 d) for H-h to H-k, and the late world for H-l.
+  - No `evo` arm has run on the canonical evaluation seeds 8000–8011.
+- *Process:*
+  - each test was preregistered in `docs/PHASE4_DESIGN.md` §4.4–4.8 before any code or run,
+    and its tooling committed before any evaluation seed;
+  - the decisive numbers were re-derived each time from the raw files by independent code;
+  - the tests are exact sign-flips over lineages (or colonies).
+
+**The tests.**
+
+| test | question | manipulation check | decisive result |
+|---|---|---|---|
+| H-h (§4.4, 2026-11-13) | selection without reward gives free time a form beyond mutation | **passes**: N@315 above GEN0 in 8 of 8 lineages (p 1/256) | **not supported**: criterion 3 in 18 of 125 SEL readings, 22 of 114 NEU and 0 of 128 GEN0 (p(rise) 0.66) |
+| H-i (§4.5, 2026-11-13) | criterion 3 on nets follows weight size | by construction: the jump matches NEU's norms | **supported**, at the smallest margin the design can detect: 6 of 17 colonies (p 1/64) |
+| P4-18 (2026-11-14) | a state-conditioned null for the form test | – | **not built**: locomotor criterion 3 reads the move mix, and a null from the animal's own moves would remove every reading |
+| H-j (§4.6, 2026-11-14) | food for 100 animals selects against free time | **fails**: more voluntary foraging in 3 of 8 lineages (p 0.36) | untested |
+| H-k (§4.7, 2026-11-15) | small meals that keep every survivor hungry select against free time | **fails**: more voluntary maintenance in 5 of 7 lineages (p 0.195) | untested |
+| H-l (§4.8, 2026-11-16) | the same, in a late-reflex world where maintenance is a choice | **fails**: more voluntary maintenance in 2 of 8 lineages (p 0.73) | untested |
+
+**What the line found.**
+1. *Selection without reward adapts the colony.*
+   - In H-h every lineage's colony came to grow faster than its generation 0 and its neutral
+     control. N@315 had medians of 1,372 (SEL), against 178 (NEU) and 56 (GEN0).
+   - In the late world selection raised voluntary maintenance in all 8 full-meal lineages. In
+     the late garden that line maintains more than drift in 7 of 8 (beside, p 0.0078).
+2. *Free time looks close to neutral for fitness.*
+   - No garden shows an evolved line's free time differing from drift at p < 0.025.
+   - H-h: nothing measured in free time separates SEL from NEU.
+   - *H-j to H-l, T against NEU* (the share of eligible decisions spent in free time, paired by
+     lineage):
+     - SCARCE −0.082, SMALL −0.003, LS −0.023 and LF −0.050;
+     - the abundance line −0.067, −0.080 and −0.074 in the three gardens;
+     - the smallest p(fall) is 0.070.
+   - *Exploratory:* all seven are below drift, but they are not independent. NEU is the same 8
+     pools each time, and the abundance line's three are its same pools on other seeds.
+   - A reading that was not tested: selection concentrates the free choices on the few actions
+     that matter for fitness, and free time is 7 of the 15 actions.
+3. *The scarcities never selected maintenance in the free choices.*
+   - Each check failed in the evolution, not in the garden. The garden's difference follows
+     the two lines' own change over evolution (r +0.88, +0.90 and +0.98).
+   - Each scarcity reached the free choices only weakly, for its own reason:
+     - food for 100 animals acted through mortality, and the survivors stayed fed (mean hunger
+       0.32–0.44; under 1 % of weaned animals above the reflex on an average day);
+     - with small meals every survivor stayed hungry, but the reflexes did most of the
+       maintenance (FORAGE about 0.37 of all decisions, most of it forced);
+     - with late reflexes maintenance became a choice, and selection used it, but less with
+       small meals. 4 of the 8 small-meal lineages hardly changed it, stayed hungry, and kept
+       relying on the reflexes.
+   - Within a lineage the two seeds nearly always agree in sign; between lineages the direction
+     varies. Selection took different routes in different lineages: more fighting, backing off,
+     nesting or maintenance.
+4. *Criteria 3 and 4 on nets read weight size and the move mix.*
+   - Drift alone meets criterion 3 as often as selection does (H-h), and one random jump of
+     drift's size gives it (H-i). Generation 0 never meets it.
+   - Locomotor criterion 3 reads the net's preference among EXPLORE, RUN_ON and TURN_BACK: more
+     TURN_BACK, or fewer RUN_ON, than an even mix (P4-18, and again in H-j to H-l).
+   - So on nets these criteria can be read only against random nets of matched size, with the
+     mix reported beside. Every garden had that control: NEU, matched to the evolved lines in
+     generations and so in weight size.
+5. *Leads, exploratory and few* (no test was preregistered on any of them):
+   - *Locomotor order:* scarce lineage 6 (H-j) is the only net whose locomotor readings have
+     order beyond their mix.
+     - 7 of its 8 readings, on both seeds, have an order excess of +0.10 to +0.18.
+     - Over the other 975 locomotor readings of H-h to H-l, the largest is +0.094.
+     - *A correction:* the H-j section counted 6. It missed a seventh reading (seed 9939, window
+       B), with +0.115 at z 1.83; the six it counted have z 5.0–9.3.
+   - *Object readings:* all 22 object readings that meet criterion 3 have an order excess
+     (+0.08 to +0.25, z 1.5–6.4). Apart from 2 of H-i's jumped colonies, they recur in the same
+     few pools on fresh seeds:
+     - NEU lineage 4 in all four gardens;
+     - ABUND lineage 3 in three, and ABUND lineage 7 in two;
+     - LF lineage 6 in H-l, on both seeds.
+6. *The late world is far from the calibrated world.* It loses founders before their first
+   litters, its colonies grow faster, and the abundance line no longer collapses in it.
+
+**What the line did not find.**
+- An effect of selection on free time, for or against, at the preregistered level.
+- A scarcity that selects maintenance in the free choices. By the readings recorded in advance
+  for H-j, H-k and H-l, this route to the time budget is closed on this substrate.
+- So for the mission's question (play under abundance against survival), the selection line
+  gives no evidence either way. Free time evolved like neutral time, and no scarcity reached
+  the free choices strongly enough to test the surplus-resource prediction.
+- Anything that is play.
+  - Calhoun did not score play, and PlayScore stays unvalidated.
+  - Nothing rewards, observes or optimises play anywhere, and the H2 audit passed at every
+    step.
+
+**Limits.**
+- *Scale:*
+  - 8 lineages per line and one architecture (32 hidden units);
+  - inheritance by copying one parent with mutation, with no recombination;
+  - 226–263 generations.
+  - With 8 lineages the smallest p is 1/256, and p < 0.025 needs about 7 of 8 in one
+    direction.
+- *Shared pools:* ABUND and NEU are H-h's pools in every garden. H-j to H-l re-measured them on
+  new seeds.
+- *A search:* the scarcities were chosen one after another, each after the previous check had
+  failed. Each was preregistered, but together they are a search, and a further one would have
+  to be read as part of it.
+- *What is counted:* the time budget counts choices, not their consequences.
+- *The rules:* criteria 3 and 4 were read under rules v9, frozen since 2026-11-09.
+
+**Cost.** About 86 CPU-h of pre-evolution and gardens: H-h 17.5, H-i 4.8 (simulation and
+rates), H-j 13.7, H-k 15.6 and H-l 34.5. The development looks and the pilots are not
+counted.
+
+**What stays open** (Jason's call; nothing is started).
+- *The late world as its own manipulation:* does selection for maintenance, where it happens,
+  take time from free time?
+  - The test would be LF against NEU in T; beside here it was −0.050.
+  - It would need new lineages, more of them, and its own preregistration.
+- *A transplant or competition assay:* founders of two lines, mixed in one line's world, scored
+  by their share of the adults. §4.6–4.8 left it out.
+- *The leads:* scarce lineage 6's order, and the recurring object readings.
+- *Elsewhere in phase 4:*
+  - H-f stays unread, since P4-15's stop rule bars further substrate changes for PPO learners;
+  - P4-6, the full phase-4 sweep on the canonical evaluation seeds, is still open.
+
 ## 2026-11-16 — Late-reflex `evo` and H-l: with maintenance a choice, selection raises voluntary maintenance, but less with small meals than with full meals; the manipulation check fails, so H-l is untested
 
 **Question.**

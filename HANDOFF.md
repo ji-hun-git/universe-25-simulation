@@ -134,8 +134,14 @@
 >     lineage, and in the late garden LF maintains more than drift in 7 of 8 lineages
 >     (beside). But **the manipulation check fails**: LS maintains more than LF in 2 of 8
 >     lineages (p 0.73), so **H-l is untested**. By the reading recorded in advance, no
->     scarcity tried on this substrate has selected maintenance in the free choices. Next:
->     Jason's call (NOTES 2026-11-16, Next).
+>     scarcity tried on this substrate has selected maintenance in the free choices.
+>   - **The scarcity line stops here** (Jason, 2026-11-16). Phase 4's selection results, H-h
+>     to H-l, are summarised in the top NOTES section (2026-11-16, "the state at the end of
+>     the line"). Selection without reward adapts the colony, but free time evolved like
+>     neutral time in every garden, and no scarcity reached the free choices strongly enough
+>     to test the surplus-resource prediction. Open, Jason's call: the late world as its own
+>     manipulation, a transplant assay, the leads (scarce lineage 6's order, the recurring
+>     object readings), H-f, P4-6.
 > - Tier 2 done (2026-11-11): P4-15 failed its primary test, and the program-level stop rule
 >   applies (no further substrate change for PPO learners). Next: H-g / playground-off, `evo`,
 >   or replica v2 (Tier 3) — Jason's call.
@@ -957,6 +963,7 @@ in the peak count (N@736 3–4 % low) and the slow realisations' late tail (N@14
 - [x] SCARCE-PG `evo` (P4-19, 2026-11-14: 8 scarce lineages matched in generations; the manipulation check fails (3 of 8 lineages, p 0.36), so H-j is untested; one scarce lineage shows locomotor order beyond its mix)
 - [x] Small-meal `evo` (P4-20, 2026-11-15: every survivor hungry; 7 of 8 lineages matched in generations, one ended; the manipulation check fails (5 of 7 lineages, p 0.195), so H-k is untested; the small line keeps breeding in the garden)
 - [x] Late-reflex `evo` (P4-21, 2026-11-16: late reflexes and a milder hazard make maintenance a choice; 16 lineages matched in generations, none ended; with full meals selection raised voluntary maintenance in every lineage; the manipulation check fails (2 of 8 lineages, p 0.73), so H-l is untested)
+- [x] Phase 4 selection summary (2026-11-16: Jason stopped the scarcity line; H-h to H-l summarised in NOTES, with a correction to H-j's count of scarce lineage 6's ordered readings, 7 not 6)
 - [x] Burghardt detectors per criterion with synthetic ground truth, ≥ 1,000 surrogates, thresholds fixed before any evaluation seed; V hopper fix (P4-5, 2026-11-06: rules v3 pass 12 / 12 preregistered checks on fresh seeds after v1 (11 / 12) and a falsifier failure in v2, all recorded; on the simulator both policies are non-functional and spontaneous but single-decision, so criteria 3 / 4 are not evaluable at 6 decisions per day) — **PlayScore eval-only, unvalidated**
 - [x] Finer decision grain for free-time behaviour (P4-8, 2026-11-06: `free_substeps`, `policy.substep_mode`; heuristic continue mode within 2 % of the control on every resolvable landmark, N@315 +13 % at one paired se; detectors have support; no arm meets all five criteria)
 - [x] H-d amendment adopted 2026-11-06 (drift > 10 % and > 2 paired se; heuristic with 12 sub-steps in continue mode preserved, random MLP not)

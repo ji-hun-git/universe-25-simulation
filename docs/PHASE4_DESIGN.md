@@ -2291,6 +2291,9 @@ training seed 7000 (at most 3 epochs of one lineage per line, and one garden run
 - By the reading recorded above, no scarcity tried on this substrate has selected maintenance
   in the free choices. The late world itself, with full meals, did.
 
+**The line stops here** (Jason, 2026-11-16). NOTES 2026-11-16 summarises the selection results
+of §4.4–4.8 ("the state at the end of the line").
+
 ## 5. Determinism (two tiers, never cross-tier identity)
 
 - **Reference tier (NumPy, CPU):** `need_driven`, `mlp_frozen` and `evo` are bit-identical run

@@ -795,6 +795,8 @@ unchanged), `tests/test_scarcity.py`, `tests/test_evo.py`, `NOTES.md`, `docs/SEE
 > - Exploratory: with full meals the late world raised voluntary maintenance against drift. In
 >   the garden 5 of 16 LF runs collapse, and the abundance line no longer does.
 > - NOTES 2026-11-16.
+> - The scarcity line stops here (Jason, 2026-11-16). The summary of H-h to H-l is the NOTES
+>   section of the same day.
 
 **Goal:** make maintenance a choice, with late reflexes and a milder starvation hazard, and
 evolve two lines from H-h's generation-0 genomes in that world, one with full meals and one
