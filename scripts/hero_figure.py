@@ -331,7 +331,7 @@ def draw() -> int:
     cax.set_xticks([]); cax.set_yticks([])
     for s in cax.spines.values():
         s.set_edgecolor(PAL["stress"]); s.set_linewidth(1.0)
-    cax.text(0.012, 0.025, "close-up: the playground, crowds at food and water; pups are pink",
+    cax.text(0.012, 0.025, "close-up: playground, food and water; pups are pink",
              transform=cax.transAxes, fontsize=6.0, va="bottom", color=PAL["ink"],
              bbox={"boxstyle": "square,pad=0.25", "fc": PAL["paper"], "ec": "none", "alpha": 0.9})
     if poly and len(poly) == 4:
