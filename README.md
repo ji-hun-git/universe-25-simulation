@@ -1,12 +1,51 @@
 # universe25-play
 
+![Universe 25, simulated. a: the frozen colony on its fullest day in 3D. b: population against Calhoun's census on 48 seeds. c: where the colony crowds, and who withdraws. d: the phase-4 play-emergence tests so far.](docs/figures/hero.png)
+
+<sub>The hero figure is remade by `scripts/hero_figure.py`. What each panel shows, and what it does
+not claim: [docs/FIGURES.md](docs/FIGURES.md).</sub>
+
 Research-grade **Universe 25** (Calhoun 1973) simulation with an optional **playground** zone.
 
 Track E / exploratory. Agents are need-driven (hunger, thirst, fatigue, stress, social, aggression, maternal, curiosity, boredom, homeostasis). **There is no play reward.** The playground is geometry + manipulable objects only; any playground use is drive spillover.
 
+## Status (2026-11-17)
+
+| part | state |
+|---|---|
+| **Substrate** (phase 1) | Need-driven mice in Calhoun's 101 × 101 in pen: 16 cells, 256 nest boxes, food and water, and a playground of balls, tunnels and ramps. |
+| **Calibration** (phase 2) | Frozen at phase 2m. On the 48 seeds of the Tier 1 predictive check, 12 of the record's 15 values fall inside the 90 % prediction interval. The misses are N on day 736 and the doubling times of phases B and C: the colony grows too fast. The collapse emerges from the mechanisms; its irreversibility is a model assumption fitted to one colony. |
+| **Replica v2** | Calhoun's own pen layout: triangular cells, tunnels and box levels. It ended on 2026-11-13. The final replica has 10 of 20 pen targets inside and the arc in 45 of 48 fresh-seed runs, but the arc comes late and the behavioural categories never appear. The frozen 2m colony stays the reference. |
+| **Viewer** (phase 3) | Plan and 3D views, recordings and live runs, and a dashboard (`viewer/`; section "Viewer" below). |
+| **Play emergence** (phase 4) | Learned and evolved agents, with no play reward and detectors used only for evaluation. H-d to H-l have been read, and none gives evidence of play either way (hero figure, panel d). The scarcity line stopped on 2026-11-16. |
+
+The full state is in `HANDOFF.md`, the dated results in `NOTES.md`, and the hypotheses in
+`PLAN.md` §15.
+
 ## Why
 
-Closest scientific recreations (RatUtopia, mouse-utopia-model) match population curves but have bare visuals and no play instrumentation. DeepMind Gathering shows aggression under scarcity / peace under abundance, but agents cannot play. This repo builds the environment substrate for asking whether **play-like behavior emerges under abundance** and can be scored with Burghardt’s criteria / a provisional PlayScore (unvalidated).
+The closest models of Universe 25 reproduce the population curve's shape. They use hand-set phases (RatUtopia, Mantzaris 2025), a curve fit (Roman 2025) or parameter sweeps (Gwizdałła & Duś 2026; Carucci et al. 2026), and none instruments play. DeepMind Gathering shows aggression under scarcity / peace under abundance, but agents cannot play. This repo builds the environment substrate for asking whether **play-like behavior emerges under abundance** and can be scored with Burghardt’s criteria / a provisional PlayScore (unvalidated).
+
+## Earlier Universe 25 research
+
+`docs/PRIOR_WORK.md` summarises it, with references. In short:
+- **One colony.** Calhoun's collapse to near-extinction was seen once, and no independent study
+  has repeated it.
+- **Recovery elsewhere.** The nearest attempts levelled off or recovered:
+  - Kessler 1966: crowded mice stabilised, and re-paired mice bred again;
+  - Petrusewicz 1957 and 1963: moving or thinning a confined population restarted growth;
+  - Terman 1968 and 1973: deermice recovered once removed;
+  - Hammock 1971: the one thinned group recovered in part.
+
+  Only Marsden's transfers, from Universe 25 itself, support irreversibility. Here it is a
+  model assumption (NOTES "Phase 2m").
+- **A brake, not an end.** Rodent studies support a density brake on breeding (Christian,
+  Southwick, Lloyd & Christian).
+- **People.** In human studies, household crowding mattered and area density barely did. The
+  outcome was withdrawal more often than violence (Galle et al. 1972, Freedman 1975, Regoeczi
+  2008; crowded rhesus monkeys, Judge & de Waal 1993).
+- **History.** Historians trace how the "behavioral sink" outran Calhoun's own later programme
+  (Ramsden & Adams 2009; *Rat City* and *Dr. Calhoun's Mousery*, both 2024).
 
 ## Stack
 
@@ -87,6 +126,9 @@ python scripts\viewer_serve.py
   - `[` / `]`: slower or faster
   - F: follow the selected mouse
   - Esc: clear the selection
+- **Save image** (View section) writes the current view as a PNG to `_output/figures/`.
+  `?rec=ref_7000&shot=hero` renders panel a of the hero figure; `docs/FIGURES.md` has the
+  steps.
 - The charts load uPlot and the 3D view loads three.js from cdn.jsdelivr.net; the fonts come
   from Google Fonts. Without them the plan view still runs, and the charts and the 3D view say
   what is missing.
@@ -143,12 +185,15 @@ PlayScore (gan formalization, **not validated**): `G · (1−|F|) · V · D · S
 configs/          default.yaml, smoke.yaml
 src/universe25/   sim, world, agents (state, policy hook), metrics, io
 tests/            geometry, determinism, conservation, biology guards + Warp parity (__main__ runner)
-scripts/          calibrate.py, calibrate_optuna.py, benchmark_backends.py, viewer_*.py
+scripts/          calibrate.py, calibrate_optuna.py, benchmark_backends.py, viewer_*.py,
+                  hero_figure.py
 viewer/           colony viewer (static HTML / JS; scripts/viewer_serve.py serves it)
 _output/          runs (gitignored)
 PLAN.md           mini-prereg (§15: phase 4 learning arms)
 NOTES.md          dated results
-docs/             TASKS.md, PHASE4_DESIGN.md (learning agents, detectors), RESEARCH_DIGEST.md (record + literature), NVIDIA_STACK.md
+docs/             TASKS.md, PHASE4_DESIGN.md (learning agents, detectors), RESEARCH_DIGEST.md (record + literature), NVIDIA_STACK.md,
+                  PRIOR_WORK.md (earlier Universe 25 research), FIGURES.md (figure registry)
+docs/figures/     hero.png and hero.json, phase4_ledger.yaml (panel d), src/ (the renders of panel a)
 ```
 
 ## References
@@ -160,8 +205,9 @@ docs/             TASKS.md, PHASE4_DESIGN.md (learning agents, detectors), RESEA
 - Keramati M & Gutkin B (2014). Homeostatic reinforcement learning. *eLife* 3:e04811 — the drive-reduction reward used in phase 4
 - Burghardt GM (2005). *The Genesis of Animal Play*; Burghardt (2014) *Anim Behav Cogn* 1(2):90–98 — the five criteria, surplus resource theory
 - Full list with URLs: `docs/RESEARCH_DIGEST.md` part E
-- RatUtopia — [mantzaris/RatUtopia](https://github.com/mantzaris/RatUtopia), [arXiv:2508.08587](https://arxiv.org/abs/2508.08587)
-- Mouse utopia model — [tomgwizd/Mouse-utopia-model](https://github.com/tomgwizd/Mouse-utopia-model), [PMC12939635](https://pmc.ncbi.nlm.nih.gov/articles/PMC12939635/)
+- RatUtopia (Mantzaris 2025) — [mantzaris/RatUtopia](https://github.com/mantzaris/RatUtopia), [arXiv:2508.08587](https://arxiv.org/abs/2508.08587)
+- Mouse utopia model (Gwizdałła & Duś 2026, *Entropy* 28(2):169) — [PMC12939635](https://pmc.ncbi.nlm.nih.gov/articles/PMC12939635/); the repository [tomgwizd/Mouse-utopia-model](https://github.com/tomgwizd/Mouse-utopia-model) holds data, not code
+- Earlier Universe 25 research in full (Calhoun's programme, follow-ups, human crowding, histories, models): `docs/PRIOR_WORK.md`
 - Leibo et al. 2017. Multi-agent Cooperation and the Emergence of (natural) Selection. [arXiv:1702.03037](https://arxiv.org/abs/1702.03037) (Gathering)
 - Auerbach, Kanarek & Burghardt 2015. To play or not to play? [doi:10.1177/1059712315611188](https://doi.org/10.1177/1059712315611188)
 - Learning to Play — [arXiv:1802.07442](https://arxiv.org/abs/1802.07442)

@@ -12,6 +12,9 @@ API
   GET  /api/live/frames?after=i  the live run's frames after index i (binary, same format),
                                  the run's status in the header
   POST /api/live/control         {"op": "pause" | "resume" | "stop"} or {"rate": days per second}
+  POST /api/snapshot?name=n      a PNG the viewer rendered, or a JSON note about one (body),
+                                 saved as _output/figures/<n>.png or .json (n: 1-48 of a-z,
+                                 0-9, _)
 
 A live run is the run `main.py` makes from the same config, seed and overrides (capture only
 reads); it writes its own metrics.parquet and config.json to `_output/viewer_live/<stamp>/`."""
@@ -20,6 +23,7 @@ from __future__ import annotations
 import argparse
 import json
 import mimetypes
+import re
 import sys
 import threading
 import time
@@ -39,6 +43,9 @@ from universe25.sim import Universe25Sim  # noqa: E402
 APP = ROOT / "viewer"
 REC = ROOT / "_output" / "viewer"
 LIVE_OUT = ROOT / "_output" / "viewer_live"
+SHOTS = ROOT / "_output" / "figures"  # rendered views (scripts/hero_figure.py reads hero_pen.png)
+SHOT_MAX = 40 * 2**20
+PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 PRESETS = {
     "reference": {"label": "Reference colony (phase 2m)", "config": "configs/default.yaml"},
     "scarce": {"label": "Scarce arm", "config": "configs/scarce.yaml"},
@@ -249,8 +256,31 @@ class Handler(BaseHTTPRequestHandler):
         rel = url.path.lstrip("/") or "index.html"
         return self._file(APP / rel, APP)
 
+    def _snapshot(self, url) -> None:
+        """Save a PNG the viewer rendered, or a JSON note about it, to _output/figures/."""
+        name = parse_qs(url.query).get("name", [""])[0]
+        if not re.fullmatch(r"[a-z0-9_]{1,48}", name):
+            return self._json({"error": "name: 1 to 48 of a-z, 0-9 and _"}, 400)
+        n = int(self.headers.get("Content-Length") or 0)
+        if not 0 < n <= SHOT_MAX:
+            return self._json({"error": "empty or too large"}, 413)
+        data = self.rfile.read(n)
+        ext = "png"
+        if not data.startswith(PNG_MAGIC):
+            try:
+                json.loads(data.decode("utf-8"))
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                return self._json({"error": "not a PNG or JSON"}, 400)
+            ext = "json"
+        SHOTS.mkdir(parents=True, exist_ok=True)
+        out = SHOTS / f"{name}.{ext}"
+        out.write_bytes(data)
+        return self._json({"path": out.relative_to(ROOT).as_posix(), "bytes": n})
+
     def do_POST(self) -> None:  # noqa: N802
         url = urlparse(self.path)
+        if url.path == "/api/snapshot":
+            return self._snapshot(url)
         try:
             body = self._body()
         except json.JSONDecodeError:

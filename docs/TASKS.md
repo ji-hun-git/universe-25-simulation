@@ -1156,6 +1156,17 @@ Extend USD export with agent point samples from a short run. Document viewer ste
 Rewrite README for research clarity: claim, non-goals, phase status, honest calibration table, visuals intent, refs. Keep MIT. Do not claim play emerged.
 ```
 
+**Progress 2026-11-17** (Jason asked for a repo update, a summary of earlier
+Universe 25 research, and a managed hero figure):
+- The hero figure (`docs/figures/hero.png`) is remade by `scripts/hero_figure.py`.
+  - `docs/FIGURES.md` says what each panel shows and does not claim, and when to redraw.
+  - Panel d reads the phase-4 verdicts from `docs/figures/phase4_ledger.yaml`.
+  - `tests/test_hero_figure.py` fails when the ledger changes without a redraw.
+- The README opens with the figure and a status table.
+- `docs/PRIOR_WORK.md` summarises earlier Universe 25 research: Calhoun's programme,
+  follow-ups and non-replications, the human-crowding debate, histories, and models.
+- Not done: an abstract, how to cite, and the public opening (Jason's call).
+
 ---
 
 ## Quick checks

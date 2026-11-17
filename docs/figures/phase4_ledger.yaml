@@ -1,0 +1,62 @@
+# Phase 4 play-emergence tests and their verdicts: panel d of the hero figure
+# (scripts/hero_figure.py, docs/FIGURES.md). Update it when a test is read, then redraw.
+# Hypotheses: PLAN.md section 15.1. Results: the NOTES.md section named in `notes`.
+# verdict is one of: falsified | not supported | supported | not specific | untested | not read
+summary: >-
+  So far no test gives evidence of play either way. Nothing rewards, observes or optimises play,
+  and PlayScore stays unvalidated.
+tests:
+  - id: H-d
+    date: 11-07
+    question: the calibrated curve survives a learned policy
+    verdict: falsified
+    note: the learned colony runs the arc 70-100 d early
+    notes: 2026-11-07 H-d, preregistered test of a learned arm
+  - id: H-e
+    date: 11-08
+    question: play-likeness rises with the relaxed share
+    verdict: not specific
+    note: met by its rule; random nets show the same gating (v9)
+    notes: 2026-11-08 H-e result; 2026-11-09 Tier 1 re-read
+  - id: H-f
+    date: null
+    question: learned object use differs in structure, not rate
+    verdict: not read
+    note: P4-15 stop rule
+    notes: 2026-11-11 P4-15
+  - id: H-g
+    date: 11-13
+    question: breakdown suppresses play-likeness
+    verdict: falsified
+    note: detector rates rise through phase D
+    notes: 2026-11-13 H-g falsified
+  - id: H-h
+    date: 11-13
+    question: selection without reward shapes free time
+    verdict: not supported
+    note: criterion 3 as common under neutral drift
+    notes: 2026-11-13 evo and H-h
+  - id: H-i
+    date: 11-13
+    question: criterion 3 on nets follows weight size
+    verdict: supported
+    note: on nets the detector reads weight size
+    notes: 2026-11-13 H-i
+  - id: H-j
+    date: 11-14
+    question: food scarcity selects against free time
+    verdict: untested
+    note: manipulation check failed (3 of 8)
+    notes: 2026-11-14 SCARCE-PG evo and H-j
+  - id: H-k
+    date: 11-15
+    question: small meals select against free time
+    verdict: untested
+    note: manipulation check failed (5 of 7)
+    notes: 2026-11-15 small-meal evo and H-k
+  - id: H-l
+    date: 11-16
+    question: the same, with maintenance a choice
+    verdict: untested
+    note: manipulation check failed (2 of 8)
+    notes: 2026-11-16 late-reflex evo and H-l

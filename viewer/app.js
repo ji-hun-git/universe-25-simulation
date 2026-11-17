@@ -394,6 +394,60 @@ async function setView(v) {
   S.lastUi = 0;
 }
 for (const b of document.querySelectorAll("#viewSeg button")) b.addEventListener("click", () => setView(b.dataset.view));
+
+// a PNG of the pen view, saved by the local server as _output/figures/<name>.png
+async function snapshot(name, w = 2400, h = 1500) {
+  if (!S.api) throw new Error("saving needs scripts/viewer_serve.py");
+  const blob = active() === pen3d ? await pen3d.snapshot(w, h) : await new Promise((res) => $("pen").toBlob(res, "image/png"));
+  const r = await fetch(`api/snapshot?name=${encodeURIComponent(name)}`, { method: "POST", body: blob });
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
+  return j;
+}
+$("viewShot").addEventListener("click", async () => {
+  const d = new Date(), p2 = (v) => String(v).padStart(2, "0");
+  const name = `view_${d.getFullYear()}${p2(d.getMonth() + 1)}${p2(d.getDate())}_${p2(d.getHours())}${p2(d.getMinutes())}${p2(d.getSeconds())}`;
+  const nt = $("viewNote");
+  nt.hidden = false;
+  try { const j = await snapshot(name); note("viewNote", `Saved ${j.path}.`); }
+  catch (e) { note("viewNote", `Could not save: ${e.message}`, true); }
+});
+
+// ?shot=hero: the frozen colony's fullest daily frame in 3D, saved for scripts/hero_figure.py
+async function heroShot() {
+  await setView("3d");
+  if (!pen3d || !S.store) return;
+  const st = S.store;
+  let best = 0;
+  for (let i = 0; i < st.length; i++) {
+    const daily = Math.abs(st.t[i] - Math.round(st.t[i])) < 1e-6 && !st.meta[i].s;
+    if (daily && st.meta[i].n > st.meta[best].n) best = i;
+  }
+  seek(st.t[best]);
+  pen3d.colorBy = "natural";
+  syncColor(); legend();
+  pen3d.view("hero", true);
+  render();
+  const closeAt = pen3d.locate("hero_close", 2400 / 1500);
+  const closePoly = pen3d.footprint("hero_close", 1.6, "hero", 1.6);
+  const a = await snapshot("hero_pen", 2400, 1500);
+  pen3d.view("hero_close", true);
+  render();
+  const b = await snapshot("hero_close", 1600, 1000);
+  const meta = {
+    recording: S.name, seed: S.world.run.seed, layout: S.world.layout, day: st.t[best],
+    n: st.meta[best].n, colour: "natural", close_at: closeAt, close_poly: closePoly, files: [a.path, b.path],
+    cameras: { hero: pen3d.presets().hero, hero_close: pen3d.presets().hero_close },
+    made: new Date().toISOString(),
+  };
+  const r = await fetch("api/snapshot?name=hero_shot", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(meta) });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  pen3d.view("overview", true);
+  render();
+  $("viewNote").hidden = false;
+  note("viewNote", `Hero renders saved in _output/figures/ (day ${dayText(st.t[best])}, ${nf(st.meta[best].n)} mice). Next: python scripts/hero_figure.py draw`);
+  return meta;
+}
 for (const b of document.querySelectorAll("[data-cam]")) b.addEventListener("click", () => pen3d?.view(b.dataset.cam));
 
 function legend() {
@@ -605,7 +659,7 @@ window.addEventListener("drop", async (e) => {
 });
 window.addEventListener("resize", () => { S.lastUi = 0; });
 
-window.u25 = { S, pen, dash, seek, select, setTheme, setView, render, get pen3d() { return pen3d; } }; // for the console
+window.u25 = { S, pen, dash, seek, select, setTheme, setView, render, snapshot, heroShot, get pen3d() { return pen3d; } }; // for the console
 
 async function init() {
   try {
@@ -626,10 +680,11 @@ async function init() {
   }
   const params = new URLSearchParams(location.search), want = params.get("rec");
   const pick = recs.find((r) => r.name === want) || recs.find((r) => r.name === "ref_7000") || recs[0];
-  if (pick) { recSel.value = pick.name; loadRecording(pick.name); }
+  requestAnimationFrame(loop);
+  if (pick) { recSel.value = pick.name; await loadRecording(pick.name); }
   let view = params.get("view");
   try { view ||= localStorage.getItem("u25-view"); } catch (e) { /* storage off */ }
-  if (view === "3d") setView("3d");
-  requestAnimationFrame(loop);
+  if (params.get("shot") === "hero") await heroShot();
+  else if (view === "3d") setView("3d");
 }
 init();

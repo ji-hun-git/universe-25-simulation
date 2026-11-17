@@ -121,7 +121,9 @@ group of 1 territorial male + 3 subordinate males + 6 females.
   potential survived to day 14; males from each behavioural category in fresh 4-cell universes
   → ≤ 1–2 per group retained effective sexual behaviour.
 - Calhoun 1962 (rats; secondary validation only): behavioural sink with up to 60 of 80 rats
-  feeding in one pen; infant mortality to 96 % in sink pens vs 80 % without.
+  feeding in one pen; infant mortality up to 96 % in the most disordered groups vs 80 % for
+  comparable animals in a series without a sink (not pen-level rates; corrected 2026-11-17,
+  `docs/PRIOR_WORK.md`).
 
 ### A7. Confounds, critiques, replication
 
@@ -130,15 +132,20 @@ group of 1 territorial male + 3 subordinate males + 6 females.
   observer disturbance caused litter abandonment; n = 1 for the collapse; 1971 and 1973 disagree
   on first-litter day (50 vs 104) and phase C doubling (105 vs 145); the extinction date is a
   projection.
-- External: Young 1972, Freedman 1975, Fischer / Baldassare / Ofshe 1975 on extrapolation and
+- External: J. Z. Young, who chaired Calhoun's Royal Society of Medicine talk (via Ramsden &
+  Adams 2009; listed earlier as "Young 1972", which is not a publication we could find;
+  corrected 2026-11-17), Freedman 1975, Fischer / Baldassare / Ofshe 1975 on extrapolation and
   anthropomorphism; Kessler 1966 found **withdrawal and declining interaction**, not rising
   stress, in his crowded mouse populations.
 - Replication: **none.** Kessler 1966: two freely growing mouse populations reached ≈ 1000 and
   ≈ 800 in 8–9 months, then **stabilised**, and mice re-paired in cages **resumed
   reproduction** — the opposite of Universe 25's irreversibility. Hammock 1971: crowded groups
-  weaned no pups, then weaned 41 % / 30 % / 0 % of successive litters after density reduction.
-  Petrusewicz 1957 / 1963: disturbance renewed growth in 65 % of 264 runs. Universes 33 / 34
-  unpublished.
+  weaned no pups; the one thinned group then weaned 41 % / 30 % / 0 % of successive litters, and
+  the uncrowded control also stopped weaning once it filled its apparatus. Petrusewicz: transfer
+  renewed growth in 43 of 54 populations (1957); disturbance in 65 % of 264 runs against 32 % of
+  controls (1963). Terman 1968 / 1973 (deermice): breeding stopped at the plateau, and removed
+  animals recovered. Universes 33 / 34 unpublished. (Hammock, Petrusewicz and Terman corrected or
+  added 2026-11-17; the wider literature is in `docs/PRIOR_WORK.md`.)
 
 **Consequence for phase 2m.** The colony-wide developmental exposure that makes our collapse
 irreversible encodes Universe 25's outcome (and Marsden's transfers); Kessler's and Hammock's
@@ -338,16 +345,23 @@ decisions suffuse any quantification"). Detectors in `PHASE4_DESIGN.md` §2.
 
 ## Part E — References
 
-Calhoun record: Calhoun 1973 https://pmc.ncbi.nlm.nih.gov/articles/PMC1644264/ (OCR scan
+Calhoun record (DOIs added 2026-11-17): Calhoun 1973 doi:10.1177/00359157730661P202,
+https://pmc.ncbi.nlm.nih.gov/articles/PMC1644264/ (OCR scan
 https://physicsoflife.pl/dict/pic/calhoun/calhoun's-experiment.pdf) · Calhoun 1971
-https://www.gwern.net/doc/sociology/1971-calhoun.pdf · Calhoun 1962
-https://gwern.net/doc/sociology/1962-calhoun.pdf · Marsden 1972
-https://gwern.net/doc/sociology/1972-marsden.pdf · Kessler 1966
-https://www.gwern.net/doc/biology/1966-kessler.pdf · Hammock 1971
+doi:10.1007/978-1-4684-1893-4_25, https://www.gwern.net/doc/sociology/1971-calhoun.pdf · Calhoun 1962
+https://gwern.net/doc/sociology/1962-calhoun.pdf · Marsden 1972 (in *Environment and the Social
+Sciences*, APA, pp. 5–14) doi:10.1037/10045-001, https://gwern.net/doc/sociology/1972-marsden.pdf ·
+Kessler 1966 ("Interplay between social ecology and physiology, genetics and population dynamics
+of mice")
+https://www.gwern.net/doc/biology/1966-kessler.pdf · Hammock 1971 ("Behavioral changes due to
+overpopulation in mice") doi:10.15760/etd.1428,
 https://pdxscholar.library.pdx.edu/open_access_etds/1429/ · Ramsden & Adams 2009
-http://eprints.lse.ac.uk/59888/ · Gwern https://gwern.net/mouse-utopia · Day 2025
+doi:10.1353/jsh.0.0156, http://eprints.lse.ac.uk/59888/ · Gwern https://gwern.net/mouse-utopia ·
+Day 2025
 https://www.lrb.co.uk/the-paper/v47/n13/jon-day/the-beautiful-ones · Petrusewicz 1963
-https://rcin.org.pl/publication/85975 · Dugatkin 2024 *Dr. Calhoun's Mousery* (not read).
+https://rcin.org.pl/publication/85975 · Dugatkin 2024 *Dr. Calhoun's Mousery* (University of
+Chicago Press; not read) · Adams & Ramsden 2024 *Rat City* (not read). Everything else about
+earlier Universe 25 research, with its references: `docs/PRIOR_WORK.md` (2026-11-17).
 
 Learning agents: Keramati & Gutkin 2014 https://elifesciences.org/articles/04811 · Hulme,
 Morville & Gutkin 2019 https://hal.archives-ouvertes.fr/hal-02355206 · Dulberg et al. 2023

@@ -1,5 +1,78 @@
 # Universe25 Play — NOTES
 
+## 2026-11-17 — Hero figure, earlier Universe 25 research, repo update; no experiment
+
+**What Jason asked for.**
+- Update the repo.
+- Add earlier Universe 25 research as summaries.
+- Make a hero figure for the research and manage it.
+
+**What it adds.** No experiment, rule or simulator change. No seed was read for a new decision.
+- **The hero figure** (`docs/figures/hero.png`), on one page:
+  - **a.** The frozen colony on its fullest daily frame in 3D, from `ref_7000` (seed 7000):
+    day 529, 2,199 mice, with a close-up. These are renders from the viewer: every mouse at
+    real scale, heights drawn.
+  - **b.** Population of the frozen colony on the 48 Tier 1 predictive-check seeds
+    (9000–9047), median and 90 % interval, against Calhoun's census.
+  - **c.** Each cell's count over its design capacity, and the withdrawn share, on the same
+    runs.
+  - **d.** The phase-4 tests H-d to H-l and their verdicts.
+- **How it is managed.**
+  - `scripts/hero_figure.py` remakes it; `docs/FIGURES.md` says what each panel shows and does
+    not claim, and when to redraw.
+  - Panel d reads `docs/figures/phase4_ledger.yaml`. `docs/figures/hero.json` records the
+    commit, the checks and the ledger's hash.
+  - `tests/test_hero_figure.py` (fast tier) checks the ledger's form. It fails when the ledger
+    changes without a redraw.
+  - CONTRIBUTING.md's definition of done now includes the redraw.
+- **The viewer** gained "Save image" (a PNG to `_output/figures/`) and `?shot=hero`, which
+  renders panel a and records its day, count and cameras.
+- **`docs/PRIOR_WORK.md`** summarises earlier Universe 25 research (below).
+- **Updated documents:**
+  - the README opens with the figure and a status table;
+  - HANDOFF's header was still dated 2026-11-04 and said phase 3 had not started; it now gives
+    the state of 2026-11-17;
+  - TASKS P3-5 has a progress note.
+
+**A check made along the way.**
+- The figure re-runs the 48 predictive-check runs to get their daily series. Every one
+  reproduces its stored landmarks exactly (`_output/calib_reference/rows.json`: 48 of 48).
+- On them, 12 of the record's 15 values fall inside the 90 % interval. The misses are N on day
+  736 and the doubling times of phases B and C, as in NOTES 2026-11-09.
+- Where the colony crowds, as medians over the 48 runs:
+  - At the median's peak (day 524, 2,172 mice), the four central cells (5, 6, 9 and 10) hold
+    0.95 to 1.08 times their design capacity of 240. Every other cell holds at most 0.46.
+  - Over the whole run, the central cells' medians reach 1.13 to 1.30.
+- The withdrawn share's median is 52 % at that peak and 83 % on day 1,000.
+
+**Earlier Universe 25 research** (`docs/PRIOR_WORK.md`). It comes from a literature check:
+primary sources where they could be reached, otherwise Crossref, PubMed or Europe PMC for the
+citation. Every entry carries a confidence tag. What it finds:
+- **No independent study repeated the collapse.**
+  - The nearest attempts levelled off or recovered: Kessler 1966, Petrusewicz 1957 and 1963,
+    Terman 1968 and 1973, and Hammock 1971 in part.
+  - Only Marsden's transfers, from Universe 25 itself, support irreversibility.
+  - This repo already lists irreversibility as an assumption fitted to one colony (Phase 2m).
+- **Rodent studies support a density brake on breeding** (Christian, Southwick, Lloyd and
+  Christian).
+- **Human studies** found household crowding mattered and area density barely did, with
+  withdrawal more often than violence. Crowded rhesus monkeys avoided and appeased.
+- **Four model families since 2025 reproduce the curve's shape,** and none instruments play:
+  - Mantzaris (RatUtopia), with hand-set phases and the agent model in an appendix;
+  - Roman, a curve fit;
+  - Gwizdałła and Duś (the README's "Mouse utopia model"), an agent model; its repository has
+    no code;
+  - Carucci et al. (LIUC), equation and agent models with a 50,000-run sweep.
+
+**Corrections to `docs/RESEARCH_DIGEST.md`** (part A and its references):
+- "Young 1972" is not a publication we could find. It is most likely J. Z. Young, who chaired
+  Calhoun's Royal Society of Medicine talk.
+- Hammock thinned only one group, and his uncrowded control also stopped weaning.
+- Petrusewicz's 65 % is against 32 % of controls; 1957 adds 43 of 54 transfers.
+- Calhoun 1962's 96 % and 80 % are group-level infant mortalities, not pen rates.
+- DOIs and titles were added.
+- The README's model descriptions were corrected.
+
 ## 2026-11-17 — Viewer: the colony in 3D with real-scale mice; no experiment
 
 **What Jason asked for.** After the plan view (below), Jason asked to see the colony with real

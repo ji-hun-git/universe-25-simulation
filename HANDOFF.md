@@ -4,13 +4,15 @@
 > **Repo (private):** https://github.com/ji-hun-git/universe25-play  
 > **Local path (lab PC):** `C:\Users\user\Projects\universe25-play`  
 > **Owner:** Jason (ji-hun-git) · **Research partner:** gan  
-> **Date:** 2026-11-04 (Asia/Seoul) · **Phase:** 1 complete; **phase 2 calibration frozen at 2m (canonical landmark error 0.06 at seed 7000, 0.03–0.10 held-out; 12-seed plateau within 3–4 % of Calhoun; early phase a third low; emergent, irreversible collapse — caveats in `NOTES.md` → "Phase 2m")**; Warp parity partial; phase 3 (visuals) not started; **phase 4 (learning agents + play detectors) designed, preregistered and scaffolded 2026-11-04** (`docs/PHASE4_DESIGN.md`, `PLAN.md` §15, `docs/TASKS.md` P4-0…P4-7; policy hook landed, no learning run yet)
+> **Date:** 2026-11-17 (Asia/Seoul) · **Phase:** 1 complete; **phase 2 calibration frozen at 2m** (canonical landmark error 0.06 at seed 7000, 0.03–0.10 held-out; 12-seed plateau within 3–4 % of Calhoun; early phase a third low; emergent, irreversible collapse — caveats in `NOTES.md` → "Phase 2m"; Tier 1 predictive check on 48 seeds: 12 of 15 record values inside the 90 % interval); replica v2 (Calhoun's pen) ended 2026-11-13 and the frozen 2m colony stays the reference; Warp parity partial; **phase 3 viewer built** 2026-11-17 (plan and 3D); **phase 4** (learned and evolved agents, play detectors): H-d to H-l read, no evidence of play either way (`docs/figures/phase4_ledger.yaml`); hero figure and registry: `docs/FIGURES.md`; earlier Universe 25 research: `docs/PRIOR_WORK.md`
 
 > **Status 2026-11-17:** the phase 3 viewer is built (`viewer/`, README "Viewer", TASKS P2-1 /
 > P2-2): the colony from above with a control panel, recordings and live runs (NumPy, or Warp
 > on the GPU), and a dashboard; and a 3D view with every mouse at real scale
 > (`viewer/pen3d.js`, heights drawn, not simulated). It adds no experiment. Phase 4's scarcity line stopped on
-> 2026-11-16 (below).
+> 2026-11-16 (below). The same day: the hero figure (`docs/figures/hero.png`, remade by
+> `scripts/hero_figure.py`; what it shows and does not claim: `docs/FIGURES.md`) and a digest of
+> earlier Universe 25 research (`docs/PRIOR_WORK.md`).
 
 > **Status 2026-11-09:**
 > - Phase 4 runs on action space v2 with detector rules v7 (frozen); P4-14 is in progress.

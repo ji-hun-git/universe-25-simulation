@@ -1,0 +1,246 @@
+{
+ "generated": "2026-11-17",
+ "commit": "3671529",
+ "uncommitted_changes": true,
+ "seeds": [
+  9000,
+  9047
+ ],
+ "runs_check": "48 of 48 runs match rows.json",
+ "ppc": {
+  "inside": 12,
+  "of": 15,
+  "rows": [
+   {
+    "landmark": "first_litters_day",
+    "record": 104.0,
+    "median": 102.0,
+    "pi90": [
+     102.0,
+     104.65
+    ],
+    "miss": false,
+    "n": 48
+   },
+   {
+    "landmark": "n_at_day_315",
+    "record": 620.0,
+    "median": 434.0,
+    "pi90": [
+     238.5,
+     721.25
+    ],
+    "miss": false,
+    "n": 48
+   },
+   {
+    "landmark": "peak_n",
+    "record": 2200.0,
+    "median": 2248.0,
+    "pi90": [
+     2172.85,
+     2313.95
+    ],
+    "miss": false,
+    "n": 48
+   },
+   {
+    "landmark": "peak_day",
+    "record": 560.0,
+    "median": 543.0,
+    "pi90": [
+     489.7,
+     603.4
+    ],
+    "miss": false,
+    "n": 48
+   },
+   {
+    "landmark": "last_young_day",
+    "record": 600.0,
+    "median": 595.5,
+    "pi90": [
+     532.85,
+     664.3
+    ],
+    "miss": false,
+    "n": 48
+   },
+   {
+    "landmark": "n_at_day_736",
+    "record": 2056.0,
+    "median": 1957.0,
+    "pi90": [
+     1902.15,
+     2024.45
+    ],
+    "miss": true,
+    "n": 48
+   },
+   {
+    "landmark": "adults_at_day_315",
+    "record": 150.0,
+    "median": 150.0,
+    "pi90": [
+     65.5,
+     282.45
+    ],
+    "miss": false,
+    "n": 48
+   },
+   {
+    "landmark": "last_conception_day",
+    "record": 920.0,
+    "median": 955.5,
+    "pi90": [
+     858.9,
+     1015.65
+    ],
+    "miss": false,
+    "n": 48
+   },
+   {
+    "landmark": "n_at_day_1444",
+    "record": 122.0,
+    "median": 128.5,
+    "pi90": [
+     72.8,
+     220.09999999999997
+    ],
+    "miss": false,
+    "n": 48
+   },
+   {
+    "landmark": "n_at_day_1588",
+    "record": 27.0,
+    "median": 19.0,
+    "pi90": [
+     6.35,
+     38.65
+    ],
+    "miss": false,
+    "n": 48
+   },
+   {
+    "landmark": "n_at_day_811",
+    "record": 1871.0,
+    "median": 1870.0,
+    "pi90": [
+     1813.35,
+     1930.65
+    ],
+    "miss": false,
+    "n": 48
+   },
+   {
+    "landmark": "n_at_day_960",
+    "record": 1650.0,
+    "median": 1623.0,
+    "pi90": [
+     1544.5,
+     1727.15
+    ],
+    "miss": false,
+    "n": 48
+   },
+   {
+    "landmark": "n_at_day_1471",
+    "record": 100.0,
+    "median": 95.5,
+    "pi90": [
+     53.35,
+     160.0
+    ],
+    "miss": false,
+    "n": 48
+   },
+   {
+    "landmark": "doubling_time_phase_b_days",
+    "record": 55.0,
+    "median": 44.306043395771965,
+    "pi90": [
+     37.23565646432585,
+     54.961618173566436
+    ],
+    "miss": true,
+    "n": 48
+   },
+   {
+    "landmark": "doubling_time_phase_c_days",
+    "record": 145.0,
+    "median": 96.58887061174003,
+    "pi90": [
+     80.3318278483102,
+     136.83132762232594
+    ],
+    "miss": true,
+    "n": 48
+   }
+  ]
+ },
+ "panel_a": {
+  "recording": "ref_7000",
+  "seed": 7000,
+  "layout": "grid",
+  "day": 529,
+  "n": 2199,
+  "colour": "natural",
+  "close_at": [
+   0.49931659891367147,
+   0.44753908512431406
+  ],
+  "close_poly": [
+   [
+    0.38652305638864387,
+    0.3275524529036589
+   ],
+   [
+    0.6236059738564168,
+    0.33888025891486306
+   ],
+   [
+    0.5697257086200438,
+    0.522438336998132
+   ],
+   [
+    0.4226374719933416,
+    0.5145750962859009
+   ]
+  ],
+  "files": [
+   "_output/figures/hero_pen.png",
+   "_output/figures/hero_close.png"
+  ],
+  "cameras": {
+   "hero": [
+    [
+     88,
+     138,
+     138
+    ],
+    [
+     8,
+     2,
+     15
+    ]
+   ],
+   "hero_close": [
+    [
+     16,
+     26,
+     30
+    ],
+    [
+     2,
+     0,
+     6
+    ]
+   ]
+  },
+  "made": "2026-11-17T05:59:06.762Z"
+ },
+ "ledger": "docs/figures/phase4_ledger.yaml",
+ "ledger_sha256": "96b11caa16d7d0aadce4feb8a16397376a0d01a372378ff93eacd266e83d2763",
+ "file": "docs/figures/hero.png",
+ "bytes": 363339
+}

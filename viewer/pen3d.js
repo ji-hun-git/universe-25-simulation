@@ -903,13 +903,60 @@ export class Pen3D {
     this.dirty = true;
   }
 
-  view(name, instant = false) {
+  presets() { // camera position and target per view; hero and hero_close: the hero figure
     const S = Math.max(this.W || 101, this.H || 101) / 101;
-    const presets = {
+    return {
       overview: [[62 * S, 178 * S, 172 * S], [0, 6, 2 * S]],
       top: [[0, 245 * S, 0.01], [0, 0, 0]],
       floor: [[-6 * S, 3.2, 44 * S], [4 * S, 3.0, 0]],
+      hero: [[88 * S, 138 * S, 138 * S], [8 * S, 2, 15 * S]],
+      hero_close: [[16 * S, 26, 30 * S], [2 * S, 0, 6 * S]],
     };
+  }
+
+  // where a preset's target falls in the current view at the given aspect (image fractions)
+  locate(name, aspect) {
+    const t = new THREE.Vector3(...this.presets()[name][1]), a0 = this.camera.aspect;
+    this.camera.aspect = aspect;
+    this.camera.updateProjectionMatrix();
+    this.camera.updateMatrixWorld();
+    t.project(this.camera);
+    this.camera.aspect = a0;
+    this.camera.updateProjectionMatrix();
+    return [(t.x + 1) / 2, (1 - t.y) / 2];
+  }
+
+  // the floor that preset `from` sees (aspect af), as a polygon of fractions of preset `to`'s
+  // image (aspect at); the hero figure outlines the close-up with it
+  footprint(from, af, to, at) {
+    const cam = this.camera, pr = this.presets();
+    const keep = [cam.position.clone(), cam.quaternion.clone(), cam.aspect];
+    const set = (name, aspect) => {
+      cam.position.set(...pr[name][0]);
+      cam.lookAt(...pr[name][1]);
+      cam.aspect = aspect;
+      cam.updateProjectionMatrix();
+      cam.updateMatrixWorld();
+    };
+    set(from, af);
+    const ray = new THREE.Raycaster(), floor = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), pts = [];
+    for (const [x, y] of [[-1, 1], [1, 1], [1, -1], [-1, -1]]) {
+      ray.setFromCamera(new THREE.Vector2(x, y), cam);
+      const p = new THREE.Vector3();
+      if (ray.ray.intersectPlane(floor, p)) pts.push(p);
+    }
+    set(to, at);
+    const out = pts.map((p) => { const v = p.project(cam); return [(v.x + 1) / 2, (1 - v.y) / 2]; });
+    cam.position.copy(keep[0]);
+    cam.quaternion.copy(keep[1]);
+    cam.aspect = keep[2];
+    cam.updateProjectionMatrix();
+    cam.updateMatrixWorld();
+    return out;
+  }
+
+  view(name, instant = false) {
+    const presets = this.presets();
     if (name === "follow" && this.selAt) {
       const dir = this.camera.position.clone().sub(this.controls.target).normalize();
       const to = this.selAt.clone();
@@ -947,6 +994,22 @@ export class Pen3D {
     this.controls.target.add(d);
     this.camera.position.add(d);
     this.dirty = true;
+  }
+
+  // a PNG of the current view at w x h pixels, rendered off the screen's size
+  snapshot(w, h) {
+    const r = this.renderer, ratio = r.getPixelRatio();
+    r.setPixelRatio(1);
+    r.setSize(w, h, false);
+    this.camera.aspect = w / h;
+    this.camera.updateProjectionMatrix();
+    r.render(this.scene, this.camera);
+    const done = new Promise((res) => this.c.toBlob(res, "image/png")); // copies the bitmap now
+    r.setPixelRatio(ratio);
+    this.w = 0; this.h = 0;
+    this._size();
+    this.dirty = true;
+    return done;
   }
 
   // ---------------------------------------------------------------- frame
