@@ -1,5 +1,54 @@
 # Universe25 Play — NOTES
 
+## 2026-11-17 — 3D view: mice no longer drawn through walls
+
+**What Jason saw.** In the 3D view the mice passed through walls.
+
+**Why.** The model's floor is open: each animal is a point, and nothing in the simulator is
+solid. The drawing made solid things that the animals cross.
+- The grid layout's 256 nest sites (the frozen colony) were drawn as walled boxes, 4.6 in square
+  and 2.6 in high, covering about half the floor. On day 450 of `ref_7000`, 388 of 1,416 floor
+  mice stood in or against a box's walls. The food hoppers stood in the gaps between boxes.
+- A mouse can stand 0.5 in from a pen wall, so its nose or tail went through the wall.
+- The playground's objects are points that the mice push into heaps. Drawn as solids, balls,
+  tunnels and ramps stood inside one another, with mice inside them.
+- At Calhoun's water platforms, the front row's noses went 0.5 in into the wall.
+
+**What changed** (`viewer/pen3d.js` only; the model is unchanged).
+- The grid's nest sites are drawn as low pads (4.2 in square, 0.12 in high) without walls.
+  Calhoun's boxes are unchanged.
+- Each floor mouse's drawn body is fitted around the solids (`_fit`):
+  - near a pen wall it turns along the wall, by the least turn that clears it, and is then
+    pushed clear;
+  - it is pushed clear of balls, the grid's hoppers and spouts, Calhoun's ring-stand rods and a
+    tunnel's sides;
+  - inside a tunnel it runs along it;
+  - it is lifted onto pads and ramps and over Calhoun's partitions, pitched with the slope.
+- The playground's objects are spread apart before the mice are fitted (a fixed number of
+  passes, so the same positions are always drawn the same way), and kept off the stands. At the
+  tightest heap (day 600) an object is drawn up to 7.6 in from its model position.
+- The water platform is 5 in deep (was 3.5), with two staggered rows whose noses reach the
+  spouts' line, 1 in from the wall.
+- The grid's water bottle hangs higher (from 1.4 in), with its spout at nose height.
+- Only the picture moves; the inspector shows the model's position.
+
+**Checks** (in the browser, from the drawn matrices).
+- `ref_7000`, days 150-1,300:
+  - no mouse's body or tail crosses a pen wall;
+  - no two objects overlap, and none overlaps a stand;
+  - at most 9 of 1,911 mice still touch a ball (by up to 1 in). They are squeezed between two
+    solids closer together than a body's width.
+- `replica_7000`, days 150-850: no wall crossings, and none through a rod.
+- Stepping through the 4-hour frames a minute at a time:
+  - a mouse drawn deep inside a ball, a tunnel's side or a hopper still hops to one side as it
+    turns: about 0.2 % of mice per step on day 450;
+  - a body drawn around a solid that its model point crosses has to change sides somewhere.
+- The fitting adds about 2.7 ms per update at the peak (2,199 mice).
+- Fast tier: failed=0.
+
+**Hero figure and booklet.** Panel a was re-shot (`?shot=hero`: day 529, 2,199 mice), and the
+figure and the booklet were redrawn. No number changed.
+
 ## 2026-11-17 — Mouse biology: body weight and coat genetics, apart from the calibrated colony; no recalibration
 
 **What Jason asked.**

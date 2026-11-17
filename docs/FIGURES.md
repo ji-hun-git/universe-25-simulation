@@ -11,7 +11,7 @@ was drawn from: commit, seeds, the checks it ran and the renders it used.
 **What it shows.**
 - **a.** The frozen colony on its fullest daily frame in the viewer's 3D view.
   - The recording is `ref_7000` (`configs/default.yaml`, seed 7000): day 529, 2,199 mice.
-  - The close-up shows crowded boxes in the playground area.
+  - The close-up shows the playground and the crowds at food and water.
   - Every mouse is drawn at real scale, as an albino mouse (the founders were BALB/c).
 - **b.** Population of the frozen colony on the 48 seeds of the Tier 1 predictive check
   (9000–9047; NOTES 2026-11-09), as median and 90 % interval.
@@ -25,9 +25,11 @@ was drawn from: commit, seeds, the checks it ran and the renders it used.
 
 **What it does not claim.**
 - **Panel a is a picture of the model.**
-  - It is not Calhoun's apparatus. The grid layout is the frozen colony's abstract pen, with
-    its boxes on the floor at their points.
+  - It is not Calhoun's apparatus. The grid layout is the frozen colony's abstract pen. Its
+    nest sites are floor points, drawn as low pads.
   - The simulator is planar, so heights are drawn.
+  - Its mice are points that pass through anything. The drawing keeps each body clear of the
+    walls and the playground's objects, and spreads the objects the mice push into heaps.
   - NOTES 2026-11-17 (the 3D view) lists what the drawing chooses.
 - **Panel b shows a fit, not a prediction.** The parameters were calibrated to these
   landmarks on other seeds. With the playground off, or in Calhoun's own pen layout, the same
@@ -64,6 +66,7 @@ was drawn from: commit, seeds, the checks it ran and the renders it used.
 | date | change |
 |---|---|
 | 2026-11-17 | First version: render, predictive-check population, crowding and withdrawal, the H-d to H-l ledger. |
+| 2026-11-17 | Panel a re-shot after the 3D view stopped drawing mice through walls: the grid's nest sites as pads, bodies kept clear of walls and objects. No number changed. |
 
 ## Booklet: `docs/booklet/universe25_booklet.pdf`
 
@@ -102,3 +105,4 @@ A nine-page A4 introduction for people outside the repo. The pages cover:
 |---|---|
 | 2026-11-17 | First edition, from the hero figure drawn at 8ed9d3f. |
 | 2026-11-17 | Page 6 added: how close the model is to the original. The pen compared; the fit is fitted; closer to the original fits worse; the behaviour does not match. |
+| 2026-11-17 | Remade with the re-shot render (mice no longer drawn through walls). |
