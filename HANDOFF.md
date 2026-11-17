@@ -6,6 +6,11 @@
 > **Owner:** Jason (ji-hun-git) · **Research partner:** gan  
 > **Date:** 2026-11-04 (Asia/Seoul) · **Phase:** 1 complete; **phase 2 calibration frozen at 2m (canonical landmark error 0.06 at seed 7000, 0.03–0.10 held-out; 12-seed plateau within 3–4 % of Calhoun; early phase a third low; emergent, irreversible collapse — caveats in `NOTES.md` → "Phase 2m")**; Warp parity partial; phase 3 (visuals) not started; **phase 4 (learning agents + play detectors) designed, preregistered and scaffolded 2026-11-04** (`docs/PHASE4_DESIGN.md`, `PLAN.md` §15, `docs/TASKS.md` P4-0…P4-7; policy hook landed, no learning run yet)
 
+> **Status 2026-11-17:** the phase 3 viewer is built (`viewer/`, README "Viewer", TASKS P2-1 /
+> P2-2): the colony from above with a control panel, recordings and live runs (NumPy, or Warp
+> on the GPU), and a dashboard. It adds no experiment. Phase 4's scarcity line stopped on
+> 2026-11-16 (below).
+
 > **Status 2026-11-09:**
 > - Phase 4 runs on action space v2 with detector rules v7 (frozen); P4-14 is in progress.
 > - Review of the environment and methods: `docs/REVIEW_2026-11-09.md`. Tier 0 (integrity) is
@@ -943,6 +948,11 @@ in the peak count (N@736 3–4 % low) and the slow realisations' late tail (N@14
 `_passive_nurse` / per-agent loops (`docs/TASKS.md` P1-3); Warp mortality-kernel parity at hazard level.
 
 ### Phase 3 — Visuals + dashboard
+**Built 2026-11-17** (TASKS P2-1 / P2-2, README "Viewer"): `viewer/` (static HTML / JS),
+`scripts/viewer_record.py` (recordings), `scripts/viewer_serve.py` (local server, live runs),
+`scripts/viewer_frames.py` (read-only capture; `tests/test_viewer.py`). Not done: shadcn (plain
+HTML / CSS instead), a README screenshot, an offline copy of uPlot.
+
 **Accept when:**
 - Top-down 16-cell pen viewer (mice as role-colored dots; stress trail / hopper heatmap)
 - Editorial dashboard (population + phases shaded; conception; wounds; nest occupancy; % withdrawn; V and G)

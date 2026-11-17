@@ -978,6 +978,31 @@ Wire Newton playground stepping behind a feature flag. Document in NVIDIA_STACK.
 Build a minimal top-down Universe25 viewer consuming existing snapshots. Follow HANDOFF visual tokens strictly. Prefer uPlot for charts later; viewer first. No AI-looking chrome.
 ```
 
+**Done 2026-11-17** (Jason's ask: a control panel, a simulation view and a
+dashboard, without AI-looking chrome). Files: `viewer/` (index.html, viewer.css, app.js,
+pen.js, dash.js, codec.js), `scripts/viewer_frames.py`, `scripts/viewer_record.py`,
+`scripts/viewer_serve.py`, `tests/test_viewer.py` (fast tier). README "Viewer" has the commands.
+- The viewer reads its own recordings (`.u25`: the pen once, then one frame a day, or one per
+  tick or free-time sub-step inside fine windows), not the 50-day JSON snapshots, which are too
+  sparse for a timelapse. `io/snapshots.py` is unchanged.
+- The pen from above, grid or Calhoun layout. Mice are coloured by role, stress, sex or action
+  group, and withdrawn animals are drawn as rings. Nest boxes are shaded by residents. Optional
+  layers: cell-density shading and motion trails. The playground is a dashed box with its
+  objects; balls roll under the P4-13 physics.
+- Transport: run and pause, frame steps, speeds from 1 h/s to 60 days/s, and glide between
+  frames under a quarter day apart. The timeline shows Calhoun's phases and event days. An
+  inspector follows one mouse; a table lists the 16 cells.
+- Live runs from the control panel: preset, seed, days, NumPy or Warp, playground, K, ball
+  physics, frames per day / tick / sub-step. They stream while they compute.
+- Palette and type from HANDOFF §8, light and dark themes; no purple, glass or glow.
+- Capture only reads the simulator: a K = 12 ball-physics run with a frame at every sub-step
+  ends bit-identical to the same run without capture.
+- Not done: the README screenshot (no binary committed).
+- Seen while testing: a 600-day Warp live run (seed 7000, K = 1) had 1,289 alive, 1,437 births
+  and 156 deaths; the NumPy recording at day 600 had 2,098 alive, 10,800 births and 8,710
+  deaths. The Warp path is not the calibrated colony (HANDOFF: mortality and cells parity
+  open), and the control panel says so.
+
 ---
 
 ## P2-2 — Dashboard (uPlot + restyled shadcn)
@@ -992,6 +1017,18 @@ Build a minimal top-down Universe25 viewer consuming existing snapshots. Follow 
 ```
 Create scientific editorial dashboard for metrics.parquet exports. uPlot charts, phase shading, PlayScore components clearly labelled UNVALIDATED. Palette from HANDOFF. No default shadcn violet.
 ```
+
+**Done 2026-11-17** with P2-1, as the bottom of the same page.
+- Charts: population against Calhoun's census points; roles stacked; births and deaths per day
+  (7-day mean); mean stress and the withdrawn share; the playground share with V and G labelled
+  unvalidated; a cells × days density strip.
+- Calhoun's phases A–D are shaded on the record's days, not detected in the run.
+- Hover reads values; click or drag seeks.
+- The series come from the frames' headers (`scripts/viewer_frames.py`), which compute V and G
+  as `_log_metrics` does; `metrics.parquet` is not read. No PlayScore is shown.
+- uPlot and plain HTML / CSS (no shadcn).
+- Offline: the charts load uPlot from cdn.jsdelivr.net, which is not vendored. Without it the
+  page still runs and the charts say so.
 
 ---
 

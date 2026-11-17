@@ -28,6 +28,52 @@ python tests\run_tests.py
 python scripts\calibrate.py --metrics _output\smoke\metrics.parquet --out _output\smoke\calibration.json --run-json _output\smoke\run.json
 ```
 
+## Viewer
+
+A local colony viewer (phase 3, TASKS P2-1 / P2-2) has these parts:
+- **Pen view:** the pen from above (cells, nest boxes, food and water, the playground and its
+  objects, every mouse).
+- **Control panel:** recordings, live runs, layers, colours and roles.
+- **Transport:** with Calhoun's phases on the timeline.
+- **Inspector:** follows one mouse.
+- **Dashboard:** population against Calhoun's census, roles, births and deaths, stress,
+  playground share, and cell density over time.
+
+It has light ("paper") and dark themes.
+
+```powershell
+$env:PYTHONPATH = "$PWD\src"
+# the reference colony: a frame a day for 1,600 days, every tick in four one-day windows
+python scripts\viewer_record.py --name ref_7000 --fine 150:1,450:1,750:1,1100:1
+# the phase-4 substrate with ball physics: every free-time sub-step in two one-day windows
+python scripts\viewer_record.py --name substrate_7000 --days 420 --free-substeps 12 --ball-physics --fine 300:1,400:1
+# serve it on 127.0.0.1 only, then open http://127.0.0.1:8765/
+python scripts\viewer_serve.py
+```
+
+- **Recording** plays a `.u25` file from `_output/viewer/`, or one dropped on the window.
+- **Live run** steps the simulator on this machine and streams frames as they are made. You
+  choose:
+  - preset: reference, scarce, or replica v2 pen;
+  - seed and days;
+  - backend: NumPy, or Warp on the GPU;
+  - playground, sub-steps K and ball physics;
+  - one frame per day, tick or sub-step.
+- **Capture only reads the simulator.** A recorded or live run is the run `main.py` makes from
+  the same config and seed (`tests/test_viewer.py`).
+- **The Warp path is not the calibrated colony**: its mortality and cell kernels are not at
+  parity with NumPy.
+- Phases A–D are Calhoun's, shaded on the record's days. V and G are unvalidated and eval-only.
+- Keys:
+  - Space: run or pause
+  - ← / →: previous or next frame
+  - Home / End: start or latest frame
+  - `[` / `]`: slower or faster
+  - F: follow the selected mouse
+  - Esc: clear the selection
+- The charts load uPlot from cdn.jsdelivr.net, and the fonts come from Google Fonts. Without
+  them the page still runs, and the charts say so.
+
 ## World
 
 - Pen: **101 × 101 inches**, **16 cells**, **256 nests**, food + water per cell (Calhoun design capacity 3840).
@@ -80,7 +126,8 @@ PlayScore (gan formalization, **not validated**): `G · (1−|F|) · V · D · S
 configs/          default.yaml, smoke.yaml
 src/universe25/   sim, world, agents (state, policy hook), metrics, io
 tests/            geometry, determinism, conservation, biology guards + Warp parity (__main__ runner)
-scripts/          calibrate.py, calibrate_optuna.py, benchmark_backends.py
+scripts/          calibrate.py, calibrate_optuna.py, benchmark_backends.py, viewer_*.py
+viewer/           colony viewer (static HTML / JS; scripts/viewer_serve.py serves it)
 _output/          runs (gitignored)
 PLAN.md           mini-prereg (§15: phase 4 learning arms)
 NOTES.md          dated results

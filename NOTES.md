@@ -1,5 +1,33 @@
 # Universe25 Play — NOTES
 
+## 2026-11-17 — Phase 3 viewer: the colony from above, live runs and a dashboard; no experiment
+
+**What Jason asked for.** Jason asked to see the simulation like a control panel and a
+simulation workbench, with a dashboard, and without AI-looking chrome. This is TASKS P2-1 and
+P2-2; the commands are in the README section "Viewer".
+
+**What it adds.** No experiment, measurement, rule or stored result changed. The simulator is
+untouched. Capture only reads it: `tests/test_viewer.py` runs K = 12 with ball physics and
+takes a frame at every sub-step, and the run ends bit-identical to the same run without
+capture.
+
+**Recordings made (`_output/viewer/`, not committed).**
+- `ref_7000.u25`: `default.yaml`, seed 7000, NumPy, 1,600 d, 1,621 frames, 46 s.
+  - Peak 2,224 at day 529; 9 alive at day 1,600.
+- `substrate_7000.u25`: the same with K = 12 and ball physics, 420 d.
+  - 545 alive at day 420.
+
+**Seen while testing.** One 600-day Warp live run (seed 7000, K = 1) differed sharply from the
+NumPy recording at day 600:
+
+| backend | alive | births | deaths |
+|---|---:|---:|---:|
+| Warp, live run | 1,289 | 1,437 | 156 |
+| NumPy, recording | 2,098 | 10,800 | 8,710 |
+
+So the Warp path is not the calibrated colony. This is the open mortality and cells parity in
+HANDOFF. The viewer offers Warp only with that warning. This is one run, not a test.
+
 ## 2026-11-16 — Phase 4 selection (`evo`, H-h to H-l): the state at the end of the line
 
 **Why this section.**

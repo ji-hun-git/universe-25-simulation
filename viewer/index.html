@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Universe 25 viewer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uplot@1.6.30/dist/uPlot.min.css">
+<link rel="stylesheet" href="viewer.css">
+<script>
+  try { const t = localStorage.getItem("u25-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/uplot@1.6.30/dist/uPlot.iife.min.js"></script>
+<script type="module" src="app.js"></script>
+</head>
+<body>
+<div class="app" id="app">
+  <header class="bar">
+    <div class="brand"><span class="title">Universe 25</span><span class="sub">colony viewer</span></div>
+    <div class="source" id="sourceLabel">no run loaded</div>
+    <div class="readouts">
+      <div class="ro"><span class="k">day</span><span class="v" id="roDay">–</span></div>
+      <div class="ro"><span class="k">clock</span><span class="v" id="roClock">–</span></div>
+      <div class="ro"><span class="k">alive</span><span class="v" id="roN">–</span></div>
+      <div class="ro"><span class="k">frame</span><span class="v" id="roFrame">–</span></div>
+      <div class="ro"><span class="k">engine</span><span class="v" id="roEngine">–</span></div>
+      <div class="ro"><span class="k">sim rate</span><span class="v" id="roRate">–</span></div>
+    </div>
+    <div class="seg" role="group" aria-label="Theme">
+      <button type="button" data-theme-set="light">Paper</button>
+      <button type="button" data-theme-set="dark">Dark</button>
+    </div>
+  </header>
+
+  <aside class="panel left" aria-label="Control panel">
+    <section>
+      <h2>Source</h2>
+      <div class="seg" role="group" aria-label="Source" id="sourceSeg">
+        <button type="button" data-src="rec" aria-pressed="true">Recording</button>
+        <button type="button" data-src="live" id="liveTab">Live run</button>
+      </div>
+      <div id="recPanel">
+        <div class="file-row" style="margin-top:9px">
+          <select id="recSelect" aria-label="Recording"></select>
+          <button type="button" class="btn" id="recLoad">Load</button>
+        </div>
+        <p class="note" id="recNote">Recordings come from <span class="mono">scripts/viewer_record.py</span>. A .u25 file can also be dropped on the window.</p>
+      </div>
+      <div id="livePanel" hidden>
+        <div class="field"><span>Preset</span><select id="lvPreset"></select></div>
+        <div class="field"><span>Seed</span><input type="number" id="lvSeed" value="7000" step="1"></div>
+        <div class="field"><span>Days</span><input type="number" id="lvDays" value="1600" min="1" step="1"></div>
+        <div class="field"><span>Backend</span>
+          <select id="lvBackend">
+            <option value="numpy">NumPy · CPU (deterministic)</option>
+            <option value="warp">Warp · CUDA (parity open)</option>
+          </select></div>
+        <div class="field"><span>Playground</span>
+          <select id="lvPlayground"><option value="">as preset</option><option value="on">on</option><option value="off">off</option></select></div>
+        <div class="field"><span>Sub-steps K</span>
+          <select id="lvK"><option value="1">1 (reference)</option><option value="12">12 (phase 4)</option></select></div>
+        <label class="check"><input type="checkbox" id="lvPhys"> Ball physics (P4-13; needs K = 12)</label>
+        <div class="field"><span>Frames</span>
+          <select id="lvSample">
+            <option value="day">one per day</option>
+            <option value="tick">every tick (6 / day)</option>
+            <option value="sub">every sub-step (physics)</option>
+          </select></div>
+        <div class="row">
+          <button type="button" class="btn primary" id="lvStart">Start run</button>
+          <button type="button" class="btn" id="lvPause" disabled>Pause</button>
+          <button type="button" class="btn" id="lvStop" disabled>Stop</button>
+        </div>
+        <p class="note" id="lvNote">The run steps on this machine; frames stream to the viewer as they are made.</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>Layers</h2>
+      <label class="check"><input type="checkbox" data-layer="cells" checked> Cells and labels</label>
+      <label class="check"><input type="checkbox" data-layer="nests" checked> Nest boxes (residents)</label>
+      <label class="check"><input type="checkbox" data-layer="hoppers" checked> Food and water</label>
+      <label class="check"><input type="checkbox" data-layer="playground" checked> Playground and objects</label>
+      <label class="check"><input type="checkbox" data-layer="density"> Cell density shading</label>
+      <label class="check"><input type="checkbox" data-layer="trails"> Motion trails</label>
+    </section>
+
+    <section>
+      <h2>Colour by</h2>
+      <div class="seg" role="group" aria-label="Colour by" id="colorSeg">
+        <button type="button" data-color="role" aria-pressed="true">Role</button>
+        <button type="button" data-color="stress">Stress</button>
+        <button type="button" data-color="sex">Sex</button>
+        <button type="button" data-color="action">Action</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Roles shown <span class="aside" id="rolesTotal"></span></h2>
+      <div id="roleChecks"></div>
+    </section>
+  </aside>
+
+  <main class="stage" id="stage">
+    <canvas id="pen" aria-label="Top-down view of the pen"></canvas>
+    <div class="hud tl" id="hudTL" hidden></div>
+    <div class="hud tr" id="hudTR">drag pan · wheel zoom · click a mouse · double-click reset</div>
+    <div class="hud bl" id="hudBL" hidden><div class="scalebar"><i id="scaleBar"></i><span id="scaleText">10 in</span></div></div>
+    <div class="hud br legend" id="legend" hidden></div>
+    <div class="empty" id="empty">
+      <div class="box">
+        <h3>No run loaded</h3>
+        <p>Pick a recording or start a live run in the control panel.</p>
+        <p>To make a recording:<br><code>python scripts/viewer_record.py --name ref_7000</code></p>
+      </div>
+    </div>
+  </main>
+
+  <aside class="panel right" aria-label="Inspector">
+    <section>
+      <h2>Inspector <span class="aside" id="inspAside"></span></h2>
+      <div id="inspector"><p class="hint">Click a mouse in the pen to follow it.</p></div>
+    </section>
+    <section>
+      <h2>Colony</h2>
+      <dl class="kv" id="colony"></dl>
+    </section>
+    <section>
+      <h2>Cells <span class="aside">count / 240</span></h2>
+      <table class="cells" id="cellTable">
+        <thead><tr><th>cell</th><th>n</th><th></th><th>stress</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </section>
+  </aside>
+
+  <div class="transport" aria-label="Transport">
+    <div class="tgroup">
+      <button type="button" class="tbtn" id="tStart" title="Start (Home)" aria-label="Go to start"><svg viewBox="0 0 12 12"><rect x="1" y="1" width="2" height="10"/><path d="M11 1v10L4 6z"/></svg></button>
+      <button type="button" class="tbtn" id="tBack" title="Previous frame (Left)" aria-label="Previous frame"><svg viewBox="0 0 12 12"><path d="M10 1v10L3 6z"/></svg></button>
+      <button type="button" class="tbtn run" id="tRun" title="Run / pause (Space)" aria-label="Run"><svg viewBox="0 0 12 12" id="tRunIcon"><path d="M2 1v10l9-5z"/></svg></button>
+      <button type="button" class="tbtn" id="tFwd" title="Next frame (Right)" aria-label="Next frame"><svg viewBox="0 0 12 12"><path d="M2 1v10l7-5z"/></svg></button>
+      <button type="button" class="tbtn" id="tEnd" title="Latest frame (End)" aria-label="Go to latest frame"><svg viewBox="0 0 12 12"><path d="M1 1v10l7-5z"/><rect x="9" y="1" width="2" height="10"/></svg></button>
+    </div>
+    <select id="speed" title="Speed ([ and ])" aria-label="Speed">
+      <option value="0.0416667">1 h / s</option>
+      <option value="0.1666667">4 h / s</option>
+      <option value="1">1 day / s</option>
+      <option value="5">5 days / s</option>
+      <option value="20" selected>20 days / s</option>
+      <option value="60">60 days / s</option>
+      <option value="0">as fast as computed</option>
+    </select>
+    <label class="tcheck" title="Glide between frames less than a quarter day apart"><input type="checkbox" id="interp" checked> glide</label>
+    <label class="tcheck" id="followWrap" hidden><input type="checkbox" id="follow" checked> follow live</label>
+    <div class="timeline"><canvas id="timeline" aria-label="Timeline"></canvas></div>
+    <div class="tlabel" id="tLabel">–</div>
+    <button type="button" class="tbtn" id="dashToggle" title="Dashboard" aria-label="Show or hide the dashboard"><svg viewBox="0 0 12 12"><rect x="1" y="7" width="2" height="4"/><rect x="5" y="4" width="2" height="7"/><rect x="9" y="1" width="2" height="10"/></svg></button>
+  </div>
+
+  <section class="dash" id="dash" aria-label="Dashboard">
+    <figure class="chart" id="cPop"><figcaption><b>Population</b><span class="key"><i style="border-color:var(--ink)"></i>simulated <span style="color:var(--stress);font-weight:600">+</span> Calhoun census</span><span class="read"></span></figcaption><div class="plot"></div></figure>
+    <figure class="chart" id="cRoles"><figcaption><b>Roles</b><span class="key">stacked counts</span><span class="read"></span></figcaption><div class="plot"></div></figure>
+    <figure class="chart" id="cVital"><figcaption><b>Births and deaths</b><span class="key">per day, 7-day mean <i style="border-color:var(--nest)"></i>births <i style="border-color:var(--stress)"></i>deaths</span><span class="read"></span></figcaption><div class="plot"></div></figure>
+    <figure class="chart" id="cStress"><figcaption><b>Stress</b><span class="key"><i style="border-color:var(--stress)"></i>mean <i class="dash" style="border-color:var(--ink-2)"></i>withdrawn %</span><span class="read"></span></figcaption><div class="plot"></div></figure>
+    <figure class="chart" id="cPg"><figcaption><b>Playground</b><span class="key"><i style="border-color:var(--umber)"></i>share inside <i class="dash" style="border-color:var(--ink-2)"></i>V <i style="border-color:var(--ink-3)"></i>G · unvalidated</span><span class="read"></span></figcaption><div class="plot"></div></figure>
+    <figure class="chart" id="cCells"><figcaption><b>Cell density</b><span class="key">16 cells × days, count / 240</span><span class="read"></span></figcaption><div class="plot"><canvas class="heat"></canvas></div></figure>
+  </section>
+</div>
+</body>
+</html>
