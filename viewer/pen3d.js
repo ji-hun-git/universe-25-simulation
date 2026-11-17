@@ -15,8 +15,15 @@
 // - the boxes sit behind the wall mesh, 4 in wide so four fit along the four tunnels;
 // - hopper depth, platform height and depth, 1-in partitions, the ring stands' shape.
 // The walls on the camera's side are drawn in outline (a cutaway), with the animals in them.
-// The grid layout is the frozen colony's abstract pen: its boxes stand on the floor at their
-// points, and its food and water are floor points.
+// The grid layout is the frozen colony's abstract pen: its nest sites are floor points, drawn as
+// low pads without walls, and its food and water are floor points.
+// The model's floor is open: an animal is a point and passes through anything. Where the
+// drawing makes a thing solid, a floor animal's drawn body is fitted around it (_fit):
+// - it turns along a pen wall it would cross, by the least turn that clears it;
+// - it is pushed clear of the walls, balls, stands and a tunnel's sides;
+// - inside a tunnel it runs along it;
+// - it is lifted onto a nest pad or a ramp and over a partition.
+// Only the picture moves; the inspector shows the model's own position.
 // View state (layers, roles shown, selection, follow) is shared with the plan view through `ui`.
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
@@ -27,8 +34,8 @@ const WALL_H = 54, MESH_H = 37, MESH_PITCH = 0.5;
 const TUNNEL_R = 1.5, TUNNEL_H = 34;
 const BOX_W = 4, BOX_H = 5, BOX_D = 8, BOX_LEVEL = [8, 16, 24, 32];
 const HOPPER_W = 6, HOPPER_H = 10, HOPPER_D = 2.5, HOPPER_Y = 27;
-const PLATFORM_Y = 35, PLATFORM_D = 3.5, PARTITION_H = 1, RING_H = 11;
-const GRID_BOX = 4.6, GRID_BOX_H = 2.6;
+const PLATFORM_Y = 35, PLATFORM_D = 5, PARTITION_H = 1, RING_H = 11;
+const GRID_PAD = 4.2, PAD_H = 0.12, PAD_CELL = 4; // the grid's nest pads, and their lookup cells
 const AT = 0.75; // inches: a mouse this close to a box, hopper or platform point is at it
 const FUR = "#F1EEE7", SKIN = "#E2ABA2", EAR = "#E8BCB3", NOSE = "#D9928A", PUP = "#ECB7AD";
 const EYE = "#701B20", EYE_DARK = "#141111";
@@ -40,6 +47,15 @@ export function coatOf(g) { if (!(g & 48)) return 0; return g & 3 ? (g & 12 ? 1 
 const ADULT_G = 28.4; // grams: the mouse model's size, an adult BALB/c male (agents/body.py)
 const PREG_GAIN = 0.55; // body.pregnancy_gain: a pregnant mouse is sized by her lean weight
 const FLOOR = 0, BOX = 1, CLING = 2, SHELF = 3;
+// the drawn body for fitting it around solids, at scale 1: circles along the spine (local x,
+// radius), wide enough for the girth, and the tail's, wide enough for its sway (walls only)
+const SPINE = [[-1.25, 0.52], [-0.65, 0.62], [-0.05, 0.58], [0.55, 0.45], [1.1, 0.37], [1.55, 0.22], [1.76, 0.08]];
+const TAIL = [[-2.4, 0.15], [-3.5, 0.3], [-4.45, 0.5]];
+const NS = SPINE.length, NC = NS + TAIL.length;
+const SPINE_BELLY = SPINE.map(([lx]) => Math.exp(-(((lx + 0.35) / 0.8) ** 2))); // as the fur shader
+const GAP = 0.25; // inches kept between a body and a pen wall
+const REACH = 4.95; // the tail tip and its sway from the body's centre, at scale 1
+const WALL_N = [[0, -1], [-1, 0], [0, 1], [1, 0]]; // inward normals of the SIDES walls, in pen x, z
 // wall k: inward normal n and counter-clockwise tangent t, in the model's plane (y up)
 const NEAR = [0, 1, -1]; // a forager may use its own hopper or a wall neighbour's (replica M3)
 const SIDES = [{ n: [0, 1], t: [1, 0] }, { n: [-1, 0], t: [0, 1] }, { n: [0, -1], t: [-1, 0] },
@@ -52,10 +68,30 @@ function h01(n, salt) { // a stable number in [0, 1) per (n, salt)
   x = Math.imul(x ^ (x >>> 12), 0x297a2d39) >>> 0;
   return ((x ^ (x >>> 15)) >>> 0) / 4294967296;
 }
-function lerpAngle(a, b, f) {
+function angleTo(a, b) { // the turn from a to b, in [-pi, pi]
   let d = (b - a) % TAU;
   if (d > Math.PI) d -= TAU; else if (d < -Math.PI) d += TAU;
-  return a + d * f;
+  return d;
+}
+function lerpAngle(a, b, f) { return a + angleTo(a, b) * f; }
+// of the two headings along an axis (yaw `along` and its opposite), the one nearer to yaw
+function alongNear(yaw, along) { return Math.abs(angleTo(yaw, along)) <= Math.PI / 2 ? along : along + Math.PI; }
+function smooth(e0, e1, x) { const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); }
+function segDist(px, pz, ax, az, bx, bz) { // from a point to the segment a-b
+  const dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz;
+  const t = l2 > 0 ? Math.min(1, Math.max(0, ((px - ax) * dx + (pz - az) * dz) / l2)) : 0;
+  return Math.hypot(px - ax - t * dx, pz - az - t * dz);
+}
+// the pads (centres x, z in pen coordinates) over each PAD_CELL square of the floor
+function padLookup(pads, W, H) {
+  const nx = Math.ceil(W / PAD_CELL), nz = Math.ceil(H / PAD_CELL), h = GRID_PAD / 2;
+  const cells = Array.from({ length: nx * nz }, () => []);
+  const span = (v, n) => [Math.max(0, Math.floor((v - h) / PAD_CELL)), Math.min(n - 1, Math.floor((v + h) / PAD_CELL))];
+  for (let p = 0; p < pads.length; p += 2) {
+    const [i0, i1] = span(pads[p] + W / 2, nx), [j0, j1] = span(pads[p + 1] + H / 2, nz);
+    for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) cells[j * nx + i].push(pads[p], pads[p + 1]);
+  }
+  return { nx, nz, cells };
 }
 function catmull(p0, p1, p2, p3, t) {
   const t2 = t * t, t3 = t2 * t;
@@ -372,8 +408,11 @@ export class Pen3D {
   _build() {
     disposeTree(this.pen); this.pen.clear();
     disposeTree(this.objs); this.objs.clear();
-    this.objMeshes = null;
+    this.objMeshes = this.objInfo = this.objAt = null;
     const w = this.world, t = this.tok, W = this.W, H = this.H, cal = w.layout === "calhoun";
+    this.cal = cal;
+    // what the floor animals are fitted around (_fit, _ground), in pen x, z; each with its layer
+    const solids = (this.solids = { discs: [], parts: [] });
     this.wireTex = wireTexture(this.renderer);
     const mt = (this.mats = this._mats());
     this.ghosted = [null, null, null, null];
@@ -424,6 +463,7 @@ export class Pen3D {
         const m = new THREE.Mesh(g, mt.partition), q = P(a[0], a[1]);
         m.position.copy(q); m.rotation.y = Math.atan2(dy, dx);
         add(m, "cells");
+        solids.parts.push(q.x, q.z, 0, 0); // to the pen's centre
       }
       const metal = mt.stand;
       const tuft = new THREE.MeshStandardMaterial({ color: mix(t.sand, t.paper, 0.35), roughness: 1, flatShading: true });
@@ -440,8 +480,10 @@ export class Pen3D {
         const nest = new THREE.Mesh(tg, tuft);
         nest.position.y = RING_H + 0.45;
         g.add(base, rod, ring, nest);
-        g.position.copy(P(rx, ry)); g.rotation.y = h01(c, 21) * TAU;
+        const th = h01(c, 21) * TAU;
+        g.position.copy(P(rx, ry)); g.rotation.y = th;
         add(g, "cells");
+        solids.discs.push({ x: g.position.x - 1.1 * Math.cos(th), z: g.position.z + 1.1 * Math.sin(th), r: 0.13, ro: 0.13, layer: "cells" });
       });
     } else {
       const pts = [];
@@ -470,11 +512,14 @@ export class Pen3D {
       if (!groups.has(k)) groups.set(k, []);
       groups.get(k).push(id);
     });
-    const tray = cal ? trayGeometry(BOX_W, BOX_D, BOX_H, 0.2) : trayGeometry(GRID_BOX, GRID_BOX, GRID_BOX_H, 0.2);
-    const slab = cal ? new THREE.BoxGeometry(BOX_W - 0.4, 0.2, BOX_D - 0.4) : new THREE.BoxGeometry(GRID_BOX - 0.4, 0.2, GRID_BOX - 0.4);
-    slab.translate(0, 0.1, 0);
+    // Calhoun's boxes are trays behind the wall; the grid's nest sites are low pads, with no walls
+    // for the floor animals to pass through (the model's nests are points they cross)
+    const tray = cal ? trayGeometry(BOX_W, BOX_D, BOX_H, 0.2) : null;
+    const slab = cal ? new THREE.BoxGeometry(BOX_W - 0.4, 0.2, BOX_D - 0.4) : new THREE.BoxGeometry(GRID_PAD, PAD_H, GRID_PAD);
+    slab.translate(0, cal ? 0.1 : PAD_H / 2, 0);
+    const pads = [];
     for (const [k, ids] of groups) {
-      const walls = new THREE.InstancedMesh(tray, mt.box, ids.length);
+      const walls = tray && new THREE.InstancedMesh(tray, mt.box, ids.length);
       const floors = new THREE.InstancedMesh(slab, mt.boxFloor, ids.length);
       floors.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(ids.length * 3).fill(1), 3);
       ids.forEach((id, j) => {
@@ -490,15 +535,18 @@ export class Pen3D {
         } else {
           const c = P(nb.x, nb.y);
           M = basis(1, 0, 0, 1, c.x, 0, c.z);
-          b = { sx: nb.x, sy: nb.y, cx: c.x, cz: c.z, y: 0.2, w: GRID_BOX, d: GRID_BOX, ax: 1, az: 0, bx: 0, bz: 1, yaw: null };
+          b = { sx: nb.x, sy: nb.y, cx: c.x, cz: c.z, y: PAD_H, w: GRID_PAD, d: GRID_PAD, ax: 1, az: 0, bx: 0, bz: 1, yaw: null };
+          pads.push(c.x, c.z);
         }
-        walls.setMatrixAt(j, M); floors.setMatrixAt(j, M);
+        walls?.setMatrixAt(j, M); floors.setMatrixAt(j, M);
         this.boxes[id] = b;
         this.boxSlots[id] = { mesh: floors, j };
       });
-      add(walls, "nests", {}, k); add(floors, "nests", {}, k);
+      if (walls) add(walls, "nests", {}, k);
+      add(floors, "nests", {}, k);
       this.boxFloors.push(floors);
     }
+    this.padGrid = cal ? null : padLookup(pads, W, H);
     // Calhoun: the tunnels (one per four boxes), hoppers and water platforms on the wall
     this.hoppers = []; this.waters = [];
     if (cal) {
@@ -538,7 +586,8 @@ export class Pen3D {
         this.waters[c.id] = { sx: wx, sy: wy, side: kw, ax: A.x, az: A.z, y: PLATFORM_Y, len, tx: t3w[0], tz: t3w[1], nx: n3w[0], nz: n3w[1], yaw: Math.atan2(-sw.n[1], -sw.n[0]) };
       }
     } else {
-      // the frozen colony's floor points: a small wire hopper and a bottle on a stand
+      // the frozen colony's floor points: a small wire hopper, and a bottle hung with its spout
+      // at a mouse's nose height and room for heads below it
       for (const c of w.cells) {
         const [fx, fy] = c.food, [wx, wy] = c.water, F = P(fx, fy), Wt = P(wx, wy);
         const hop = new THREE.Group();
@@ -547,14 +596,17 @@ export class Pen3D {
         const food = new THREE.Mesh(new THREE.BoxGeometry(1.1, 3.2, 1.1), mt.food);
         food.position.set(F.x, 1.7, F.z);
         const bottle = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.62, 3.2, 16), mt.bottle);
-        bottle.position.set(Wt.x, 2.0, Wt.z);
+        bottle.position.set(Wt.x, 3.0, Wt.z);
         const spout = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 1.0, 8), mt.spout);
-        spout.position.set(Wt.x, 0.5, Wt.z);
+        spout.position.set(Wt.x, 1.0, Wt.z);
         hop.add(food, bottle, spout);
         add(hop, "hoppers");
         add(hw, "hoppers", { cast: false, receive: false });
         this.hoppers[c.id] = { sx: fx, sy: fy, side: -1 };
         this.waters[c.id] = { sx: wx, sy: wy, side: -1 };
+        // r: as solid for a mouse (the box as a disc; the spout under the bottle); ro: for an object
+        solids.discs.push({ x: F.x, z: F.z, r: 0.9, ro: 0.9, layer: "hoppers" });
+        solids.discs.push({ x: Wt.x, z: Wt.z, r: 0.15, ro: 0.62, layer: "hoppers" });
       }
     }
     // cell density shading (and the hovered cell)
@@ -616,25 +668,32 @@ export class Pen3D {
     const ballMat = new THREE.MeshStandardMaterial({ map: ballTexture(t.paper2, t.ink2, this.renderer), roughness: 0.55 });
     const tunMat = new THREE.MeshStandardMaterial({ color: mix(t.slate, t.paper, 0.35), roughness: 0.7, side: THREE.DoubleSide });
     const rampMat = new THREE.MeshStandardMaterial({ color: mix(t.umber, t.paper, 0.35), roughness: 0.8 });
-    this.objMeshes = w.objects.map((o) => {
+    // per object, for the fitting: its kind and size, its axes u (a tunnel's length, a ramp's
+    // rise) and v in pen x, z; and where it is drawn now (_objects)
+    this.objInfo = [];
+    this.objAt = new Float32Array(w.objects.length * 2);
+    this.objMeshes = w.objects.map((o, k) => {
       let m;
+      const th = o.kind === "tunnel" ? h01(o.id, 31) * Math.PI : o.kind === "ramp" ? h01(o.id, 32) * TAU : 0;
       if (o.kind === "ball") {
         m = new THREE.Mesh(new THREE.SphereGeometry(o.r, 28, 18), ballMat);
         m.userData.lift = o.r;
-      } else if (o.kind === "tunnel") {
+      } else if (o.kind === "tunnel") { // an arch of radius 0.85 r over 2.5 r of floor
         const g = new THREE.CylinderGeometry(o.r * 0.85, o.r * 0.85, o.r * 2.5, 24, 1, true, 0, Math.PI);
         g.rotateZ(Math.PI / 2);
         m = new THREE.Mesh(g, tunMat);
-        m.rotation.y = h01(o.id, 31) * Math.PI;
+        m.rotation.y = th;
         m.userData.lift = 0;
-      } else {
+      } else { // a wedge 2 r long, rising to 0.64 r, 1.44 r wide
         const s = new THREE.Shape([new THREE.Vector2(-o.r, 0), new THREE.Vector2(o.r, 0), new THREE.Vector2(o.r, o.r * 0.64)]);
         const g = new THREE.ExtrudeGeometry(s, { depth: o.r * 1.44, bevelEnabled: false });
         g.translate(0, 0, -o.r * 0.72);
         m = new THREE.Mesh(g, rampMat);
-        m.rotation.y = h01(o.id, 32) * TAU;
+        m.rotation.y = th;
         m.userData.lift = 0;
       }
+      this.objInfo.push({ kind: o.kind, r: o.r, ux: Math.cos(th), uz: -Math.sin(th), vx: Math.sin(th), vz: Math.cos(th) });
+      this.objAt[k * 2] = o.x - this.W / 2; this.objAt[k * 2 + 1] = this.H / 2 - o.y;
       m.castShadow = true; m.receiveShadow = true;
       m.userData.last = null;
       this.objs.add(m);
@@ -713,6 +772,9 @@ export class Pen3D {
     this.fur.castShadow = this.skin.castShadow = true;
     this.fur.receiveShadow = this.skin.receiveShadow = true;
     this.drawn = { n: 0, i: new Int32Array(cap), p: new Float32Array(cap * 3) };
+    this.fitP = new Float32Array(NC * 3); // the body's circles while fitting: x, z, radius
+    this.fitW = new Float32Array(NS); // the spine circles' widening by girth and belly
+    this.fit = { x: 0, z: 0, yaw: 0 };
     this.scale = new Float32Array(400);
     for (let a = 0; a < 400; a++) this.scale[a] = 1 - 0.63 * Math.exp(-a / 21); // about 0.37 at birth
   }
@@ -761,22 +823,22 @@ export class Pen3D {
               const v = (((q / 3) | 0) - 1.5) * 2.2 + (h01(slot, 7) - 0.5) * 0.4, off = 0.06 + layer * 0.9;
               X = hp.fx + hp.tx * u + hp.nx * off; Z = hp.fz + hp.tz * u + hp.nz * off; Y = hp.fy + v - 1.2;
               kind = CLING; side = hp.side;
-            } else {
-              const a = k * 2.39996 + h01(cc, 8) * TAU, r = 1.3 + 0.6 * Math.sqrt(k);
+            } else { // around the hopper, the first noses at its mesh
+              const a = k * 2.39996 + h01(cc, 8) * TAU, r = 2.6 + 0.6 * Math.sqrt(k);
               X = hp.sx + Math.cos(a) * r - W / 2; Z = H / 2 - (hp.sy + Math.sin(a) * r); yaw = a + Math.PI;
             }
             break;
           }
           if (Math.abs(sx - wt.sx) < AT && Math.abs(sy - wt.sy) < AT) {
             const k = watK[cc]++;
-            if (cal) {
-              const per = 7, row = ((k / per) | 0) % 2, layer = (k / (2 * per)) | 0, u = (((k % per) + 0.5) / per) * wt.len;
-              const depth = 1.3 + row * 1.4;
+            if (cal) { // facing the wall, noses at the spouts' line 1 in out; the back row in the gaps
+              const per = 7, row = ((k / per) | 0) % 2, layer = (k / (2 * per)) | 0;
+              const u = (((k % per) + 0.5 + row * 0.5) / (per + 0.5)) * wt.len, depth = 2.9 + row;
               X = wt.ax + wt.tx * u + wt.nx * depth; Z = wt.az + wt.tz * u + wt.nz * depth; Y = wt.y + layer * 0.55;
-              yaw = wt.yaw + (h01(slot, 9) - 0.5) * 0.5;
+              yaw = wt.yaw + (h01(slot, 9) - 0.5) * 0.3;
               kind = SHELF; side = wt.side;
-            } else {
-              const a = k * 2.39996 + h01(cc, 10) * TAU, r = 1.2 + 0.6 * Math.sqrt(k);
+            } else { // around the spout, the first noses at it
+              const a = k * 2.39996 + h01(cc, 10) * TAU, r = 1.95 + 0.6 * Math.sqrt(k);
               X = wt.sx + Math.cos(a) * r - W / 2; Z = H / 2 - (wt.sy + Math.sin(a) * r); yaw = a + Math.PI;
             }
             break;
@@ -787,6 +849,167 @@ export class Pen3D {
     }
     this.placed.set(f, P);
     return P;
+  }
+
+  // ---------------------------------------------------------------- fitting bodies around solids
+  // the body's circles at (x, z) heading yaw and scale s, into fitP
+  _circles(x, z, yaw, s) {
+    const P = this.fitP, FW = this.fitW, c = Math.cos(yaw), sn = -Math.sin(yaw);
+    for (let i = 0; i < NC; i++) {
+      const [lx, r] = i < NS ? SPINE[i] : TAIL[i - NS];
+      P[i * 3] = x + c * lx * s; P[i * 3 + 1] = z + sn * lx * s; P[i * 3 + 2] = r * s * (i < NS ? FW[i] : 1);
+    }
+  }
+
+  _shift(dx, dz) { const P = this.fitP; for (let i = 0; i < NC; i++) { P[i * 3] += dx; P[i * 3 + 1] += dz; } }
+
+  // how far the body (spine and tail) reaches past pen wall k, gap included (> 0: through it)
+  _wallPen(k) {
+    const P = this.fitP, W2 = this.W / 2, H2 = this.H / 2;
+    let pen = -1e9;
+    for (let i = 0; i < NC; i++) {
+      const px = P[i * 3], pz = P[i * 3 + 1];
+      const d = k === 0 ? H2 - pz : k === 1 ? W2 - px : k === 2 ? pz + H2 : px + W2;
+      pen = Math.max(pen, P[i * 3 + 2] + GAP - d);
+    }
+    return pen;
+  }
+
+  _wallPush(x, z) {
+    for (let k = 0; k < 4; k++) {
+      const pen = this._wallPen(k);
+      if (pen <= 0) continue;
+      const dx = WALL_N[k][0] * pen, dz = WALL_N[k][1] * pen;
+      x += dx; z += dz; this._shift(dx, dz);
+    }
+    this.fit.x = x; this.fit.z = z;
+  }
+
+  // Out of a disc (centre cx, cz, radius R): straight away from its centre, as seen from the
+  // body's centre, just far enough for each spine circle in it to clear it. The way out turns
+  // smoothly as the two move, so the drawing does not flip between frames (but a body drawn
+  // across a disc's centre has no smooth way out). Twice, for circles the first push moves in.
+  _disc(x, z, cx, cz, R) {
+    const P = this.fitP;
+    let ex = x - cx, ez = z - cz, e = Math.hypot(ex, ez);
+    if (e < 1e-6) { ex = 1; ez = 0; e = 1; }
+    ex /= e; ez /= e;
+    for (let it = 0; it < 2; it++) {
+      let t = 0;
+      for (let i = 0; i < NS; i++) { // circle i is in the disc while |q + t e| < R + r
+        const qx = P[i * 3] - cx, qz = P[i * 3 + 1] - cz, rho = R + P[i * 3 + 2];
+        const b = qx * ex + qz * ez, c = qx * qx + qz * qz - rho * rho;
+        if (c < 0) t = Math.max(t, -b + Math.sqrt(b * b - c));
+      }
+      if (t <= 0) break;
+      x += ex * t; z += ez * t; this._shift(ex * t, ez * t);
+    }
+    this.fit.x = x; this.fit.z = z;
+  }
+
+  // Off a tunnel's side (centre cx, cz; axes of o; half-length a, half-width R): across the
+  // tunnel, to the side the body's centre is on, just far enough for every spine circle.
+  _side(x, z, cx, cz, o, a, R) {
+    const P = this.fitP, sg = (x - cx) * o.vx + (z - cz) * o.vz < 0 ? -1 : 1;
+    let t = 0;
+    for (let i = 0; i < NS; i++) {
+      const dx = P[i * 3] - cx, dz = P[i * 3 + 1] - cz, r = P[i * 3 + 2];
+      const end = Math.abs(dx * o.ux + dz * o.uz) - a; // past an end, the circle reaches less far
+      if (end >= r) continue;
+      const reach = end > 0 ? Math.sqrt(r * r - end * end) : r;
+      t = Math.max(t, R + reach - sg * (dx * o.vx + dz * o.vz));
+    }
+    if (t > 0) { const mx = sg * o.vx * t, mz = sg * o.vz * t; x += mx; z += mz; this._shift(mx, mz); }
+    this.fit.x = x; this.fit.z = z;
+  }
+
+  // a body drawn at (x, z) heading yaw (scale s, widths in fitW), fitted around the solids:
+  // the result in this.fit
+  _fit(x, z, yaw, s) {
+    const F = this.fit, L = this.ui.layers, S = this.solids, W2 = this.W / 2, H2 = this.H / 2;
+    const reach = REACH * s + GAP;
+    const nearWall = () => Math.min(H2 - z, W2 - x, z + H2, x + W2) < reach;
+    F.x = x; F.z = z;
+    this._circles(x, z, yaw, s);
+    // the pen walls: the least turn along a wall that clears it
+    if (nearWall()) {
+      for (let k = 0; k < 4; k++) {
+        if (this._wallPen(k) <= 0) continue;
+        const to = alongNear(yaw, k % 2 ? Math.PI / 2 : 0);
+        this._circles(x, z, to, s);
+        if (this._wallPen(k) > 0) { yaw = to; continue; } // along it, and pushed below
+        let lo = 0, hi = 1;
+        for (let it = 0; it < 8; it++) {
+          const mid = (lo + hi) / 2;
+          this._circles(x, z, lerpAngle(yaw, to, mid), s);
+          if (this._wallPen(k) > 0) lo = mid; else hi = mid;
+        }
+        yaw = lerpAngle(yaw, to, hi);
+        this._circles(x, z, yaw, s);
+      }
+    }
+    // four passes, as clearing one solid can push a body into the next (a body squeezed between
+    // two that are closer than its width stays partly in one)
+    const O = this.objInfo, A = this.objAt;
+    for (let pass = 0; pass < 4; pass++) {
+      // the playground: clear of the balls (their width at a body's height, 0.87 r); along a
+      // tunnel inside it (once), clear of its sides
+      if (O && L.playground) {
+        for (let k = 0; k < O.length; k++) {
+          const o = O[k], cx = A[k * 2], cz = A[k * 2 + 1], dx = x - cx, dz = z - cz;
+          if (o.kind === "ramp" || dx * dx + dz * dz > (1.6 * o.r + 2.2 * s) ** 2) continue; // ramps: _ground
+          if (o.kind === "ball") { this._disc(x, z, cx, cz, 0.87 * o.r); x = F.x; z = F.z; continue; }
+          const a = 1.25 * o.r, R = 0.85 * o.r, qx = dx * o.ux + dz * o.uz, qz = dx * o.vx + dz * o.vz;
+          if (Math.abs(qz) >= R) { this._side(x, z, cx, cz, o, a, R); x = F.x; z = F.z; continue; }
+          const f = Math.min(1, Math.max(0, a + 1 - Math.abs(qx))); // inside, or an inch from an end
+          if (f <= 0 || pass > 0) continue;
+          yaw = lerpAngle(yaw, alongNear(yaw, Math.atan2(-o.uz, o.ux)), f);
+          const room = Math.max(0, Math.sqrt(Math.max(0, R * R - 0.42 * s * s)) - 0.65 * s) / R; // under the arch
+          const q2 = qz * (1 - f * (1 - room));
+          x = cx + qx * o.ux + q2 * o.vx; z = cz + qx * o.uz + q2 * o.vz;
+          this._circles(x, z, yaw, s);
+        }
+      }
+      // stands: the grid's hoppers and spouts, the ring stands' rods
+      for (const d of S.discs) {
+        if (!L[d.layer]) continue;
+        const dx = x - d.x, dz = z - d.z;
+        if (dx * dx + dz * dz > (d.r + 2.2 * s) ** 2) continue;
+        this._disc(x, z, d.x, d.z, d.r); x = F.x; z = F.z;
+      }
+    }
+    // and inside the walls, whatever pushed it
+    if (nearWall()) { this._wallPush(x, z); x = F.x; z = F.z; }
+    F.x = x; F.z = z; F.yaw = yaw;
+  }
+
+  // the drawn floor's height at (x, z): a nest pad, a ramp, or a partition under a body
+  _ground(x, z, s) {
+    const L = this.ui.layers, W2 = this.W / 2, H2 = this.H / 2;
+    let g = 0;
+    const G = this.padGrid;
+    if (G && L.nests) {
+      const i = Math.floor((x + W2) / PAD_CELL), j = Math.floor((z + H2) / PAD_CELL), h = GRID_PAD / 2;
+      const c = i >= 0 && j >= 0 && i < G.nx && j < G.nz ? G.cells[j * G.nx + i] : [];
+      for (let p = 0; p < c.length; p += 2) if (Math.abs(x - c[p]) <= h && Math.abs(z - c[p + 1]) <= h) { g = PAD_H; break; }
+    }
+    const O = this.objInfo, A = this.objAt;
+    if (O && L.playground) {
+      for (let k = 0; k < O.length; k++) {
+        const o = O[k];
+        if (o.kind !== "ramp") continue;
+        const dx = x - A[k * 2], dz = z - A[k * 2 + 1], qx = dx * o.ux + dz * o.uz, qz = dx * o.vx + dz * o.vz;
+        if (Math.abs(qx) <= o.r && Math.abs(qz) <= 0.72 * o.r) g = Math.max(g, 0.32 * (qx + o.r));
+      }
+    }
+    const Pt = this.solids.parts;
+    if (Pt.length && L.cells) {
+      for (let p = 0; p < Pt.length; p += 4) {
+        const d = segDist(x, z, Pt[p], Pt[p + 1], Pt[p + 2], Pt[p + 3]);
+        if (d < 0.7 * s) g = Math.max(g, (PARTITION_H - 0.15 * s) * (1 - smooth(0.45 * s, 0.7 * s, d)));
+      }
+    }
+    return g;
   }
 
   _mice(st) {
@@ -824,16 +1047,32 @@ export class Pen3D {
       const gest = fa.gest && fa.gest[i] ? (fa.gest[i] - 1) / 254 : 0;
       const lean = fa.mass ? fa.mass[i] / 100 / (1 + PREG_GAIN * gest * gest) : 0;
       const s = lean > 0 ? Math.cbrt(lean / ADULT_G) : this.scale[Math.min(399, age)], o = m * 16;
+      const girth = Math.min(1.2, Math.max(0.75, fa.cond ? fa.cond[i] / 100 : 1)), belly = gest * gest;
+      // on the floor (or asleep on a grid pad): clear of the solids, standing on the drawn floor,
+      // pitched with it (a ramp, a partition stepped over)
+      let pitch = 0;
+      if (kind === FLOOR || (kind === BOX && !this.cal)) {
+        const FW = this.fitW;
+        for (let k = 0; k < NS; k++) FW[k] = Math.max(1, girth * (1 + 0.5 * belly * SPINE_BELLY[k]));
+        this._fit(x, z, yaw, s);
+        x = this.fit.x; z = this.fit.z; yaw = this.fit.yaw;
+        if (kind === FLOOR) {
+          const fx = Math.cos(yaw) * 0.9 * s, fz = -Math.sin(yaw) * 0.9 * s;
+          const gf = this._ground(x + fx, z + fz, s), gr = this._ground(x - fx, z - fz, s);
+          y = Math.max(this._ground(x, z, s), (gf + gr) / 2);
+          pitch = Math.max(-0.45, Math.min(0.45, Math.atan2(gf - gr, 1.8 * s)));
+        }
+      }
       if (kind === CLING) { // on the hopper face: nose up, back to the pen
         const sd = SIDES[side], nx = sd.n[0], nz = -sd.n[1];
         E[o] = 0; E[o + 1] = s; E[o + 2] = 0; E[o + 3] = 0;
         E[o + 4] = nx * s; E[o + 5] = 0; E[o + 6] = nz * s; E[o + 7] = 0;
         E[o + 8] = nz * s; E[o + 9] = 0; E[o + 10] = -nx * s; E[o + 11] = 0;
         D.p[m * 3] = x + nx * 0.6 * s; D.p[m * 3 + 1] = y; D.p[m * 3 + 2] = z + nz * 0.6 * s;
-      } else {
-        const c = Math.cos(yaw), sn = Math.sin(yaw);
-        E[o] = c * s; E[o + 1] = 0; E[o + 2] = -sn * s; E[o + 3] = 0;
-        E[o + 4] = 0; E[o + 5] = s; E[o + 6] = 0; E[o + 7] = 0;
+      } else { // heading yaw, nose pitched up by pitch
+        const c = Math.cos(yaw), sn = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
+        E[o] = c * cp * s; E[o + 1] = sp * s; E[o + 2] = -sn * cp * s; E[o + 3] = 0;
+        E[o + 4] = -c * sp * s; E[o + 5] = cp * s; E[o + 6] = sn * sp * s; E[o + 7] = 0;
         E[o + 8] = sn * s; E[o + 9] = 0; E[o + 10] = c * s; E[o + 11] = 0;
         D.p[m * 3] = x; D.p[m * 3 + 1] = y + 0.6 * s; D.p[m * 3 + 2] = z;
       }
@@ -852,10 +1091,9 @@ export class Pen3D {
       SC[m * 3] = ck.r; SC[m * 3 + 1] = ck.g; SC[m * 3 + 2] = ck.b;
       // girth from condition, the belly from pregnancy, bites from wounds, bare patches from
       // stress (not on the withdrawn: Calhoun's beautiful ones were sleek and unscarred)
-      const cond = fa.cond ? fa.cond[i] / 100 : 1, wnd = (fa.wounds[i] * 1.5) / 255;
-      const str = (fa.stress[i] * 1.5) / 255;
-      BA[m * 4] = Math.min(1.2, Math.max(0.75, cond));
-      BA[m * 4 + 1] = gest * gest;
+      const wnd = (fa.wounds[i] * 1.5) / 255, str = (fa.stress[i] * 1.5) / 255;
+      BA[m * 4] = girth;
+      BA[m * 4 + 1] = belly;
       BA[m * 4 + 2] = Math.min(1, wnd / 0.6);
       BA[m * 4 + 3] = role === 6 ? 0 : Math.min(1, Math.max(0, (str - 0.9) / 0.6));
       SA[m] = h01(slot, 41) * 97.0;
@@ -929,13 +1167,16 @@ export class Pen3D {
 
   _objects(st) {
     if (!this.objMeshes) return;
-    const oa = st.ma?.obj, ob = st.mb?.obj, a = st.alpha || 0, W = this.W, H = this.H;
+    const oa = st.ma?.obj, ob = st.mb?.obj, a = st.alpha || 0, W = this.W, H = this.H, A = this.objAt;
     this.world.objects.forEach((o, k) => {
-      const m = this.objMeshes[k];
       let x = o.x, y = o.y;
       if (oa && oa[k]) { x = oa[k][0]; y = oa[k][1]; }
       if (ob && ob[k] && a > 0) { x += (ob[k][0] - x) * a; y += (ob[k][1] - y) * a; }
-      const X = x - W / 2, Z = H / 2 - y, last = m.userData.last;
+      A[k * 2] = x - W / 2; A[k * 2 + 1] = H / 2 - y;
+    });
+    this._spread();
+    this.world.objects.forEach((o, k) => {
+      const m = this.objMeshes[k], X = A[k * 2], Z = A[k * 2 + 1], last = m.userData.last;
       if (o.kind === "ball" && last) { // roll without slipping: turn by the distance over the radius
         const dx = X - last[0], dz = Z - last[1], d = Math.hypot(dx, dz);
         if (d > 1e-5 && d < 8) {
@@ -946,6 +1187,79 @@ export class Pen3D {
       m.userData.last = [X, Z];
       m.position.set(X, m.userData.lift, Z);
     });
+  }
+
+  // The model's objects are points, and the mice push them into heaps. Drawn as solids (a ball a
+  // disc; a tunnel or a ramp a rectangle on the floor) they are spread apart, each overlapping
+  // pair halved apart along its shortest way out, in a fixed number of passes: the same
+  // positions are always drawn the same way.
+  _spread() {
+    const A = this.objAt, O = this.objInfo, n = O.length, W2 = this.W / 2, H2 = this.H / 2, gap = 0.1;
+    const L = this.ui.layers, stands = this.solids.discs.filter((d) => L[d.layer]); // these stay put
+    const half = (o) => (o.kind === "tunnel" ? [1.25 * o.r, 0.85 * o.r] : [o.r, 0.72 * o.r]);
+    const reach = (o, ax, az) => { // half the shape's width along the unit axis
+      if (o.kind === "ball") return o.r;
+      const [a, b] = half(o);
+      return a * Math.abs(o.ux * ax + o.uz * az) + b * Math.abs(o.vx * ax + o.vz * az);
+    };
+    // the way a disc (centre px, pz, radius r) leaves rectangle o at (cx, cz): [x, z, overlap]
+    const outOfRect = (px, pz, r, o, cx, cz) => {
+      const [a, b] = half(o), dx = px - cx, dz = pz - cz;
+      const lx = dx * o.ux + dz * o.uz, lz = dx * o.vx + dz * o.vz;
+      let pen, nx = 0, nz = 0;
+      if (Math.abs(lx) <= a && Math.abs(lz) <= b) { // its centre inside: out by the nearer side
+        if (a - Math.abs(lx) < b - Math.abs(lz)) { pen = r + a - Math.abs(lx); nx = Math.sign(lx) || 1; }
+        else { pen = r + b - Math.abs(lz); nz = Math.sign(lz) || 1; }
+      } else { // from the rectangle's nearest point
+        const ex = lx - Math.max(-a, Math.min(a, lx)), ez = lz - Math.max(-b, Math.min(b, lz)), e = Math.hypot(ex, ez);
+        pen = r - e; nx = ex / e; nz = ez / e;
+      }
+      return [nx * o.ux + nz * o.vx, nx * o.uz + nz * o.vz, pen];
+    };
+    const move = (k, dx, dz, m) => { A[k * 2] += dx * m; A[k * 2 + 1] += dz * m; };
+    for (let it = 0; it < 16; it++) {
+      for (let i = 0; i < n; i++) {
+        const oi = O[i];
+        for (let j = i + 1; j < n; j++) { // each overlapping pair, half each
+          const oj = O[j], dx = A[i * 2] - A[j * 2], dz = A[i * 2 + 1] - A[j * 2 + 1];
+          const d = Math.hypot(dx, dz), bi = oi.kind === "ball", bj = oj.kind === "ball";
+          let ux, uz, pen;
+          if (bi && bj) { // two discs
+            pen = oi.r + oj.r - d;
+            const t = h01(i * 31 + j, 33) * TAU;
+            [ux, uz] = d < 1e-4 ? [Math.cos(t), Math.sin(t)] : [dx / d, dz / d];
+          } else if (bi || bj) { // a disc and a rectangle
+            const [k, q] = bi ? [i, j] : [j, i], sg = bi ? 1 : -1;
+            [ux, uz, pen] = outOfRect(A[k * 2], A[k * 2 + 1], O[k].r, O[q], A[q * 2], A[q * 2 + 1]);
+            ux *= sg; uz *= sg;
+          } else { // two rectangles: the axis of least overlap among their sides' normals
+            pen = Infinity;
+            for (const [ax, az] of [[oi.ux, oi.uz], [oi.vx, oi.vz], [oj.ux, oj.uz], [oj.vx, oj.vz]]) {
+              const c = dx * ax + dz * az, p = reach(oi, ax, az) + reach(oj, ax, az) - Math.abs(c);
+              if (p < pen) { pen = p; ux = c < 0 ? -ax : ax; uz = c < 0 ? -az : az; }
+            }
+          }
+          if (pen > 0) { move(i, ux, uz, (pen + gap) / 2); move(j, ux, uz, -(pen + gap) / 2); }
+        }
+        for (const s of stands) { // off the stands, the whole way
+          let ux, uz, pen;
+          if (oi.kind === "ball") {
+            const dx = A[i * 2] - s.x, dz = A[i * 2 + 1] - s.z, d = Math.hypot(dx, dz);
+            pen = oi.r + s.ro - d;
+            [ux, uz] = d < 1e-4 ? [1, 0] : [dx / d, dz / d];
+          } else {
+            [ux, uz, pen] = outOfRect(s.x, s.z, s.ro, oi, A[i * 2], A[i * 2 + 1]);
+            ux = -ux; uz = -uz;
+          }
+          if (pen > 0) move(i, ux, uz, pen + gap);
+        }
+      }
+    }
+    for (let k = 0; k < n; k++) { // and inside the walls
+      const ex = reach(O[k], 1, 0) + 0.3, ez = reach(O[k], 0, 1) + 0.3;
+      A[k * 2] = Math.max(-W2 + ex, Math.min(W2 - ex, A[k * 2]));
+      A[k * 2 + 1] = Math.max(-H2 + ez, Math.min(H2 - ez, A[k * 2 + 1]));
+    }
   }
 
   // ---------------------------------------------------------------- layers, cutaway, camera
@@ -1093,7 +1407,7 @@ export class Pen3D {
     const sig = [st.t, st.alpha, fa ? fa.n : -1, fa ? fa.slot[0] : -1, this.colorBy, [...ui.hidden].join(","), sel, ui.hoverCell, this.layerKey].join("|");
     if (sig !== this.sig) {
       this.sig = sig;
-      this._mice(st); this._cells(st); this._objects(st);
+      this._objects(st); this._mice(st); this._cells(st); // the mice are fitted around the objects
       this.dirty = true;
     }
     this._follow();

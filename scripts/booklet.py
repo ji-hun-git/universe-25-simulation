@@ -206,7 +206,7 @@ def build(hero: dict, led: dict) -> str:
 question: does play-like behaviour appear without any play reward, under abundance and under
 scarcity?</p>
 <figure><img src="figures/src/hero_pen.jpg" alt="The simulated colony in 3D on its fullest day:
-a pen of 256 nest boxes with white mice in and between them">
+a pen of 256 nest sites, drawn as pads, with white mice on and between them">
 <figcaption>The simulated colony on its fullest day: {pa['recording']}, seed {pa['seed']}, day
 {pa['day']:,.0f}, {pa['n']:,} mice. Every mouse is drawn at real scale, as an albino mouse. Heights
 are drawn; the model is planar.</figcaption></figure>

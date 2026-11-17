@@ -320,7 +320,7 @@ def draw() -> int:
            f"{shot['recording']} (seed {shot['seed']}), day {shot['day']:.0f}, {shot['n']:,} mice. "
            "Every mouse is drawn at real scale (BALB/c, albino).\n"
            "Heights are drawn: the model is planar. The grid layout is the frozen colony's "
-           "abstract pen, with its boxes on the floor.")
+           "abstract pen; its nest sites are floor points, drawn as pads.")
     poly = shot.get("close_poly")
     cimg = np.asarray(Image.open(SRC / "hero_close.jpg"))
     ch_, cw_ = cimg.shape[:2]
@@ -331,7 +331,7 @@ def draw() -> int:
     cax.set_xticks([]); cax.set_yticks([])
     for s in cax.spines.values():
         s.set_edgecolor(PAL["stress"]); s.set_linewidth(1.0)
-    cax.text(0.012, 0.025, "close-up of the outlined patch: crowded boxes; pups are pink",
+    cax.text(0.012, 0.025, "close-up: the playground, crowds at food and water; pups are pink",
              transform=cax.transAxes, fontsize=6.0, va="bottom", color=PAL["ink"],
              bbox={"boxstyle": "square,pad=0.25", "fc": PAL["paper"], "ec": "none", "alpha": 0.9})
     if poly and len(poly) == 4:
