@@ -1,5 +1,34 @@
 # Universe25 Play — NOTES
 
+## 2026-11-17 — How close the model is to the original, in the README and the booklet; no experiment
+
+**What Jason asked.** Whether the environment and the results are like the original. After the
+answer, Jason asked to add it.
+
+**What it adds.** No experiment, and no new number: each figure comes from an earlier NOTES
+section. The README section "How close is it to the original?" and booklet page 6 (now nine
+pages) say four things.
+- **The pen.** The reference model keeps Calhoun's sizes and capacities but not his layout:
+  - square cells and boxes on the floor;
+  - food and water at points;
+  - a playground Calhoun did not have;
+  - a plane, with none of the record's events.
+- **Fitted, not predicted.** The 48-seed check shows the fit holds across chance. Of 56
+  parameters, the landmarks pin down about 8 directions (2026-11-09).
+- **Closer to the original fits worse** (replica M1, 2026-11-11, 12 training seeds):
+  - with the playground off, 889 mice on day 315 and the peak on day 482;
+  - in Calhoun's layout, about 190 days early.
+- **The behaviour does not match.** The final replica (2026-11-13) has 10 of 20 targets inside:
+  - never fought or mated: 0 % against 53 %;
+  - withdrawn: 11 % against 32 %;
+  - brood groups: 28 against 14.
+
+  The reference colony's withdrawn share is 52 % at its peak (2026-11-17, the hero figure's
+  runs).
+
+Also updated: `docs/FIGURES.md` (panel b is a fit, not a prediction; the booklet's pages),
+HANDOFF and TASKS. `tests/test_booklet.py` now checks that the booklet keeps this page.
+
 ## 2026-11-17 — Bug review of the viewer and figure code; the booklet; no experiment
 
 **What Jason asked for.** Run a bug-fix pass, make a booklet that introduces the research and

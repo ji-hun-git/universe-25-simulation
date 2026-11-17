@@ -29,6 +29,9 @@ was drawn from: commit, seeds, the checks it ran and the renders it used.
     its boxes on the floor at their points.
   - The simulator is planar, so heights are drawn.
   - NOTES 2026-11-17 (the 3D view) lists what the drawing chooses.
+- **Panel b shows a fit, not a prediction.** The parameters were calibrated to these
+  landmarks on other seeds. With the playground off, or in Calhoun's own pen layout, the same
+  biology fits worse (README, "How close is it to the original?").
 - **Calhoun's phases A–D are shaded on the record's days.** They are not detected in the runs.
 - **The 48 seeds were read before**, for the Tier 1 predictive check. The figure re-runs them to
   get the daily series. `collect` checks each run's landmarks against
@@ -64,15 +67,16 @@ was drawn from: commit, seeds, the checks it ran and the renders it used.
 
 ## Booklet: `docs/booklet/universe25_booklet.pdf`
 
-An eight-page A4 introduction for people outside the repo. The pages cover:
+A nine-page A4 introduction for people outside the repo. The pages cover:
 1. the cover;
 2. the record;
 3. the model;
 4. the hero figure;
 5. the predictive check;
-6. the play question and its tests;
-7. earlier research;
-8. how to explore.
+6. how close the model is to the original;
+7. the play question and its tests;
+8. earlier research;
+9. how to explore.
 
 **Files.**
 - `docs/booklet.html` is the page the PDF is printed from.
@@ -97,3 +101,4 @@ An eight-page A4 introduction for people outside the repo. The pages cover:
 | date | change |
 |---|---|
 | 2026-11-17 | First edition, from the hero figure drawn at 8ed9d3f. |
+| 2026-11-17 | Page 6 added: how close the model is to the original. The pen compared; the fit is fitted; closer to the original fits worse; the behaviour does not match. |

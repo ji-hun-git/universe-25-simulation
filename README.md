@@ -3,8 +3,8 @@
 ![Universe 25, simulated. a: the frozen colony on its fullest day in 3D. b: population against Calhoun's census on 48 seeds. c: where the colony crowds, and who withdraws. d: the phase-4 play-emergence tests so far.](docs/figures/hero.png)
 
 <sub>The hero figure is remade by `scripts/hero_figure.py`. What each panel shows, and what it does
-not claim: [docs/FIGURES.md](docs/FIGURES.md). An eight-page introduction for readers outside the
-repo: [docs/booklet/universe25_booklet.pdf](docs/booklet/universe25_booklet.pdf).</sub>
+not claim: [docs/FIGURES.md](docs/FIGURES.md). An introduction for readers outside the
+repo: [docs/booklet/universe25_booklet.pdf](docs/booklet/universe25_booklet.pdf) (nine pages).</sub>
 
 Research-grade **Universe 25** (Calhoun 1973) simulation with an optional **playground** zone.
 
@@ -22,6 +22,59 @@ Track E / exploratory. Agents are need-driven (hunger, thirst, fatigue, stress, 
 
 The full state is in `HANDOFF.md`, the dated results in `NOTES.md`, and the hypotheses in
 `PLAN.md` §15.
+
+## How close is it to the original?
+
+Close in numbers, simplified in form. The reference model keeps Calhoun's sizes and capacities
+but not his layout, and its population curve matches the record because it was fitted to it.
+
+| | Calhoun's pen | reference model | replica v2 |
+|---|---|---|---|
+| pen | 101 × 101 in, walls 54 in | the same size; walls only bound it | the same |
+| 16 cells | triangles from the wall to the centre | a 4 × 4 grid of squares | triangles |
+| 256 nest boxes | four levels up mesh tunnels | points on the floor | four levels, as labels; no climbing |
+| food and water | a hopper (25 at a time) and a water platform per cell | a point per cell, unlimited | hoppers and platforms with their capacities |
+| playground | none | balls, tunnels and ramps in the centre | none |
+| space | three dimensions; mice climb | a plane | a plane |
+| events | founder males lost early; food moved out of the boxes near day 160; about 150 mice removed after day 1,000 | none of these | the food move |
+
+Why the match is weaker than it looks:
+- **Fitted, not predicted.**
+  - The parameters were tuned to the record's landmarks on other seeds.
+  - The 48-seed check (12 of 15 inside) shows that the fit holds across chance. It does not
+    show that the model predicts Universe 25.
+  - Of 56 parameters the landmarks pin down about 8 directions, so many settings fit as well
+    (Morris screen).
+- **Closer to the original fits worse.** These are medians on 12 training seeds.
+  - With the playground off, as in Calhoun's pen, the same biology has 889 mice on day 315
+    (record 620) and peaks on day 482 (record 560).
+  - In Calhoun's own layout it runs about 190 days early: 1,821 mice on day 315 and the peak on
+    day 372.
+- **The behaviour does not match.**
+  - Refitted in Calhoun's layout, the final replica rises and collapses in 45 of 48 fresh-seed
+    runs, but only 10 of its 20 targets fall inside.
+
+    | target | record | replica |
+    |---|---:|---:|
+    | animals that never fought or mated, day 800 | 53 % | 0 % |
+    | withdrawn, day 560 | 32 % | 11 % |
+    | brood groups | 14 | 28 |
+    | male share, day 315 | 0.40 | 0.49 |
+    | last surviving young | day 600 | day 687 |
+
+  - The reference colony was never fitted to these. Its withdrawn share is 52 % at its peak;
+    the definitions differ from Calhoun's.
+- **The collapse is built in.** Young raised in a broken colony never recover, as in Universe
+  25. Other rodent colonies recovered when thinned or moved (`docs/PRIOR_WORK.md`).
+
+So the reference colony is a simplified colony fitted to Calhoun's population curve. It is a
+substrate for the play experiments, not evidence about why Universe 25 collapsed.
+
+Sources, in NOTES:
+- 2026-11-09: Tier 1 and the Morris screen;
+- 2026-11-11: replica M1;
+- 2026-11-13: the end of replica v2;
+- 2026-11-17: the hero figure.
 
 ## Why
 

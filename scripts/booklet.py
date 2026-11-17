@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""The booklet: an eight-page introduction to the research, for people outside the repo.
+"""The booklet: a nine-page introduction to the research, for people outside the repo.
 
   docs/booklet.html                   the page (an HTML fragment)
   docs/booklet/universe25_booklet.pdf the printable A4 booklet, printed from that page
@@ -154,6 +154,8 @@ td { border-bottom: 1px solid var(--rule); padding: 1.3mm 2mm; vertical-align: t
 td.n { text-align: right; white-space: nowrap; }
 td.id { font: 600 9pt var(--mono); white-space: nowrap; }
 .out { color: var(--stress); font-weight: 600; }
+.cmp td { font-size: 8.4pt; }
+.cmp td:first-child { font-weight: 600; white-space: nowrap; }
 .note { color: var(--ink-3); font-size: 8pt; }
 .verdict { font: 600 8pt var(--mono); white-space: nowrap; padding: 0.5mm 1.5mm; border: 1px
 solid; }
@@ -194,8 +196,8 @@ def build(hero: dict, led: dict) -> str:
 
     def page(n, body, cls=""):
         pages.append(f'<section class="page {cls}" id="p{n}">{body}'
-                     f'<div class="folio"><span>Universe 25, simulated</span><span>{n} / 8</span>'
-                     f"</div></section>")
+                     f'<div class="folio"><span>Universe 25, simulated</span>'
+                     f"<span>{n} / @TOTAL@</span></div></section>")
 
     page(1, f"""
 <div class="kicker">universe25-play · a research booklet</div>
@@ -212,9 +214,9 @@ are drawn; the model is planar.</figcaption></figure>
 <div><h3>What this is</h3><p>A research simulator of John B. Calhoun's Universe 25, the
 mouse colony that grew to 2,200 animals and then died out, and a testbed for questions about
 play.</p></div>
-<div><h3>What this is not</h3><p>Not a claim that play emerged. No reward, observation or
-objective names play anywhere. The play detectors are used only to evaluate runs, and their
-composite score is unvalidated.</p></div>
+<div><h3>What this is not</h3><p>Not a copy of Calhoun's apparatus (page 6), and not a claim
+that play emerged. No reward, observation or objective names play anywhere. The play detectors
+are used only to evaluate runs, and their composite score is unvalidated.</p></div>
 </div>
 <p class="stamp">{e(stamp)}</p>""", "cover")
 
@@ -268,7 +270,8 @@ withdrawn.</li>
 competence for life, and the withdrawn role is the model's analogue of the beautiful
 ones.</li></ul></div>
 <div><h3>The pen</h3><ul>
-<li>Calhoun's 101 × 101 in pen with 16 cells and 256 boxes; food and water in every cell.</li>
+<li>Calhoun's 101 × 101 in pen and capacities, laid out simply: 16 square cells, 256 boxes on
+the floor, food and water at one point in every cell.</li>
 <li>A playground in the centre, with balls, tunnels and ramps that roll and move. Using it
 earns nothing.</li>
 <li>Deterministic: one seed gives one run, bit for bit, on the CPU.</li></ul></div>
@@ -291,9 +294,8 @@ Calhoun's census, crowding by cell, and the phase-4 tests">
 seeds against Calhoun's census. c: crowding by cell and the share of withdrawn animals. d: the
 play tests of phase 4. Drawn by scripts/hero_figure.py; docs/FIGURES.md says what each panel does
 not claim.</figcaption></figure>
-<p>Panel b is the calibration claim: the frozen colony, run on {ns}
-seeds it was never fitted on, against the record. Panel d is the play question so far, test by
-test.</p>""")
+<p>Panel b is the calibration claim: a fit to Calhoun's landmarks, checked on {ns} seeds it
+was never fitted on. Panel d is the play question so far, test by test.</p>""")
 
     page(5, f"""
 <div class="kicker">Does the model match the record?</div>
@@ -309,7 +311,53 @@ interval</th><th></th></tr></thead>
 phases B and C; a late first litter makes up for it. The late counts sit inside the interval
 even though Calhoun removed about 150 animals after day 1,000 and the model does not.</p></div>""")
 
-    page(6, f"""
+    # numbers from NOTES 2026-11-09 (Tier 1, Morris screen), 2026-11-11 (replica M1, 12 training
+    # seeds) and 2026-11-13 (the final replica, 48 fresh seeds); README "How close is it to the
+    # original?" says the same
+    page(6, """
+<div class="kicker">How close is it to Universe 25?</div>
+<h2>Close in numbers, simplified in form</h2>
+<p class="lede">The reference model keeps Calhoun's sizes and capacities but not his layout, and
+its population curve matches the record because it was fitted to it.</p>
+<div class="tablewrap"><table class="cmp">
+<thead><tr><th></th><th>Calhoun's pen</th><th>reference model</th><th>replica v2</th></tr></thead>
+<tbody>
+<tr><td>pen</td><td>101 × 101 in, walls 54 in</td><td>the same size; walls only bound it</td>
+<td>the same</td></tr>
+<tr><td>16 cells</td><td>triangles from the wall to the centre</td><td>a 4 × 4 grid of
+squares</td><td>triangles</td></tr>
+<tr><td>256 boxes</td><td>four levels up mesh tunnels</td><td>points on the floor</td><td>four
+levels, as labels; no climbing</td></tr>
+<tr><td>food, water</td><td>a hopper (25 at a time) and a water platform per cell</td><td>a point
+per cell, unlimited</td><td>hoppers and platforms with their capacities</td></tr>
+<tr><td>playground</td><td>none</td><td>balls, tunnels and ramps in the centre</td>
+<td>none</td></tr>
+<tr><td>space</td><td>three dimensions; mice climb</td><td>a plane</td><td>a plane</td></tr>
+<tr><td>events</td><td>founder males lost early; food moved out of the boxes near day 160; about
+150 mice removed after day 1,000</td><td>none of these</td><td>the food move</td></tr>
+</tbody></table></div>
+<h3>Why the match is weaker than it looks</h3>
+<ul>
+<li><b>Fitted, not predicted.</b> The parameters were tuned to these landmarks on other seeds.
+The check on page 5 shows that the fit holds across chance, not that the model predicts Universe
+25. Of 56 parameters, the landmarks pin down about 8 directions, so many settings fit as
+well.</li>
+<li><b>Closer to the original fits worse.</b> With the playground off, as in Calhoun's pen, the
+same biology has 889 mice on day 315 (record 620) and peaks on day 482. In Calhoun's own layout
+it runs about 190 days early: 1,821 mice on day 315 and the peak on day 372.</li>
+<li><b>The behaviour does not match.</b> Refitted in Calhoun's layout, the replica rises and
+collapses in 45 of 48 runs, but only 10 of its 20 targets are inside. Animals that never fought
+or mated: 0 % against 53 %. Withdrawn on day 560: 11 % against 32 %. Brood groups: 28 against
+14. The last surviving young: day 687 against 600.</li>
+<li><b>The collapse is built in.</b> Young raised in a broken colony never recover, as in
+Universe 25; other rodent colonies recovered when thinned or moved.</li>
+</ul>
+<div class="box"><p><b>So:</b> a simplified colony fitted to Calhoun's population curve. It is a
+substrate for the play experiments, not evidence about why Universe 25 collapsed.</p></div>
+<p class="note">Sources: NOTES 2026-11-09 (Tier 1 and the Morris screen), 2026-11-11 (replica M1,
+12 training seeds) and 2026-11-13 (the end of replica v2, 48 fresh seeds).</p>""")
+
+    page(7, f"""
 <div class="kicker">The question</div>
 <h2>Play without a play reward</h2>
 <p class="lede">Animal play is recognised by five criteria (Burghardt 2005). The question is
@@ -334,7 +382,7 @@ nothing rewards it.</p>
 <tbody>{ledger_rows(led)}</tbody></table></div>
 <p><b>{e(led['summary'])}</b></p>""")
 
-    page(7, """
+    page(8, """
 <div class="kicker">Earlier research</div>
 <h2>What came before</h2>
 <div class="cols">
@@ -357,7 +405,7 @@ sweep (Carucci et al.). None of them looks at play.</p></div>
 Mousery</i>, both 2024) trace how the sink became a story about cities and outran the
 experiments. The full digest, with sources and confidence, is docs/PRIOR_WORK.md.</p></div>""")
 
-    page(8, """
+    page(9, """
 <div class="kicker">Explore it</div>
 <h2>See the colony, read the record</h2>
 <div class="cols">
@@ -383,6 +431,7 @@ python scripts/booklet.py</pre>
 Med</i> 66: 80–88; Calhoun 1971, in <i>Behavior and Environment</i>; Marsden 1972. Play criteria:
 Burghardt 2005, <i>The Genesis of Animal Play</i>.</p></div>""")
 
+    pages = [pg.replace("@TOTAL@", str(len(pages))) for pg in pages]
     return ('<meta charset="utf-8">\n<title>Universe 25 Booklet</title>\n'
             '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:'
             'wght@400;600&family=IBM+Plex+Sans:wght@400;600&family=Source+Serif+4:opsz,wght@8..60,'

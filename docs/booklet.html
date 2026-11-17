@@ -67,6 +67,8 @@ td { border-bottom: 1px solid var(--rule); padding: 1.3mm 2mm; vertical-align: t
 td.n { text-align: right; white-space: nowrap; }
 td.id { font: 600 9pt var(--mono); white-space: nowrap; }
 .out { color: var(--stress); font-weight: 600; }
+.cmp td { font-size: 8.4pt; }
+.cmp td:first-child { font-weight: 600; white-space: nowrap; }
 .note { color: var(--ink-3); font-size: 8pt; }
 .verdict { font: 600 8pt var(--mono); white-space: nowrap; padding: 0.5mm 1.5mm; border: 1px
 solid; }
@@ -111,11 +113,11 @@ are drawn; the model is planar.</figcaption></figure>
 <div><h3>What this is</h3><p>A research simulator of John B. Calhoun's Universe 25, the
 mouse colony that grew to 2,200 animals and then died out, and a testbed for questions about
 play.</p></div>
-<div><h3>What this is not</h3><p>Not a claim that play emerged. No reward, observation or
-objective names play anywhere. The play detectors are used only to evaluate runs, and their
-composite score is unvalidated.</p></div>
+<div><h3>What this is not</h3><p>Not a copy of Calhoun's apparatus (page 6), and not a claim
+that play emerged. No reward, observation or objective names play anywhere. The play detectors
+are used only to evaluate runs, and their composite score is unvalidated.</p></div>
 </div>
-<p class="stamp">Edition 2026-11-17 · figures drawn at commit 8ed9d3f</p><div class="folio"><span>Universe 25, simulated</span><span>1 / 8</span></div></section><section class="page " id="p2">
+<p class="stamp">Edition 2026-11-17 · figures drawn at commit 8ed9d3f</p><div class="folio"><span>Universe 25, simulated</span><span>1 / 9</span></div></section><section class="page " id="p2">
 <div class="kicker">The record</div>
 <h2>Universe 25, 1968–1973</h2>
 <p class="lede">On 9 July 1968, John B. Calhoun put four pairs of BALB/c mice into a pen built so
@@ -148,7 +150,7 @@ inconsistent papers.</li>
 all confounds.</li></ul></div>
 </div>
 <div class="box warn"><p>The final extinction date, often quoted, is Calhoun's projection; the
-last count he reported was 27 mice on day 1,588.</p></div><div class="folio"><span>Universe 25, simulated</span><span>2 / 8</span></div></section><section class="page " id="p3">
+last count he reported was 27 mice on day 1,588.</p></div><div class="folio"><span>Universe 25, simulated</span><span>2 / 9</span></div></section><section class="page " id="p3">
 <div class="kicker">The model</div>
 <h2>A colony that has to fail for its own reasons</h2>
 <p class="lede">Each mouse is an agent driven by needs. Nothing in the code names a collapse day:
@@ -163,7 +165,8 @@ withdrawn.</li>
 competence for life, and the withdrawn role is the model's analogue of the beautiful
 ones.</li></ul></div>
 <div><h3>The pen</h3><ul>
-<li>Calhoun's 101 × 101 in pen with 16 cells and 256 boxes; food and water in every cell.</li>
+<li>Calhoun's 101 × 101 in pen and capacities, laid out simply: 16 square cells, 256 boxes on
+the floor, food and water at one point in every cell.</li>
 <li>A playground in the centre, with balls, tunnels and ramps that roll and move. Using it
 earns nothing.</li>
 <li>Deterministic: one seed gives one run, bit for bit, on the CPU.</li></ul></div>
@@ -175,7 +178,7 @@ beating it; the frozen colony stays the reference.</p>
 <div class="box"><p><b>Irreversibility is an assumption.</b> In the model, young who grow up in
 a broken colony never recover, as Marsden's transfers from Universe 25 suggest. Other rodent
 populations recovered when thinned or moved, so a colony that stays collapsed matches Universe 25,
-not crowded rodents in general.</p></div><div class="folio"><span>Universe 25, simulated</span><span>3 / 8</span></div></section><section class="page " id="p4">
+not crowded rodents in general.</p></div><div class="folio"><span>Universe 25, simulated</span><span>3 / 9</span></div></section><section class="page " id="p4">
 <div class="kicker">The research on one page</div>
 <h2>The hero figure</h2>
 <figure><img src="figures/hero.png" alt="The hero figure: the colony in 3D, population against
@@ -184,9 +187,8 @@ Calhoun's census, crowding by cell, and the phase-4 tests">
 seeds against Calhoun's census. c: crowding by cell and the share of withdrawn animals. d: the
 play tests of phase 4. Drawn by scripts/hero_figure.py; docs/FIGURES.md says what each panel does
 not claim.</figcaption></figure>
-<p>Panel b is the calibration claim: the frozen colony, run on 48
-seeds it was never fitted on, against the record. Panel d is the play question so far, test by
-test.</p><div class="folio"><span>Universe 25, simulated</span><span>4 / 8</span></div></section><section class="page " id="p5">
+<p>Panel b is the calibration claim: a fit to Calhoun's landmarks, checked on 48 seeds it
+was never fitted on. Panel d is the play question so far, test by test.</p><div class="folio"><span>Universe 25, simulated</span><span>4 / 9</span></div></section><section class="page " id="p5">
 <div class="kicker">Does the model match the record?</div>
 <h2>12 of 15 record values inside the 90 % interval</h2>
 <p class="lede">The frozen colony was run on seeds 9000–9047, chosen
@@ -212,7 +214,48 @@ interval</th><th></th></tr></thead>
 <tr><td>doubling time, phase C</td><td class="n">145</td><td class="n">97</td><td class="n">80 – 137</td><td><span class="out">outside</span></td></tr></tbody></table></div>
 <div class="box"><p><b>Outside:</b> mice on day 736, doubling time, phase B, doubling time, phase C. The model colony grows too fast in
 phases B and C; a late first litter makes up for it. The late counts sit inside the interval
-even though Calhoun removed about 150 animals after day 1,000 and the model does not.</p></div><div class="folio"><span>Universe 25, simulated</span><span>5 / 8</span></div></section><section class="page " id="p6">
+even though Calhoun removed about 150 animals after day 1,000 and the model does not.</p></div><div class="folio"><span>Universe 25, simulated</span><span>5 / 9</span></div></section><section class="page " id="p6">
+<div class="kicker">How close is it to Universe 25?</div>
+<h2>Close in numbers, simplified in form</h2>
+<p class="lede">The reference model keeps Calhoun's sizes and capacities but not his layout, and
+its population curve matches the record because it was fitted to it.</p>
+<div class="tablewrap"><table class="cmp">
+<thead><tr><th></th><th>Calhoun's pen</th><th>reference model</th><th>replica v2</th></tr></thead>
+<tbody>
+<tr><td>pen</td><td>101 × 101 in, walls 54 in</td><td>the same size; walls only bound it</td>
+<td>the same</td></tr>
+<tr><td>16 cells</td><td>triangles from the wall to the centre</td><td>a 4 × 4 grid of
+squares</td><td>triangles</td></tr>
+<tr><td>256 boxes</td><td>four levels up mesh tunnels</td><td>points on the floor</td><td>four
+levels, as labels; no climbing</td></tr>
+<tr><td>food, water</td><td>a hopper (25 at a time) and a water platform per cell</td><td>a point
+per cell, unlimited</td><td>hoppers and platforms with their capacities</td></tr>
+<tr><td>playground</td><td>none</td><td>balls, tunnels and ramps in the centre</td>
+<td>none</td></tr>
+<tr><td>space</td><td>three dimensions; mice climb</td><td>a plane</td><td>a plane</td></tr>
+<tr><td>events</td><td>founder males lost early; food moved out of the boxes near day 160; about
+150 mice removed after day 1,000</td><td>none of these</td><td>the food move</td></tr>
+</tbody></table></div>
+<h3>Why the match is weaker than it looks</h3>
+<ul>
+<li><b>Fitted, not predicted.</b> The parameters were tuned to these landmarks on other seeds.
+The check on page 5 shows that the fit holds across chance, not that the model predicts Universe
+25. Of 56 parameters, the landmarks pin down about 8 directions, so many settings fit as
+well.</li>
+<li><b>Closer to the original fits worse.</b> With the playground off, as in Calhoun's pen, the
+same biology has 889 mice on day 315 (record 620) and peaks on day 482. In Calhoun's own layout
+it runs about 190 days early: 1,821 mice on day 315 and the peak on day 372.</li>
+<li><b>The behaviour does not match.</b> Refitted in Calhoun's layout, the replica rises and
+collapses in 45 of 48 runs, but only 10 of its 20 targets are inside. Animals that never fought
+or mated: 0 % against 53 %. Withdrawn on day 560: 11 % against 32 %. Brood groups: 28 against
+14. The last surviving young: day 687 against 600.</li>
+<li><b>The collapse is built in.</b> Young raised in a broken colony never recover, as in
+Universe 25; other rodent colonies recovered when thinned or moved.</li>
+</ul>
+<div class="box"><p><b>So:</b> a simplified colony fitted to Calhoun's population curve. It is a
+substrate for the play experiments, not evidence about why Universe 25 collapsed.</p></div>
+<p class="note">Sources: NOTES 2026-11-09 (Tier 1 and the Morris screen), 2026-11-11 (replica M1,
+12 training seeds) and 2026-11-13 (the end of replica v2, 48 fresh seeds).</p><div class="folio"><span>Universe 25, simulated</span><span>6 / 9</span></div></section><section class="page " id="p7">
 <div class="kicker">The question</div>
 <h2>Play without a play reward</h2>
 <p class="lede">Animal play is recognised by five criteria (Burghardt 2005). The question is
@@ -243,7 +286,7 @@ nothing rewards it.</p>
 <tr><td class="id">H-j</td><td class="n">2026-11-14</td><td>food scarcity selects against free time<div class="note">manipulation check failed (3 of 8)</div></td><td><span class="verdict v-open">untested</span></td></tr>
 <tr><td class="id">H-k</td><td class="n">2026-11-15</td><td>small meals select against free time<div class="note">manipulation check failed (5 of 7)</div></td><td><span class="verdict v-open">untested</span></td></tr>
 <tr><td class="id">H-l</td><td class="n">2026-11-16</td><td>the same, with maintenance a choice<div class="note">manipulation check failed (2 of 8)</div></td><td><span class="verdict v-open">untested</span></td></tr></tbody></table></div>
-<p><b>So far no test gives evidence of play either way. Nothing rewards, observes or optimises play, and PlayScore stays unvalidated.</b></p><div class="folio"><span>Universe 25, simulated</span><span>6 / 8</span></div></section><section class="page " id="p7">
+<p><b>So far no test gives evidence of play either way. Nothing rewards, observes or optimises play, and PlayScore stays unvalidated.</b></p><div class="folio"><span>Universe 25, simulated</span><span>7 / 9</span></div></section><section class="page " id="p8">
 <div class="kicker">Earlier research</div>
 <h2>What came before</h2>
 <div class="cols">
@@ -264,7 +307,7 @@ sweep (Carucci et al.). None of them looks at play.</p></div>
 </div>
 <div class="box"><p>Historians (Ramsden and Adams 2009; <i>Rat City</i> and <i>Dr. Calhoun's
 Mousery</i>, both 2024) trace how the sink became a story about cities and outran the
-experiments. The full digest, with sources and confidence, is docs/PRIOR_WORK.md.</p></div><div class="folio"><span>Universe 25, simulated</span><span>7 / 8</span></div></section><section class="page " id="p8">
+experiments. The full digest, with sources and confidence, is docs/PRIOR_WORK.md.</p></div><div class="folio"><span>Universe 25, simulated</span><span>8 / 9</span></div></section><section class="page " id="p9">
 <div class="kicker">Explore it</div>
 <h2>See the colony, read the record</h2>
 <div class="cols">
@@ -288,4 +331,4 @@ python scripts/booklet.py</pre>
 <p>A test fails if the booklet falls behind those files.</p>
 <div class="box"><p>The repository is private. Calhoun's record: Calhoun 1973, <i>Proc R Soc
 Med</i> 66: 80–88; Calhoun 1971, in <i>Behavior and Environment</i>; Marsden 1972. Play criteria:
-Burghardt 2005, <i>The Genesis of Animal Play</i>.</p></div><div class="folio"><span>Universe 25, simulated</span><span>8 / 8</span></div></section></main>
+Burghardt 2005, <i>The Genesis of Animal Play</i>.</p></div><div class="folio"><span>Universe 25, simulated</span><span>9 / 9</span></div></section></main>

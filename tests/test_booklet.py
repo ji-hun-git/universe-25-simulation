@@ -26,6 +26,7 @@ def test_page_carries_the_ledger_and_the_check() -> None:
     for t in led["tests"]:
         assert f">{t['id']}<" in page, t["id"]
     assert "inside the 90 % interval" in page
+    assert "How close is it to Universe 25?" in page  # the limits stay in the booklet
     assert booklet.PDF.is_file(), "the printed booklet is missing"
 
 

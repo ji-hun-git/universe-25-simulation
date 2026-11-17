@@ -12,9 +12,11 @@
 > (`viewer/pen3d.js`, heights drawn, not simulated). It adds no experiment. Phase 4's scarcity line stopped on
 > 2026-11-16 (below). The same day: the hero figure (`docs/figures/hero.png`, remade by
 > `scripts/hero_figure.py`; what it shows and does not claim: `docs/FIGURES.md`) and a digest of
-> earlier Universe 25 research (`docs/PRIOR_WORK.md`). Then an eight-page booklet for readers
+> earlier Universe 25 research (`docs/PRIOR_WORK.md`). Then a nine-page booklet for readers
 > outside the repo (`docs/booklet/universe25_booklet.pdf`, made by `scripts/booklet.py` from
 > the hero figure's data; remade with it), and a bug-review pass on the viewer and figure code.
+> README "How close is it to the original?" and booklet page 6 say how far the model is from
+> Calhoun's pen and record: a fit, simplified in form, whose behaviour does not match.
 
 > **Status 2026-11-09:**
 > - Phase 4 runs on action space v2 with detector rules v7 (frozen); P4-14 is in progress.
