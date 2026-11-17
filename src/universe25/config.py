@@ -272,6 +272,48 @@ class BiologyConfig(_Strict):
     conception_density_width: float = 0.0
 
 
+class BodyConfig(_Strict):
+    """Body weight (agents/body.py). Weight is always tracked, on its own random stream; it acts
+    on nothing unless weight_effects is on (uncalibrated; off = the frozen colony,
+    bit-identical)."""
+
+    weight_effects: bool = False
+    # Richards growth (m_inf g, k per day, shape) fitted to the JAX BALB/cJ chart (000651),
+    # weeks 3-13 (females) and 3-10 (males), from birth_mass_g (an assumed birth weight)
+    birth_mass_g: float = Field(1.3, gt=0.0)
+    female_curve: tuple[float, float, float] = (23.23, 0.0413, 0.347)
+    male_curve: tuple[float, float, float] = (28.36, 0.0606, 0.95)
+    frame_sd: float = Field(0.06, ge=0.0)  # individual size (JAX chart: sd about 6-8 % of mean)
+    relax_days: float = Field(3.0, gt=0.0)  # condition follows its target with this time constant
+    # condition (assumptions):
+    #   1 + e (energy - e_ref) - h max(0, hunger - 1) - s max(0, stress - 0.6)
+    condition_energy: float = 0.4
+    condition_energy_ref: float = 0.92  # the frozen colony's typical adult energy
+    condition_hunger: float = 0.25
+    condition_stress: float = 0.15
+    condition_min: float = 0.6
+    condition_max: float = 1.15
+    pregnancy_gain: float = 0.55  # share of the curve gained by term (about half again)
+    lactation_gain: float = 0.08  # a nursing mother above her curve
+    senescence_onset_days: float = 600.0
+    senescence_per_day: float = 0.0005
+    senescence_floor: float = 0.85
+    # weight_effects only (all uncalibrated):
+    fight_mass_slope: float = 2.0  # the heavier target wins with p = slope x (mass ratio - 1)
+    fight_reverse_max: float = 0.8
+    fertility_condition_floor: float = 0.7  # conception scales from 0 here ...
+    fertility_condition_width: float = 0.25  # ... to 1 at floor + width
+    emaciation_condition: float = 0.75  # hazard rises below this condition ...
+    emaciation_hazard_per_day: float = 0.3  # ... to this at 0.15 below it
+
+
+class CoatConfig(_Strict):
+    """Coat-colour genetics (agents/body.py): the founders' genotypes. balbc is the record
+    (Calhoun's BALB/c founders, all albino); the others are variants. The coat acts on nothing."""
+
+    founders: Literal["balbc", "cb6_cross", "wild_type"] = "balbc"
+
+
 class DriveConfig(_Strict):
     """Homeostatic / social drives. Absolutely no play term."""
 
@@ -398,6 +440,8 @@ class SimConfig(_Strict):
     drives: DriveConfig = Field(default_factory=DriveConfig)
     policy: PolicyConfig = Field(default_factory=PolicyConfig)
     trace: TraceConfig = Field(default_factory=TraceConfig)
+    body: BodyConfig = Field(default_factory=BodyConfig)
+    coat: CoatConfig = Field(default_factory=CoatConfig)
     # Free-time sub-steps (P4-8): an agent whose decision action is EXPLORE / SOCIAL /
     # MANIPULATE replays that decision's move and curiosity / boredom / social relief as this
     # many sub-steps, the policy re-choosing among the free actions at each (1/K of the reach

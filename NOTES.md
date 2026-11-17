@@ -1,5 +1,85 @@
 # Universe25 Play — NOTES
 
+## 2026-11-17 — Mouse biology: body weight and coat genetics, apart from the calibrated colony; no recalibration
+
+**What Jason asked.**
+- More biology for the mice ("color, weight, etc."), "all the best simulation that we can
+  add": visible traits, body weight as real biology, and coat-colour genetics.
+- Also that the colony without play should work well. Asked how, Jason chose **not now** for a
+  recalibration without the playground. It stays open.
+
+**What it adds** (`src/universe25/agents/body.py`, config sections `body` and `coat`).
+- **Weight.**
+  - A Richards growth curve per sex, fitted to the Jackson Laboratory BALB/cJ body-weight chart
+    (stock 000651, 6 % fat diet): weeks 3-13 for females, 3-10 for males, from an assumed birth
+    weight of 1.3 g.
+    - Females: m_inf 23.2 g, RMSE 0.6 g.
+    - Males: 28.4 g, RMSE 0.4 g.
+    - Beyond the chart's ages the curve is an extrapolation.
+  - Assumptions on top of the curve, each a config field:
+    - an individual frame (sd 6 %);
+    - condition, from energy, hunger and stress, relaxing over 3 days;
+    - pregnancy, rising to +55 % of the curve at term;
+    - lactation, +8 %;
+    - a decline after day 600, to at most -15 %.
+- **Coat.**
+  - Three loci with Mendelian inheritance: agouti (A/a), brown (Tyrp1, B/b) and albino (Tyr,
+    C/c), with c/c masking the others.
+  - Calhoun's founders were BALB/c, A/A b/b c/c. Taconic lists the BALB/c coat loci as Tyr^c and
+    Tyrp1^b, and a published cross gives the A/A. So the record's colony is all albino.
+  - Two variants: `coat.founders: cb6_cross` (BALB/c females x C57BL/6 males, a/a B/B C/C) and
+    `wild_type`.
+  - At conception the coat takes a sire from the males that could have sired the pregnancy.
+- **Isolation.**
+  - Weight and coat have their own random stream, SeedSequence([seed, 9_100_001]) (docs/SEEDS.md),
+    and write no AgentSoA field.
+  - Every golden hash is unchanged, and `ref_7000` re-recorded to the same run: peak 2,224 on
+    day 529, 9 alive on day 1,600.
+- **`body.weight_effects`** (off by default, uncalibrated) lets weight act on:
+  - fights: a heavier target wins with p = 2 x (mass ratio - 1), at most 0.8;
+  - conception: from 0 at condition 0.7 to full at 0.95;
+  - litter size: scaled by the mother's condition;
+  - survival: an emaciation hazard below condition 0.75.
+- **Viewer** (frame format 3: mass, condition, genotype, pregnancy).
+  - The 3D view draws each mouse:
+    - at its lean weight;
+    - with girth from condition and a belly in pregnancy;
+    - in its coat colour, with red eyes on albinos;
+    - with soft bite marks from wounds, and bare patches under stress. There are none on the
+      withdrawn, whom Calhoun described as sleek.
+  - The inspector shows weight, condition, coat and genotype, and the day of pregnancy.
+  - Live runs and `viewer_record.py` take the coat founders and weight effects.
+
+**Checks.**
+- `tests/test_body.py` (fast tier):
+  - the curves are within 1.2 g of every chart week;
+  - an F1 x F1 cross over 40,000 pups gives the Mendelian shares within 0.012;
+  - the cross founders leave the colony bit-identical;
+  - weight effects change it;
+  - median weight in the last two days of gestation is above 1.35 x the curve;
+  - juveniles are near the curve.
+- Reference colony, seed 7000, day 560:
+  - adults of 120-400 days weigh 28.4 g (males) and 23.8 g (females);
+  - late pregnancies weigh 32.5 g;
+  - condition is 0.97-1.02.
+- `cb6_7000` (cross founders, 900 days):
+  - the same population curve as `ref_7000`;
+  - day 140: 24 agouti F1 young beside the 4 albino and 4 black founders;
+  - day 560: albino 20 %, agouti 42 %, cinnamon 17 %, black 16 %, chocolate 5 %. F2
+    expectations are 25 / 42 / 14 / 14 / 5; the colony mixes generations.
+
+**Exploratory, one seed** (`weight_7000`: seed 7000 with weight effects on, 1,600 days; not a
+test):
+- peak 2,361 on day 532, against 2,224 on day 529;
+- 13 alive on day 1,600, against 9;
+- 16,664 births, against 16,072.
+
+The effects are uncalibrated; the frozen colony stays the reference.
+
+**Open.**
+- The colony without the playground still grows too fast (README "How close is it to the
+  original?"). A recalibration is Jason's call (not now).
+
 ## 2026-11-17 — How close the model is to the original, in the README and the booklet; no experiment
 
 **What Jason asked.** Whether the environment and the results are like the original. After the

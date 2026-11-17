@@ -17,6 +17,10 @@
 > the hero figure's data; remade with it), and a bug-review pass on the viewer and figure code.
 > README "How close is it to the original?" and booklet page 6 say how far the model is from
 > Calhoun's pen and record: a fit, simplified in form, whose behaviour does not match.
+> Mouse biology (`agents/body.py`): body weight on the JAX BALB/cJ growth curve and three-locus coat
+> genetics (BALB/c founders: all albino), on their own random stream, so the frozen colony is
+> bit-identical; `body.weight_effects` (off, uncalibrated) lets weight act. Open: a recalibration
+> without the playground (Jason: not now).
 
 > **Status 2026-11-09:**
 > - Phase 4 runs on action space v2 with detector rules v7 (frozen); P4-14 is in progress.

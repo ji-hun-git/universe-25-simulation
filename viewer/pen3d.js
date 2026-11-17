@@ -31,8 +31,14 @@ const PLATFORM_Y = 35, PLATFORM_D = 3.5, PARTITION_H = 1, RING_H = 11;
 const GRID_BOX = 4.6, GRID_BOX_H = 2.6;
 const AT = 0.75; // inches: a mouse this close to a box, hopper or platform point is at it
 const FUR = "#F1EEE7", SKIN = "#E2ABA2", EAR = "#E8BCB3", NOSE = "#D9928A", PUP = "#ECB7AD";
-const EYE = "#701B20";
-export const NATURAL = { fur: FUR, pup: PUP, eye: EYE }; // for the legend
+const EYE = "#701B20", EYE_DARK = "#141111";
+// coat phenotypes, as agents/body.py COATS: albino, agouti, cinnamon, black, chocolate
+const COAT = [FUR, "#7E6C5A", "#9A7252", "#2B2826", "#5A4234"];
+export const NATURAL = { fur: FUR, pup: PUP, eye: EYE, coats: COAT }; // for the legend
+// the phenotype of a genotype byte (bits A1 A2 B1 B2 C1 C2, 1 = dominant; agents/body.py)
+export function coatOf(g) { if (!(g & 48)) return 0; return g & 3 ? (g & 12 ? 1 : 2) : (g & 12 ? 3 : 4); }
+const ADULT_G = 28.4; // grams: the mouse model's size, an adult BALB/c male (agents/body.py)
+const PREG_GAIN = 0.55; // body.pregnancy_gain: a pregnant mouse is sized by her lean weight
 const FLOOR = 0, BOX = 1, CLING = 2, SHELF = 3;
 // wall k: inward normal n and counter-clockwise tangent t, in the model's plane (y up)
 const NEAR = [0, 1, -1]; // a forager may use its own hopper or a wall neighbour's (replica M3)
@@ -327,9 +333,14 @@ export class Pen3D {
     this.cSex = this.pal.sex.map(C);
     this.cAction = this.pal.action.map(C);
     this.cStress = this.pal.stress.map(C);
-    this.cFur = []; // natural: pink and hairless to about day 7, furred by day 12
-    for (let a = 0; a <= 12; a++) this.cFur.push(C(PUP).lerp(C(FUR), Math.min(1, Math.max(0, (a - 7) / 5))));
-    this.cEye = C(EYE); this.cEyeShut = C(PUP); // eyes open at about day 13
+    // natural: pink and hairless to about day 7, in its coat by day 12, per coat phenotype
+    this.cFur = COAT.map((hex) => {
+      const out = [];
+      for (let a = 0; a <= 12; a++) out.push(C(PUP).lerp(C(hex), Math.min(1, Math.max(0, (a - 7) / 5))));
+      return out;
+    });
+    this.cEye = C(EYE); this.cEyeDark = C(EYE_DARK); this.cEyeShut = C(PUP); // eyes open about day 13
+    this.cSkinPale = C("#ffffff"); this.cSkinDark = C("#A8999A"); // tints the pink skin of pigmented mice
     this.cNest = C(t.nest);
     this.cStressCell = C(t.stress); this.cInk = C(t.ink);
     this.marker.material.color.set(t.stress);
@@ -636,7 +647,37 @@ export class Pen3D {
     for (const m of [this.fur, this.skin, this.eyes]) if (m) { this.scene.remove(m); m.dispose(); }
     this.cap = cap;
     const geo = (this.mouseGeo ||= mouseGeometries());
-    this.matFur ||= new THREE.MeshStandardMaterial({ roughness: 0.8 });
+    if (!this.matFur) { // body shape and coat condition per animal (aBody: girth, belly, wounds, bare)
+      this.matFur = new THREE.MeshStandardMaterial({ roughness: 0.8 });
+      this.matFur.onBeforeCompile = (sh) => {
+        sh.vertexShader = sh.vertexShader
+          .replace("#include <common>", "#include <common>\nattribute vec4 aBody;\nattribute float aSeed;\nvarying vec3 vLocal;\nvarying vec4 vBody;\nvarying float vSeed;")
+          .replace("#include <begin_vertex>", `#include <begin_vertex>
+            vLocal = position; vBody = aBody; vSeed = aSeed;
+            float belly = aBody.y * exp(-pow((position.x + 0.35) / 0.8, 2.0));
+            transformed.z *= aBody.x * (1.0 + 0.5 * belly);
+            float below = min(0.0, position.y - 0.6);
+            transformed.y = max(0.03, transformed.y + below * (aBody.x - 1.0 + 0.6 * belly));`);
+        sh.fragmentShader = sh.fragmentShader
+          .replace("#include <common>", "#include <common>\nvarying vec3 vLocal;\nvarying vec4 vBody;\nvarying float vSeed;\n"
+            + "float bodyHash(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }\n"
+            + "float bodyNoise(vec3 p) { vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);\n"
+            + "  return mix(mix(mix(bodyHash(i), bodyHash(i + vec3(1.0, 0.0, 0.0)), f.x),\n"
+            + "                 mix(bodyHash(i + vec3(0.0, 1.0, 0.0)), bodyHash(i + vec3(1.0, 1.0, 0.0)), f.x), f.y),\n"
+            + "             mix(mix(bodyHash(i + vec3(0.0, 0.0, 1.0)), bodyHash(i + vec3(1.0, 0.0, 1.0)), f.x),\n"
+            + "                 mix(bodyHash(i + vec3(0.0, 1.0, 1.0)), bodyHash(i + vec3(1.0, 1.0, 1.0)), f.x), f.y), f.z); }")
+          .replace("#include <color_fragment>", `#include <color_fragment>
+            // soft marks, a pattern per animal: scabbed bites on the back and rump, bare skin
+            float back = smoothstep(0.5, 0.8, vLocal.y) * smoothstep(0.7, -0.6, vLocal.x);
+            float wt = 1.0 - 0.22 * vBody.z;
+            float wound = smoothstep(wt, wt + 0.03, bodyNoise(vLocal * 7.0 + vSeed)) * back * step(0.01, vBody.z);
+            float bt = 1.0 - 0.3 * vBody.w;
+            float bare = 0.8 * smoothstep(bt, bt + 0.08, bodyNoise(vLocal * 4.0 + vSeed + 7.7))
+              * smoothstep(0.35, 0.75, vLocal.y) * step(0.01, vBody.w);
+            diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.62, 0.36, 0.33), bare);
+            diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.22, 0.03, 0.02), wound);`);
+      };
+    }
     this.matEye ||= new THREE.MeshStandardMaterial({ roughness: 0.25 });
     if (!this.matSkin) {
       this.matSkin = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6 });
@@ -661,6 +702,11 @@ export class Pen3D {
     this.eyes.instanceMatrix = this.fur.instanceMatrix;
     this.fur.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(cap * 3), 3).setUsage(THREE.DynamicDrawUsage);
     this.eyes.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(cap * 3), 3).setUsage(THREE.DynamicDrawUsage);
+    this.skin.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(cap * 3).fill(1), 3).setUsage(THREE.DynamicDrawUsage);
+    this.bodyAttr = new THREE.InstancedBufferAttribute(new Float32Array(cap * 4).fill(1), 4).setUsage(THREE.DynamicDrawUsage);
+    geo.fur.setAttribute("aBody", this.bodyAttr);
+    this.seedAttr = new THREE.InstancedBufferAttribute(new Float32Array(cap), 1).setUsage(THREE.DynamicDrawUsage);
+    geo.fur.setAttribute("aSeed", this.seedAttr); // each animal's own pattern of marks
     this.gait = new THREE.InstancedBufferAttribute(new Float32Array(cap * 2), 2).setUsage(THREE.DynamicDrawUsage);
     geo.skin.setAttribute("aGait", this.gait);
     for (const m of [this.fur, this.skin, this.eyes]) { m.frustumCulled = false; m.count = 0; this.scene.add(m); }
@@ -752,6 +798,7 @@ export class Pen3D {
     let PB = null;
     if (fb && a > 0) { PB = this._place(fb); for (let j = 0; j < fb.n; j++) map[fb.slot[j]] = j; }
     const E = this.fur.instanceMatrix.array, FC = this.fur.instanceColor.array, EC = this.eyes.instanceColor.array;
+    const SC = this.skin.instanceColor.array, BA = this.bodyAttr.array, SA = this.seedAttr.array;
     const G = this.gait.array, mode = this.colorBy, hidden = ui.hidden, turn = Math.min(1, a / 0.3);
     let m = 0;
     for (let i = 0; i < n; i++) {
@@ -773,7 +820,10 @@ export class Pen3D {
           }
         }
       }
-      const s = this.scale[Math.min(399, age)], o = m * 16;
+      // size from the lean weight where the frames carry it (format 3), else from age
+      const gest = fa.gest && fa.gest[i] ? (fa.gest[i] - 1) / 254 : 0;
+      const lean = fa.mass ? fa.mass[i] / 100 / (1 + PREG_GAIN * gest * gest) : 0;
+      const s = lean > 0 ? Math.cbrt(lean / ADULT_G) : this.scale[Math.min(399, age)], o = m * 16;
       if (kind === CLING) { // on the hopper face: nose up, back to the pen
         const sd = SIDES[side], nx = sd.n[0], nz = -sd.n[1];
         E[o] = 0; E[o + 1] = s; E[o + 2] = 0; E[o + 3] = 0;
@@ -788,15 +838,27 @@ export class Pen3D {
         D.p[m * 3] = x; D.p[m * 3 + 1] = y + 0.6 * s; D.p[m * 3 + 2] = z;
       }
       E[o + 12] = x; E[o + 13] = y; E[o + 14] = z; E[o + 15] = 1;
+      const ph = fa.coat ? coatOf(fa.coat[i]) : 0;
       let col;
-      if (mode === "natural") col = this.cFur[Math.min(12, age)];
+      if (mode === "natural") col = this.cFur[ph][Math.min(12, age)];
       else if (mode === "role") col = this.cRole[role];
       else if (mode === "sex") col = this.cSex[fa.flags[i] & 1];
       else if (mode === "action") col = this.cAction[ACTION_GROUP[fa.action[i]] ?? 0];
       else col = this.cStress[Math.min(7, Math.floor(((fa.stress[i] * 1.5) / 255) * 8))];
       FC[m * 3] = col.r; FC[m * 3 + 1] = col.g; FC[m * 3 + 2] = col.b;
-      const ce = age >= 13 ? this.cEye : this.cEyeShut;
+      const ce = age < 13 ? this.cEyeShut : ph ? this.cEyeDark : this.cEye;
       EC[m * 3] = ce.r; EC[m * 3 + 1] = ce.g; EC[m * 3 + 2] = ce.b;
+      const ck = ph ? this.cSkinDark : this.cSkinPale;
+      SC[m * 3] = ck.r; SC[m * 3 + 1] = ck.g; SC[m * 3 + 2] = ck.b;
+      // girth from condition, the belly from pregnancy, bites from wounds, bare patches from
+      // stress (not on the withdrawn: Calhoun's beautiful ones were sleek and unscarred)
+      const cond = fa.cond ? fa.cond[i] / 100 : 1, wnd = (fa.wounds[i] * 1.5) / 255;
+      const str = (fa.stress[i] * 1.5) / 255;
+      BA[m * 4] = Math.min(1.2, Math.max(0.75, cond));
+      BA[m * 4 + 1] = gest * gest;
+      BA[m * 4 + 2] = Math.min(1, wnd / 0.6);
+      BA[m * 4 + 3] = role === 6 ? 0 : Math.min(1, Math.max(0, (str - 0.9) / 0.6));
+      SA[m] = h01(slot, 41) * 97.0;
       // gait from the drawn displacement: still when the run is still
       const born = st.t - age;
       if (Math.abs(this.gborn[slot] - born) > 1.5) {
@@ -824,6 +886,9 @@ export class Pen3D {
     this.fur.instanceMatrix.needsUpdate = true;
     this.fur.instanceColor.needsUpdate = true;
     this.eyes.instanceColor.needsUpdate = true;
+    this.skin.instanceColor.needsUpdate = true;
+    this.bodyAttr.needsUpdate = true;
+    this.seedAttr.needsUpdate = true;
     this.gait.needsUpdate = true;
     const on = !!this.selAt;
     this.marker.visible = this.stalk.visible = on;

@@ -192,6 +192,39 @@ python scripts\viewer_serve.py
 - Pen: **101 × 101 inches**, **16 cells**, **256 nests**, food + water per cell (Calhoun design capacity 3840).
 - **Playground** (configurable AABB, default center): balls, tunnels, ramps. Toggle `--playground on|off`.
 
+## Mouse biology
+
+Every animal also carries a body weight and a coat genotype (`src/universe25/agents/body.py`).
+- **Weight.**
+  - The growth curve per sex is fitted to the Jackson Laboratory
+    [BALB/cJ body-weight chart](https://www.jax.org/jax-mice-and-services/strain-data-sheet-pages/body-weight-chart-000651)
+    (stock 000651), within 0.6 g, from an assumed birth weight of 1.3 g.
+  - Condition (energy, hunger, stress), pregnancy (about half again by term), lactation and a
+    late-life decline move the weight. These terms are assumptions, set in the `body` section
+    of the config.
+- **Coat colour.**
+  - Three loci with Mendelian inheritance: agouti (A/a), brown (Tyrp1, B/b) and albino (Tyr,
+    C/c).
+  - Calhoun's founders were BALB/c, A/A b/b c/c (coat loci
+    [Tyr^c, Tyrp1^b](https://taconic.com/mouse-model/balbc-nude)), so every mouse is albino, as
+    in the record.
+  - Two variants give coloured colonies: `coat.founders: cb6_cross` (BALB/c females × C57BL/6
+    males, a/a B/B C/C) and `wild_type`.
+- **The calibrated colony is unchanged.**
+  - Weight and coat have their own random stream and write no agent field, so the frozen colony
+    and its golden hashes are bit-identical (`tests/test_body.py`).
+  - `body.weight_effects: true` lets weight act on fights (the heavier wins more often), on
+    conception and litter size (thin females breed less), and on survival (emaciation). It is
+    uncalibrated.
+- **In the 3D view** each mouse is drawn at its weight, with:
+  - girth from its condition;
+  - a belly in pregnancy;
+  - its coat colour;
+  - bite wounds;
+  - bare patches under stress (not on the withdrawn, whom Calhoun described as sleek).
+- **Recordings and live runs** take `--coat` and `--weight-effects` (viewer_record) or the
+  matching controls in the live-run panel.
+
 ## Calibration targets (Calhoun 1973, Death Squared)
 
 | Landmark | Target | Definition used |

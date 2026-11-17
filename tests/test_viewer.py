@@ -100,7 +100,12 @@ def test_capture_is_read_only_and_codec_round_trips() -> None:
     assert np.array_equal(last["nest"], a.nest_id[idx])
     turn = last["heading"] * (2.0 * np.pi / 256.0) - a.heading[idx].astype(np.float64)
     assert np.abs(np.angle(np.exp(1j * turn))).max() <= np.pi / 256.0 + 1e-6
-    assert w["format"] == 2
+    assert w["format"] == 3
+    b = seen.body
+    assert np.abs(last["mass"] / 100.0 - b.mass[idx]).max() <= 0.0051
+    assert np.abs(last["cond"] / 100.0 - b.cond[idx]).max() <= 0.0051
+    assert np.array_equal(last["coat"], b.coat[idx])
+    assert np.array_equal(last["gest"] > 0, a.gestating[idx] > 0)
     assert sum(head["frames"][-1]["roles"]) == idx.size
     assert sum(head["frames"][-1]["cells"]) == idx.size
 

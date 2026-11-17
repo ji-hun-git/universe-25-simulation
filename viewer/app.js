@@ -126,6 +126,7 @@ function liveParams() {
     days: Number($("lvDays").value) || 1600, backend: $("lvBackend").value,
     playground: $("lvPlayground").value, free_substeps: Number($("lvK").value),
     ball_physics: $("lvPhys").checked, sample: $("lvSample").value, rate: S.speed,
+    coat: $("lvCoat").value, weight_effects: $("lvWeight").checked,
   };
 }
 
@@ -458,8 +459,12 @@ function legend() {
   const mode = active().colorBy, ring = S.view === "3d" ? "" : "ring";
   let items = [];
   if (mode === "natural") {
-    const N = P3.NATURAL;
-    items = [dot(N.fur, "fur (BALB/c, albino)", "edge"), dot(N.pup, "pup, hairless to ~day 7"), dot(N.eye, "eyes, open ~day 13")];
+    const N = P3.NATURAL, names = S.world.coats || ["albino"];
+    const variant = (S.world.body?.coat_founders || "balbc") !== "balbc";
+    items = variant
+      ? names.map((n, k) => dot(N.coats[k], n, k === 0 ? "edge" : ""))
+      : [dot(N.fur, "albino coat (BALB/c founders)", "edge"), dot(N.eye, "eyes, open ~day 13")];
+    items.push(dot(N.pup, "pup, hairless to ~day 7"));
   } else if (mode === "role") items = S.world.roles.map((n, r) => dot(pal.role[r], n, r === 6 ? ring : ""));
   else if (mode === "sex") items = [dot(pal.sex[0], "female"), dot(pal.sex[1], "male")];
   else if (mode === "action") items = ACTION_GROUP_NAMES.map((n, k) => dot(pal.action[k], n));
@@ -520,9 +525,22 @@ function inspector(fa) {
     ["cell", cell === 255 ? "–" : String(cell)],
     ["nest box", nest < 0 ? "none" : `${nest}${w.nests[nest]?.level ? ` · level ${w.nests[nest].level}` : ""}`],
     ["playground", fa.flags[i] & 2 ? "inside" : "outside"],
-    ["gestating", fa.flags[i] & 4 ? "yes" : "no"],
   ];
+  if (fa.mass) { // frame format 3: the body (agents/body.py)
+    const g = fa.gest[i], gd = w.body?.gestation_days || 20;
+    rows.push(["weight", `${(fa.mass[i] / 100).toFixed(1)} g · condition ${(fa.cond[i] / 100).toFixed(2)}`]);
+    rows.push(["coat", `${esc((w.coats || [])[coatPh(fa.coat[i])] || "–")} · ${genoText(fa.coat[i])}`]);
+    rows.push(["pregnant", g ? `day ${Math.round(((g - 1) / 254) * gd)} of ${nf(gd)}` : "no"]);
+  } else rows.push(["gestating", fa.flags[i] & 4 ? "yes" : "no"]);
   box.innerHTML = `<dl class="kv">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl><div class="row"><button class="btn" id="selFollow">${pen.followSel ? "Stop following" : "Follow"}</button><button class="btn" id="selClear">Clear</button></div>`;
+}
+
+// coat genotype bits A1 A2 B1 B2 C1 C2 (1 = dominant), as agents/body.py
+function coatPh(g) { if (!(g & 48)) return 0; return g & 3 ? (g & 12 ? 1 : 2) : (g & 12 ? 3 : 4); }
+function genoText(g) {
+  return [["A", "a", 0, 1], ["B", "b", 2, 3], ["C", "c", 4, 5]]
+    .map(([d, r, i, j]) => { const x = (g >> i) & 1, y = (g >> j) & 1; return `${x | y ? d : r}/${x & y ? d : r}`; })
+    .join(" "); // dominant allele first
 }
 
 function derived() {

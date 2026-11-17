@@ -51,6 +51,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--playground", default=None, choices=["on", "off"])
     p.add_argument("--free-substeps", type=int, default=None)
     p.add_argument("--ball-physics", action="store_true")
+    p.add_argument("--coat", default=None, choices=["balbc", "cb6_cross", "wild_type"],
+                   help="coat founders (default: the config's, BALB/c)")
+    p.add_argument("--weight-effects", action="store_true",
+                   help="let body weight act on fights, conception and survival (uncalibrated)")
     a = p.parse_args(argv)
 
     overrides: dict = {"seed": a.seed, "backend": a.backend, "snapshot_every_days": 0}
@@ -67,6 +71,10 @@ def main(argv: list[str] | None = None) -> int:
         pg["ball_physics"] = True
     if pg:
         overrides["playground"] = pg
+    if a.coat is not None:
+        overrides["coat"] = {"founders": a.coat}
+    if a.weight_effects:
+        overrides["body"] = {"weight_effects": True}
     cfg = load_config(a.config, overrides)
 
     OUT.mkdir(parents=True, exist_ok=True)

@@ -42,6 +42,7 @@ from universe25.agents.state import (
     AgentSoA,
     pick_backend,
 )
+from universe25.agents.body import Body
 from universe25.agents.policy import make_policy
 from universe25.config import SimConfig
 from universe25.metrics.calibration import rate_cessation_day, surviving_birth_cessation_day
@@ -195,6 +196,10 @@ class Universe25Sim:
         if oc is not None:
             self._open[list(oc)] = True
         self._closed_any = not bool(self._open.all())
+        # body weight and coat genetics (agents/body.py): their own stream, no AgentSoA field;
+        # they act on the colony only with body.weight_effects
+        self.body = Body(self)
+        self._weight_fx = bool(cfg.body.weight_effects)
         self._seed_initial()
         self._n_initial = int(self.agents.n_alive)
         # provenance (review 2026-11-09): the resolved config and a manifest in every run
@@ -236,6 +241,7 @@ class Universe25Sim:
                 role=ROLE_BREEDING_FEMALE if sex == SEX_F else ROLE_TERRITORIAL_MALE,
             )
         self.agents.n_alive = int(self.agents.alive.sum())
+        self.body.found(slots)
         if self._genetics:
             self.policy.found(self, slots)
 
@@ -297,6 +303,7 @@ class Universe25Sim:
             )
         else:
             a.lifespan[slot] = bio.max_age_days
+        self.body.spawn(slot, sex, age)
 
     # ------------------------------------------------------------------ step
     def step(self) -> None:
@@ -346,6 +353,7 @@ class Universe25Sim:
                 self._daily_courtship_erosion(alive)
                 self._daily_litter_abandonment(alive)
                 self._reproduce(alive)
+                self.body.update()
             if use_warp:
                 with nvtx_range("warp_stress_mortality_cells"):
                     # Device: density stress + mortality + cell/playground flags (CUDA Graph capable)
@@ -1185,6 +1193,8 @@ class Universe25Sim:
         if len(near) == 0:
             return
         j = int(self.rng.choice(near))
+        if self._weight_fx and self.rng.random() < self.body.fight_reversal(i, j):
+            i, j = j, i  # body weight: the heavier target wins the fight
         self._fought[i] = self._fought[j] = True
         self._fought_adult[i] |= bool(a.age_days[i] >= bio.maturity_days)
         self._fought_adult[j] |= bool(a.age_days[j] >= bio.maturity_days)
@@ -1694,6 +1704,8 @@ class Universe25Sim:
                 p *= floor + (1.0 - floor) * float(a.maternal_cap[f])
             if width > 0.0:
                 p *= float(dens_factor[j])
+            if self._weight_fx:  # body weight: a thin female conceives less
+                p *= self.body.fertility(int(f))
             if self.rng.random() < p:
                 a.gestating[f] = bio.gestation_days
                 a.role[f] = ROLE_NURSING
@@ -1703,6 +1715,7 @@ class Universe25Sim:
                 if bio.territories:
                     self._preg_sire[f] = self._serial[cands[0]]
                     self._mated[cands[0]] = True
+                self.body.conceive(int(f), cands)  # coat: the sire, on the body stream
                 if self._genetics:  # evo: the sire's genome goes into the pregnancy
                     self.policy.conceive(self, int(f), cands)
                 self._mated[f] = True
@@ -1729,8 +1742,10 @@ class Universe25Sim:
             a.gestating[i] = 0.0
             self._littered[i] = True
             if a.stress[i] > bio.maternal_neglect_stress and self.rng.random() < float(bio.stillbirth_neglect_p):
+                self.body.delivered(int(i))
                 continue  # stillbirth / neglect
-            litter = int(np.clip(self.rng.normal(bio.litter_mean, bio.litter_sd), 1, 12))
+            mean = bio.litter_mean * (self.body.litter_scale(int(i)) if self._weight_fx else 1.0)
+            litter = int(np.clip(self.rng.normal(mean, bio.litter_sd), 1, 12))
             try:
                 slots = a.free_slots(litter)
             except RuntimeError:
@@ -1767,11 +1782,13 @@ class Universe25Sim:
                     role=ROLE_PUP,
                 )
                 self._sire[int(s)] = sire
+                self.body.birth(int(i), int(s))
                 if self._genetics:  # evo: one parent's genome with mutation
                     self.policy.birth(self, int(i), int(s))
                 self._births += 1
                 self._last_young_day = self.day
             a.role[i] = ROLE_NURSING
+            self.body.delivered(int(i))
             # Maternal investment reflects the mother's own social development and what
             # adult-stage stress has left of her maternal capacity.
             a.maternal[i] = 0.9 * float(a.competence[i]) * float(a.maternal_cap[i])
@@ -1798,6 +1815,8 @@ class Universe25Sim:
         starving = (a.hunger[idx] > 1.2) | (a.thirst[idx] > 1.2)
         h += np.where(starving, float(bio.starvation_hazard_per_day), 0.0)
         h += np.where(a.energy[idx] < 0.05, 0.2, 0.0)
+        if self._weight_fx:  # body weight: emaciation
+            h += self.body.emaciation(idx)
         p = -np.expm1(-h * dt)
         dead = self.rng.random(idx.size) < p
         if dead.any():

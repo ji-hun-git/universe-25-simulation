@@ -1,7 +1,8 @@
 // Frames in the blob format of scripts/viewer_frames.py: a uint32 header length, the header
 // JSON, zero bytes to a multiple of 4, then the payloads. Each payload holds n animals as
 // uint16 slot, x, y (1/100 in), age (days); int16 nest; uint8 role, flags, stress, wounds,
-// energy, action, cell, and from format 2 heading (the last move's direction, 256 steps).
+// energy, action, cell; from format 2 heading (the last move's direction, 256 steps); from
+// format 3 the body: uint16 mass (1/100 g), uint8 condition (x 100), coat genotype, pregnancy.
 
 export function parseBlob(buf) {
   const hlen = new DataView(buf).getUint32(0, true);
@@ -30,7 +31,13 @@ function arrays(buf, at, n, format) {
   const action = take(Uint8Array, 1);
   const cell = take(Uint8Array, 1);
   const heading = format >= 2 ? take(Uint8Array, 1) : null;
-  return { n, slot, x, y, age, nest, role, flags, stress, wounds, energy, action, cell, heading };
+  const body = format >= 3;
+  const mass = body ? take(Uint16Array, 2) : null;
+  const cond = body ? take(Uint8Array, 1) : null;
+  const coat = body ? take(Uint8Array, 1) : null;
+  const gest = body ? take(Uint8Array, 1) : null;
+  return { n, slot, x, y, age, nest, role, flags, stress, wounds, energy, action, cell, heading,
+    mass, cond, coat, gest };
 }
 
 // All frames of one run, in time order: headers always kept, payloads while memory allows.

@@ -67,6 +67,13 @@
         <div class="field"><span>Sub-steps K</span>
           <select id="lvK"><option value="1">1 (reference)</option><option value="12">12 (phase 4)</option></select></div>
         <label class="check"><input type="checkbox" id="lvPhys"> Ball physics (P4-13; needs K = 12)</label>
+        <div class="field"><span>Coat founders</span>
+          <select id="lvCoat">
+            <option value="balbc">BALB/c, all albino (the record)</option>
+            <option value="cb6_cross">BALB/c × C57BL/6 (variant)</option>
+            <option value="wild_type">wild type, agouti (variant)</option>
+          </select></div>
+        <label class="check"><input type="checkbox" id="lvWeight"> Weight acts on fights, breeding, survival (uncalibrated)</label>
         <div class="field"><span>Frames</span>
           <select id="lvSample">
             <option value="day">one per day</option>
@@ -112,7 +119,7 @@
     <section>
       <h2>Colour by</h2>
       <div class="seg" role="group" aria-label="Colour by" id="colorSeg">
-        <button type="button" data-color="natural" id="furBtn" hidden title="BALB/c albino: white fur, pink skin, red eyes">Fur</button>
+        <button type="button" data-color="natural" id="furBtn" hidden title="Coat colour from each mouse's genotype; BALB/c founders are all albino">Fur</button>
         <button type="button" data-color="role" aria-pressed="true">Role</button>
         <button type="button" data-color="stress">Stress</button>
         <button type="button" data-color="sex">Sex</button>

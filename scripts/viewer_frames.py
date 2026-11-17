@@ -12,6 +12,8 @@ little-endian, array after array:
   uint8 role, flags (1 male, 2 in the playground, 4 gestating), stress and wounds (0-1.5 to
   0-255), energy (0-1 to 0-255), action (the last decision), cell (255 none), and (format 2)
   heading, the direction of the animal's last move (`AgentSoA.heading`, 0-2 pi to 0-255);
+  format 3 adds the body (agents/body.py): uint16 mass (1/100 g); uint8 condition (x 100),
+  coat genotype (six allele bits) and pregnancy (0 none, else 1 + 254 x gestation progress);
 then zero bytes to a multiple of 4. The header carries the time, the colony counters, colony
 summaries (by role and by cell, means, and V and G as `Universe25Sim._log_metrics` defines
 them) and the object positions (balls roll under the P4-13 physics; without it a MANIPULATE
@@ -34,6 +36,7 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
+from universe25.agents.body import COATS  # noqa: E402
 from universe25.agents.state import SEX_M  # noqa: E402
 from universe25.metrics.calibration import (  # noqa: E402
     EXTRA_LANDMARKS,
@@ -42,10 +45,12 @@ from universe25.metrics.calibration import (  # noqa: E402
 )
 from universe25.world.geometry import _wall_point  # noqa: E402
 
-FORMAT = 2  # 2: a heading byte after the cell (format 1 had none)
+FORMAT = 3  # 2: a heading byte after the cell; 3: the body (mass, condition, coat, pregnancy)
 FIELDS = (("slot", "<u2"), ("x", "<u2"), ("y", "<u2"), ("age", "<u2"), ("nest", "<i2"),
           ("role", "<u1"), ("flags", "<u1"), ("stress", "<u1"), ("wounds", "<u1"),
-          ("energy", "<u1"), ("action", "<u1"), ("cell", "<u1"), ("heading", "<u1"))
+          ("energy", "<u1"), ("action", "<u1"), ("cell", "<u1"), ("heading", "<u1"),
+          ("mass", "<u2"), ("cond", "<u1"), ("coat", "<u1"), ("gest", "<u1"))
+N_FIELDS = {1: 12, 2: 13, 3: 17}  # fields per format
 ROLE_NAMES = ("pup", "juvenile", "territorial male", "subordinate male", "breeding female",
               "nursing", "withdrawn")
 ACTION_NAMES = ("rest", "forage", "drink", "nest", "social", "explore", "manipulate",
@@ -115,6 +120,10 @@ def world_meta(sim) -> dict[str, Any]:
         "cell_capacity": float(w.capacity_design) / float(len(w.cells)),
         "roles": list(ROLE_NAMES),
         "actions": list(ACTION_NAMES),
+        "coats": list(COATS),
+        "body": {"coat_founders": str(cfg.coat.founders),
+                 "weight_effects": bool(cfg.body.weight_effects),
+                 "gestation_days": float(cfg.biology.gestation_days)},
         "run": {"seed": int(cfg.seed), "days": float(cfg.days),
                 "ticks_per_day": int(cfg.ticks_per_day), "free_substeps": int(sim.free_substeps),
                 "ball_physics": bool(sim.ball_physics), "backend": str(sim.backend),
@@ -127,6 +136,16 @@ def world_meta(sim) -> dict[str, Any]:
 
 def _q8(v: np.ndarray, hi: float) -> np.ndarray:
     return np.rint(np.clip(v, 0.0, hi) * (255.0 / hi)).astype("<u1")
+
+
+def cfg_gest(sim) -> float:
+    return float(sim.cfg.biology.gestation_days)
+
+
+def _gest8(left: np.ndarray, days: float) -> np.ndarray:
+    """Pregnancy: 0 none, else 1 + 254 x the share of gestation done."""
+    done = np.clip(1.0 - left.astype(np.float64) / max(1e-9, days), 0.0, 1.0)
+    return np.where(left > 0, 1 + np.rint(done * 254.0), 0).astype("<u1")
 
 
 def _heading8(h: np.ndarray) -> np.ndarray:
@@ -161,6 +180,10 @@ def capture(sim, t: float | None = None, sub: int = 0) -> tuple[dict[str, Any], 
         a.last_action[idx].astype("<u1"),
         np.where(cell < 0, 255, cell).astype("<u1"),
         _heading8(a.heading[idx]),
+        np.rint(np.clip(sim.body.mass[idx], 0.0, 655.0) * 100.0).astype("<u2"),
+        np.rint(np.clip(sim.body.cond[idx], 0.0, 2.55) * 100.0).astype("<u1"),
+        sim.body.coat[idx].astype("<u1"),
+        _gest8(a.gestating[idx], float(cfg_gest(sim))),
     ]
     payload = b"".join(p.tobytes() for p in parts)
     payload += b"\0" * ((-len(payload)) % 4)
@@ -216,7 +239,7 @@ def unpack(blob: bytes) -> tuple[dict[str, Any], list[dict[str, np.ndarray]]]:
     for fr in head["frames"]:
         n, p = fr["n"], base + fr["off"]
         arrs: dict[str, np.ndarray] = {}
-        for name, dt in FIELDS[:len(FIELDS) - (fmt < 2)]:
+        for name, dt in FIELDS[:N_FIELDS.get(fmt, len(FIELDS))]:
             arr = np.frombuffer(blob, dtype=dt, count=n, offset=p)
             arrs[name] = arr
             p += arr.nbytes

@@ -100,6 +100,10 @@ class LiveRun:
             pg["ball_physics"] = True
         if pg:
             overrides["playground"] = pg
+        if p.get("coat") in ("balbc", "cb6_cross", "wild_type"):
+            overrides["coat"] = {"founders": p["coat"]}
+        if p.get("weight_effects"):
+            overrides["body"] = {"weight_effects": True}
         return load_config(ROOT / preset["config"], overrides)
 
     def _push(self, frame: tuple[dict, bytes]) -> None:

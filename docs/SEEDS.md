@@ -84,3 +84,11 @@ be negligible, but new streams should come from `np.random.SeedSequence([seed, s
 | 60,000+ | v6 |
 | 70,000+ | v7 |
 | 80,000+ | next (v8) |
+
+## Random streams of one run
+
+| stream | made from | used for |
+|---|---|---|
+| simulator | `make_rng(seed)` | all of the colony's biology and movement |
+| free-time sub-steps | `make_rng(seed + 2_000_003)` | P4-8 sub-steps, only when K > 1 |
+| body | `SeedSequence([seed, 9_100_001])` | body size frames, coat inheritance and the sire of each pregnancy for the coat (agents/body.py, 2026-11-17). Never the simulator's stream, so the frozen colony is bit-identical with it. |
