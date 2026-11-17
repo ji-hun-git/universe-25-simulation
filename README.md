@@ -33,6 +33,7 @@ python scripts\calibrate.py --metrics _output\smoke\metrics.parquet --out _outpu
 A local colony viewer (phase 3, TASKS P2-1 / P2-2) has these parts:
 - **Pen view:** the pen from above (cells, nest boxes, food and water, the playground and its
   objects, every mouse).
+- **3D view:** the same frames in 3D, with every mouse at real scale (below).
 - **Control panel:** recordings, live runs, layers, colours and roles.
 - **Transport:** with Calhoun's phases on the timeline.
 - **Inspector:** follows one mouse.
@@ -47,6 +48,8 @@ $env:PYTHONPATH = "$PWD\src"
 python scripts\viewer_record.py --name ref_7000 --fine 150:1,450:1,750:1,1100:1
 # the phase-4 substrate with ball physics: every free-time sub-step in two one-day windows
 python scripts\viewer_record.py --name substrate_7000 --days 420 --free-substeps 12 --ball-physics --fine 300:1,400:1
+# the replica v2 pen (Calhoun layout), for the 3D view
+python scripts\viewer_record.py --name replica_7000 --config configs\replica_v2.yaml --days 900 --fine 150:1,300:1,450:1
 # serve it on 127.0.0.1 only, then open http://127.0.0.1:8765/
 python scripts\viewer_serve.py
 ```
@@ -63,6 +66,19 @@ python scripts\viewer_serve.py
   the same config and seed (`tests/test_viewer.py`).
 - **The Warp path is not the calibrated colony**: its mortality and cell kernels are not at
   parity with NumPy.
+- **3D view** (View: 3D, or `?view=3d` in the address): the pen in three.js, loaded from
+  cdn.jsdelivr.net on first use.
+  - Every mouse is drawn at real scale as a procedural albino mouse (the founders were
+    BALB/c), sized by age and facing the direction of its last move. Feet and tail move only
+    with the drawn displacement.
+  - The simulator is planar, so heights are drawn. A mouse at its own box is drawn in it, at
+    the box's level in the Calhoun layout. In that layout a mouse at a hopper or a water
+    platform is drawn on it.
+  - The Calhoun layout uses the record's sizes where it gives them; NOTES (2026-11-17) lists
+    what the drawing chooses.
+  - Camera: drag to orbit, right-drag to pan, wheel to zoom. Presets: Overview, Top and Floor;
+    a double-click returns to the overview. The walls on the camera's side are drawn in
+    outline.
 - Phases A–D are Calhoun's, shaded on the record's days. V and G are unvalidated and eval-only.
 - Keys:
   - Space: run or pause
@@ -71,8 +87,9 @@ python scripts\viewer_serve.py
   - `[` / `]`: slower or faster
   - F: follow the selected mouse
   - Esc: clear the selection
-- The charts load uPlot from cdn.jsdelivr.net, and the fonts come from Google Fonts. Without
-  them the page still runs, and the charts say so.
+- The charts load uPlot and the 3D view loads three.js from cdn.jsdelivr.net; the fonts come
+  from Google Fonts. Without them the plan view still runs, and the charts and the 3D view say
+  what is missing.
 
 ## World
 

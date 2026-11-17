@@ -1,8 +1,8 @@
 """Viewer capture (scripts/viewer_frames.py) only reads the simulator: a run with a frame taken
 at every tick and at every free-time sub-step (P4-13 ball physics, K = 12) ends in the same
 state as the same run without capture. The frame codec round-trips (positions to 1/100 in,
-stress and wounds to 1.5/255), payloads stay 4-byte aligned, and the Calhoun layout's 16
-triangles tile the pen."""
+stress and wounds to 1.5/255, headings to a 256th of a turn), payloads stay 4-byte aligned,
+and the Calhoun layout's 16 triangles tile the pen."""
 from __future__ import annotations
 
 import hashlib
@@ -98,6 +98,9 @@ def test_capture_is_read_only_and_codec_round_trips() -> None:
     assert np.array_equal(last["flags"] & 1, (a.sex[idx] == 1).astype(np.uint8))
     assert np.array_equal((last["flags"] >> 1) & 1, a.in_playground[idx].astype(np.uint8))
     assert np.array_equal(last["nest"], a.nest_id[idx])
+    turn = last["heading"] * (2.0 * np.pi / 256.0) - a.heading[idx].astype(np.float64)
+    assert np.abs(np.angle(np.exp(1j * turn))).max() <= np.pi / 256.0 + 1e-6
+    assert w["format"] == 2
     assert sum(head["frames"][-1]["roles"]) == idx.size
     assert sum(head["frames"][-1]["cells"]) == idx.size
 

@@ -1,5 +1,71 @@
 # Universe25 Play — NOTES
 
+## 2026-11-17 — Viewer: the colony in 3D with real-scale mice; no experiment
+
+**What Jason asked for.** After the plan view (below), Jason asked to see the colony with real
+3D mice. The commands are in the README section "Viewer".
+
+**What it adds.** No experiment, measurement, rule or stored result changed, and the simulator
+is untouched.
+- `viewer/pen3d.js` draws the pen in three.js 0.170, loaded from cdn.jsdelivr.net on first use.
+  - The control panel has a View switch (Plan or 3D) and camera presets: overview, top and
+    floor level. The view can follow one mouse.
+  - Recordings and live runs feed both views from the same frames.
+- **The mice.** Each mouse is drawn at real scale as a procedural albino mouse; the record's
+  strain is BALB/c.
+  - Body: about 3.35 in head and body, 3.1 in tail. Size grows with age, from about 0.37 of
+    adult at birth.
+  - Pups are pink and hairless to about day 7, with eyes shut to about day 13.
+  - Feet and tail move only with the drawn displacement, so a paused run stands still.
+  - Each mouse faces the direction of its last move. The frames now carry `AgentSoA.heading`
+    in one byte (frame format 2); format-1 files still open.
+  - `tests/test_viewer.py` checks the heading to 1/256 of a turn. It also checks that capture
+    still leaves the run bit-identical.
+
+**What is drawn, not simulated.** The simulator is planar.
+- **Heights.**
+  - A mouse at its own box's point is drawn inside that box. In the Calhoun layout that is at
+    the box's level: 8, 16, 24 or 32 in.
+  - In the Calhoun layout, a mouse at a hopper point is drawn on the hopper's face, and one at
+    a water point on the platform.
+- **Sizes the record gives** (docs/REPLICA_V2.md), used as given:
+  - walls 54 in, the lower 37 in mesh;
+  - tunnels 3 × 34 in;
+  - boxes 8 × 5 × 4 in at 8-in intervals;
+  - the hopper 6 × 10 in, halfway up the wall.
+- **Where the record is silent, the drawing chooses:**
+  - the boxes sit behind the wall mesh, 4 in wide, so that four fit along the four tunnels;
+  - the hopper's depth;
+  - the water platform at 35 in;
+  - 1-in partitions;
+  - the ring stands' shape.
+
+  It is a picture of the model, not a reconstruction of the apparatus.
+- **Grid layout.** The grid layout (the frozen colony) is an abstract pen. Its 256 boxes
+  stand on the floor at their points, and the playground objects lie among them.
+- **Cutaway.** The walls on the camera's side are drawn in outline, so the animals in their
+  boxes stay visible.
+
+**Recordings (`_output/viewer/`, not committed).**
+- `ref_7000.u25`, remade in format 2. It is the same run as before: peak 2,224 at day 529, and
+  9 alive at day 1,600.
+- `substrate_7000.u25`, remade. As before, 545 are alive at day 420.
+- `replica_7000.u25`, new: the Calhoun pen for the 3D view.
+  - Config: `configs/replica_v2.yaml` as it stands, which is the viewer's "replica v2 pen"
+    preset. It is not the final replica set (`configs/replica_v2_final.json`).
+  - Seed 7000, 900 days, every tick on days 150, 300 and 450.
+  - Peak 1,240 at day 666; 910 alive at day 900.
+  - One run, for viewing; not a result.
+
+**Checked in the browser** (1,600 × 940, light and dark):
+- The reference colony at its peak: 2,199 mice drawn on day 529, with about 3 ms of script
+  per update.
+- Glide inside a fine window: on day 450, 1,311 of the 1,877 mice had a moving gait. Mice in
+  boxes stay still.
+- Picking and following a mouse; the floor and top presets.
+- A live NumPy run of the replica pen (seed 7001, 140 days), drawn as it streamed.
+- The plan view is unchanged, and there is no horizontal scroll at 400 px.
+
 ## 2026-11-17 — Phase 3 viewer: the colony from above, live runs and a dashboard; no experiment
 
 **What Jason asked for.** Jason asked to see the simulation like a control panel and a

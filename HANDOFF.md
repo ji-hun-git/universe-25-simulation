@@ -8,7 +8,8 @@
 
 > **Status 2026-11-17:** the phase 3 viewer is built (`viewer/`, README "Viewer", TASKS P2-1 /
 > P2-2): the colony from above with a control panel, recordings and live runs (NumPy, or Warp
-> on the GPU), and a dashboard. It adds no experiment. Phase 4's scarcity line stopped on
+> on the GPU), and a dashboard; and a 3D view with every mouse at real scale
+> (`viewer/pen3d.js`, heights drawn, not simulated). It adds no experiment. Phase 4's scarcity line stopped on
 > 2026-11-16 (below).
 
 > **Status 2026-11-09:**
@@ -950,8 +951,10 @@ in the peak count (N@736 3–4 % low) and the slow realisations' late tail (N@14
 ### Phase 3 — Visuals + dashboard
 **Built 2026-11-17** (TASKS P2-1 / P2-2, README "Viewer"): `viewer/` (static HTML / JS),
 `scripts/viewer_record.py` (recordings), `scripts/viewer_serve.py` (local server, live runs),
-`scripts/viewer_frames.py` (read-only capture; `tests/test_viewer.py`). Not done: shadcn (plain
-HTML / CSS instead), a README screenshot, an offline copy of uPlot.
+`scripts/viewer_frames.py` (read-only capture; `tests/test_viewer.py`). The 3D view
+(`viewer/pen3d.js`, three.js) came the same day; its heights are drawn, not simulated (NOTES
+2026-11-17). Not done: shadcn (plain HTML / CSS instead), a README screenshot, offline copies
+of uPlot and three.js.
 
 **Accept when:**
 - Top-down 16-cell pen viewer (mice as role-colored dots; stress trail / hopper heatmap)

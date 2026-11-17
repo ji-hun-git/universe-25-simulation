@@ -1,7 +1,7 @@
 // Frames in the blob format of scripts/viewer_frames.py: a uint32 header length, the header
 // JSON, zero bytes to a multiple of 4, then the payloads. Each payload holds n animals as
 // uint16 slot, x, y (1/100 in), age (days); int16 nest; uint8 role, flags, stress, wounds,
-// energy, action, cell.
+// energy, action, cell, and from format 2 heading (the last move's direction, 256 steps).
 
 export function parseBlob(buf) {
   const hlen = new DataView(buf).getUint32(0, true);
@@ -10,7 +10,7 @@ export function parseBlob(buf) {
   return { head, buf, base };
 }
 
-function arrays(buf, at, n) {
+function arrays(buf, at, n, format) {
   let p = at;
   const take = (Ctor, size) => {
     const a = new Ctor(buf, p, n);
@@ -29,7 +29,8 @@ function arrays(buf, at, n) {
   const energy = take(Uint8Array, 1);
   const action = take(Uint8Array, 1);
   const cell = take(Uint8Array, 1);
-  return { n, slot, x, y, age, nest, role, flags, stress, wounds, energy, action, cell };
+  const heading = format >= 2 ? take(Uint8Array, 1) : null;
+  return { n, slot, x, y, age, nest, role, flags, stress, wounds, energy, action, cell, heading };
 }
 
 // All frames of one run, in time order: headers always kept, payloads while memory allows.
@@ -72,7 +73,7 @@ export class Store {
     if (f) return f;
     const s = this.src[i];
     if (!s) return null;
-    f = arrays(s.buf, s.at, this.meta[i].n);
+    f = arrays(s.buf, s.at, this.meta[i].n, this.world.format || 1);
     if (this.cache.size > 48) this.cache.delete(this.cache.keys().next().value);
     this.cache.set(i, f);
     return f;

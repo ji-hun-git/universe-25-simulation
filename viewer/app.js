@@ -1,5 +1,6 @@
-// Universe 25 viewer: control panel, pen view, transport and dashboard over one store of
-// frames, from a recording (scripts/viewer_record.py) or a live run (scripts/viewer_serve.py).
+// Universe 25 viewer: control panel, pen view (plan or 3D), transport and dashboard over one
+// store of frames, from a recording (scripts/viewer_record.py) or a live run
+// (scripts/viewer_serve.py). The 3D view (pen3d.js) loads three.js on first use.
 import { parseBlob, Store } from "./codec.js";
 import { ACTION_GROUP_NAMES, Pen, palette, tokens } from "./pen.js";
 import { Dash } from "./dash.js";
@@ -10,11 +11,18 @@ const S = {
   world: null, store: null, summary: null, src: "rec", name: "", t: 0, running: false,
   speed: 20, glide: true, span: 0, api: false, info: null, live: null, sel: null,
   lastNow: 0, lastUi: 0, lastDash: 0, lastCursor: 0, dashVersion: -1, derivedVersion: -1,
-  peak: null, fine: [],
+  peak: null, fine: [], view: "2d",
 };
 
 const pen = new Pen($("pen"), { onSelect: select, onView: scaleBar });
 const dash = new Dash($("dash"), { onSeek: seek });
+let pen3d = null, P3 = null; // the 3D view and its module, once loaded
+const active = () => (S.view === "3d" && pen3d ? pen3d : pen);
+const HINT = {
+  "2d": "drag pan · wheel zoom · click a mouse · double-click reset",
+  "3d": "drag orbit · right-drag pan · wheel zoom · click a mouse · double-click overview",
+};
+const NOTE3D = "Mice at real scale; the colony is BALB/c (albino). The simulator is planar, so heights are drawn: a mouse at its own box is drawn in it, at a hopper or water platform on it (Calhoun layout).";
 
 // ------------------------------------------------------------------ theme
 function theme() {
@@ -29,6 +37,7 @@ function setTheme(mode) {
   try { localStorage.setItem("u25-theme", mode); } catch (e) { /* storage off */ }
   syncTheme();
   pen.retheme();
+  pen3d?.retheme();
   if (S.world) { dash.build(S.world); roleChecks(); }
   legend();
   S.lastUi = 0;
@@ -57,6 +66,7 @@ function openRun(world, store, { src, name, summary, span }) {
   S.span = span; S.sel = null; pen.sel = null; pen.followSel = false;
   S.dashVersion = -1; S.derivedVersion = -1;
   pen.setWorld(world);
+  pen3d?.setWorld(world);
   dash.span = span;
   dash.store = store;
   dash.build(world);
@@ -65,7 +75,8 @@ function openRun(world, store, { src, name, summary, span }) {
   legend();
   sourceLabel();
   $("empty").hidden = true;
-  for (const id of ["hudTL", "hudBL", "legend"]) $(id).hidden = false;
+  for (const id of ["hudTL", "legend"]) $(id).hidden = false;
+  $("hudBL").hidden = S.view === "3d";
   $("followWrap").hidden = src !== "live";
   S.t = store.t0;
   S.lastUi = 0;
@@ -342,24 +353,65 @@ for (const cb of document.querySelectorAll("[data-layer]")) {
   cb.addEventListener("change", () => { pen.layers[cb.dataset.layer] = cb.checked; pen.layerKey = ""; pen.clearTrails(); });
 }
 for (const b of document.querySelectorAll("#colorSeg button")) {
-  b.addEventListener("click", () => {
-    pen.colorBy = b.dataset.color;
-    for (const o of document.querySelectorAll("#colorSeg button")) o.setAttribute("aria-pressed", String(o === b));
-    legend();
-  });
+  b.addEventListener("click", () => { active().colorBy = b.dataset.color; syncColor(); legend(); });
 }
+function syncColor() { // each view keeps its own colour mode; Fur is the 3D view's own
+  $("furBtn").hidden = S.view !== "3d";
+  for (const o of document.querySelectorAll("#colorSeg button")) o.setAttribute("aria-pressed", String(o.dataset.color === active().colorBy));
+}
+
+// ------------------------------------------------------------------ plan or 3D
+async function setView(v) {
+  if (v === "3d" && !pen3d) {
+    const nt = $("viewNote");
+    nt.hidden = false;
+    note("viewNote", "Loading three.js from cdn.jsdelivr.net…");
+    $("pen3d").hidden = false;
+    try {
+      P3 = await import("./pen3d.js");
+      pen3d = new P3.Pen3D($("pen3d"), pen, { onSelect: select });
+      if (S.world) pen3d.setWorld(S.world);
+    } catch (e) {
+      $("pen3d").hidden = true;
+      note("viewNote", `The 3D view could not start (${e.message}). It needs WebGL and three.js from cdn.jsdelivr.net.`, true);
+      return;
+    }
+  }
+  S.view = v;
+  $("pen").hidden = v !== "2d";
+  $("pen3d").hidden = v !== "3d";
+  for (const b of document.querySelectorAll("#viewSeg button")) b.setAttribute("aria-pressed", String(b.dataset.view === v));
+  $("camRow").hidden = v !== "3d";
+  $("viewNote").hidden = v !== "3d";
+  if (v === "3d") note("viewNote", NOTE3D);
+  $("hudTR").textContent = HINT[v];
+  if (S.world) $("hudBL").hidden = v === "3d";
+  try { localStorage.setItem("u25-view", v); } catch (e) { /* storage off */ }
+  pen.layerKey = "";
+  if (pen3d) pen3d.dirty = true;
+  syncColor();
+  legend();
+  S.lastUi = 0;
+}
+for (const b of document.querySelectorAll("#viewSeg button")) b.addEventListener("click", () => setView(b.dataset.view));
+for (const b of document.querySelectorAll("[data-cam]")) b.addEventListener("click", () => pen3d?.view(b.dataset.cam));
 
 function legend() {
   const el = $("legend");
   if (!S.world) return;
   const tok = tokens(), pal = palette(tok);
   const dot = (c, label, cls = "") => `<span><b class="${cls}" style="background:${c}"></b>${esc(label)}</span>`;
+  const mode = active().colorBy, ring = S.view === "3d" ? "" : "ring";
   let items = [];
-  if (pen.colorBy === "role") items = S.world.roles.map((n, r) => dot(pal.role[r], n, r === 6 ? "ring" : ""));
-  else if (pen.colorBy === "sex") items = [dot(pal.sex[0], "female"), dot(pal.sex[1], "male")];
-  else if (pen.colorBy === "action") items = ACTION_GROUP_NAMES.map((n, k) => dot(pal.action[k], n));
+  if (mode === "natural") {
+    const N = P3.NATURAL;
+    items = [dot(N.fur, "fur (BALB/c, albino)", "edge"), dot(N.pup, "pup, hairless to ~day 7"), dot(N.eye, "eyes, open ~day 13")];
+  } else if (mode === "role") items = S.world.roles.map((n, r) => dot(pal.role[r], n, r === 6 ? ring : ""));
+  else if (mode === "sex") items = [dot(pal.sex[0], "female"), dot(pal.sex[1], "male")];
+  else if (mode === "action") items = ACTION_GROUP_NAMES.map((n, k) => dot(pal.action[k], n));
   else items = [dot(pal.stress[0], "stress 0"), dot(pal.stress[3], "0.5"), dot(pal.stress[7], "1.0 +")];
   items.push(dot(tok.ochre, "food", "sq"), dot(tok.slate, "water"), dot(tok.nest, "nest box", "sq"));
+  if (S.view === "3d") items.push('<span class="aside">heights drawn; the model is planar</span>');
   el.innerHTML = items.join("");
 }
 
@@ -484,7 +536,7 @@ function hud(i, m) {
 }
 
 function scaleBar() {
-  if (!S.world) return;
+  if (!S.world || S.view === "3d") return;
   const s = pen.s;
   const L = [1, 2, 5, 10, 20, 50].find((v) => v * s >= 50) || 50;
   $("scaleBar").style.width = `${Math.round(L * s)}px`;
@@ -494,7 +546,7 @@ function scaleBar() {
 // ------------------------------------------------------------------ main loop
 function render() {
   const st = S.store;
-  if (!st || !st.length) { pen.draw({}); return; }
+  if (!st || !st.length) { active().draw({}); return; }
   const ia = st.held(st.indexAt(S.t));
   if (ia < 0) return;
   const fa = st.frame(ia), ma = st.meta[ia];
@@ -503,7 +555,7 @@ function render() {
     const ta = st.t[ia], tb = st.t[ia + 1];
     if (tb > ta && tb - ta <= 0.26 && S.t > ta) { fb = st.frame(ia + 1); mb = st.meta[ia + 1]; alpha = Math.min(1, (S.t - ta) / (tb - ta)); }
   }
-  pen.draw({ fa, fb, ma, mb, alpha, t: S.t });
+  active().draw({ fa, fb, ma, mb, alpha, t: S.t });
   const now = performance.now();
   if (st.version !== S.dashVersion && now - S.lastDash > (S.src === "live" ? 700 : 0)) {
     S.dashVersion = st.version; S.lastDash = now;
@@ -553,7 +605,7 @@ window.addEventListener("drop", async (e) => {
 });
 window.addEventListener("resize", () => { S.lastUi = 0; });
 
-window.u25 = { S, pen, dash, seek, select, setTheme }; // for the console
+window.u25 = { S, pen, dash, seek, select, setTheme, setView, render, get pen3d() { return pen3d; } }; // for the console
 
 async function init() {
   try {
@@ -572,9 +624,12 @@ async function init() {
     $("liveTab").title = "Live runs need scripts/viewer_serve.py";
     note("recNote", "Opened without the local server: drop a .u25 recording on the window. Live runs need scripts/viewer_serve.py.");
   }
-  const want = new URLSearchParams(location.search).get("rec");
+  const params = new URLSearchParams(location.search), want = params.get("rec");
   const pick = recs.find((r) => r.name === want) || recs.find((r) => r.name === "ref_7000") || recs[0];
   if (pick) { recSel.value = pick.name; loadRecording(pick.name); }
+  let view = params.get("view");
+  try { view ||= localStorage.getItem("u25-view"); } catch (e) { /* storage off */ }
+  if (view === "3d") setView("3d");
   requestAnimationFrame(loop);
 }
 init();

@@ -1003,6 +1003,18 @@ pen.js, dash.js, codec.js), `scripts/viewer_frames.py`, `scripts/viewer_record.p
   deaths. The Warp path is not the calibrated colony (HANDOFF: mortality and cells parity
   open), and the control panel says so.
 
+**3D view, added 2026-11-17** (Jason: real 3D mice). `viewer/pen3d.js`, three.js 0.170 from
+cdn.jsdelivr.net, loaded on first use.
+- Every mouse is drawn at real scale as a procedural albino mouse (BALB/c), sized by age and
+  facing its last move. Since frame format 2 the frames carry the heading
+  (`scripts/viewer_frames.py`).
+- Heights are drawn, not simulated. A mouse at its own box is drawn in it, at the box's level
+  in the Calhoun layout; a mouse at a hopper or water platform is drawn on it. What the drawing
+  chooses where the record is silent is in NOTES 2026-11-17.
+- Camera presets (overview, top, floor), follow and picking; the walls on the camera's side in
+  outline.
+- Not done: an offline copy of three.js. The USD / Omniverse path (P3-4) is separate.
+
 ---
 
 ## P2-2 — Dashboard (uPlot + restyled shadcn)

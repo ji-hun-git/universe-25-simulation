@@ -10,7 +10,8 @@ A frame is a JSON header and a payload. The payload holds the n animals alive in
 little-endian, array after array:
   uint16 slot, x and y (1/100 in), age (whole days); int16 nest (-1 none);
   uint8 role, flags (1 male, 2 in the playground, 4 gestating), stress and wounds (0-1.5 to
-  0-255), energy (0-1 to 0-255), action (the last decision), cell (255 none);
+  0-255), energy (0-1 to 0-255), action (the last decision), cell (255 none), and (format 2)
+  heading, the direction of the animal's last move (`AgentSoA.heading`, 0-2 pi to 0-255);
 then zero bytes to a multiple of 4. The header carries the time, the colony counters, colony
 summaries (by role and by cell, means, and V and G as `Universe25Sim._log_metrics` defines
 them) and the object positions (balls roll under the P4-13 physics; without it a MANIPULATE
@@ -41,7 +42,10 @@ from universe25.metrics.calibration import (  # noqa: E402
 )
 from universe25.world.geometry import _wall_point  # noqa: E402
 
-FORMAT = 1
+FORMAT = 2  # 2: a heading byte after the cell (format 1 had none)
+FIELDS = (("slot", "<u2"), ("x", "<u2"), ("y", "<u2"), ("age", "<u2"), ("nest", "<i2"),
+          ("role", "<u1"), ("flags", "<u1"), ("stress", "<u1"), ("wounds", "<u1"),
+          ("energy", "<u1"), ("action", "<u1"), ("cell", "<u1"), ("heading", "<u1"))
 ROLE_NAMES = ("pup", "juvenile", "territorial male", "subordinate male", "breeding female",
               "nursing", "withdrawn")
 ACTION_NAMES = ("rest", "forage", "drink", "nest", "social", "explore", "manipulate",
@@ -125,6 +129,12 @@ def _q8(v: np.ndarray, hi: float) -> np.ndarray:
     return np.rint(np.clip(v, 0.0, hi) * (255.0 / hi)).astype("<u1")
 
 
+def _heading8(h: np.ndarray) -> np.ndarray:
+    """Radians to 256 steps of the full turn (0 = +x, counter-clockwise, y up)."""
+    turn = np.mod(h.astype(np.float64), 2.0 * np.pi) / (2.0 * np.pi)
+    return (np.rint(turn * 256.0).astype(np.int64) % 256).astype("<u1")
+
+
 def capture(sim, t: float | None = None, sub: int = 0) -> tuple[dict[str, Any], bytes]:
     """The colony now: header and payload (module docstring). `t` defaults to `sim.day`;
     `sub` > 0 marks a free-time sub-step frame inside a tick."""
@@ -150,6 +160,7 @@ def capture(sim, t: float | None = None, sub: int = 0) -> tuple[dict[str, Any], 
         _q8(a.energy[idx], 1.0),
         a.last_action[idx].astype("<u1"),
         np.where(cell < 0, 255, cell).astype("<u1"),
+        _heading8(a.heading[idx]),
     ]
     payload = b"".join(p.tobytes() for p in parts)
     payload += b"\0" * ((-len(payload)) % 4)
@@ -200,14 +211,12 @@ def unpack(blob: bytes) -> tuple[dict[str, Any], list[dict[str, np.ndarray]]]:
     (hlen,) = struct.unpack_from("<I", blob, 0)
     head = json.loads(blob[4:4 + hlen].decode("utf-8"))
     base = 4 + hlen + ((-(4 + hlen)) % 4)
+    fmt = int((head.get("world") or {}).get("format", FORMAT))
     out = []
     for fr in head["frames"]:
         n, p = fr["n"], base + fr["off"]
         arrs: dict[str, np.ndarray] = {}
-        for name, dt in (("slot", "<u2"), ("x", "<u2"), ("y", "<u2"), ("age", "<u2"),
-                         ("nest", "<i2"), ("role", "<u1"), ("flags", "<u1"),
-                         ("stress", "<u1"), ("wounds", "<u1"), ("energy", "<u1"),
-                         ("action", "<u1"), ("cell", "<u1")):
+        for name, dt in FIELDS[:len(FIELDS) - (fmt < 2)]:
             arr = np.frombuffer(blob, dtype=dt, count=n, offset=p)
             arrs[name] = arr
             p += arr.nbytes

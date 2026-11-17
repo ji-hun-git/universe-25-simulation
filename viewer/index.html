@@ -13,6 +13,11 @@
   try { const t = localStorage.getItem("u25-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
 </script>
 <script src="https://cdn.jsdelivr.net/npm/uplot@1.6.30/dist/uPlot.iife.min.js"></script>
+<script type="importmap">
+{ "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/" } }
+</script>
 <script type="module" src="app.js"></script>
 </head>
 <body>
@@ -78,18 +83,33 @@
     </section>
 
     <section>
+      <h2>View</h2>
+      <div class="seg" role="group" aria-label="View" id="viewSeg">
+        <button type="button" data-view="2d" aria-pressed="true">Plan</button>
+        <button type="button" data-view="3d">3D</button>
+      </div>
+      <div class="row" id="camRow" hidden>
+        <button type="button" class="btn" data-cam="overview" title="Double-click the pen">Overview</button>
+        <button type="button" class="btn" data-cam="top">Top</button>
+        <button type="button" class="btn" data-cam="floor">Floor</button>
+      </div>
+      <p class="note" id="viewNote" hidden></p>
+    </section>
+
+    <section>
       <h2>Layers</h2>
       <label class="check"><input type="checkbox" data-layer="cells" checked> Cells and labels</label>
       <label class="check"><input type="checkbox" data-layer="nests" checked> Nest boxes (residents)</label>
       <label class="check"><input type="checkbox" data-layer="hoppers" checked> Food and water</label>
       <label class="check"><input type="checkbox" data-layer="playground" checked> Playground and objects</label>
       <label class="check"><input type="checkbox" data-layer="density"> Cell density shading</label>
-      <label class="check"><input type="checkbox" data-layer="trails"> Motion trails</label>
+      <label class="check"><input type="checkbox" data-layer="trails"> Motion trails (plan)</label>
     </section>
 
     <section>
       <h2>Colour by</h2>
       <div class="seg" role="group" aria-label="Colour by" id="colorSeg">
+        <button type="button" data-color="natural" id="furBtn" hidden title="BALB/c albino: white fur, pink skin, red eyes">Fur</button>
         <button type="button" data-color="role" aria-pressed="true">Role</button>
         <button type="button" data-color="stress">Stress</button>
         <button type="button" data-color="sex">Sex</button>
@@ -105,6 +125,7 @@
 
   <main class="stage" id="stage">
     <canvas id="pen" aria-label="Top-down view of the pen"></canvas>
+    <canvas id="pen3d" aria-label="The pen in 3D" hidden></canvas>
     <div class="hud tl" id="hudTL" hidden></div>
     <div class="hud tr" id="hudTR">drag pan · wheel zoom · click a mouse · double-click reset</div>
     <div class="hud bl" id="hudBL" hidden><div class="scalebar"><i id="scaleBar"></i><span id="scaleText">10 in</span></div></div>

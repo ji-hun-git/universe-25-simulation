@@ -242,6 +242,8 @@ table.cells td.bar i.over { background: var(--stress); }
 .legend b { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 .legend b.sq { border-radius: 0; }
 .legend b.ring { background: transparent !important; border: 1.5px solid var(--umber); }
+.legend b.edge { box-shadow: inset 0 0 0 1px var(--ink-3); }
+.legend .aside { color: var(--ink-3); }
 .empty {
   position: absolute;
   inset: 0;
