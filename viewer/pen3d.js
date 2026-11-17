@@ -35,6 +35,7 @@ const EYE = "#701B20";
 export const NATURAL = { fur: FUR, pup: PUP, eye: EYE }; // for the legend
 const FLOOR = 0, BOX = 1, CLING = 2, SHELF = 3;
 // wall k: inward normal n and counter-clockwise tangent t, in the model's plane (y up)
+const NEAR = [0, 1, -1]; // a forager may use its own hopper or a wall neighbour's (replica M3)
 const SIDES = [{ n: [0, 1], t: [1, 0] }, { n: [-1, 0], t: [0, 1] }, { n: [0, -1], t: [-1, 0] },
   { n: [1, 0], t: [0, -1] }];
 
@@ -252,10 +253,11 @@ function uvScale(geo, su, sv) {
 
 // ------------------------------------------------------------------ the view
 export class Pen3D {
-  constructor(canvas, ui, { onSelect } = {}) {
+  constructor(canvas, ui, { onSelect, onFollow } = {}) {
     this.c = canvas;
     this.ui = ui;
     this.onSelect = onSelect;
+    this.onFollow = onFollow; // told when a camera preset stops following
     this.colorBy = "natural";
     this.world = null;
     this.dirty = true;
@@ -450,6 +452,7 @@ export class Pen3D {
     // nest boxes
     this.boxes = new Array(w.nests.length);
     this.boxSlots = new Array(w.nests.length);
+    this.boxFloors = [];
     const groups = new Map(); // side (or -1) -> nest ids
     w.nests.forEach((nb, id) => {
       const k = cal ? wallOf(nb.x, nb.y, W, H) : -1;
@@ -483,6 +486,7 @@ export class Pen3D {
         this.boxSlots[id] = { mesh: floors, j };
       });
       add(walls, "nests", {}, k); add(floors, "nests", {}, k);
+      this.boxFloors.push(floors);
     }
     // Calhoun: the tunnels (one per four boxes), hoppers and water platforms on the wall
     this.hoppers = []; this.waters = [];
@@ -703,7 +707,7 @@ export class Pen3D {
       } else if (f.cell[i] < nc) {
         const c = f.cell[i];
         for (let o = 0; o < (cal ? 3 : 1); o++) {
-          const cc = (c + [0, 1, nc - 1][o]) % nc, hp = this.hoppers[cc], wt = this.waters[cc];
+          const cc = (c + NEAR[o] + nc) % nc, hp = this.hoppers[cc], wt = this.waters[cc];
           if (Math.abs(sx - hp.sx) < AT && Math.abs(sy - hp.sy) < AT) {
             const k = hopK[cc]++;
             if (cal) {
@@ -848,16 +852,14 @@ export class Pen3D {
     for (let i = 0; i < fa.n; i++) { const k = fa.nest[i]; if (k >= 0 && k < cnt.length) cnt[k]++; }
     const base = (this._boxBase ||= new THREE.Color()), c = (this._boxCol ||= new THREE.Color());
     base.set(mix(this.tok.paper2, this.tok.paper3, 0.5));
-    const touched = new Set();
     for (let k = 0; k < cnt.length; k++) {
       const bs = this.boxSlots[k];
       if (!bs) continue;
       c.copy(base).lerp(this.cNest, cnt[k] ? 0.25 + 0.65 * Math.min(1, cnt[k] / (w.nests[k].cap || 15)) : 0);
       const arr = bs.mesh.instanceColor.array;
       arr[bs.j * 3] = c.r; arr[bs.j * 3 + 1] = c.g; arr[bs.j * 3 + 2] = c.b;
-      touched.add(bs.mesh);
     }
-    for (const mesh of touched) mesh.instanceColor.needsUpdate = true;
+    for (const mesh of this.boxFloors) mesh.instanceColor.needsUpdate = true;
   }
 
   _objects(st) {
@@ -965,7 +967,7 @@ export class Pen3D {
     const pr = presets[name];
     if (!pr) return;
     const [p, t] = pr.map((v) => new THREE.Vector3(...v));
-    this.ui.followSel = name === "follow" ? this.ui.followSel : false;
+    if (name !== "follow" && this.ui.followSel) { this.ui.followSel = false; this.onFollow?.(); }
     if (instant) { this.camera.position.copy(p); this.controls.target.copy(t); this.controls.update(); this.tween = null; }
     else this.tween = { p0: this.camera.position.clone(), t0: this.controls.target.clone(), p, t, at: performance.now(), dur: 650 };
     this.dirty = true;

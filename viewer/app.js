@@ -369,7 +369,7 @@ async function setView(v) {
     $("pen3d").hidden = false;
     try {
       P3 = await import("./pen3d.js");
-      pen3d = new P3.Pen3D($("pen3d"), pen, { onSelect: select });
+      pen3d = new P3.Pen3D($("pen3d"), pen, { onSelect: select, onFollow: () => { S.lastUi = 0; } });
       if (S.world) pen3d.setWorld(S.world);
     } catch (e) {
       $("pen3d").hidden = true;

@@ -1,5 +1,43 @@
 # Universe25 Play — NOTES
 
+## 2026-11-17 — Bug review of the viewer and figure code; the booklet; no experiment
+
+**What Jason asked for.** Run a bug-fix pass, make a booklet that introduces the research and
+manage it, and explain what the project is.
+
+**Bug review** of today's code: `viewer/`, `scripts/viewer_*.py`, `scripts/hero_figure.py` and
+their tests. Seven findings; six fixed, one skipped.
+- `hero_figure.py renders()` crashed when a fresh shot lacked one of its PNGs. It now falls back
+  to the committed renders.
+- After a camera preset or a double-click stopped following a mouse in 3D, the inspector kept
+  saying "Stop following" until its next refresh. The 3D view now tells the app.
+- Cleanups:
+  - `hero_figure.py` lines over 100 characters (CONTRIBUTING.md);
+  - repeated `sys.path` inserts;
+  - a per-mouse array allocation in the 3D placement;
+  - a per-update `Set` in the box colours.
+- Skipped: `hero_figure.run_one` repeats the loop of `calib.fast_eval.evaluate_params`.
+  - Reusing it would change calibration code in `src/`, where another worker may be editing.
+  - The 48-of-48 check against `rows.json` guards the duplication.
+
+**The booklet** (`docs/booklet/universe25_booklet.pdf`, eight A4 pages):
+1. the cover;
+2. the record;
+3. the model;
+4. the hero figure;
+5. the predictive check;
+6. the play question and its tests;
+7. earlier research;
+8. how to explore.
+
+How it is made and managed:
+- `scripts/booklet.py` writes `docs/booklet.html` and prints it with headless Edge.
+- The predictive-check table, the ledger, the render's day and count, and the edition stamp come
+  from `docs/figures/hero.json` and `phase4_ledger.yaml`. The prose follows the digest, README
+  and PRIOR_WORK.
+- `tests/test_booklet.py` fails when the page is stale.
+- CONTRIBUTING.md now says to remake the booklet after the hero figure.
+
 ## 2026-11-17 — Hero figure, earlier Universe 25 research, repo update; no experiment
 
 **What Jason asked for.**

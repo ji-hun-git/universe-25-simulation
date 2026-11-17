@@ -1166,6 +1166,10 @@ Universe 25 research, and a managed hero figure):
 - `docs/PRIOR_WORK.md` summarises earlier Universe 25 research: Calhoun's programme,
   follow-ups and non-replications, the human-crowding debate, histories, and models.
 - Not done: an abstract, how to cite, and the public opening (Jason's call).
+- 2026-11-17, later: an eight-page booklet (`docs/booklet/universe25_booklet.pdf`), printed from
+  `docs/booklet.html` by `scripts/booklet.py`.
+  - Its tables come from the hero figure's data, and `tests/test_booklet.py` fails when it is
+    stale.
 
 ---
 

@@ -3,7 +3,8 @@
 ![Universe 25, simulated. a: the frozen colony on its fullest day in 3D. b: population against Calhoun's census on 48 seeds. c: where the colony crowds, and who withdraws. d: the phase-4 play-emergence tests so far.](docs/figures/hero.png)
 
 <sub>The hero figure is remade by `scripts/hero_figure.py`. What each panel shows, and what it does
-not claim: [docs/FIGURES.md](docs/FIGURES.md).</sub>
+not claim: [docs/FIGURES.md](docs/FIGURES.md). An eight-page introduction for readers outside the
+repo: [docs/booklet/universe25_booklet.pdf](docs/booklet/universe25_booklet.pdf).</sub>
 
 Research-grade **Universe 25** (Calhoun 1973) simulation with an optional **playground** zone.
 
@@ -194,6 +195,7 @@ NOTES.md          dated results
 docs/             TASKS.md, PHASE4_DESIGN.md (learning agents, detectors), RESEARCH_DIGEST.md (record + literature), NVIDIA_STACK.md,
                   PRIOR_WORK.md (earlier Universe 25 research), FIGURES.md (figure registry)
 docs/figures/     hero.png and hero.json, phase4_ledger.yaml (panel d), src/ (the renders of panel a)
+docs/booklet/     universe25_booklet.pdf, printed from docs/booklet.html by scripts/booklet.py
 ```
 
 ## References

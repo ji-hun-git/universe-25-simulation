@@ -42,6 +42,7 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
+sys.path.insert(0, str(ROOT / "scripts"))  # viewer_frames: census and phases
 
 CACHE = ROOT / "_output" / "hero"
 SHOTS = ROOT / "_output" / "figures"
@@ -194,20 +195,19 @@ def ppc(obs: list[dict]) -> list[dict]:
         if not v.size:
             continue
         lo, med, hi = np.quantile(v, [0.05, 0.5, 0.95])
-        out.append({"landmark": k, "record": tgt, "median": float(med), "pi90": [float(lo), float(hi)],
+        out.append({"landmark": k, "record": tgt, "median": float(med),
+                    "pi90": [float(lo), float(hi)],
                     "miss": bool(not lo <= tgt <= hi), "n": int(v.size)})
     return out
 
 
 def census() -> list[tuple[float, float]]:
-    sys.path.insert(0, str(ROOT / "scripts"))
     from viewer_frames import landmarks
 
     return [tuple(c) for c in landmarks()["census"]]
 
 
 def phases() -> list[tuple[str, float, float | None]]:
-    sys.path.insert(0, str(ROOT / "scripts"))
     from viewer_frames import PHASES
 
     return list(PHASES)
@@ -217,7 +217,8 @@ def git_head() -> tuple[str, bool]:
     try:
         h = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, capture_output=True,
                            text=True, check=True).stdout.strip()
-        dirty = bool(subprocess.run(["git", "status", "--porcelain", "--", "src", "configs", "scripts"],
+        dirty = bool(subprocess.run(["git", "status", "--porcelain", "--", "src", "configs",
+                                     "scripts"],
                                     cwd=ROOT, capture_output=True, text=True).stdout.strip())
         return h, dirty
     except (OSError, subprocess.CalledProcessError):
@@ -232,7 +233,8 @@ def renders() -> dict:
     SRC.mkdir(parents=True, exist_ok=True)
     meta_new = SHOTS / "hero_shot.json"
     meta_old = SRC / "hero_shot.json"
-    fresh = meta_new.is_file() and (not meta_old.is_file()
+    shots = [SHOTS / "hero_pen.png", SHOTS / "hero_close.png"]
+    fresh = meta_new.is_file() and all(p.is_file() for p in shots) and (not meta_old.is_file()
                                     or meta_new.stat().st_mtime > meta_old.stat().st_mtime)
     if fresh:  # kept at about 1.5x the size the figure draws them
         for name, width in (("hero_pen", 1800), ("hero_close", 1200)):
@@ -301,9 +303,9 @@ def draw() -> int:
     fig.text(0.24 / Wf, (Hf - 0.18) / Hf, "Universe 25, simulated", family=serif, fontsize=17,
              va="top")
     fig.text(0.24 / Wf, (Hf - 0.55) / Hf,
-             "A Calhoun-calibrated mouse colony (the frozen phase-2m biology) as the substrate for one "
-             "question: does play-like behaviour appear without any play reward, under abundance and "
-             "under scarcity?", fontsize=8.8, va="top", color=PAL["ink2"])
+             "A Calhoun-calibrated mouse colony (the frozen phase-2m biology) as the substrate "
+             "for one question: does play-like behaviour appear without any play reward, under "
+             "abundance and under scarcity?", fontsize=8.8, va="top", color=PAL["ink2"])
     row_top = Hf - 1.42
 
     # ---- a: the render, with the close-up in the empty corner
@@ -317,8 +319,8 @@ def draw() -> int:
     header(0.24, row_top, "a", "The frozen colony on its fullest day, in 3D",
            f"{shot['recording']} (seed {shot['seed']}), day {shot['day']:.0f}, {shot['n']:,} mice. "
            "Every mouse is drawn at real scale (BALB/c, albino).\n"
-           "Heights are drawn: the model is planar. The grid layout is the frozen colony's abstract "
-           "pen, with its boxes on the floor.")
+           "Heights are drawn: the model is planar. The grid layout is the frozen colony's "
+           "abstract pen, with its boxes on the floor.")
     poly = shot.get("close_poly")
     cimg = np.asarray(Image.open(SRC / "hero_close.jpg"))
     ch_, cw_ = cimg.shape[:2]
@@ -362,8 +364,8 @@ def draw() -> int:
     names = {"n_at_day_736": "N on day 736", "doubling_time_phase_b_days": "doubling in phase B",
              "doubling_time_phase_c_days": "doubling in phase C"}
     header(rx, row_top, "b", "Population against Calhoun's census",
-           f"Frozen colony on {len(SEEDS)} seeds ({SEEDS[0]}-{SEEDS[-1]}): median and 90 % interval. "
-           "+ census: Calhoun 1973, Marsden 1972.\n"
+           f"Frozen colony on {len(SEEDS)} seeds ({SEEDS[0]}-{SEEDS[-1]}): median and 90 % "
+           "interval. + census: Calhoun 1973, Marsden 1972.\n"
            f"{inside} of {len(checks)} record values fall inside the interval; outside: "
            + ", ".join(names.get(m["landmark"], m["landmark"]) for m in misses) + ".")
 
@@ -407,8 +409,8 @@ def draw() -> int:
     dx = ax_at(0.24, d_top - dh, Wf - 0.52, dh)
     dx.set_xlim(0, 1); dx.set_ylim(0, 1); dx.set_axis_off()
     header(0.24, d_top, "d", "Play-emergence tests so far",
-           "Phase 4, each preregistered (PLAN §15.1) before its run; verdicts as NOTES records them. "
-           + ledger["summary"])
+           "Phase 4, each preregistered (PLAN §15.1) before its run; verdicts as NOTES "
+           "records them. " + ledger["summary"])
     style = VERDICT_STYLE
     items = ledger["tests"]
     k = len(items)

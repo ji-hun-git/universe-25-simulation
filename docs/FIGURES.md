@@ -61,3 +61,39 @@ was drawn from: commit, seeds, the checks it ran and the renders it used.
 | date | change |
 |---|---|
 | 2026-11-17 | First version: render, predictive-check population, crowding and withdrawal, the H-d to H-l ledger. |
+
+## Booklet: `docs/booklet/universe25_booklet.pdf`
+
+An eight-page A4 introduction for people outside the repo. The pages cover:
+1. the cover;
+2. the record;
+3. the model;
+4. the hero figure;
+5. the predictive check;
+6. the play question and its tests;
+7. earlier research;
+8. how to explore.
+
+**Files.**
+- `docs/booklet.html` is the page the PDF is printed from.
+- `scripts/booklet.py` writes both. Edge or Chrome, run headless, prints the PDF.
+
+**What is generated, and what is written.**
+- *Generated:* the predictive-check table, the ledger of tests, the render's day and count, and
+  the edition stamp. They come from `docs/figures/hero.json` and `phase4_ledger.yaml`.
+- *Written by hand* in `scripts/booklet.py`: the prose about the record, the model and earlier
+  research. It follows `docs/RESEARCH_DIGEST.md`, README and `docs/PRIOR_WORK.md`, and changes
+  when they do.
+
+**How to remake it.** Remake the hero figure first, then run `python scripts/booklet.py`.
+`python scripts/booklet.py --check` says whether `docs/booklet.html` is current, and
+`tests/test_booklet.py` (fast tier) fails when it is not.
+
+**When to remake it.**
+- Whenever the hero figure is redrawn.
+- Whenever the prose it summarises changes: the record, the model's status, earlier research.
+
+
+| date | change |
+|---|---|
+| 2026-11-17 | First edition, from the hero figure drawn at 8ed9d3f. |
