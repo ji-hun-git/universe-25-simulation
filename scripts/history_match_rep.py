@@ -316,8 +316,9 @@ def write_ensemble(path: Path) -> None:
     members = passing or scored[:12]
     path.write_text(json.dumps({
         "criterion": (f"arc in at least {MIN_ARC} of the member's seeds, and second-largest "
-                      f"implausibility <= {hm.CUT} over 15 mean targets (own seed variance, "
-                      "V_s (1 + 1/k)) and 5 targets given the arc (pooled arc variance)"
+                      f"implausibility <= {hm.CUT} over {len(MEAN)} mean targets (own seed "
+                      f"variance, V_s (1 + 1/k)) and {len(COND)} targets given the arc (pooled "
+                      "arc variance)"
                       + (f"; targets read as {ALIAS}" if ALIAS else "")),
         "n_sampled": len(scored), "n_pass": len(passing), "fallback": not passing,
         "v_arc": va, "members": members}, indent=1, default=float), encoding="utf-8")

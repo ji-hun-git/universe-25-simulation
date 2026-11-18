@@ -1173,6 +1173,40 @@ Universe 25 research, and a managed hero figure):
 
 ---
 
+## U-1 — Record fit in Calhoun's pen (Jason 2026-11-18)
+
+**Goal:** Universe 25 in Calhoun's own pen, without the playground, fitted to the record's
+population and timeline numbers.
+
+**Files:** `docs/RECORD_FIT.md` (the preregistration), `scripts/record_fit.py`,
+`configs/record_fit_ensemble.json` and `configs/record_fit_candidate.json` (written by the run),
+`docs/SEEDS.md`.
+
+**Acceptance criteria** (`docs/RECORD_FIT.md`): on the fresh seeds 9416–9463, the candidate
+has at least 12 of the 14 record values inside its 5–95 % range and the arc in at least 43 of 48
+runs. The behaviour targets are reported, not fitted. Either way the result goes into NOTES.
+
+**Status 2026-11-18:** preregistered; the chain (wave 4, ensemble, candidate, validation) runs
+from `scripts/record_fit_chain.cmd`.
+
+---
+
+## U-2 — Installable app (Jason 2026-11-18)
+
+**Goal:** anyone can run and watch Universe 25 without the research setup: an installable app
+(a Windows program and a pip package), private first.
+
+**Files:** the app package, its launcher and build scripts, `viewer/`.
+
+**Acceptance criteria:**
+- One command or a double-click opens the viewer, and a run can be started from the page.
+- U-1's config is the default when it lands; the frozen colony stays available.
+- Nothing is published without Jason's go-ahead.
+
+**Status 2026-11-18:** started.
+
+---
+
 ## Quick checks
 
 **Status digest**
