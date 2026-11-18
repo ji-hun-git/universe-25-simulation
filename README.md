@@ -10,13 +10,14 @@ Research-grade **Universe 25** (Calhoun 1973) simulation with an optional **play
 
 Track E / exploratory. Agents are need-driven (hunger, thirst, fatigue, stress, social, aggression, maternal, curiosity, boredom, homeostasis). **There is no play reward.** The playground is geometry + manipulable objects only; any playground use is drive spillover.
 
-## Status (2026-11-17)
+## Status (2026-11-19)
 
 | part | state |
 |---|---|
 | **Substrate** (phase 1) | Need-driven mice in Calhoun's 101 × 101 in pen: 16 cells, 256 nest boxes, food and water, and a playground of balls, tunnels and ramps. |
 | **Calibration** (phase 2) | Frozen at phase 2m. On the 48 seeds of the Tier 1 predictive check, 12 of the record's 15 values fall inside the 90 % prediction interval. The misses are N on day 736 and the doubling times of phases B and C: the colony grows too fast. The collapse emerges from the mechanisms; its irreversibility is a model assumption fitted to one colony. |
 | **Replica v2** | Calhoun's own pen layout: triangular cells, tunnels and box levels. It ended on 2026-11-13. The final replica has 10 of 20 pen targets inside and the arc in 45 of 48 fresh-seed runs, but the arc comes late and the behavioural categories never appear. The frozen 2m colony stays the reference. |
+| **Record fit** (U-1) | Calhoun's pen fitted to the record's 14 population and timeline numbers alone (`docs/RECORD_FIT.md`). It failed its preregistered validation on 2026-11-19: the chosen member has 8 of 14 inside on 48 fresh seeds (12 needed) and the arc in 28 of 48 runs (43 needed). The final replica, with 8 of 14 and the arc in 46, stays the app's Universe 25. |
 | **Viewer** (phase 3) | Plan and 3D views, recordings and live runs, and a dashboard (`viewer/`; section "Viewer" below). |
 | **Play emergence** (phase 4) | Learned and evolved agents, with no play reward and detectors used only for evaluation. H-d to H-l have been read, and none gives evidence of play either way (hero figure, panel d). The scarcity line stopped on 2026-11-16. |
 
@@ -201,16 +202,16 @@ universe25-app          # or: python -m universe25.app
 - The first preset is **Universe 25: Calhoun's pen**. Pick a seed, press Start run, and the
   colony is simulated on this machine and streams to the viewer, at 20 days a second by
   default.
-  - Today it is the final replica of replica v2.
-  - The record fit (`docs/RECORD_FIT.md`, TASKS U-1) replaces it if the fit passes its
-    validation.
+  - It is the final replica of replica v2. The record fit (`docs/RECORD_FIT.md`, TASKS U-1)
+    failed its validation on 2026-11-19, so it stays.
+  - Under the preset, the page says how close it comes to the record and what it misses.
 - The reference colony, the unfitted Calhoun pen and the scarce arm are still there.
 - From the repo, recordings and runs go to `_output/`.
 - **A Windows program that needs no Python**: `scripts/build_app.py` builds it with PyInstaller
   in a separate build venv (the script says how).
   - It ships a sample recording and keeps recordings and runs in `%LOCALAPPDATA%\Universe25`.
   - It runs the NumPy path only.
-  - It is not built yet.
+  - It is not built: it was to be built only if the record fit passed.
 - The 3D view and the charts still load three.js and uPlot from cdn.jsdelivr.net.
 
 ## World

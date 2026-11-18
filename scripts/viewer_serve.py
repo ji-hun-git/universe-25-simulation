@@ -53,12 +53,26 @@ PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 # ("member": a JSON file with "members", the first of which is used).
 PRESETS = {
     "universe25": {"label": "Universe 25: Calhoun's pen (final replica)",
-                   "config": "configs/replica_v2.yaml", "member": "configs/replica_v2_final.json"},
+                   "config": "configs/replica_v2.yaml", "member": "configs/replica_v2_final.json",
+                   # NOTES 2026-11-19: the record fit (U-1) failed, and this member stays
+                   "about": "Calhoun's pen without the playground, as fitted in replica v2. On 48 "
+                            "fresh seeds it grows and collapses in 46 runs, and 8 of the record's "
+                            "14 population and timeline numbers fall inside its 5-95 % range. "
+                            "Misses: adults on day 315 (305; record 150), the peak (2,528; "
+                            "2,200), the plateau onset (day 509; 560), N on day 960 (1,319; "
+                            "1,650), the last surviving birth (day 687; 600) and the last "
+                            "conception (day 1,096; 920). Its behaviour is not Calhoun's: few "
+                            "withdrawn mice and no beautiful ones."},
     "reference": {"label": "Reference colony (phase 2m, simplified pen)",
-                  "config": "configs/default.yaml"},
+                  "config": "configs/default.yaml",
+                  "about": "The research colony: Calhoun's sizes in a simplified pen (a 4 x 4 "
+                           "grid, nests as points, and a playground he never had). Its population "
+                           "curve was fitted to the record: 12 of 15 values inside on 48 seeds."},
     "replica": {"label": "Calhoun's pen, unfitted (replica v2 M1-M4)",
-                "config": "configs/replica_v2.yaml"},
-    "scarce": {"label": "Scarce arm (research)", "config": "configs/scarce.yaml"},
+                "config": "configs/replica_v2.yaml",
+                "about": "Calhoun's own pen with replica v2's settings before any fit (M1-M4)."},
+    "scarce": {"label": "Scarce arm (research)", "config": "configs/scarce.yaml",
+               "about": "Phase 4's scarce arm: the research colony with food for 1,000 a day."},
 }
 
 

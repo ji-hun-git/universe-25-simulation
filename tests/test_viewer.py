@@ -140,6 +140,7 @@ def test_app_presets() -> None:
         for key, value in values.items():
             assert getattr(getattr(cfg, group), key) == value, (group, key)
     assert next(iter(vs.PRESETS)) == "universe25"  # the app's first choice
+    assert vs.PRESETS["universe25"].get("about"), "the app says how close its Universe 25 comes"
 
 
 if __name__ == "__main__":

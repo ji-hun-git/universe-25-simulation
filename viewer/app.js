@@ -59,6 +59,8 @@ function phaseAt(t) {
 }
 function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
 function note(id, text, err = false) { const el = $(id); el.textContent = text; el.classList.toggle("err", err); }
+// what the chosen preset is and how close it comes to the record (viewer_serve.py, "about")
+function presetAbout() { $("lvAbout").textContent = S.info?.presets?.[$("lvPreset").value]?.about || ""; }
 
 // ------------------------------------------------------------------ opening a run
 function openRun(world, store, { src, name, summary, span }) {
@@ -691,6 +693,8 @@ async function init() {
     : '<option value="">no recordings found</option>';
   if (S.api) {
     $("lvPreset").innerHTML = Object.entries(S.info.presets).map(([k, p]) => `<option value="${k}">${esc(p.label)}</option>`).join("");
+    $("lvPreset").addEventListener("change", presetAbout);
+    presetAbout();
   } else {
     $("liveTab").disabled = true;
     $("liveTab").title = "Live runs need scripts/viewer_serve.py";
@@ -702,7 +706,7 @@ async function init() {
   if (S.api && params.get("start") === "live") {
     showSource("live");
     const pre = params.get("preset");
-    if (pre && S.info.presets[pre]) $("lvPreset").value = pre;
+    if (pre && S.info.presets[pre]) { $("lvPreset").value = pre; presetAbout(); }
     note("lvNote", "Choose a preset and press Start run. The colony is simulated on this machine and streams to the viewer as it runs: 1,600 days take about a minute and a half at 20 days a second.");
   }
   requestAnimationFrame(loop);

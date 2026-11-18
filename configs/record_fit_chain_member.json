@@ -1,0 +1,117 @@
+{
+ "note": "The record fit chain chose this member through a scoring bug: the observed members were scored on 6 of their 12 seeds (NOTES 2026-11-19). It is not the preregistered candidate (configs/record_fit_candidate.json). On fresh seeds 9416-9463 it has 9 of 14 record values inside and the arc in 43 of 48 runs.",
+ "record_fit_candidate": true,
+ "rule": "arc on >= 10 seeds",
+ "ensemble": "record_fit_ensemble.json",
+ "n_members": 24,
+ "n_qualify": 0,
+ "members": [
+  {
+   "seeds": [
+    7000,
+    7001,
+    7002,
+    7003,
+    7004,
+    7005,
+    7006,
+    7007,
+    7008,
+    7009,
+    7010,
+    7011
+   ],
+   "n_seeds": 12,
+   "arc_seeds": [
+    7000,
+    7001,
+    7002,
+    7003,
+    7004,
+    7005,
+    7006,
+    7007,
+    7008,
+    7009,
+    7010,
+    7011
+   ],
+   "arc_freq": 1.0,
+   "arc_wave_seeds": 6,
+   "arc_new_seeds": 6,
+   "i2": 3.2603849604550534,
+   "imax": 4.734910271703829,
+   "implausibility": {
+    "first_litters_day": 1.9933335214235288,
+    "n_at_day_315": 3.2603849604550534,
+    "adults_at_day_315": 4.734910271703829,
+    "peak_n": 0.4085424520083475,
+    "plateau_onset_day": 0.9994466885775803,
+    "n_at_day_736": 0.5170179364478212,
+    "n_at_day_811": 0.24367869323845384,
+    "n_at_day_960": 1.1926808503608608,
+    "doubling_b": 1.5805347005707802,
+    "doubling_c": 1.3850046613566374,
+    "last_young_day": 0.2807272033756522,
+    "last_conception_day": 0.6989531197546814,
+    "n_at_day_1444": 1.4337930287223493,
+    "n_at_day_1588": 0.7035679088756633
+   },
+   "u": [
+    0.26835326068735865,
+    0.547780815716144,
+    0.8167739967477806,
+    0.8053689616735489,
+    0.6778846137188494,
+    0.48795324647239313,
+    0.7253637301973205,
+    0.058054106097433666,
+    0.08856742535449735,
+    0.5772217810085607,
+    0.5720273322524048,
+    0.18653542058971484,
+    0.07801357437881962,
+    0.32672711287722767,
+    0.22167291869295935,
+    0.249057929091824,
+    0.1922145418058121,
+    0.06979513281165017,
+    0.12161559350448392,
+    0.8479027320378025,
+    0.965792607862824,
+    0.12479885395787671
+   ],
+   "params": {
+    "biology": {
+     "breeding_p_base": 0.401264945515519,
+     "litter_mean": 6.143342447148433,
+     "maturity_days": 64.86967190893786,
+     "imprint_rate": 0.05053596098038549,
+     "imprint_density_threshold": 0.42283653754536715,
+     "nest_overcrowd_stress": 0.029027053048716833,
+     "maternal_erosion_stress": 0.29871208394497356,
+     "courtship_erosion_stress": 0.5674719795547084,
+     "withdrawn_competence_threshold": 0.38601366612620236,
+     "care_imprint_gain": 0.5596062617691445,
+     "exclusion_stress": 0.011702036156822943,
+     "wound_mortality_scale": 0.01905198490005551,
+     "base_mortality_per_day": 0.00010626929125451807,
+     "young_mortality_scale": 0.3241521361826416,
+     "nurse_disturb_coef": 1.5377163344464968,
+     "stress_mortality_scale": 0.00027581651152052056,
+     "litter_abandon_p": 0.07296935610269036,
+     "maternal_neglect_stress": 0.8087416392226816,
+     "maternal_transmission": 0.965792607862824,
+     "care_ref": 0.6112243675371922
+    },
+    "drives": {
+     "stress_density_gain": 0.6623509087960129,
+     "stress_decay": 1.2253637301973206
+    },
+    "geometry": {
+     "hopper_facilitation": false
+    }
+   }
+  }
+ ]
+}

@@ -1,5 +1,135 @@
 # Universe25 Play — NOTES
 
+## 2026-11-19 — Record fit (U-1) fails its preregistered bar: the rule's member has 8 of 14 record values inside and the arc in 28 of 48 fresh-seed runs; the app keeps the final replica, and the Windows program is not built
+
+**What Jason asked.**
+- 2026-11-18: "we need super accurate universal 25 simulation (like anyone can use it)". He
+  chose the record's numbers in Calhoun's pen, an installable app, and private first (TASKS
+  U-1, U-2).
+- Then: "build it only if the current version is great". This was read as the bar
+  preregistered in `docs/RECORD_FIT.md` (24600f7) before any run. On fresh seeds 9416–9463, at
+  least 12 of the 14 record values must be inside the 5–95 % range, and the arc must appear in at
+  least 43 of 48 runs.
+
+**What ran.** `scripts/record_fit_chain.cmd`, detached, from 2026-11-18 21:46 to 2026-11-19 00:31:
+- wave 4: 120 points × seeds 7000–7005, 720 runs. That took about 2 h, on a machine other
+  jobs kept at 100 % CPU.
+- the ensemble: the 6 best observed points and 18 emulated points × seeds 7000–7011, 288 runs
+  (36 cached);
+- the candidate rule, the candidate's validation, and the final replica on the same 48 seeds.
+
+**A bug in the candidate rule, found after the chain and corrected.**
+- The rule scores every member on its 12 seeds. The chain scored the six observed members on
+  only 6 of them.
+  - Their runs on 7000–7005 were cached from their own waves and kept that wave's label.
+  - The scoring took wave 99's runs only.
+- So no observed member could have the arc on 10 of 12. None qualified, and the fallback chose
+  an emulated member: the arc on 12 of 12, second-largest implausibility (I₂) 3.26.
+- Scored on all 12 seeds, 2 of the 24 members qualify. The rule's member is the wave-2 point
+  that `--fit` flagged before any new run (the arc on all 6 of its seeds, I₂ 1.82). On its 12
+  seeds it has the arc on 10, with I₂ 1.91.
+- **The fix.** `scripts/record_fit.py` now scores each ensemble member on its runs from every
+  wave (`members()`).
+  - The ensemble file and the candidate were rewritten from the same training runs.
+  - The rule's member was then validated on the same 48 seeds.
+- The rule reads training seeds only, so the fresh seeds played no part in choosing the member.
+  But those seeds have now been run three times: the chain's member, the final replica and the
+  rule's member.
+
+**Result on seeds 9416–9463, 48 runs each.** The table gives the median [5–95 %]; * marks a
+target outside. The chain's member is shown for the record; it is not the preregistered
+candidate.
+
+| target | record | the rule's member | final replica | the chain's member |
+|---|---|---|---|---|
+| first litters (day) | 50–104 | 55 [55, 56] | 50 [50, 50] | 50 [50, 52] |
+| N@315 | 620 | 640 [440, 851] | 728 [514, 979] | 1,425 [949, 1,860] * |
+| adults @315 | 150 | 240 [170, 326] * | 305 [199, 411] * | 806 [503, 1,080] * |
+| peak N | 2,200 | 1,874 [1,801, 1,914] * | 2,528 [2,380, 2,693] * | 2,146 [1,904, 2,305] |
+| plateau onset (day) | 560 | 518 [469, 591] | 509 [472, 553] * | 457 [371, 569] |
+| N@736 | 2,056 | 1,645 [1,531, 1,719] * | 2,010 [1,898, 2,110] | 1,984 [1,764, 2,119] |
+| N@811 | 1,871 | 1,557 [1,496, 1,646] * | 1,791 [1,653, 1,925] | 1,878 [1,656, 1,975] |
+| N@960 | 1,650 | 1,209 [1,119, 1,329] * | 1,319 [1,163, 1,448] * | 1,464 [1,267, 1,615] * |
+| doubling, phase B (days) | 55 | 51 [45, 58] | 49 [44, 56] | 41 [38, 48] * |
+| doubling, phase C (days) | 105–145 | 128 [110, 159] | 107 [92, 130] | 249 [150, 576] * |
+| last surviving birth (day) | 600 | 896 [597, 1,577] | 687 [607, 899] * | 572 [451, 1,187] |
+| last conception (day) | 920 | 1,072 [1,026, 1,599] * | 1,096 [1,025, 1,188] * | 958 [872, 1,596] |
+| N@1,444 | 122 | 89 [57, 143] | 78 [47, 137] | 55 [20, 275] |
+| N@1,588 | 27 | 33 [11, 239] | 20 [9, 106] | 14 [0, 157] |
+| **inside** | | **8 of 14** | **8 of 14** | **9 of 14** |
+| **the arc** | | **28 of 48** | **46 of 48** | **43 of 48** |
+
+**Behaviour, reported, not fitted.**
+
+| target | record | the rule's member | final replica | the chain's member |
+|---|---|---|---|---|
+| male share @315 | 0.40 | 0.50 [0.47, 0.55] * | 0.49 [0.47, 0.52] * | 0.47 [0.45, 0.49] * |
+| male share @1,444 | 0.18 | 0.50 [0.41, 0.55] * | 0.44 [0.36, 0.51] * | 0.43 [0.34, 0.56] * |
+| empty boxes @560 | 0.25 | 0.46 [0.44, 0.49] * | 0.28 [0.23, 0.32] | 0.38 [0.32, 0.47] * |
+| withdrawn @560 | 0.32 | 0.22 [0.15, 0.26] * | 0.10 [0.07, 0.15] * | 0.85 [0.82, 0.89] * |
+| never fought as adults or mated @800 | 0.53 | 0.00 [0.00, 0.00] * | 0.00 [0.00, 0.00] * | 0.47 [0.32, 0.57] |
+| brood groups @315 | 14 | 28 [23, 33] * | 29 [23, 34] * | 26 [21, 32] * |
+| **inside** | | **0 of 6** | **1 of 6** | **1 of 6** |
+
+**The arc** (growth above 1,800, at least 150 days from the last surviving birth to the last
+conception, and fewer than 300 mice on day 1,588).
+- The rule's member had it on 10 of its 12 training seeds, and shows it in 28 of the 48 fresh
+  runs.
+  - Growth and collapse are common (45 and 46 runs). The gap is not (29 runs): in many runs,
+    surviving births go on late (median last surviving birth, day 896).
+- Paired by seed with the final replica: both show it on 26 seeds, only the rule's member on 2,
+  and only the final replica on 20.
+
+**Seed by seed against the final replica** (which of the two is closer to the record on the same
+seed).
+- The rule's member is closer on adults @315 (38 of 48 seeds), doubling in phase B (29), the
+  last conception (28), N@315 (26) and the peak (26).
+- It is farther on N@736 (48 of 48), N@811 (47), N@960 (37) and the last surviving birth (31).
+  Its colony peaks too low and stays too small.
+
+**Can this model make the record at all?** Exploratory, on training runs only.
+- Of the fit's 2,172 training runs (waves 1, 2 and 4 and the ensemble; seeds 7000–7011), 236
+  show the arc.
+- 11 of these come within 3 sd of the record on at least 12 of the 14 targets, with the
+  observation and model-discrepancy sd of history matching. So single runs can come close.
+- But the record's day 315 (620 mice, 150 of them adults) almost never comes with the arc. Only
+  3 of the 236 have both N@315 and adults @315 within 3 sd, and 232 miss adults @315.
+- Every member misses adults @315: 240, 305 and 806 against 150.
+
+**Verdict.**
+- **The record fit fails its preregistered validation.** The rule's member has 8 of 14 inside
+  (12 needed) and the arc in 28 of 48 runs (43 needed).
+- The chain's member fails too, with 9 of 14. It was not the rule's choice, and choosing it now
+  would be a choice made on the fresh seeds, so it is not used.
+
+**What follows** (`docs/RECORD_FIT.md`, "What follows").
+- The preregistration puts the better of the candidate and the final replica into the app, with
+  its misses stated.
+  - They tie on the 14 targets, with 8 each. The arc breaks the tie: 46 runs against 28. So the
+    final replica stays.
+  - That tie-break is not in the preregistration. It is the pass rule's second part, and it
+    keeps what the app already had.
+- The app (U-2) now says under each preset how close it comes to the record (`about` in
+  `scripts/viewer_serve.py`, shown by `viewer/app.js`). Universe 25's line gives the final
+  replica's misses on these seeds.
+- **The Windows program is not built.** Jason asked for it only if the fit passed.
+- The frozen 2m colony stays the reference for the play research. No headline number changed,
+  so the hero figure and the booklet stand.
+- What comes next is Jason's call. The miss every member shares is adults on day 315.
+
+**Files.**
+- `scripts/record_fit.py`: `members()`, and `points` patched for wave 99 (the fix).
+- Rewritten after the fix:
+  - `configs/record_fit_candidate.json`, the rule's member;
+  - `configs/record_fit_ensemble.json`, the two members that pass the rule on training seeds.
+- `configs/record_fit_chain_member.json`: the chain's member, kept for the record.
+- Not committed:
+  - `_output/hm_record/`, with the chain's logs, its candidate (`candidate_chain.json`) and
+    `validate_corrected.log`;
+  - the validation files `_output/replica_validate_record_fit.json`,
+    `_output/replica_validate_record_fit_corrected.json` and
+    `_output/replica_validate_record_final_replica.json`.
+
 ## 2026-11-18 — 3D view: crowded mice no longer drawn through one another
 
 **What Jason asked.** After the wall fix: crowded mice should stop overlapping each other too.

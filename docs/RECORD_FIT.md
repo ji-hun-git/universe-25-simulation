@@ -116,3 +116,17 @@ without a pause, so no choice is made after seeing the fresh seeds. Its logs go 
 - The frozen 2m colony stays the reference for the play research in either case.
 
 Every result goes into NOTES, including the targets missed.
+
+## Outcome (2026-11-19; NOTES 2026-11-19)
+
+- **The fit fails.** The rule's member has 8 of the 14 inside on seeds 9416–9463, and the arc in
+  28 of 48 runs. The final replica has 8 of 14 and the arc in 46 on the same seeds.
+- **A deviation, corrected.** The chain scored the six observed ensemble members on 6 of their 12
+  seeds (a grouping bug), so it validated a member the rule would not have chosen: 9 of 14, the
+  arc in 43 of 48.
+  - The fix in `scripts/record_fit.py` re-applies the rule to the same training runs.
+  - The rule's member was then validated on the same 48 seeds.
+- **What followed.** The candidate and the final replica tie on the 14 targets; the arc decides
+  for the final replica.
+  - It stays the app's Universe 25, and the app now states its misses.
+  - The Windows program was not built (Jason: only if the fit passed).

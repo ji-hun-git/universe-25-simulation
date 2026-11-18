@@ -1186,8 +1186,12 @@ population and timeline numbers.
 has at least 12 of the 14 record values inside its 5–95 % range and the arc in at least 43 of 48
 runs. The behaviour targets are reported, not fitted. Either way the result goes into NOTES.
 
-**Status 2026-11-18:** preregistered; the chain (wave 4, ensemble, candidate, validation) runs
-from `scripts/record_fit_chain.cmd`.
+**Status 2026-11-19: failed** (NOTES 2026-11-19).
+- The rule's member has 8 of the 14 inside on 9416–9463 and the arc in 28 of 48 runs.
+- A grouping bug made the chain validate another member first, with 9 of 14. It is fixed in
+  `scripts/record_fit.py`, and that member is kept in `configs/record_fit_chain_member.json`.
+- The final replica ties on the 14 (8) and has the arc in 46, so it stays the app's Universe 25.
+- What comes next is Jason's call. Every member misses adults on day 315.
 
 ---
 
@@ -1203,11 +1207,13 @@ from `scripts/record_fit_chain.cmd`.
 - U-1's config is the default when it lands; the frozen colony stays available.
 - Nothing is published without Jason's go-ahead.
 
-**Status 2026-11-18:**
+**Status 2026-11-19:**
 - `universe25-app` (`src/universe25/app.py`) opens the viewer on the live-run panel. Its first
-  preset is Universe 25 in Calhoun's pen (today the final replica).
-- `scripts/build_app.py` builds the Windows program. Not built yet: it needs PyInstaller in a
-  build venv, a download to agree first.
+  preset is Universe 25 in Calhoun's pen: the final replica, since U-1 failed.
+- Under the preset choice, the page says how close each preset comes to the record, misses
+  included (`about` in `scripts/viewer_serve.py`).
+- `scripts/build_app.py` builds the Windows program. Not built: Jason asked for it only if the
+  record fit passed ("build it only if the current version is great"), and it did not.
 - Not done: Mac, offline copies of three.js and uPlot.
 
 ---

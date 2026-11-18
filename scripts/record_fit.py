@@ -65,8 +65,36 @@ def setup() -> None:
     def keep(self, U: np.ndarray) -> np.ndarray:  # not ruled out, and the arc likely
         return self.keep_mean(U) & (self.arc(U)[0] >= P_MIN)
 
+    base_points = hmr.points
+
+    def points(runs: list[dict], waves: set[int], n_seeds: int | None = None) -> list[dict]:
+        if waves == {99}:  # the ensemble (write_ensemble, candidate): every member on 12 seeds
+            return members(runs, base_points)
+        return base_points(runs, waves, n_seeds)
+
     hmr.check_label = check_label
     hmr.RepEmulators.keep = keep
+    hmr.points = points
+
+
+def members(runs: list[dict], base_points) -> list[dict]:
+    """The ensemble's members (wave 99), each with its runs on all 12 ensemble seeds. An
+    observed member's runs on 7000-7005 were cached from its own wave and keep that wave's label,
+    so grouping by wave 99 alone scores it on 6 seeds. The chain's first run did that and chose
+    its candidate from the wrong pool (NOTES 2026-11-19)."""
+    key = lambda u: tuple(round(v, 10) for v in u)  # noqa: E731  (as hmr.points groups)
+    mem = {key(p["u"]): p for p in base_points(runs, {99})}
+    by_seed: dict[tuple, dict[int, dict]] = {k: {} for k in mem}
+    for r in runs:
+        k = key(r["u"])
+        if k in by_seed and r["seed"] in hmr.ENS_SEEDS:
+            by_seed[k].setdefault(r["seed"], r)
+    for k, p in mem.items():
+        p["runs"] = [by_seed[k][s] for s in sorted(by_seed[k])]
+        if len(p["runs"]) != len(hmr.ENS_SEEDS):
+            raise SystemExit(f"member {k[:3]}... has {len(p['runs'])} of "
+                             f"{len(hmr.ENS_SEEDS)} ensemble seeds")
+    return list(mem.values())
 
 
 def init() -> int:
@@ -142,7 +170,8 @@ def candidate(path: Path) -> int:
         "record_fit_candidate": True, "rule": rule, "ensemble": str(path.name),
         "n_members": len(scored), "n_qualify": len(qual), "members": [best]},
         indent=1, default=float), encoding="utf-8")
-    print(f"candidate ({rule}): I2 {best['i2']:.2f}, arc {len(best['arc_seeds'])}/12; "
+    print(f"candidate ({rule}): I2 {best['i2']:.2f}, "
+          f"arc {len(best['arc_seeds'])}/{best['n_seeds']}; "
           f"{len(qual)} of {len(scored)} members qualify; wrote {CANDIDATE.name}")
     return 0
 
