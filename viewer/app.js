@@ -698,6 +698,13 @@ async function init() {
   }
   const params = new URLSearchParams(location.search), want = params.get("rec");
   const pick = recs.find((r) => r.name === want) || recs.find((r) => r.name === "ref_7000") || recs[0];
+  // ?start=live (the app's first page): the live panel, with ?preset= or the first preset
+  if (S.api && params.get("start") === "live") {
+    showSource("live");
+    const pre = params.get("preset");
+    if (pre && S.info.presets[pre]) $("lvPreset").value = pre;
+    note("lvNote", "Choose a preset and press Start run. The colony is simulated on this machine and streams to the viewer as it runs: 1,600 days take about a minute and a half at 20 days a second.");
+  }
   requestAnimationFrame(loop);
   if (pick) { recSel.value = pick.name; await loadRecording(pick.name); }
   let view = params.get("view");

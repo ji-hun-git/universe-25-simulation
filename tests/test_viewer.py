@@ -122,7 +122,28 @@ def test_calhoun_triangles_tile_the_pen() -> None:
     assert abs(area - world.width * world.height) < 1e-6, area
 
 
+def test_app_presets() -> None:
+    """Every preset of the viewer server (and the app) builds its config; the Universe 25
+    preset is Calhoun's pen without the playground, with its member's fitted parameters."""
+    import json
+
+    import viewer_serve as vs
+
+    for name, preset in vs.PRESETS.items():
+        cfg = vs.preset_config(name, {"seed": 7001})
+        assert cfg.seed == 7001, name
+        assert (ROOT / preset["config"]).is_file(), name
+    cfg = vs.preset_config("universe25")
+    assert cfg.geometry.layout == "calhoun" and not cfg.playground.enabled
+    member = json.loads((ROOT / vs.PRESETS["universe25"]["member"]).read_text(encoding="utf-8"))
+    for group, values in member["members"][0]["params"].items():
+        for key, value in values.items():
+            assert getattr(getattr(cfg, group), key) == value, (group, key)
+    assert next(iter(vs.PRESETS)) == "universe25"  # the app's first choice
+
+
 if __name__ == "__main__":
     test_capture_is_read_only_and_codec_round_trips()
     test_calhoun_triangles_tile_the_pen()
+    test_app_presets()
     print("test_viewer: OK")

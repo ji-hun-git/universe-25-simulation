@@ -25,6 +25,7 @@ the payload region."""
 from __future__ import annotations
 
 import json
+import os
 import re
 import struct
 import sys
@@ -33,7 +34,8 @@ from typing import Any, Callable
 
 import numpy as np
 
-ROOT = Path(__file__).resolve().parents[1]
+# the repo, or the folder the app keeps the viewer and configs in (universe25.app sets U25_ROOT)
+ROOT = Path(os.environ.get("U25_ROOT") or Path(__file__).resolve().parents[1])
 sys.path.insert(0, str(ROOT / "src"))
 
 from universe25.agents.body import COATS  # noqa: E402

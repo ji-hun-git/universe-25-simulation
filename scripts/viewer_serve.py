@@ -23,6 +23,7 @@ from __future__ import annotations
 import argparse
 import json
 import mimetypes
+import os
 import re
 import sys
 import threading
@@ -41,16 +42,41 @@ from universe25.config import load_config  # noqa: E402
 from universe25.sim import Universe25Sim  # noqa: E402
 
 APP = ROOT / "viewer"
-REC = ROOT / "_output" / "viewer"
-LIVE_OUT = ROOT / "_output" / "viewer_live"
-SHOTS = ROOT / "_output" / "figures"  # rendered views (scripts/hero_figure.py reads hero_pen.png)
+# what the server writes: the repo's _output, or the app's data folder (universe25.app, U25_DATA)
+DATA = Path(os.environ.get("U25_DATA") or ROOT / "_output")
+REC = DATA / "viewer"
+LIVE_OUT = DATA / "viewer_live"
+SHOTS = DATA / "figures"  # rendered views (scripts/hero_figure.py reads hero_pen.png)
 SHOT_MAX = 40 * 2**20
 PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
+# A preset is a config, and optionally a fitted member whose parameters it takes
+# ("member": a JSON file with "members", the first of which is used).
 PRESETS = {
-    "reference": {"label": "Reference colony (phase 2m)", "config": "configs/default.yaml"},
-    "scarce": {"label": "Scarce arm", "config": "configs/scarce.yaml"},
-    "replica": {"label": "Replica v2 pen (Calhoun layout)", "config": "configs/replica_v2.yaml"},
+    "universe25": {"label": "Universe 25: Calhoun's pen (final replica)",
+                   "config": "configs/replica_v2.yaml", "member": "configs/replica_v2_final.json"},
+    "reference": {"label": "Reference colony (phase 2m, simplified pen)",
+                  "config": "configs/default.yaml"},
+    "replica": {"label": "Calhoun's pen, unfitted (replica v2 M1-M4)",
+                "config": "configs/replica_v2.yaml"},
+    "scarce": {"label": "Scarce arm (research)", "config": "configs/scarce.yaml"},
 }
+
+
+def _deep(base: dict, over: dict) -> dict:
+    out = dict(base)
+    for k, v in over.items():
+        out[k] = _deep(out[k], v) if isinstance(v, dict) and isinstance(out.get(k), dict) else v
+    return out
+
+
+def preset_config(name: str, overrides: dict | None = None):
+    """The config a preset runs: its YAML, its member's parameters, then `overrides`."""
+    preset = PRESETS.get(name, PRESETS["reference"])
+    over: dict = {}
+    if preset.get("member"):
+        doc = json.loads((ROOT / preset["member"]).read_text(encoding="utf-8"))
+        over = dict(doc["members"][0]["params"])
+    return load_config(ROOT / preset["config"], _deep(over, overrides or {}))
 SAMPLES = ("day", "tick", "sub")
 BUFFER_BYTES = 384 * 2**20  # frames kept for clients; the oldest go first
 MAX_FRAMES_PER_RESPONSE = 600
@@ -82,7 +108,6 @@ class LiveRun:
     # ------------------------------------------------------------------ thread
     def _config(self):
         p = self.params
-        preset = PRESETS.get(p.get("preset", "reference"), PRESETS["reference"])
         backend = p.get("backend", "numpy")
         overrides: dict = {"seed": int(p.get("seed", 7000)), "backend": backend,
                            "snapshot_every_days": 0}
@@ -104,7 +129,7 @@ class LiveRun:
             overrides["coat"] = {"founders": p["coat"]}
         if p.get("weight_effects"):
             overrides["body"] = {"weight_effects": True}
-        return load_config(ROOT / preset["config"], overrides)
+        return preset_config(p.get("preset", "reference"), overrides)
 
     def _push(self, frame: tuple[dict, bytes]) -> None:
         meta, payload = frame
@@ -279,7 +304,8 @@ class Handler(BaseHTTPRequestHandler):
         SHOTS.mkdir(parents=True, exist_ok=True)
         out = SHOTS / f"{name}.{ext}"
         out.write_bytes(data)
-        return self._json({"path": out.relative_to(ROOT).as_posix(), "bytes": n})
+        shown = out.relative_to(ROOT).as_posix() if out.is_relative_to(ROOT) else str(out)
+        return self._json({"path": shown, "bytes": n})
 
     def do_POST(self) -> None:  # noqa: N802
         url = urlparse(self.path)

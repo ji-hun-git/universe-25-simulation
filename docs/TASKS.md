@@ -1203,7 +1203,12 @@ from `scripts/record_fit_chain.cmd`.
 - U-1's config is the default when it lands; the frozen colony stays available.
 - Nothing is published without Jason's go-ahead.
 
-**Status 2026-11-18:** started.
+**Status 2026-11-18:**
+- `universe25-app` (`src/universe25/app.py`) opens the viewer on the live-run panel. Its first
+  preset is Universe 25 in Calhoun's pen (today the final replica).
+- `scripts/build_app.py` builds the Windows program. Not built yet: it needs PyInstaller in a
+  build venv, a download to agree first.
+- Not done: Mac, offline copies of three.js and uPlot.
 
 ---
 

@@ -187,6 +187,32 @@ python scripts\viewer_serve.py
   from Google Fonts. Without them the plan view still runs, and the charts and the 3D view say
   what is missing.
 
+## App
+
+The viewer and its live runs as one program, for people without the research setup (TASKS U-2,
+private for now).
+
+```powershell
+pip install -e .        # once, in the repo
+universe25-app          # or: python -m universe25.app
+```
+
+- It serves the viewer on 127.0.0.1 only and opens the browser on the live-run panel.
+- The first preset is **Universe 25: Calhoun's pen**. Pick a seed, press Start run, and the
+  colony is simulated on this machine and streams to the viewer, at 20 days a second by
+  default.
+  - Today it is the final replica of replica v2.
+  - The record fit (`docs/RECORD_FIT.md`, TASKS U-1) replaces it if the fit passes its
+    validation.
+- The reference colony, the unfitted Calhoun pen and the scarce arm are still there.
+- From the repo, recordings and runs go to `_output/`.
+- **A Windows program that needs no Python**: `scripts/build_app.py` builds it with PyInstaller
+  in a separate build venv (the script says how).
+  - It ships a sample recording and keeps recordings and runs in `%LOCALAPPDATA%\Universe25`.
+  - It runs the NumPy path only.
+  - It is not built yet.
+- The 3D view and the charts still load three.js and uPlot from cdn.jsdelivr.net.
+
 ## World
 
 - Pen: **101 × 101 inches**, **16 cells**, **256 nests**, food + water per cell (Calhoun design capacity 3840).

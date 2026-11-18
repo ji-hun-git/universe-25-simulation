@@ -21,6 +21,7 @@ dev = []
 
 [project.scripts]
 universe25 = "universe25.__main__:main"
+universe25-app = "universe25.app:main"  # the viewer and live runs (README, "App")
 
 [build-system]
 requires = ["setuptools>=68"]
