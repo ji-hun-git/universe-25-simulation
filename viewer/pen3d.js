@@ -23,6 +23,13 @@
 // - it is pushed clear of the walls, balls, stands and a tunnel's sides;
 // - inside a tunnel it runs along it;
 // - it is lifted onto a nest pad or a ramp and over a partition.
+// Nor do the animals keep apart, so crowded bodies would pass through one another:
+// - each crowd the model puts on one point is laid out: a grid stand's rosette (_place), a
+//   pad's huddle, a Calhoun box's rows, a clump on the floor (_unclump); what a Calhoun
+//   platform or hopper face cannot hold waits on the floor below it;
+// - free floor animals are pushed a little apart (_relax);
+// - what still overlaps is drawn as one animal lying on another, in an order that holds from
+//   frame to frame (_stack).
 // Only the picture moves; the inspector shows the model's own position.
 // View state (layers, roles shown, selection, follow) is shared with the plan view through `ui`.
 import * as THREE from "three";
@@ -56,6 +63,10 @@ const SPINE_BELLY = SPINE.map(([lx]) => Math.exp(-(((lx + 0.35) / 0.8) ** 2))); 
 const GAP = 0.25; // inches kept between a body and a pen wall
 const REACH = 4.95; // the tail tip and its sway from the body's centre, at scale 1
 const WALL_N = [[0, -1], [-1, 0], [0, 1], [1, 0]]; // inward normals of the SIDES walls, in pen x, z
+// stacking (_stack): three points along the spine (rear, middle, front; local x at scale 1),
+// the body's radius about its axis there (a little under its half-width, so crowded bodies
+// nestle), the axis's height above the feet, and the lookup grid's cell (inches)
+const STACK_X = [-1.0, 0, 1.0], STACK_R = [0.5, 0.52, 0.36], STACK_AXIS = 0.6, STACK_CELL = 2.3;
 // wall k: inward normal n and counter-clockwise tangent t, in the model's plane (y up)
 const NEAR = [0, 1, -1]; // a forager may use its own hopper or a wall neighbour's (replica M3)
 const SIDES = [{ n: [0, 1], t: [1, 0] }, { n: [-1, 0], t: [0, 1] }, { n: [0, -1], t: [-1, 0] },
@@ -81,6 +92,19 @@ function segDist(px, pz, ax, az, bx, bz) { // from a point to the segment a-b
   const dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz;
   const t = l2 > 0 ? Math.min(1, Math.max(0, ((px - ax) * dx + (pz - az) * dz) / l2)) : 0;
   return Math.hypot(px - ax - t * dx, pz - az - t * dz);
+}
+// The k-th of n animals in rings round a point, noses in: ring j at r0 + RING_GAP j inches
+// (under a body length: each ring's heads lie on the backs of the ring inside it), holding as
+// many as fit side by side at the body (1.25 in) and at the head (0.8 in, 1.1 in nearer the
+// point); the outer ring spread evenly. [radius, angle]
+const RING_GAP = 2.4;
+function ringAt(k, n, r0) {
+  let start = 0;
+  for (let j = 0; ; j++) {
+    const r = r0 + RING_GAP * j, cap = Math.max(1, Math.min(Math.floor((TAU * r) / 1.25), Math.floor((TAU * (r - 1.1)) / 0.8)));
+    if (k < start + cap) return [r, ((k - start + 0.5) / Math.min(cap, n - start)) * TAU + j * 0.7];
+    start += cap;
+  }
 }
 // the pads (centres x, z in pen coordinates) over each PAD_CELL square of the floor
 function padLookup(pads, W, H) {
@@ -568,7 +592,7 @@ export class Pen3D {
         hop.add(place(new THREE.Mesh(new THREE.BoxGeometry(HOPPER_W - 0.5, HOPPER_H * 0.72, HOPPER_D - 0.5), m.food), k, q, -HOPPER_D / 2, HOPPER_Y - HOPPER_H / 2 + 0.3));
         add(hop, "hoppers", {}, k);
         const face = P(q[0], q[1], HOPPER_Y);
-        this.hoppers[c.id] = { sx: fx, sy: fy, side: k, fx: face.x + n3[0] * (HOPPER_D + 0.04), fy: HOPPER_Y, fz: face.z + n3[1] * (HOPPER_D + 0.04), tx: t3[0], tz: t3[1], nx: n3[0], nz: n3[1] };
+        this.hoppers[c.id] = { sx: fx, sy: fy, side: k, fx: face.x + n3[0] * (HOPPER_D + 0.04), fy: HOPPER_Y, fz: face.z + n3[1] * (HOPPER_D + 0.04), tx: t3[0], tz: t3[1], nx: n3[0], nz: n3[1], yaw: Math.atan2(-s.n[1], -s.n[0]) };
         // water: a platform above the cell's tunnels, four bottles on the wall
         const [wx, wy] = c.water, kw = wallOf(wx, wy, W, H), sw = SIDES[kw], mw = mt;
         const us = w.nests.filter((nb) => nb.cell === c.id).map((nb) => along(kw, nb.x, nb.y, W, H));
@@ -775,6 +799,12 @@ export class Pen3D {
     this.fitP = new Float32Array(NC * 3); // the body's circles while fitting: x, z, radius
     this.fitW = new Float32Array(NS); // the spine circles' widening by girth and belly
     this.fit = { x: 0, z: 0, yaw: 0 };
+    // each drawn animal until its height is set (_stack): place, size, the floor under three
+    // points of its spine, kind, wall side, the pile it is in (ctx) and its place in the order
+    const F32 = (k = 1) => new Float32Array(cap * k);
+    this.M = { x: F32(), y: F32(), z: F32(), yaw: F32(), pitch: F32(), s: F32(), g: F32(3), kind: new Uint8Array(cap), side: new Int8Array(cap), ctx: new Int32Array(cap), prio: F32() };
+    this.stackOrder = new Uint32Array(cap);
+    this.stackK = null; // the lookup grid, made for the pen's size
     this.scale = new Float32Array(400);
     for (let a = 0; a < 400; a++) this.scale[a] = 1 - 0.63 * Math.exp(-a / 21); // about 0.37 at birth
   }
@@ -796,21 +826,31 @@ export class Pen3D {
     let P = this.placed.get(f);
     if (P) return P;
     const n = f.n, W = this.W, H = this.H, w = this.world, cal = w.layout === "calhoun", nc = w.cells.length;
-    P = { kind: new Uint8Array(n), x: new Float32Array(n), y: new Float32Array(n), z: new Float32Array(n), yaw: new Float32Array(n), side: new Int8Array(n).fill(-1) };
-    const boxK = this.boxK.fill(0), hopK = this.hopK.fill(0), watK = this.watK.fill(0);
+    // ctx: the animals that can lie on one another (_stack): the floor (with the grid's pads),
+    // each Calhoun box, each water platform; -1 on a hopper's face
+    // rank: in a stand's rosette, the distance from its centre (else -1)
+    P = { kind: new Uint8Array(n), x: new Float32Array(n), y: new Float32Array(n), z: new Float32Array(n), yaw: new Float32Array(n), side: new Int8Array(n).fill(-1), ctx: new Int32Array(n), rank: new Float32Array(n).fill(-1) };
+    const boxK = this.boxK.fill(0), hopK = this.hopK.fill(0), watK = this.watK.fill(0), nn = w.nests.length;
+    const crowd = []; // the grid's stands: animal, food 0 or water 1, cell, its place in the crowd
     for (let i = 0; i < n; i++) {
       const sx = f.x[i] / 100, sy = f.y[i] / 100, slot = f.slot[i];
-      let kind = FLOOR, X = sx - W / 2, Y = 0, Z = H / 2 - sy, side = -1;
+      let kind = FLOOR, X = sx - W / 2, Y = 0, Z = H / 2 - sy, side = -1, ctx = 0, rankOf = -1;
       let yaw = f.heading ? (f.heading[i] / 256) * TAU : h01(slot, 1) * TAU;
       const nest = f.nest[i], b = nest >= 0 ? this.boxes[nest] : null;
       if (b && Math.abs(sx - b.sx) < AT && Math.abs(sy - b.sy) < AT) {
-        const k = boxK[nest]++, layer = (k / 4) | 0, q = k % 4;
-        const u = ((q & 1) - 0.5) * b.w * 0.44 + (h01(slot, 2) - 0.5) * 0.3;
-        const v = ((q >> 1) - 0.5) * b.d * 0.46 + (h01(slot, 3) - 0.5) * 0.4;
-        X = b.cx + b.ax * u + b.bx * v; Z = b.cz + b.az * u + b.bz * v; Y = b.y + layer * 0.5;
-        yaw = b.yaw == null // square box: a pinwheel, each body across its quarter
-          ? Math.atan2(-v, u) + Math.PI / 2 + (h01(slot, 5) - 0.5) * 0.5
-          : b.yaw + (h01(slot, 4) < 0.5 ? 0 : Math.PI) + (h01(slot, 5) - 0.5) * 0.7;
+        const k = boxK[nest]++;
+        if (b.yaw == null) { // a grid pad: a huddle, each body curled round its centre
+          const ang = k * 2.39996 + h01(nest, 2) * TAU, r = 0.85 * Math.sqrt(k + 0.5);
+          X = b.cx + Math.cos(ang) * r; Z = b.cz + Math.sin(ang) * r;
+          yaw = Math.atan2(-Math.cos(ang), -Math.sin(ang)) + (h01(slot, 5) - 0.5) * 0.6;
+        } else { // a Calhoun box: three across, each nose to its own end, the rest on top
+          const q = k % 6, end = q < 3 ? 1 : -1;
+          const u = ((q % 3) - 1) * 1.2 + (h01(slot, 2) - 0.5) * 0.1, v = end * 1.85 + (h01(slot, 3) - 0.5) * 0.2;
+          X = b.cx + b.ax * u + b.bx * v; Z = b.cz + b.az * u + b.bz * v;
+          yaw = b.yaw + (end > 0 ? 0 : Math.PI) + (h01(slot, 5) - 0.5) * 0.2;
+          ctx = 1 + nest;
+        }
+        Y = b.y;
         kind = BOX;
       } else if (f.cell[i] < nc) {
         const c = f.cell[i];
@@ -818,37 +858,199 @@ export class Pen3D {
           const cc = (c + NEAR[o] + nc) % nc, hp = this.hoppers[cc], wt = this.waters[cc];
           if (Math.abs(sx - hp.sx) < AT && Math.abs(sy - hp.sy) < AT) {
             const k = hopK[cc]++;
-            if (cal) {
+            if (cal && k < 24) { // on the hopper's face, in two layers a body apart
               const layer = (k / 12) | 0, q = k % 12, u = ((q % 3) - 1) * 1.8 + (h01(slot, 6) - 0.5) * 0.4;
-              const v = (((q / 3) | 0) - 1.5) * 2.2 + (h01(slot, 7) - 0.5) * 0.4, off = 0.06 + layer * 0.9;
+              const v = (((q / 3) | 0) - 1.5) * 2.2 + (h01(slot, 7) - 0.5) * 0.4, off = 0.06 + layer * 1.3;
               X = hp.fx + hp.tx * u + hp.nx * off; Z = hp.fz + hp.tz * u + hp.nz * off; Y = hp.fy + v - 1.2;
-              kind = CLING; side = hp.side;
-            } else { // around the hopper, the first noses at its mesh
-              const a = k * 2.39996 + h01(cc, 8) * TAU, r = 2.6 + 0.6 * Math.sqrt(k);
-              X = hp.sx + Math.cos(a) * r - W / 2; Z = H / 2 - (hp.sy + Math.sin(a) * r); yaw = a + Math.PI;
-            }
+              kind = CLING; side = hp.side; ctx = -1;
+            } else if (cal) { // more than the face holds: waiting on the floor below, facing the wall
+              const q = k - 24, row = (q / 8) | 0, u = ((q % 8) - 3.5 + (row & 1) * 0.5) * 1.35, out = 1.0 + 2.6 * row;
+              X = hp.fx + hp.tx * u + hp.nx * out; Z = hp.fz + hp.tz * u + hp.nz * out;
+              yaw = hp.yaw + (h01(slot, 9) - 0.5) * 0.3; rankOf = out;
+            } else crowd.push(i, 0, cc, k); // in rings round the hopper, once its crowd is counted
             break;
           }
           if (Math.abs(sx - wt.sx) < AT && Math.abs(sy - wt.sy) < AT) {
             const k = watK[cc]++;
-            if (cal) { // facing the wall, noses at the spouts' line 1 in out; the back row in the gaps
-              const per = 7, row = ((k / per) | 0) % 2, layer = (k / (2 * per)) | 0;
+            if (cal && k < 14) { // on the platform facing the wall, noses at the spouts' line 1 in
+              // out, the back row in the gaps
+              const per = 7, row = (k / per) | 0;
               const u = (((k % per) + 0.5 + row * 0.5) / (per + 0.5)) * wt.len, depth = 2.9 + row;
-              X = wt.ax + wt.tx * u + wt.nx * depth; Z = wt.az + wt.tz * u + wt.nz * depth; Y = wt.y + layer * 0.55;
+              X = wt.ax + wt.tx * u + wt.nx * depth; Z = wt.az + wt.tz * u + wt.nz * depth; Y = wt.y;
               yaw = wt.yaw + (h01(slot, 9) - 0.5) * 0.3;
-              kind = SHELF; side = wt.side;
-            } else { // around the spout, the first noses at it
-              const a = k * 2.39996 + h01(cc, 10) * TAU, r = 1.95 + 0.6 * Math.sqrt(k);
-              X = wt.sx + Math.cos(a) * r - W / 2; Z = H / 2 - (wt.sy + Math.sin(a) * r); yaw = a + Math.PI;
-            }
+              kind = SHELF; side = wt.side; ctx = 1 + nn + cc;
+            } else if (cal) { // more than the platform holds: waiting on the floor below it, clear
+              // of the tunnels, facing the wall
+              const q = k - 14, per = Math.max(1, Math.floor(wt.len / 1.35)), row = (q / per) | 0;
+              const u = (((q % per) + 0.5 + (row & 1) * 0.5) / (per + 0.5)) * wt.len, depth = 5.0 + 2.6 * row;
+              X = wt.ax + wt.tx * u + wt.nx * depth; Z = wt.az + wt.tz * u + wt.nz * depth;
+              yaw = wt.yaw + (h01(slot, 9) - 0.5) * 0.3; rankOf = depth;
+            } else crowd.push(i, 1, cc, k); // and round the spout
             break;
           }
         }
       }
-      P.kind[i] = kind; P.x[i] = X; P.y[i] = Y; P.z[i] = Z; P.yaw[i] = yaw; P.side[i] = side;
+      P.kind[i] = kind; P.x[i] = X; P.y[i] = Y; P.z[i] = Z; P.yaw[i] = yaw; P.side[i] = side; P.ctx[i] = ctx;
+      P.rank[i] = rankOf;
     }
+    // The grid's stands: the model puts a crowd on the food point and one on the water point,
+    // 2.5 in apart. A cell's two crowds are drawn as one rosette round the midpoint (ringAt),
+    // noses in, each ring's heads on the backs of the ring inside it (P.rank: the inner rings
+    // are set first, _stack): the food crowd in the slice that faces the hopper, the water
+    // crowd in the rest, each in the order of the frame.
+    const free = new Uint8Array(n); // floor animals at their own points (not in a crowd's layout)
+    for (let i = 0; i < n; i++) free[i] = P.kind[i] === FLOOR && P.rank[i] < 0 ? 1 : 0;
+    const byCell = new Map();
+    for (let t = 0; t < crowd.length; t += 4) {
+      const cc = crowd[t + 2];
+      if (!byCell.has(cc)) byCell.set(cc, [[], []]);
+      byCell.get(cc)[crowd[t + 1]].push(crowd[t]);
+      free[crowd[t]] = 0;
+    }
+    for (const [cc, [food, water]] of byCell) {
+      const hp = this.hoppers[cc], wt = this.waters[cc], mx = (hp.sx + wt.sx) / 2, my = (hp.sy + wt.sy) / 2;
+      const toFood = Math.atan2(hp.sy - my, hp.sx - mx), nAll = food.length + water.length;
+      const slots = [];
+      for (let k = 0; k < nAll; k++) {
+        const [r, a] = ringAt(k, nAll, 4.0), th = a + h01(cc, 8) * TAU;
+        slots.push([r, th, Math.abs(angleTo(th, toFood))]);
+      }
+      slots.sort((p, q) => p[2] - q[2]); // the slots nearest the hopper's side first
+      food.concat(water).forEach((i, k) => {
+        const slot = f.slot[i], r = slots[k][0] + (h01(slot, 53) - 0.5) * 0.5;
+        const th = slots[k][1] + ((h01(slot, 54) - 0.5) * 0.3) / r;
+        P.x[i] = mx + Math.cos(th) * r - W / 2; P.z[i] = H / 2 - (my + Math.sin(th) * r);
+        P.yaw[i] = th + Math.PI + (h01(slot, 55) - 0.5) * 0.3;
+        P.rank[i] = r;
+      });
+    }
+    this._unclump(f, P, free);
+    this._relax(f, P, free);
     this.placed.set(f, P);
     return P;
+  }
+
+  // the drawn scale of animal i: from its lean weight where the frames carry it (format 3),
+  // else from its age
+  _scaleOf(f, i) {
+    const gest = f.gest && f.gest[i] ? (f.gest[i] - 1) / 254 : 0;
+    const lean = f.mass ? f.mass[i] / 100 / (1 + PREG_GAIN * gest * gest) : 0;
+    return lean > 0 ? Math.cbrt(lean / ADULT_G) : this.scale[Math.min(399, f.age[i])];
+  }
+
+  // Free floor animals whose bodies overlap are pushed apart, each keeping its heading: an
+  // overlap of two of the three circles along their spines (as _stack's) is shared between two
+  // free animals, and taken whole against a stand's crowd or a sleeper, which hold their
+  // places. Six passes, each animal kept within 2 in of where the model (or _unclump) puts it;
+  // what is left over is drawn lying on top (_stack). Once per frame.
+  _relax(f, P, free) {
+    const n = f.n, cell = 1.25, S = new Float32Array(n), floor = [], want = [];
+    for (let i = 0; i < n; i++) {
+      if (P.ctx[i] !== 0) continue;
+      S[i] = this._scaleOf(f, i);
+      floor.push(i);
+      if (free[i]) want.push(i);
+    }
+    if (!want.length) return;
+    const x0 = Float32Array.from(P.x), z0 = Float32Array.from(P.z), dx = new Float32Array(n), dz = new Float32Array(n);
+    // every floor body's circles in a grid of linked lists (as _stack's)
+    const span = Math.max(this.W, this.H) + 30, nx = Math.ceil(span / cell), x0g = -span / 2;
+    const nc = floor.length * 3, head = new Int32Array(nx * nx), next = new Int32Array(nc);
+    const cx = new Float32Array(nc), cz = new Float32Array(nc), cr = new Float32Array(nc), own = new Int32Array(nc);
+    const at = (v) => Math.min(nx - 1, Math.max(0, Math.floor((v - x0g) / cell)));
+    for (let it = 0; it < 6; it++) {
+      head.fill(-1);
+      let q = 0;
+      for (const i of floor) {
+        const s = S[i], c = Math.cos(P.yaw[i]) * s, sn = -Math.sin(P.yaw[i]) * s;
+        for (let k = 0; k < 3; k++, q++) {
+          cx[q] = P.x[i] + c * STACK_X[k]; cz[q] = P.z[i] + sn * STACK_X[k]; cr[q] = STACK_R[k] * s; own[q] = i;
+          const g = at(cz[q]) * nx + at(cx[q]);
+          next[q] = head[g]; head[g] = q;
+        }
+      }
+      for (const i of want) {
+        const s = S[i], c = Math.cos(P.yaw[i]) * s, sn = -Math.sin(P.yaw[i]) * s;
+        let mx = 0, mz = 0;
+        for (let k = 0; k < 3; k++) {
+          const px = P.x[i] + c * STACK_X[k], pz = P.z[i] + sn * STACK_X[k], r = STACK_R[k] * s;
+          const gx = at(px), gz = at(pz);
+          for (let a = Math.max(0, gx - 1); a <= Math.min(nx - 1, gx + 1); a++) {
+            for (let b = Math.max(0, gz - 1); b <= Math.min(nx - 1, gz + 1); b++) {
+              for (let t = head[b * nx + a]; t >= 0; t = next[t]) {
+                const j = own[t];
+                if (j === i) continue;
+                let ex = px - cx[t], ez = pz - cz[t];
+                const d = Math.hypot(ex, ez), R = r + cr[t];
+                if (d >= R) continue;
+                if (d < 1e-4) { // on one spot: apart along a line fixed for the pair
+                  const si = f.slot[i], sj = f.slot[j], ang = h01(Math.min(si, sj) * 7919 + Math.max(si, sj), 56) * TAU;
+                  ex = si < sj ? Math.cos(ang) : -Math.cos(ang); ez = si < sj ? Math.sin(ang) : -Math.sin(ang);
+                } else { ex /= d; ez /= d; }
+                const share = (free[j] ? 0.5 : 1) * (R - d);
+                mx += ex * share; mz += ez * share;
+              }
+            }
+          }
+        }
+        dx[i] = mx * 0.5; dz[i] = mz * 0.5; // half a step: the passes settle without overshooting
+      }
+      for (const i of want) {
+        let x = P.x[i] + dx[i], z = P.z[i] + dz[i];
+        const ox = x - x0[i], oz = z - z0[i], o = Math.hypot(ox, oz);
+        if (o > 2) { x = x0[i] + (ox / o) * 2; z = z0[i] + (oz / o) * 2; }
+        P.x[i] = x; P.z[i] = z;
+      }
+    }
+  }
+
+  // Free floor animals that the model puts on one spot (within half an inch of each other: often
+  // the withdrawn, idle together) are spread round it, each keeping its heading: the k-th of a
+  // clump, in a fixed order, at 1.0 sqrt(k + 0.5) in from the clump's centre. A clump is found
+  // again each frame, and the drawing glides between frames.
+  _unclump(f, P, free) {
+    const n = f.n, W = this.W, H = this.H, link = 0.5, cellOf = (v) => Math.floor(v / (link * 100));
+    const grid = new Map(), up = new Int32Array(n);
+    for (let i = 0; i < n; i++) {
+      up[i] = i;
+      if (!free[i]) continue;
+      const key = cellOf(f.x[i]) * 65536 + cellOf(f.y[i]);
+      if (!grid.has(key)) grid.set(key, []);
+      grid.get(key).push(i);
+    }
+    const root = (a) => { while (up[a] !== a) { up[a] = up[up[a]]; a = up[a]; } return a; };
+    for (const [key, list] of grid) {
+      const gx = Math.floor(key / 65536), gy = key - gx * 65536;
+      for (let a = -1; a <= 1; a++) {
+        for (let b = -1; b <= 1; b++) {
+          const other = grid.get((gx + a) * 65536 + gy + b);
+          if (!other) continue;
+          for (const i of list) {
+            for (const j of other) {
+              if (j > i && Math.hypot(f.x[i] - f.x[j], f.y[i] - f.y[j]) < link * 100) up[root(i)] = root(j);
+            }
+          }
+        }
+      }
+    }
+    const clumps = new Map();
+    for (let i = 0; i < n; i++) {
+      if (!free[i]) continue;
+      const r = root(i);
+      if (!clumps.has(r)) clumps.set(r, []);
+      clumps.get(r).push(i);
+    }
+    for (const list of clumps.values()) {
+      if (list.length < 2) continue;
+      let cx = 0, cy = 0, seed = Infinity;
+      for (const i of list) { cx += f.x[i]; cy += f.y[i]; seed = Math.min(seed, f.slot[i]); }
+      cx /= 100 * list.length; cy /= 100 * list.length;
+      const turn = h01(seed, 52) * TAU;
+      list.forEach((i, k) => {
+        const a = k * 2.39996 + turn, r = Math.sqrt(k + 0.5);
+        P.x[i] = cx + Math.cos(a) * r - W / 2; P.z[i] = H / 2 - (cy + Math.sin(a) * r);
+      });
+    }
   }
 
   // ---------------------------------------------------------------- fitting bodies around solids
@@ -948,16 +1150,28 @@ export class Pen3D {
         this._circles(x, z, yaw, s);
       }
     }
+    // the solids near enough to matter, with room for the pushes, found once
+    const O = this.objInfo, A = this.objAt, nO = (this.nearO ||= new Int32Array(256)), nD = (this.nearD ||= new Int32Array(256));
+    let no = 0, nd = 0;
+    if (O && L.playground) {
+      for (let k = 0; k < O.length && no < 256; k++) {
+        const dx = x - A[k * 2], dz = z - A[k * 2 + 1];
+        if (O[k].kind !== "ramp" && dx * dx + dz * dz < (1.6 * O[k].r + 2.2 * s + 3) ** 2) nO[no++] = k; // ramps: _ground
+      }
+    }
+    for (let k = 0; k < S.discs.length && nd < 256; k++) {
+      const d = S.discs[k], dx = x - d.x, dz = z - d.z;
+      if (L[d.layer] && dx * dx + dz * dz < (d.r + 2.2 * s + 3) ** 2) nD[nd++] = k;
+    }
     // four passes, as clearing one solid can push a body into the next (a body squeezed between
     // two that are closer than its width stays partly in one)
-    const O = this.objInfo, A = this.objAt;
-    for (let pass = 0; pass < 4; pass++) {
+    for (let pass = 0; pass < 4 && no + nd > 0; pass++) {
       // the playground: clear of the balls (their width at a body's height, 0.87 r); along a
       // tunnel inside it (once), clear of its sides
-      if (O && L.playground) {
-        for (let k = 0; k < O.length; k++) {
-          const o = O[k], cx = A[k * 2], cz = A[k * 2 + 1], dx = x - cx, dz = z - cz;
-          if (o.kind === "ramp" || dx * dx + dz * dz > (1.6 * o.r + 2.2 * s) ** 2) continue; // ramps: _ground
+      if (no) {
+        for (let t = 0; t < no; t++) {
+          const k = nO[t], o = O[k], cx = A[k * 2], cz = A[k * 2 + 1], dx = x - cx, dz = z - cz;
+          if (dx * dx + dz * dz > (1.6 * o.r + 2.2 * s) ** 2) continue;
           if (o.kind === "ball") { this._disc(x, z, cx, cz, 0.87 * o.r); x = F.x; z = F.z; continue; }
           const a = 1.25 * o.r, R = 0.85 * o.r, qx = dx * o.ux + dz * o.uz, qz = dx * o.vx + dz * o.vz;
           if (Math.abs(qz) >= R) { this._side(x, z, cx, cz, o, a, R); x = F.x; z = F.z; continue; }
@@ -971,9 +1185,8 @@ export class Pen3D {
         }
       }
       // stands: the grid's hoppers and spouts, the ring stands' rods
-      for (const d of S.discs) {
-        if (!L[d.layer]) continue;
-        const dx = x - d.x, dz = z - d.z;
+      for (let t = 0; t < nd; t++) {
+        const d = S.discs[nD[t]], dx = x - d.x, dz = z - d.z;
         if (dx * dx + dz * dz > (d.r + 2.2 * s) ** 2) continue;
         this._disc(x, z, d.x, d.z, d.r); x = F.x; z = F.z;
       }
@@ -1012,6 +1225,64 @@ export class Pen3D {
     return g;
   }
 
+  // Crowded bodies overlap, as the model's animals are points. Each overlap is drawn as one
+  // animal lying on another. In a fixed order (sleepers first, then a number of each animal's
+  // own, so a pile never reshuffles between frames), each animal is set at the lowest height
+  // that clears the bodies set before it in its pile, at three points along its spine, and
+  // pitched between them. Only heights change: floor positions stay as fitted.
+  _stack(n) {
+    const M = this.M, cap = M.x.length;
+    let K = this.stackK;
+    const span = Math.max(this.W, this.H) + 30; // the pen, and Calhoun's boxes behind its walls
+    if (!K || K.span !== span || K.cap !== cap) {
+      const nx = Math.ceil(span / STACK_CELL), F = () => new Float32Array(cap * 3);
+      K = this.stackK = { span, cap, nx, x0: -span / 2, head: new Int32Array(nx * nx), next: new Int32Array(cap * 3), cx: F(), cz: F(), r: F(), h: F(), ctx: new Int32Array(cap * 3) };
+    }
+    const order = this.stackOrder.subarray(0, n);
+    for (let k = 0; k < n; k++) order[k] = k;
+    order.sort((a, b) => M.prio[a] - M.prio[b]);
+    K.head.fill(-1);
+    const req = [0, 0, 0], cell = (v) => Math.min(K.nx - 1, Math.max(0, Math.floor((v - K.x0) / STACK_CELL)));
+    let nc = 0;
+    for (let t = 0; t < n; t++) {
+      const m = order[t], ctx = M.ctx[m];
+      if (ctx < 0) continue; // on a hopper's face
+      const s = M.s[m], x = M.x[m], z = M.z[m], c = Math.cos(M.yaw[m]) * s, sn = -Math.sin(M.yaw[m]) * s;
+      for (let k = 0; k < 3; k++) { // the height each point needs: the floor, or the bodies under it
+        const px = x + c * STACK_X[k], pz = z + sn * STACK_X[k], rho = STACK_R[k] * s, floor = M.g[m * 3 + k];
+        let need = floor;
+        const gi = cell(px), gj = cell(pz);
+        for (let a = Math.max(0, gi - 1); a <= Math.min(K.nx - 1, gi + 1); a++) { // reach < a cell
+          for (let b = Math.max(0, gj - 1); b <= Math.min(K.nx - 1, gj + 1); b++) {
+            for (let q = K.head[b * K.nx + a]; q >= 0; q = K.next[q]) {
+              if (K.ctx[q] !== ctx) continue;
+              // level with the circle's axis (e), plus a parabola over it: as high when centred,
+              // never steeper than 2 at its edge (the edges nestle a little); beyond the edge it
+              // falls to the floor within an inch, so nothing jumps as two bodies meet
+              const R = rho + K.r[q], dx = px - K.cx[q], dz = pz - K.cz[q], d2 = dx * dx + dz * dz;
+              const e = K.h[q] - STACK_AXIS * s;
+              if (d2 < R * R) need = Math.max(need, e + (R * R - d2) / R);
+              else if (e > need) {
+                const out = Math.sqrt(d2) - R;
+                if (out < 1) need = Math.max(need, e - Math.max(4, e - floor) * out);
+              }
+            }
+          }
+        }
+        req[k] = need;
+      }
+      const pitch = Math.max(-0.45, Math.min(0.45, Math.atan2(req[2] - req[0], 2 * s))), lift = s * Math.sin(pitch);
+      const y = Math.max(req[1], (req[0] + req[2]) / 2, req[2] - lift, req[0] + lift);
+      M.y[m] = y; M.pitch[m] = pitch;
+      for (let k = 0; k < 3; k++) { // its circles, for the animals set after it
+        const px = x + c * STACK_X[k], pz = z + sn * STACK_X[k], at = cell(pz) * K.nx + cell(px);
+        K.cx[nc] = px; K.cz[nc] = pz; K.r[nc] = STACK_R[k] * s; K.ctx[nc] = ctx;
+        K.h[nc] = y + STACK_AXIS * s + STACK_X[k] * lift;
+        K.next[nc] = K.head[at]; K.head[at] = nc; nc++;
+      }
+    }
+  }
+
   _mice(st) {
     const ui = this.ui, fa = st.fa, n = fa ? fa.n : 0, D = this.drawn;
     ui.selIndex = -1;
@@ -1020,63 +1291,55 @@ export class Pen3D {
     const PA = this._place(fa), fb = st.fb, a = st.alpha || 0, map = this.slotMap;
     let PB = null;
     if (fb && a > 0) { PB = this._place(fb); for (let j = 0; j < fb.n; j++) map[fb.slot[j]] = j; }
-    const E = this.fur.instanceMatrix.array, FC = this.fur.instanceColor.array, EC = this.eyes.instanceColor.array;
+    const FC = this.fur.instanceColor.array, EC = this.eyes.instanceColor.array;
     const SC = this.skin.instanceColor.array, BA = this.bodyAttr.array, SA = this.seedAttr.array;
     const G = this.gait.array, mode = this.colorBy, hidden = ui.hidden, turn = Math.min(1, a / 0.3);
-    let m = 0;
+    const M = this.M;
+    let m = 0, selM = -1;
     for (let i = 0; i < n; i++) {
       const role = fa.role[i];
       if (hidden.has(role)) continue;
       const slot = fa.slot[i], age = fa.age[i];
-      let kind = PA.kind[i], x = PA.x[i], y = PA.y[i], z = PA.z[i], yaw = PA.yaw[i], side = PA.side[i];
+      let kind = PA.kind[i], x = PA.x[i], y = PA.y[i], z = PA.z[i], yaw = PA.yaw[i], side = PA.side[i], ctx = PA.ctx[i];
+      const rank = PA.rank[i]; // the order in a stand's crowd holds from one frame to the next
+      let move = 0; // how far it goes before the next frame
       if (PB) {
         const j = map[slot];
         const dAge = j >= 0 ? fb.age[j] - age : -1;
         if (dAge >= 0 && dAge <= 2) { // the same animal in the next frame
+          if (PB.kind[j] === kind) move = Math.hypot(PB.x[j] - x, PB.z[j] - z); // else it waits, then moves
           if (PB.kind[j] === kind) {
             const dx = PB.x[j] - x, dz = PB.z[j] - z;
             x += dx * a; y += (PB.y[j] - y) * a; z += dz * a;
             if (fa.heading) yaw = lerpAngle(yaw, PB.yaw[j], kind === FLOOR ? turn : a);
             else if (kind === FLOOR && dx * dx + dz * dz > 1e-4) yaw = Math.atan2(-dz, dx);
           } else if (a >= 0.5) {
-            kind = PB.kind[j]; x = PB.x[j]; y = PB.y[j]; z = PB.z[j]; yaw = PB.yaw[j]; side = PB.side[j];
+            kind = PB.kind[j]; x = PB.x[j]; y = PB.y[j]; z = PB.z[j]; yaw = PB.yaw[j]; side = PB.side[j]; ctx = PB.ctx[j];
           }
         }
       }
-      // size from the lean weight where the frames carry it (format 3), else from age
-      const gest = fa.gest && fa.gest[i] ? (fa.gest[i] - 1) / 254 : 0;
-      const lean = fa.mass ? fa.mass[i] / 100 / (1 + PREG_GAIN * gest * gest) : 0;
-      const s = lean > 0 ? Math.cbrt(lean / ADULT_G) : this.scale[Math.min(399, age)], o = m * 16;
+      const gest = fa.gest && fa.gest[i] ? (fa.gest[i] - 1) / 254 : 0, s = this._scaleOf(fa, i);
       const girth = Math.min(1.2, Math.max(0.75, fa.cond ? fa.cond[i] / 100 : 1)), belly = gest * gest;
-      // on the floor (or asleep on a grid pad): clear of the solids, standing on the drawn floor,
-      // pitched with it (a ramp, a partition stepped over)
-      let pitch = 0;
+      // on the floor (or asleep on a grid pad): clear of the solids, and the drawn floor under
+      // three points of the spine (a pad, a ramp, a partition); elsewhere a flat floor
+      const g = m * 3;
       if (kind === FLOOR || (kind === BOX && !this.cal)) {
         const FW = this.fitW;
         for (let k = 0; k < NS; k++) FW[k] = Math.max(1, girth * (1 + 0.5 * belly * SPINE_BELLY[k]));
         this._fit(x, z, yaw, s);
         x = this.fit.x; z = this.fit.z; yaw = this.fit.yaw;
-        if (kind === FLOOR) {
-          const fx = Math.cos(yaw) * 0.9 * s, fz = -Math.sin(yaw) * 0.9 * s;
-          const gf = this._ground(x + fx, z + fz, s), gr = this._ground(x - fx, z - fz, s);
-          y = Math.max(this._ground(x, z, s), (gf + gr) / 2);
-          pitch = Math.max(-0.45, Math.min(0.45, Math.atan2(gf - gr, 1.8 * s)));
-        }
-      }
-      if (kind === CLING) { // on the hopper face: nose up, back to the pen
-        const sd = SIDES[side], nx = sd.n[0], nz = -sd.n[1];
-        E[o] = 0; E[o + 1] = s; E[o + 2] = 0; E[o + 3] = 0;
-        E[o + 4] = nx * s; E[o + 5] = 0; E[o + 6] = nz * s; E[o + 7] = 0;
-        E[o + 8] = nz * s; E[o + 9] = 0; E[o + 10] = -nx * s; E[o + 11] = 0;
-        D.p[m * 3] = x + nx * 0.6 * s; D.p[m * 3 + 1] = y; D.p[m * 3 + 2] = z + nz * 0.6 * s;
-      } else { // heading yaw, nose pitched up by pitch
-        const c = Math.cos(yaw), sn = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
-        E[o] = c * cp * s; E[o + 1] = sp * s; E[o + 2] = -sn * cp * s; E[o + 3] = 0;
-        E[o + 4] = -c * sp * s; E[o + 5] = cp * s; E[o + 6] = sn * sp * s; E[o + 7] = 0;
-        E[o + 8] = sn * s; E[o + 9] = 0; E[o + 10] = c * s; E[o + 11] = 0;
-        D.p[m * 3] = x; D.p[m * 3 + 1] = y + 0.6 * s; D.p[m * 3 + 2] = z;
-      }
-      E[o + 12] = x; E[o + 13] = y; E[o + 14] = z; E[o + 15] = 1;
+        const fx = Math.cos(yaw) * s, fz = -Math.sin(yaw) * s;
+        M.g[g] = this._ground(x - fx, z - fz, s); M.g[g + 1] = this._ground(x, z, s); M.g[g + 2] = this._ground(x + fx, z + fz, s);
+      } else M.g[g] = M.g[g + 1] = M.g[g + 2] = y;
+      M.x[m] = x; M.y[m] = y; M.z[m] = z; M.yaw[m] = yaw; M.pitch[m] = 0; M.s[m] = s;
+      M.kind[m] = kind; M.side[m] = side; M.ctx[m] = kind === CLING ? -1 : ctx;
+      // the order of setting, which holds from one frame to the next: sleepers; a stand's
+      // rosette from the inside out; the rest by a number of each one's own; and last, those
+      // going somewhere before the next frame (the farther the later), so a runner goes over
+      // the still ones and never lifts them from below
+      const going = move > 1.5;
+      M.prio[m] = kind === BOX ? (going ? 0.9 + move / 1000 : 0.8 * h01(slot, 51))
+        : going ? 3 + move / 1000 : rank >= 0 ? 1 + rank / 100 : 2 + h01(slot, 51);
       const ph = fa.coat ? coatOf(fa.coat[i]) : 0;
       let col;
       if (mode === "natural") col = this.cFur[ph][Math.min(12, age)];
@@ -1113,13 +1376,35 @@ export class Pen3D {
       if (ui.sel && slot === ui.sel.slot && Math.abs(born - ui.sel.born) < 2.5) {
         ui.selIndex = i;
         ui.selPos = [fa.x[i] / 100, fa.y[i] / 100];
-        this.selAt = new THREE.Vector3(D.p[m * 3], D.p[m * 3 + 1], D.p[m * 3 + 2]);
-        this.selScale = s; this.selFloor = y;
+        selM = m;
       }
       m++;
     }
     if (PB) for (let j = 0; j < fb.n; j++) map[fb.slot[j]] = -1;
     D.n = m;
+    this._stack(m);
+    const E = this.fur.instanceMatrix.array;
+    for (let k = 0; k < m; k++) { // the matrices, now that the heights are set
+      const o = k * 16, s = M.s[k], x = M.x[k], y = M.y[k], z = M.z[k];
+      if (M.kind[k] === CLING) { // on the hopper face: nose up, back to the pen
+        const sd = SIDES[M.side[k]], nx = sd.n[0], nz = -sd.n[1];
+        E[o] = 0; E[o + 1] = s; E[o + 2] = 0; E[o + 3] = 0;
+        E[o + 4] = nx * s; E[o + 5] = 0; E[o + 6] = nz * s; E[o + 7] = 0;
+        E[o + 8] = nz * s; E[o + 9] = 0; E[o + 10] = -nx * s; E[o + 11] = 0;
+        D.p[k * 3] = x + nx * 0.6 * s; D.p[k * 3 + 1] = y; D.p[k * 3 + 2] = z + nz * 0.6 * s;
+      } else { // heading yaw, nose pitched up by pitch
+        const c = Math.cos(M.yaw[k]), sn = Math.sin(M.yaw[k]), cp = Math.cos(M.pitch[k]), sp = Math.sin(M.pitch[k]);
+        E[o] = c * cp * s; E[o + 1] = sp * s; E[o + 2] = -sn * cp * s; E[o + 3] = 0;
+        E[o + 4] = -c * sp * s; E[o + 5] = cp * s; E[o + 6] = sn * sp * s; E[o + 7] = 0;
+        E[o + 8] = sn * s; E[o + 9] = 0; E[o + 10] = c * s; E[o + 11] = 0;
+        D.p[k * 3] = x; D.p[k * 3 + 1] = y + 0.6 * s; D.p[k * 3 + 2] = z;
+      }
+      E[o + 12] = x; E[o + 13] = y; E[o + 14] = z; E[o + 15] = 1;
+    }
+    if (selM >= 0) {
+      this.selAt = new THREE.Vector3(D.p[selM * 3], D.p[selM * 3 + 1], D.p[selM * 3 + 2]);
+      this.selScale = M.s[selM]; this.selFloor = M.y[selM];
+    }
     this.fur.count = this.skin.count = this.eyes.count = m;
     this.fur.instanceMatrix.needsUpdate = true;
     this.fur.instanceColor.needsUpdate = true;
