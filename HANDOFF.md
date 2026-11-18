@@ -965,8 +965,9 @@ in the peak count (N@736 3–4 % low) and the slow realisations' late tail (N@14
 (`viewer/pen3d.js`, three.js) came the same day; its heights are drawn, not simulated (NOTES
 2026-11-17). The model's mice are points that pass through anything, so the 3D view fits each
 drawn body around what it draws as solid (walls, objects; NOTES 2026-11-17, "mice no longer
-drawn through walls"). Not done: shadcn (plain HTML / CSS instead), a README screenshot,
-offline copies of uPlot and three.js.
+drawn through walls"). It lays out the crowds the model puts on one point and draws bodies that
+still overlap lying on one another (NOTES 2026-11-18). Not done: shadcn (plain HTML / CSS
+instead), a README screenshot, offline copies of uPlot and three.js.
 
 **Accept when:**
 - Top-down 16-cell pen viewer (mice as role-colored dots; stress trail / hopper heatmap)

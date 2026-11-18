@@ -30,6 +30,8 @@ was drawn from: commit, seeds, the checks it ran and the renders it used.
   - The simulator is planar, so heights are drawn.
   - Its mice are points that pass through anything. The drawing keeps each body clear of the
     walls and the playground's objects, and spreads the objects the mice push into heaps.
+  - The crowds the model puts on one point (at food and water, on a nest) are laid out by the
+    drawing, and bodies that still overlap are drawn lying on one another.
   - NOTES 2026-11-17 (the 3D view) lists what the drawing chooses.
 - **Panel b shows a fit, not a prediction.** The parameters were calibrated to these
   landmarks on other seeds. With the playground off, or in Calhoun's own pen layout, the same
@@ -67,6 +69,7 @@ was drawn from: commit, seeds, the checks it ran and the renders it used.
 |---|---|
 | 2026-11-17 | First version: render, predictive-check population, crowding and withdrawal, the H-d to H-l ledger. |
 | 2026-11-17 | Panel a re-shot after the 3D view stopped drawing mice through walls: the grid's nest sites as pads, bodies kept clear of walls and objects. No number changed. |
+| 2026-11-18 | Panel a re-shot after the 3D view stopped drawing crowded mice through one another: crowds laid out, overlaps drawn as mice lying on one another. No number changed. |
 
 ## Booklet: `docs/booklet/universe25_booklet.pdf`
 
@@ -106,3 +109,4 @@ A nine-page A4 introduction for people outside the repo. The pages cover:
 | 2026-11-17 | First edition, from the hero figure drawn at 8ed9d3f. |
 | 2026-11-17 | Page 6 added: how close the model is to the original. The pen compared; the fit is fitted; closer to the original fits worse; the behaviour does not match. |
 | 2026-11-17 | Remade with the re-shot render (mice no longer drawn through walls). |
+| 2026-11-18 | Remade with the re-shot render (crowded mice no longer drawn through one another). |

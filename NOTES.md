@@ -1,5 +1,55 @@
 # Universe25 Play — NOTES
 
+## 2026-11-18 — 3D view: crowded mice no longer drawn through one another
+
+**What Jason asked.** After the wall fix: crowded mice should stop overlapping each other too.
+
+**Why they overlapped.** The model's animals are points, and the drawing gave each a body.
+- On day 529 of `ref_7000` (the peak, 2,199 mice), about 2,000 drawn bodies overlapped another.
+- 1,258 mice were at food or water, up to 135 on one point. The drawing set them in sunflower
+  spirals at about 1.1 square inches per mouse, well under a body's 4.
+- The model also puts clumps on one spot (up to 21 mice within 0.3 in, mostly withdrawn).
+
+**What changed** (`viewer/pen3d.js` only; the model is unchanged).
+- **Crowds the model puts on one point are laid out.**
+  - In the grid, a cell's food and water crowds form one rosette round the two stands. The
+    rings are 2.4 in apart, so each ring's heads lie on the backs of the ring inside. The food
+    crowd sits in the slice facing the hopper, the water crowd in the rest.
+  - A pad's sleepers huddle, curled round its centre.
+  - A Calhoun box holds three columns, each nose to its own end.
+  - Clumps of free floor mice are spread round their spot.
+  - A Calhoun platform holds 14 drinkers and a hopper face 24. The rest wait on the floor
+    below, facing the wall.
+- **Free floor mice are pushed a little apart**, once per frame and at most 2 in.
+- **What still overlaps is drawn as one mouse lying on another** (`_stack`).
+  - The order holds from frame to frame: sleepers first, then crowds from the inside out,
+    then the rest, then mice going somewhere, so a runner passes over the still ones.
+  - Each mouse sits at the lowest height that clears the bodies under three points of its
+    spine, and is pitched between them.
+  - Floor positions do not move. The lift rises smoothly: a parabola over a body, and a ramp
+    an inch wide beside a raised one.
+- Only the picture moves; the inspector shows the model's position.
+
+**Checks** (in the browser, from the drawn bodies).
+- `ref_7000`, days 300-1,100, and `replica_7000`, days 300-850:
+  - no two bodies come closer than 0.87 of their summed radius: edges nestle, nothing passes
+    through;
+  - still no body through a pen wall, and at most 5 low ones touching a ball.
+- Heights at the peak:
+  - rosettes are mostly under 2 in (16 of 1,258 above);
+  - huddles are under 1.3 in;
+  - mice climbing a crowd reach up to 6-8 in.
+- Smoothness, stepping through the 4-hour frames:
+  - height changes over 0.3 in fall from 3,205 to 26 when the step is a tenth as long, so
+    they are motion, not jumps;
+  - the jumps left come from a mouse switching between nest and floor, or hopping round a
+    solid.
+- Cost: a peak update takes about 6 ms, and a new frame's layout about 6 ms more.
+- Fast tier: failed=0.
+
+**Hero figure and booklet.** Panel a was re-shot (day 529, 2,199 mice), and the figure and the
+booklet were redrawn. No number changed.
+
 ## 2026-11-17 — 3D view: mice no longer drawn through walls
 
 **What Jason saw.** In the 3D view the mice passed through walls.
