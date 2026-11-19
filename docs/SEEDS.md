@@ -54,9 +54,9 @@ passed to the generator, not simulation seeds.
 | 9961–9976 | evaluation, late-reflex `evo` and H-l (registered 2026-11-16, before use) | 2 seeds per lineage (9961 + 2(ℓ − 1) and the next), paired across LS, LF, NEU and ABUND (`PHASE4_DESIGN.md` §4.8) |
 | 9416–9463 | record fit validation (registered 2026-11-18, before use) | the record fit's candidate and the final replica, each alone in Calhoun's pen on all 48 seeds (paired; `docs/RECORD_FIT.md`); the chain's member (a bug); all three replayed to day 316 for Calhoun's adults (U-3, exploratory, 2026-11-19) |
 | 9112–9159 | record fit 2 validation (registered 2026-11-19, before use) | the record fit 2 candidate (U-1's member again) and the final replica, each alone in Calhoun's pen on all 48 seeds (paired; `docs/RECORD_FIT_2.md`; read 2026-11-19) |
-| 7012–7047 | record fit 3 selection (training; registered 2026-11-19, before use) | the six record fit 3 candidates, 36 more training seeds each beside 7000–7011 (`docs/RECORD_FIT_3.md`) |
-| 9160–9199, 9464–9471 | record fit 3 validation (registered 2026-11-19, before use) | the record fit 3 candidate and the final replica, each alone in Calhoun's pen on all 48 seeds (paired); used only if a candidate meets the bar on its training seeds (`docs/RECORD_FIT_3.md`) |
-| 9096–9099, 9472–9499, 9977–9999 | **reserved, fresh** | substrate-variant confirmation (24 seeds per variant) and future references |
+| 7012–7047 | record fit 3 selection (training; registered 2026-11-19, before use) | the six record fit 3 candidates, 36 more training seeds each beside 7000–7011 (`docs/RECORD_FIT_3.md`; read 2026-11-19) |
+| 9160–9199, 9464–9471 | record fit 3 validation (registered 2026-11-19, before use) | **not read**: the stop rule held, so no candidate reached them (2026-11-19). Still fresh |
+| 9096–9099, 9160–9199, 9464–9499, 9977–9999 | **reserved, fresh** | substrate-variant confirmation (24 seeds per variant) and future references |
 
 ## Random-network init seeds (`MlpFrozenPolicy.random_init(s)`)
 

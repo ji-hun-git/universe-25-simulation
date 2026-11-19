@@ -21,6 +21,11 @@
 > frozen reference colony's predictive check had the same miscount. At Jason's word it is
 > restated: 11 of 15 inside, not 12. The hero figure and the booklet are redrawn (NOTES
 > 2026-11-19).
+> Then record fit 3 (U-4, `docs/RECORD_FIT_3.md`): a choice among the 68 members already run, by
+> the bar's own measure on 48 training seeds. It **stopped at its stop rule**: at most 7 of 14
+> inside, and no fresh seed used. Every candidate's last conception comes late. Calhoun's
+> reproduction ended for behavioural reasons this model does not produce, so the next step would
+> be a model change. That is Jason's call.
 >
 > **Status 2026-11-17:** the phase 3 viewer is built (`viewer/`, README "Viewer", TASKS P2-1 /
 > P2-2): the colony from above with a control panel, recordings and live runs (NumPy, or Warp

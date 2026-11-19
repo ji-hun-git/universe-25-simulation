@@ -103,3 +103,14 @@ validation, without a pause. Its logs go to `_output/hm_record3/`.
     model is Jason's call.
 
 Every result goes into NOTES.
+
+## Outcome (2026-11-19; NOTES 2026-11-19)
+
+- **The fit stops at its stop rule.** On their 48 training seeds the six candidates have 5–7 of
+  the 14 inside (12 needed) and the arc in 30–45 of 48 runs. No fresh seed was used: 9160–9199
+  and 9464–9471 are still fresh.
+- **Every candidate's last conception comes late.** The medians run from day 984 to day 1,578,
+  and the record's 920 lies below every 5 % point. N on day 960 is too low in five of the six.
+- **The misses are bias, not noise:** no candidate scores higher on 48 seeds than on 12.
+- **The final replica stays in the app.** What remains is a model question for Jason: Calhoun's
+  reproduction ended for behavioural reasons this model does not produce.

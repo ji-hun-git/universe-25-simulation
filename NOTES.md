@@ -1,5 +1,84 @@
 # Universe25 Play — NOTES
 
+## 2026-11-19 — Record fit 3 (U-4) stops at its preregistered stop rule: no candidate meets the bar on 48 training seeds (at most 7 of 14 inside), so no fresh seed is used; every candidate's last conception comes late
+
+**What Jason asked.** "KEEP GOING?", after record fit 2 (U-3) failed.
+
+**Why a third fit.**
+- U-1 and U-3 both chose the same member, by I₂ on 12 training seeds.
+- On those seeds it ties with the final replica: I₂ 1.91 against 1.93, and the arc on 10 against
+  11 of 12 seeds.
+- On fresh seeds the arc holds in 28 of 48 runs for it, and in 46 of 48 for the final replica.
+  Twelve seeds cannot tell the two apart.
+- `docs/RECORD_FIT_3.md` (ae7e70b, before any run) therefore chooses among the members already
+  run, by the bar's own measure, on 48 training seeds. Fresh seeds are spent only on a member that
+  meets the bar there.
+
+**The pool**, before any run (`_output/hm_record3/pool.json`).
+- 68 members of M5d's, U-1's and U-3's ensembles, on seeds 7000–7011.
+- 516 runs were replayed to day 316 for Calhoun's adults. All matched their stored runs.
+- The three members already validated on fresh seeds, all below the bar, were left out.
+- Among the rest, the best score on 12 seeds was 7 of 14 inside.
+
+**What ran.** `scripts/record_fit3_chain.cmd`, detached, from 15:23 to 15:51: six candidates ×
+seeds 7012–7047, 216 runs.
+
+**Result on 48 training seeds (7000–7047).** The candidates are labelled by their I₂ on 12 seeds;
+the last three columns give the median [5–95 %].
+
+| candidate | inside, of 14 | the arc, of 48 | last conception (record 920) | N@960 (record 1,650) | peak (record 2,200) |
+|---|---:|---:|---|---|---|
+| I₂ 2.55 | 7 | 45 | 1,240 [1,163, 1,509] | 1,418 [1,326, 1,523] | 2,086 [2,015, 2,174] |
+| I₂ 3.59 | 7 | 39 | 1,360 [1,074, 1,599] | 1,384 [1,207, 1,557] | 2,111 [1,713, 2,338] |
+| I₂ 2.18 | 7 | 30 | 1,014 [960, 1,598] | 1,164 [1,074, 1,308] | 1,864 [1,717, 2,005] |
+| I₂ 3.65 | 6 | 42 | 984 [939, 1,599] | 1,361 [1,238, 1,494] | 2,616 [2,329, 2,809] |
+| I₂ 4.54 | 6 | 40 | 1,578 [1,400, 1,599] | 1,624 [1,092, 1,946] | 2,259 [1,601, 2,640] |
+| I₂ 2.87 | 5 | 45 | 1,024 [982, 1,422] | 1,130 [1,033, 1,265] | 2,096 [2,018, 2,137] |
+
+- **The bar.** It is 12 of 14 inside and the arc in 43 of 48. No candidate comes near it, so the
+  stop rule holds: no fresh seed is used.
+- **More seeds did not help.** Each candidate's count is no higher on 48 seeds than on 12: the
+  misses are bias, not noise.
+- **The last conception comes late in every candidate.** The record's 920 is below every
+  candidate's 5 % point.
+  - So it is for the final replica on fresh seeds: 1,096 [1,042, 1,200].
+- **N@960 is too low in five of the six**, and the peak is off in four.
+
+**What this points to: the model, not the choice.** Exploratory, no new runs.
+- **In the model,** a female conceives until 583 days of age
+  (`biology.female_fertile_max_age_days`). She needs a cell owner who is not withdrawn and still
+  courts.
+- **In Universe 25,** conceptions ended near day 920.
+  - The youngest surviving females were then about 320 days old, so menopause did not end it
+    (about 560 days of age, `docs/RESEARCH_DIGEST.md`).
+  - Calhoun describes withdrawn males and the "beautiful ones" taking over.
+- **The model does not produce those categories.** On fresh seeds the final replica has:
+  - 0 % never fought or mated on day 800, against 53 %;
+  - 10 % withdrawn on day 560, against 32 %.
+- **The decline is too fast.** The record's population fell slowly after its peak (1,650 on day
+  960, survivors' mean age 776 days on day 1,331). Most members fall faster.
+- **Reading.** An earlier end of reproduction with a slow decline needs behaviour this model does
+  not have. That is a model change, not a parameter choice, and it is Jason's call.
+
+**What follows.**
+- The final replica stays the app's Universe 25, with its misses stated.
+- The Windows program is not built.
+- The frozen 2m colony stays the reference for the play research.
+
+**Seeds.**
+- 7012–7047 are now used for selection.
+- The 48 fresh seeds registered for this validation (9160–9199, 9464–9471) were not read, so
+  they are still fresh.
+
+**Files.**
+- `docs/RECORD_FIT_3.md`: the preregistration, and its outcome.
+- `scripts/record_fit3.py` (`--pool`, `--select`, `--validate`) and
+  `scripts/record_fit3_chain.cmd`.
+- `scripts/replica_validate.py`: `--pen-seeds` takes ranges joined by commas.
+- Not committed:
+  - `_output/hm_record3/`: `pool.json`, `select.json`, `medians.json`, the 216 runs and the logs;
+  - `_output/hm_adults/diagnose_selection.json`.
+
 ## 2026-11-19 — The reference colony's predictive check restated with Calhoun's adults: 11 of 15 record values inside, not 12; the hero figure and the booklet are redrawn
 
 **What Jason asked.** "Yes, restate it". The question was whether to restate the frozen colony's

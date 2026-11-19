@@ -1237,7 +1237,13 @@ seeds, then again on the fresh seeds 9160–9199 and 9464–9471: at least 12 of
 counted as Calhoun counted them, and the arc in at least 43 of 48 runs. If none meets it on
 training seeds, the fit fails and no fresh seed is used. Either way the result goes into NOTES.
 
-**Status 2026-11-19:** preregistered; the chain runs.
+**Status 2026-11-19: failed at the stop rule** (NOTES 2026-11-19).
+- On 48 training seeds the six candidates have 5–7 of 14 inside and the arc in 30–45 of 48. No
+  fresh seed was used.
+- Every candidate's last conception comes late (medians from day 984 to day 1,578; record 920).
+  More seeds did not raise any count, so the misses are bias, not noise.
+- Next, Jason's call: Calhoun's reproduction ended for behavioural reasons (withdrawal, the
+  beautiful ones) that this model does not produce. That is a model change, not a choice.
 
 ---
 
