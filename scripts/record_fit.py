@@ -35,6 +35,9 @@ import history_match_rep as hmr  # noqa: E402
 
 LABEL = "hm_record"
 SOURCE = "hm_m5d"  # waves 1-3 come from here
+BASE = hmr.BASE  # wave 0: M5c's final emulators, as in M5d
+OBS_WAVES = {1, 2, 3, 4}  # the ensemble's observed members come from these waves
+READ_AS: dict[str, str] = {}  # target -> outputs key it is read from (U-3: record_fit2.py)
 MEAN = ["first_litters_day", "n_at_day_315", "adults_at_day_315", "peak_n", "plateau_onset_day",
         "n_at_day_736", "n_at_day_811", "n_at_day_960", "doubling_b", "doubling_c"]
 COND = ["last_young_day", "last_conception_day", "n_at_day_1444", "n_at_day_1588"]
@@ -48,12 +51,21 @@ def setup() -> None:
     """Score the 14 targets only; keep M5d's settings; aim the sampling at the arc."""
     hm.OUTPUTS = {k: hm.OUTPUTS[k] for k in MEAN + COND}
     hmr.MEAN, hmr.COND, hmr.MIN_ARC = list(MEAN), list(COND), MIN_ARC
+    hmr.BASE = BASE
     base_check = hmr.check_label
+    if READ_AS:  # every run is read through here, wave 0's included
+        base_load_runs, base_load = hm.load_runs, hmr.load
+        hm.load_runs = lambda: read_as(base_load_runs())
+        hmr.load = lambda label: read_as(base_load(label))
 
     def check_label(label: str) -> None:  # the label also records its targets
         path = ROOT / "_output" / label / "targets.json"
         cur = {"mean": MEAN, "cond": COND, "source": SOURCE, "p_min": P_MIN,
                "ensemble": [N_OBS, N_EM]}
+        if READ_AS:
+            cur["read_as"] = READ_AS
+        if OBS_WAVES != {1, 2, 3, 4}:
+            cur["obs_waves"] = sorted(OBS_WAVES)
         if path.exists():
             old = json.loads(path.read_text(encoding="utf-8"))
             if old != cur:
@@ -75,6 +87,16 @@ def setup() -> None:
     hmr.check_label = check_label
     hmr.RepEmulators.keep = keep
     hmr.points = points
+
+
+def read_as(runs: list[dict]) -> list[dict]:
+    """Each READ_AS target read from its outputs key, in memory (runs.jsonl keeps both keys).
+    A run without the key gets NaN, which the emulators and the scoring leave out."""
+    for r in runs:
+        o = r["outputs"]
+        for name, key in READ_AS.items():
+            o[name] = float(o.get(key, float("nan")))
+    return runs
 
 
 def members(runs: list[dict], base_points) -> list[dict]:
@@ -114,10 +136,10 @@ def init() -> int:
 
 
 def mix_ensemble(workers: int, dry: bool = False) -> int:
-    """Wave 99: the N_OBS best observed points of waves 1-4 and N_EM from the top tenth of the
+    """Wave 99: the N_OBS best observed points of OBS_WAVES and N_EM from the top tenth of the
     emulated arc frequency, each on the 12 ensemble seeds."""
     runs = hm.load_runs()
-    pts = hmr.points(runs, {1, 2, 3, 4}, len(hmr.REP_SEEDS))
+    pts = hmr.points(runs, OBS_WAVES, len(hmr.REP_SEEDS))
     rep = hmr.RepEmulators(pts)
     va = hmr.v_arc([p["runs"] for p in pts])
     scored = [(hmr.score(p["runs"], va), p) for p in pts]

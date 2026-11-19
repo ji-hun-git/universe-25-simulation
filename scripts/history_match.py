@@ -164,6 +164,10 @@ def outputs(r: dict) -> dict[str, float]:
         "beautiful_800": s("800", "beautiful_share"),
         "beautiful_800_adult": s("800", "beautiful_share_adult"),  # M8: fights from maturity
         "brood_groups_315": float(len(tr.get("brood_sizes_315", []))),
+        # U-3 (docs/RECORD_FIT_2.md): adults as Calhoun counted them (aged 131 days or more);
+        # adults_at_day_315 above counts from sexual maturity (biology.maturity_days)
+        "adults_131_at_day_315": s("315", "n_age131"),
+        "n_weaned_at_day_315": s("315", "n_weaned"),
     }
 
 

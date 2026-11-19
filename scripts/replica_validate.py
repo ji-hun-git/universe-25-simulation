@@ -85,6 +85,8 @@ def main() -> int:
     p.add_argument("--sib-seeds", default="9248-9295")
     p.add_argument("--beautiful-adult", action="store_true",
                    help="M5e: read 'never fought or mated' as the adult share (replica v2 M8)")
+    p.add_argument("--adults-131", action="store_true",
+                   help="U-3: read adults on day 315 as Calhoun's adults, aged 131 days or more")
     a = p.parse_args()
     lo, hi = (int(v) for v in a.pen_seeds.split("-"))
     pen_seeds = tuple(range(lo, hi + 1))
@@ -113,6 +115,8 @@ def main() -> int:
         print("\nCalhoun's pen, 48 fresh seeds: record vs 5-95 % range")
         n_in = 0
         alias = {"beautiful_800": "beautiful_800_adult"} if a.beautiful_adult else {}
+        if a.adults_131:
+            alias["adults_at_day_315"] = "adults_131_at_day_315"
         res["alias"] = alias
         for name, (z, *_rest) in hm.OUTPUTS.items():
             v = np.array([o.get(alias.get(name, name), np.nan) for o in outs], float)

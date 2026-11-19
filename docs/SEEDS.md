@@ -53,7 +53,8 @@ passed to the generator, not simulation seeds.
 | 7000–7009 | `evo` late-reflex pre-evolution (P4-21, registered 2026-11-16) | the two late lines' founding epochs cycle over these sim seeds as H-h's do; founder draws from `SeedSequence([7000 + ℓ − 1, 7_900_001])` (LF) and `SeedSequence([7000 + ℓ − 1, 8_000_001])` (LS), policy streams keyed (ℓ, e, 4) and (ℓ, e, 5). The design's development look used the dev-only key (ℓ, 0, 99) on seed 7000, and its pilot the dev-only streams 7_899_001 and (ℓ, e, 98) |
 | 9961–9976 | evaluation, late-reflex `evo` and H-l (registered 2026-11-16, before use) | 2 seeds per lineage (9961 + 2(ℓ − 1) and the next), paired across LS, LF, NEU and ABUND (`PHASE4_DESIGN.md` §4.8) |
 | 9416–9463 | record fit validation (registered 2026-11-18, before use) | the record fit's candidate and the final replica, each alone in Calhoun's pen on all 48 seeds (paired; `docs/RECORD_FIT.md`) |
-| 9096–9099, 9112–9199, 9464–9499, 9977–9999 | **reserved, fresh** | substrate-variant confirmation (24 seeds per variant) and future references |
+| 9112–9159 | record fit 2 validation (registered 2026-11-19, before use) | the record fit 2 candidate and the final replica, each alone in Calhoun's pen on all 48 seeds (paired; `docs/RECORD_FIT_2.md`) |
+| 9096–9099, 9160–9199, 9464–9499, 9977–9999 | **reserved, fresh** | substrate-variant confirmation (24 seeds per variant) and future references |
 
 ## Random-network init seeds (`MlpFrozenPolicy.random_init(s)`)
 

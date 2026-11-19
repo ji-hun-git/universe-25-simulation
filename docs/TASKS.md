@@ -1191,7 +1191,25 @@ runs. The behaviour targets are reported, not fitted. Either way the result goes
 - A grouping bug made the chain validate another member first, with 9 of 14. It is fixed in
   `scripts/record_fit.py`, and that member is kept in `configs/record_fit_chain_member.json`.
 - The final replica ties on the 14 (8) and has the arc in 46, so it stays the app's Universe 25.
-- What comes next is Jason's call. Every member misses adults on day 315.
+- What comes next is Jason's call. Every member misses adults on day 315 (next: U-3).
+
+---
+
+## U-3 — Record fit 2: adults counted as Calhoun counted them (Jason 2026-11-19)
+
+**Goal:** "try a new fit aimed at adults on day 315", the miss every U-1 member shared. U-1
+counted adults from sexual maturity; Calhoun's adult categories begin at 131 days.
+
+**Files:** `docs/RECORD_FIT_2.md` (the preregistration), `scripts/record_fit2.py`,
+`scripts/record_fit2_chain.cmd`, `configs/record_fit2_ensemble.json` and
+`configs/record_fit2_candidate.json` (written by the run), `docs/SEEDS.md`.
+
+**Acceptance criteria** (`docs/RECORD_FIT_2.md`): on the fresh seeds 9112–9159, the candidate
+has at least 12 of the 14 record values inside its 5–95 % range, with adults read as the mice
+aged 131 days or more, and the arc in at least 43 of 48 runs. Either way the result goes into
+NOTES.
+
+**Status 2026-11-19:** preregistered; the chain runs.
 
 ---
 

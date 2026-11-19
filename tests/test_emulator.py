@@ -122,8 +122,35 @@ def test_history_match_rep_scoring() -> None:
     hm.PARAMS = hm.param_set(False)
 
 
+def test_record_fit_reads_calhouns_adults() -> None:
+    """U-3: the run outputs carry Calhoun's adults (aged 131 days or more) beside the count from
+    sexual maturity, and the record fit can read the adults target from that key; a run without
+    it is left out (NaN), not scored on the old count."""
+    import history_match as hm
+    import record_fit as rf
+
+    r = {"landmarks": {"adults_at_day_315": 300.0, "peak_day_97pct": 380.0},
+         "struct": {"315": {"n_age131": 140, "n_weaned": 500}}, "n_series": [10.0] * 400}
+    o = hm.outputs(r)
+    assert o["adults_at_day_315"] == 300.0 and o["adults_131_at_day_315"] == 140.0
+    assert o["n_weaned_at_day_315"] == 500.0
+    assert np.isnan(hm.outputs({**r, "struct": {}})["adults_131_at_day_315"])
+    runs = [{"outputs": {"adults_at_day_315": 300.0, "adults_131_at_day_315": 140.0}},
+            {"outputs": {"adults_at_day_315": 250.0}}]
+    old = dict(rf.READ_AS)
+    rf.READ_AS = {"adults_at_day_315": "adults_131_at_day_315"}
+    try:
+        rf.read_as(runs)
+    finally:
+        rf.READ_AS = old
+    assert runs[0]["outputs"]["adults_at_day_315"] == 140.0
+    assert np.isnan(runs[1]["outputs"]["adults_at_day_315"])
+    assert runs[0]["outputs"]["adults_131_at_day_315"] == 140.0  # the source key is kept
+
+
 if __name__ == "__main__":
     test_gp_recovers_a_known_function()
     test_history_match_scales()
     test_history_match_rep_scoring()
+    test_record_fit_reads_calhouns_adults()
     print("test_emulator: OK")

@@ -126,6 +126,9 @@ def run_one(job: tuple[str, str, dict, int, float]) -> tuple[str, int, dict]:
                 cells = np.bincount(a.cell_id[weaned].astype(int), minlength=sim.world.n_cells)
                 struct[str(d)] = {
                     "n": int(al.sum()),
+                    "n_weaned": int(weaned.sum()),
+                    # Calhoun's adults: his adult age categories begin at 131 days (U-3)
+                    "n_age131": int(np.sum(al & (a.age_days >= 131.0))),
                     "empty_box_share": float(np.mean(occ == 0)),
                     "centre_share": float(near[weaned].mean()) if weaned.any() else np.nan,
                     "withdrawn_centre": float(near[wd].mean()) if wd.any() else np.nan,
