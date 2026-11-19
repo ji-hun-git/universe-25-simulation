@@ -58,6 +58,9 @@ def test_committed_figure_matches_its_ledger() -> None:
     assert (ROOT / meta["file"]).is_file()
     assert meta["ledger"] == hf.LEDGER.relative_to(ROOT).as_posix()
     assert meta["ppc"]["of"] >= meta["ppc"]["inside"] > 0
+    rows = {r["landmark"]: r for r in meta["ppc"]["rows"]}
+    assert rows["adults_at_day_315"].get("read_as") == hf.READ_AS["adults_at_day_315"], \
+        "the figure counts adults from sexual maturity: run scripts/hero_figure.py draw"
     assert meta.get("ledger_sha256") == hf.ledger_hash(), \
         "the ledger changed after the figure was drawn: run scripts/hero_figure.py draw"
 

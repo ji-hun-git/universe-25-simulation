@@ -68,7 +68,9 @@ PRESETS = {
                   "config": "configs/default.yaml",
                   "about": "The research colony: Calhoun's sizes in a simplified pen (a 4 x 4 "
                            "grid, nests as points, and a playground he never had). Its population "
-                           "curve was fitted to the record: 12 of 15 values inside on 48 seeds."},
+                           "curve was fitted to the record: 11 of 15 values inside on 48 seeds. "
+                           "It starts late and then grows too fast, so on day 315 it has few "
+                           "adults as Calhoun counted them (131 days or older)."},
     "replica": {"label": "Calhoun's pen, unfitted (replica v2 M1-M4)",
                 "config": "configs/replica_v2.yaml",
                 "about": "Calhoun's own pen with replica v2's settings before any fit (M1-M4)."},

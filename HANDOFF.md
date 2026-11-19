@@ -4,7 +4,7 @@
 > **Repo (private):** https://github.com/ji-hun-git/universe25-play  
 > **Local path (lab PC):** `C:\Users\user\Projects\universe25-play`  
 > **Owner:** Jason (ji-hun-git) · **Research partner:** gan  
-> **Date:** 2026-11-17 (Asia/Seoul) · **Phase:** 1 complete; **phase 2 calibration frozen at 2m** (canonical landmark error 0.06 at seed 7000, 0.03–0.10 held-out; 12-seed plateau within 3–4 % of Calhoun; early phase a third low; emergent, irreversible collapse — caveats in `NOTES.md` → "Phase 2m"; Tier 1 predictive check on 48 seeds: 12 of 15 record values inside the 90 % interval); replica v2 (Calhoun's pen) ended 2026-11-13 and the frozen 2m colony stays the reference; Warp parity partial; **phase 3 viewer built** 2026-11-17 (plan and 3D); **phase 4** (learned and evolved agents, play detectors): H-d to H-l read, no evidence of play either way (`docs/figures/phase4_ledger.yaml`); hero figure and registry: `docs/FIGURES.md`; earlier Universe 25 research: `docs/PRIOR_WORK.md`
+> **Date:** 2026-11-17 (Asia/Seoul) · **Phase:** 1 complete; **phase 2 calibration frozen at 2m** (canonical landmark error 0.06 at seed 7000, 0.03–0.10 held-out; 12-seed plateau within 3–4 % of Calhoun; early phase a third low; emergent, irreversible collapse — caveats in `NOTES.md` → "Phase 2m"; Tier 1 predictive check on 48 seeds: 11 of 15 record values inside the 90 % interval, with adults on day 315 counted as Calhoun counted them; 12 of 15 as first run, counting from sexual maturity); replica v2 (Calhoun's pen) ended 2026-11-13 and the frozen 2m colony stays the reference; Warp parity partial; **phase 3 viewer built** 2026-11-17 (plan and 3D); **phase 4** (learned and evolved agents, play detectors): H-d to H-l read, no evidence of play either way (`docs/figures/phase4_ledger.yaml`); hero figure and registry: `docs/FIGURES.md`; earlier Universe 25 research: `docs/PRIOR_WORK.md`
 
 > **Status 2026-11-19:** Jason asked for an accurate Universe 25 anyone can use (TASKS U-1,
 > U-2). The record fit in Calhoun's pen (U-1, `docs/RECORD_FIT.md`) **failed its preregistered
@@ -18,8 +18,9 @@
 > adults from sexual maturity; Calhoun counted them from 131 days. With his count the rule chose
 > the same member, which **failed again**: 9 of 14 inside on fresh seeds 9112–9159, and the arc
 > in 28 of 48 runs. On the same seeds the final replica has 11 of 14 and the arc in 46. The
-> frozen reference colony's predictive check has the same miscount, so its "12 of 15" would read
-> 11 of 15. Whether to restate it is Jason's call (NOTES 2026-11-19).
+> frozen reference colony's predictive check had the same miscount. At Jason's word it is
+> restated: 11 of 15 inside, not 12. The hero figure and the booklet are redrawn (NOTES
+> 2026-11-19).
 >
 > **Status 2026-11-17:** the phase 3 viewer is built (`viewer/`, README "Viewer", TASKS P2-1 /
 > P2-2): the colony from above with a control panel, recordings and live runs (NumPy, or Warp

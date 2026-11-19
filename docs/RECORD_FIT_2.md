@@ -160,5 +160,5 @@ Every result goes into NOTES, including the targets missed.
 - **Exploratory, and reported:**
   - U-1's validation sets re-measured: the final replica goes from 8 to 9 of 14 on those seeds.
   - The frozen reference colony's predictive check has the same miscount: its adults on day 315
-    are 40 [22, 61] counted from 131 days. Its "12 of 15" would read 11 of 15. Whether to
-    restate it is Jason's call.
+    are 40 [22, 61] counted from 131 days. At Jason's word it was restated the same day: 11 of
+    15 inside, not 12 (README, the hero figure, the booklet).

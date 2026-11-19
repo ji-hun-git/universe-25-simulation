@@ -45,7 +45,7 @@ LANDMARK = {
     "peak_day": ("day of the peak", "day"),
     "last_young_day": ("last surviving young", "day"),
     "n_at_day_736": ("mice on day 736", "mice"),
-    "adults_at_day_315": ("adults on day 315", "mice"),
+    "adults_at_day_315": ("adults on day 315 (131 days or older)", "mice"),
     "last_conception_day": ("last conception", "day"),
     "n_at_day_1444": ("mice on day 1,444", "mice"),
     "n_at_day_1588": ("mice on day 1,588", "mice"),
@@ -190,6 +190,7 @@ def build(hero: dict, led: dict) -> str:
     pa = hero["panel_a"]
     ns = hero["seeds"][1] - hero["seeds"][0] + 1
     ppc = hero["ppc"]
+    first = ppc["first_run"]  # the check as first run: adults from sexual maturity
     miss = [LANDMARK.get(r["landmark"], (r["landmark"],))[0] for r in ppc["rows"] if r["miss"]]
     stamp = f"Edition {hero['generated']} · figures drawn at commit {hero['commit']}"
     pages = []
@@ -310,8 +311,10 @@ percentile of the runs.</p>
 interval</th><th></th></tr></thead>
 <tbody>{ppc_rows(hero)}</tbody></table></div>
 <div class="box"><p><b>Outside:</b> {e(", ".join(miss))}. The model colony grows too fast in
-phases B and C; a late first litter makes up for it. The late counts sit inside the interval
-even though Calhoun removed about 150 animals after day 1,000 and the model does not.</p></div>""")
+phases B and C; a late first litter makes up for it, but leaves few mice 131 days old by day 315.
+Calhoun counted adults from that age. The check as first run counted them from sexual maturity,
+and had {first['inside']} of {first['of']} inside. The late counts sit inside the interval even
+though Calhoun removed about 150 animals after day 1,000 and the model does not.</p></div>""")
 
     # numbers from NOTES 2026-11-09 (Tier 1, Morris screen), 2026-11-11 (replica M1, 12 training
     # seeds) and 2026-11-13 (the final replica, 48 fresh seeds); README "How close is it to the

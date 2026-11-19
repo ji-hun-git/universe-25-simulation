@@ -1215,8 +1215,9 @@ NOTES.
 - Adults counted from 131 days are inside for both members, so the shared miss is gone.
 - The final replica has 11 of 14 and the arc in 46 of 48 on the same seeds. It stays the app's
   Universe 25, and its line in the app counts adults as Calhoun did.
-- Open, Jason's call: the frozen reference colony's predictive check has the same miscount
-  (adults 40 [22, 61] counted from 131 days, so 11 of 15 rather than 12).
+- The frozen reference colony's predictive check had the same miscount (adults 40 [22, 61]
+  counted from 131 days). Restated at Jason's word: 11 of 15 inside, not 12. The hero figure
+  and the booklet are redrawn.
 
 ---
 

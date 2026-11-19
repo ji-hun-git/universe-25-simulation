@@ -15,7 +15,7 @@ Track E / exploratory. Agents are need-driven (hunger, thirst, fatigue, stress, 
 | part | state |
 |---|---|
 | **Substrate** (phase 1) | Need-driven mice in Calhoun's 101 × 101 in pen: 16 cells, 256 nest boxes, food and water, and a playground of balls, tunnels and ramps. |
-| **Calibration** (phase 2) | Frozen at phase 2m. On the 48 seeds of the Tier 1 predictive check, 12 of the record's 15 values fall inside the 90 % prediction interval. The misses are N on day 736 and the doubling times of phases B and C: the colony grows too fast. The collapse emerges from the mechanisms; its irreversibility is a model assumption fitted to one colony. |
+| **Calibration** (phase 2) | Frozen at phase 2m. On the 48 seeds of the Tier 1 predictive check, 11 of the record's 15 values fall inside the 90 % prediction interval. The misses are adults on day 315, N on day 736 and the doubling times of phases B and C: the colony starts late and then grows too fast. Adults are counted as Calhoun counted them, 131 days or older; the check as first run counted them from sexual maturity and had 12 of 15 (restated 2026-11-19). The collapse emerges from the mechanisms; its irreversibility is a model assumption fitted to one colony. |
 | **Replica v2** | Calhoun's own pen layout: triangular cells, tunnels and box levels. It ended on 2026-11-13. The final replica has 10 of 20 pen targets inside and the arc in 45 of 48 fresh-seed runs, but the arc comes late and the behavioural categories never appear. The frozen 2m colony stays the reference. |
 | **Record fit** (U-1, U-3) | Calhoun's pen fitted to the record's 14 population and timeline numbers alone (`docs/RECORD_FIT.md`). It failed its preregistered validation on 2026-11-19: the chosen member has 8 of 14 inside on 48 fresh seeds (12 needed) and the arc in 28 of 48 runs (43 needed). U-1 had counted adults from sexual maturity; Calhoun's adults are 131 days or older. Refitted with his count (U-3, `docs/RECORD_FIT_2.md`), the rule chose the same member and failed again: 9 of 14, and the arc in 28 of 48. On the same seeds the final replica has 11 of 14 and the arc in 46, and it stays the app's Universe 25. |
 | **Viewer** (phase 3) | Plan and 3D views, recordings and live runs, and a dashboard (`viewer/`; section "Viewer" below). |
@@ -42,7 +42,7 @@ but not his layout, and its population curve matches the record because it was f
 Why the match is weaker than it looks:
 - **Fitted, not predicted.**
   - The parameters were tuned to the record's landmarks on other seeds.
-  - The 48-seed check (12 of 15 inside) shows that the fit holds across chance. It does not
+  - The 48-seed check (11 of 15 inside) shows that the fit holds across chance. It does not
     show that the model predicts Universe 25.
   - Of 56 parameters the landmarks pin down about 8 directions, so many settings fit as well
     (Morris screen).
@@ -265,7 +265,9 @@ Every animal also carries a body weight and a coat genotype (`src/universe25/age
 
 Also reported (not in the canonical mean error): N@736 = 2056, 150 adults (+470 immatures) at
 day 315, last conception ≈ day 920 (measured as the rate-based cessation of conceptions, like
-surviving births; the strict last-conception day is reported alongside).
+surviving births; the strict last-conception day is reported alongside). Calhoun's adults are 131
+days or older, his age categories' adults; the frozen calibration's loss counted adults from
+sexual maturity, and the predictive check now counts them as Calhoun did (NOTES 2026-11-19).
 
 Collapse is **emergent**: density → stress → neglect / litter abandonment / breeding suppression,
 plus a developmental `competence` trait that young lose under crowding — or anywhere in the

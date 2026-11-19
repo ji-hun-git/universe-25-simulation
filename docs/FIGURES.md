@@ -18,6 +18,9 @@ was drawn from: commit, seeds, the checks it ran and the renders it used.
   - The red crosses are Calhoun's census (Calhoun 1973; Marsden 1972).
   - The figure counts how many of the record's 15 values fall inside the interval, and names
     the ones that do not.
+  - Adults on day 315 are counted as Calhoun counted them, 131 days or older (NOTES
+    2026-11-19). The check as first run counted them from sexual maturity and had 12 of 15
+    inside; `hero.json` keeps that count as `first_run`.
 - **c.** Where the colony crowds, on the same 48 runs. Each cell's count is shown over its
   design capacity (240), as a median. Below it is the share of withdrawn animals.
 - **d.** The phase-4 play-emergence tests and their verdicts, from
@@ -70,6 +73,7 @@ was drawn from: commit, seeds, the checks it ran and the renders it used.
 | 2026-11-17 | First version: render, predictive-check population, crowding and withdrawal, the H-d to H-l ledger. |
 | 2026-11-17 | Panel a re-shot after the 3D view stopped drawing mice through walls: the grid's nest sites as pads, bodies kept clear of walls and objects. No number changed. |
 | 2026-11-18 | Panel a re-shot after the 3D view stopped drawing crowded mice through one another: crowds laid out, overlaps drawn as mice lying on one another. No number changed. |
+| 2026-11-19 | Panel b: adults on day 315 counted as Calhoun counted them, 131 days or older. 11 of 15 inside, not 12; adults on day 315 are now a miss (40 [22, 61] against 150). The 48 cached runs got the count by replay to day 316, each checked against the cached day 315. |
 
 ## Booklet: `docs/booklet/universe25_booklet.pdf`
 
@@ -110,3 +114,4 @@ A nine-page A4 introduction for people outside the repo. The pages cover:
 | 2026-11-17 | Page 6 added: how close the model is to the original. The pen compared; the fit is fitted; closer to the original fits worse; the behaviour does not match. |
 | 2026-11-17 | Remade with the re-shot render (mice no longer drawn through walls). |
 | 2026-11-18 | Remade with the re-shot render (crowded mice no longer drawn through one another). |
+| 2026-11-19 | Page 5 restated: adults on day 315 counted as Calhoun counted them, 11 of 15 inside, not 12. The box says what the check as first run counted. |

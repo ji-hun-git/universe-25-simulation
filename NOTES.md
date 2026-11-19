@@ -1,5 +1,57 @@
 # Universe25 Play — NOTES
 
+## 2026-11-19 — The reference colony's predictive check restated with Calhoun's adults: 11 of 15 record values inside, not 12; the hero figure and the booklet are redrawn
+
+**What Jason asked.** "Yes, restate it". The question was whether to restate the frozen colony's
+Tier 1 predictive check with adults on day 315 counted as Calhoun counted them. The entry below
+(U-3) found the miscount.
+
+**What changed.**
+- The check now reads the record's 150 adults on day 315 as the mice aged 131 days or more
+  (`READ_AS` in `scripts/hero_figure.py`).
+- As first run (2026-11-09, `scripts/calib_reference.py`), it counted adults from sexual
+  maturity, which in the frozen colony is `maturity_days` 63.9.
+- **The 48 runs were not re-run.**
+  - Each of the hero figure's cached runs was replayed to day 316. Every replay gave the cached
+    N and count past sexual maturity on day 315 exactly.
+  - Each run then got its count of mice aged 131 days or more.
+  - All 48 runs still match `_output/calib_reference/rows.json`.
+
+| | as first run | restated |
+|---|---|---|
+| adults on day 315 | 150 [66, 282], inside | 40 [22, 61], outside |
+| record values inside the 90 % interval | 12 of 15 | 11 of 15 |
+| outside | N on day 736, doubling in phases B and C | the same, and adults on day 315 |
+
+- **Why so few adults.** The colony is young on day 315.
+  - A calendar gate holds conception to day 81 or later, so first litters come on days 102–105.
+  - Few mice are 131 days old by day 315 (median N on day 315: 434).
+- **The first result is kept.** The preregistered check stands as it was run, and `hero.json`
+  keeps its result as `first_run`.
+
+**Redrawn and restated.**
+- `docs/figures/hero.png` and `hero.json` (drawn at bcbbb53). Panel b says 11 of 15 and names
+  the adults miss.
+- The booklet: page 5's table and box (`docs/booklet.html` and the PDF).
+  All nine pages still fit.
+- README (the status table, "How close is it to the original?" and the calibration targets) and
+  HANDOFF.
+- FIGURES (panel b and its change log), RECORD_FIT_2 and TASKS U-3.
+- The app's line for the reference colony.
+
+**Not changed.**
+- The frozen calibration and its loss, which counted adults from sexual maturity when it was
+  fitted.
+- `scripts/calib_reference.py`: the check as preregistered.
+
+**Files.**
+- `scripts/hero_figure.py`:
+  - `READ_AS` and `ppc(obs, read_as)`;
+  - `run_one` records the count;
+  - `collect` adds the count to cached runs by checked replay (`add_adults`).
+- `scripts/booklet.py`: the adults row's name and page 5's box.
+- `tests/test_hero_figure.py`: the reading, and that the committed figure uses it.
+
 ## 2026-11-19 — Record fit 2 (U-3) fails its preregistered bar: its rule picks U-1's member again (9 of 14 inside, the arc in 28 of 48 fresh-seed runs); with adults counted as Calhoun counted them, the final replica has 11 of 14 and the arc in 46 of 48 on the same seeds, and stays the app's Universe 25
 
 **What Jason asked.** "try a new fit aimed at adults on day 315", the miss every U-1 member
