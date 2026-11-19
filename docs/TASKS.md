@@ -1280,7 +1280,13 @@ the last undeprived females, and the decline is slow.
     in phase B.
   - **The common cause** is that maternal breakdown in the replica is local (M4). The frozen
     colony's colony-wide breakdown ends reproduction on time (596 and 956).
-- **Next:** Jason's call: a colony-wide trigger for rejection (revision 2), or stop.
+- **Revision 2 (Jason: "Try revision 2"): also no, but close in timing.**
+  - Colony-wide rejection (the frozen colony's breakdown factor, a running maximum) fires on day
+    430 (record about 437) and deprives 82–90 % of the late cohorts. The arc holds.
+  - The categories now overshoot: never fought or mated 0.75, withdrawn 0.44.
+  - The last conception stays late (1,427). The rule acts only on boxes with a nursing-role
+    mother, so young in the other boxes escape and breed in phase D.
+- **Next:** Jason's call: revision 3, so the rule acts on every box; then a record fit.
 
 ---
 

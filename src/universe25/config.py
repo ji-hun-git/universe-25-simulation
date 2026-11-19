@@ -236,6 +236,12 @@ class BiologyConfig(_Strict):
     # independence_days old and then expels them, instead of abandoning whole litters at random.
     deprived_fertility: float | None = Field(default=None, ge=0.0, le=1.0)
     expel_at_independence: bool = False
+    # U-5 revision 2 (false = revision 1). colony_rejection: once a day, in every box with a
+    # nursing mother, the pups at least independence_days old are expelled with chance f, the
+    # breakdown factor of the weaned density (breakdown_factor: the frozen colony's trigger);
+    # rejection_ratchet: f is its running maximum, so rejection never relaxes.
+    colony_rejection: bool = False
+    rejection_ratchet: bool = True
 
     def breakdown_threshold(self) -> float:
         if self.breakdown_density_threshold is not None:
@@ -510,8 +516,9 @@ class SimConfig(_Strict):
                 raise ValueError("deprivation is NumPy-path only")
             if b.independence_days >= b.weaning_days:
                 raise ValueError("deprivation needs independence_days < weaning_days")
-        elif b.deprived_fertility is not None or b.expel_at_independence:
-            raise ValueError("deprived_fertility / expel_at_independence need deprivation")
+        elif b.deprived_fertility is not None or b.expel_at_independence or b.colony_rejection:
+            raise ValueError("deprived_fertility / expel_at_independence / colony_rejection "
+                             "need deprivation")
         if g.disperse_at_maturity and not g.box_choice:
             raise ValueError("disperse_at_maturity needs geometry.box_choice")
         if g.open_cells is not None:

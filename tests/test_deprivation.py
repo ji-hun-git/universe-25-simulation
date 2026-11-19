@@ -62,7 +62,8 @@ def test_guards() -> None:
                   "biology": {"deprivation": True}},
                  {"biology": {"deprivation": True, "independence_days": 21.0}},
                  {"biology": {"deprived_fertility": 0.01}},
-                 {"biology": {"expel_at_independence": True}}):
+                 {"biology": {"expel_at_independence": True}},
+                 {"biology": {"colony_rejection": True}}):
         try:
             _cfg(**over)
         except ValueError:
@@ -217,6 +218,51 @@ def test_revision_1_expulsion() -> None:
         assert (a.hunger[young] < 0.9) == expel, (expel, a.hunger[young])
 
 
+class _Draws:
+    """A vectorized stand-in for the simulation stream; raises when it should not be drawn."""
+
+    def __init__(self, u: float | None) -> None:
+        self.u = u
+
+    def random(self, size=None):
+        if self.u is None:
+            raise AssertionError("no draw expected")
+        return self.u if size is None else np.full(size, self.u)
+
+
+def test_revision_2_colony_rejection() -> None:
+    """Revision 2: from the colony's breakdown on, a box's pups of independence age are expelled
+    with chance f; below the trigger there is no draw; with the ratchet f does not relax."""
+    for ratchet in (True, False):
+        sim, cfg = _make(True, colony_rejection=True, rejection_ratchet=ratchet,
+                         litter_abandon_p=0.0)
+        a = sim.agents
+        a.alive[:] = False
+        mom, old, young = (int(v) for v in a.free_slots(3))
+        sim._spawn(mom, sex=SEX_F, age=120.0, x=30.0, y=30.0, nest_id=0, cell_id=0, role=0)
+        for k, age in ((old, 18.0), (young, 10.0)):
+            sim._spawn(k, sex=SEX_M, age=age, x=30.0, y=30.0, nest_id=0, cell_id=0,
+                       role=ROLE_PUP)
+        a.role[mom], a.maternal[mom], a.stress[mom] = ROLE_NURSING, 0.9, 0.0
+        sim.tick = 0
+        real = sim.rng
+        sim._breakdown_density = lambda alive: 0.0  # below the trigger: no draw
+        sim.rng = _Draws(None)
+        sim._colony_rejection(a.alive.copy())
+        assert a.nest_id[old] == 0 and sim._rejection_onset is None
+        sim._breakdown_density = lambda alive: 10.0  # far above it: f = 1
+        sim.rng = _Draws(0.99)
+        sim._colony_rejection(a.alive.copy())
+        assert a.nest_id[old] < 0 and a.nest_id[young] == 0
+        assert sim._rejection_onset == sim.day and sim._rejection_f_max == 1.0
+        a.nest_id[old] = 0  # the next day the colony has thinned: f falls to 0
+        sim._breakdown_density = lambda alive: 0.0
+        sim.rng = _Draws(0.99 if ratchet else None)
+        sim._colony_rejection(a.alive.copy())
+        assert (a.nest_id[old] < 0) == ratchet, ratchet
+        sim.rng = real
+
+
 if __name__ == "__main__":
     test_guards()
     test_independence_and_the_deprived_juvenile()
@@ -224,4 +270,5 @@ if __name__ == "__main__":
     test_the_deprived_female_conceives_and_is_courted()
     test_revision_1_fertility()
     test_revision_1_expulsion()
+    test_revision_2_colony_rejection()
     print("test_deprivation: OK")

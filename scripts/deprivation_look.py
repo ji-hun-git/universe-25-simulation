@@ -14,11 +14,13 @@ day 560, the deprived shares, conceptions after day 920, and the structure quest
   0.38-0.68 and withdrawn on day 560 0.22-0.42 (seed medians).
 This is development on training seeds, not validation.
 
-Revision 1 (--set r1): B0 off, B1 + deprived_fertility 0.01, B2 + expel_at_independence, B3 both;
-the same base, seeds and question.
+Revision 1 (--set r1): B0 off, B1 + deprived_fertility 0.01, B2 + expel_at_independence, B3 both.
+Revision 2 (--set r2): C0 off; C1 deprivation + deprived_fertility 0.01 + colony_rejection (with
+the ratchet); C2 C1 without the ratchet; C3 C1 with breakdown_density_threshold 0.48. The same
+base, seeds and question in every set.
 
-usage: python scripts/deprivation_look.py [--workers 10] [--set v1|r1]
-Writes _output/deprivation_look.json (v1) or _output/deprivation_look_r1.json (r1).
+usage: python scripts/deprivation_look.py [--workers 10] [--set v1|r1|r2]
+Writes _output/deprivation_look.json (v1) or _output/deprivation_look_<set>.json.
 """
 from __future__ import annotations
 
@@ -48,17 +50,24 @@ READ = {"adults_at_day_315": "adults_131_at_day_315"}  # Calhoun's adults (U-3)
 CONTESTED = {"first_litters_day": (50.0, 104.0), "doubling_c": (105.0, 145.0)}
 
 
-SET = "r1" if "--set" in sys.argv and sys.argv[sys.argv.index("--set") + 1] == "r1" else "v1"
+SET = sys.argv[sys.argv.index("--set") + 1] if "--set" in sys.argv else "v1"
 
 
 def arms() -> dict[str, dict]:
-    """v1: the first look (A0-A3). r1: revision 1's (B0-B3), docs/DEPRIVED_GENERATION.md."""
+    """v1: the first look (A0-A3); r1: revision 1's (B0-B3); r2: revision 2's (C0-C3),
+    docs/DEPRIVED_GENERATION.md."""
     params = json.loads(FINAL.read_text(encoding="utf-8"))["members"][0]["params"]
     bio = params["biology"]
 
     def with_bio(**kw):
         return {**params, "biology": {**bio, **kw}}
 
+    if SET == "r2":
+        rev2 = dict(deprivation=True, deprived_fertility=0.01, colony_rejection=True)
+        return {"C0": params,
+                "C1": with_bio(**rev2),
+                "C2": with_bio(**rev2, rejection_ratchet=False),
+                "C3": with_bio(**rev2, breakdown_density_threshold=0.48)}
     if SET == "r1":
         return {"B0": params,
                 "B1": with_bio(deprivation=True, deprived_fertility=0.01),
@@ -81,7 +90,9 @@ def run(job: tuple[str, dict, int]) -> dict:
     return {"arm": arm, "seed": seed, "outputs": o,
             "deprived_share_560": s560.get("deprived_share", np.nan),
             "deprived_131_320_800": s800.get("deprived_131_320", np.nan),
-            "conceptions_after_920": r["conceptions_after_920"]}
+            "conceptions_after_920": r["conceptions_after_920"],
+            "rejection_onset": r.get("rejection_onset"),
+            "rejection_f_max": r.get("rejection_f_max", 0.0)}
 
 
 def q(v: list[float]) -> list[float]:
@@ -93,8 +104,8 @@ def q(v: list[float]) -> list[float]:
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--workers", type=int, default=10)
-    p.add_argument("--set", choices=("v1", "r1"), default="v1",
-                   help="v1: the first look (A0-A3); r1: revision 1 (B0-B3)")
+    p.add_argument("--set", choices=("v1", "r1", "r2"), default="v1",
+                   help="v1: the first look (A0-A3); r1: revision 1 (B0-B3); r2: revision 2")
     a = p.parse_args()
     jobs = [(arm, over, s) for arm, over in arms().items() for s in SEEDS]
     t0 = time.perf_counter()
@@ -121,6 +132,9 @@ def main() -> int:
             "deprived_share_560": q([r["deprived_share_560"] for r in rs]),
             "deprived_131_320_800": q([r["deprived_131_320_800"] for r in rs]),
             "conceptions_after_920": q([r["conceptions_after_920"] for r in rs]),
+            "rejection_onset": q([r["rejection_onset"] if r.get("rejection_onset") is not None
+                                  else np.nan for r in rs]),
+            "rejection_f_max": q([r.get("rejection_f_max", 0.0) for r in rs]),
         }
         lc = t["last_conception_day"]["q"][1]
         bf = extra["beautiful_800_adult"][1]
@@ -149,11 +163,13 @@ def main() -> int:
     print("| the arc, of 12 | | " + " | ".join(str(summary[arm]["arc"]) for arm in names) + " |")
     for key, rec in (("beautiful_800_adult", "0.53"), ("withdrawn_560", "0.32"),
                      ("deprived_share_560", "-"), ("deprived_131_320_800", "-"),
-                     ("conceptions_after_920", "0")):
+                     ("conceptions_after_920", "0"), ("rejection_onset", "437"),
+                     ("rejection_f_max", "-")):
         cells = []
         for arm in names:
             qq = summary[arm][key]
-            fmt = f if key != "conceptions_after_920" else (lambda x: f"{x:,.0f}")
+            fmt = (f if key not in ("conceptions_after_920", "rejection_onset")
+                   else (lambda x: f"{x:,.0f}"))
             cells.append(f"{fmt(qq[1])} [{fmt(qq[0])}, {fmt(qq[2])}]")
         print(f"| {key} | {rec} | " + " | ".join(cells) + " |")
     print("\nstructure question (seed medians): the arc >= 8 of 12, last conception <= 1,000, "
@@ -161,7 +177,7 @@ def main() -> int:
     for arm in names:
         s = summary[arm]["structure"]
         print(f"  {arm}: " + ", ".join(f"{k} {'yes' if v else 'no'}" for k, v in s.items()))
-    name = "deprivation_look.json" if SET == "v1" else "deprivation_look_r1.json"
+    name = "deprivation_look.json" if SET == "v1" else f"deprivation_look_{SET}.json"
     (ROOT / "_output" / name).write_text(json.dumps(
         {"set": SET, "seeds": list(SEEDS), "summary": summary, "rows": rows}, indent=1,
         default=float), encoding="utf-8")

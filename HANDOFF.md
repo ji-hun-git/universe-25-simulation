@@ -37,8 +37,11 @@
 > **Revision 1 also answers no.** Lower deprived fertility gives N@960 = 1,652 (the record), but
 > the last conception stays late. Expulsion at 17 days stalls growth, because stressed mothers
 > exist already in phase B. The common cause: maternal breakdown in the replica is local (M4).
-> The frozen colony's colony-wide breakdown does end reproduction on time (596 and 956). Next is
-> Jason's call: a colony-wide trigger for rejection, or stop.
+> The frozen colony's colony-wide breakdown does end reproduction on time (596 and 956).
+> **Revision 2** (colony-wide rejection) fires on day 430 (record about 437) and deprives 82–90 %
+> of the late cohorts. But the categories overshoot (0.75), and the last conception stays late
+> (1,427): young in boxes without a nursing-role mother escape the rule and breed in phase D.
+> Next is Jason's call: revision 3, so the rule acts on every box; then a record fit.
 >
 > **Status 2026-11-17:** the phase 3 viewer is built (`viewer/`, README "Viewer", TASKS P2-1 /
 > P2-2): the colony from above with a control panel, recordings and live runs (NumPy, or Warp

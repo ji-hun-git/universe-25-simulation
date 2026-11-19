@@ -1,5 +1,75 @@
 # Universe25 Play — NOTES
 
+## 2026-11-19 — The deprived generation, revision 2: colony-wide rejection fires on day 430 with no tuning and deprives 82–90 % of the late cohorts, but the answer is still no: the categories now overshoot, and young in boxes without a nursing-role mother escape and breed
+
+**What Jason asked.** "Try revision 2": rejection near weaning made colony-wide, keeping revision
+1's fertility.
+
+**The revision** (`docs/DEPRIVED_GENERATION.md`, "Revision 2", 060133c, fixed before code).
+- **`biology.colony_rejection`.** Once a day, in every box with a nursing mother, the pups at
+  least 17 days old are expelled with chance f.
+  - f is the frozen colony's breakdown factor of the weaned density, unchanged (threshold 0.58,
+    ramp 0.2).
+  - With `rejection_ratchet`, f is its running maximum.
+- **Before code**, on training seeds with the switch off, that factor first rises near day 437:
+  Calhoun's mid-phase C.
+- **Checks.**
+  - Off, version 1 and revision 1 reproduce exactly. Seed 9112, arm A1 and arm B3 on seed 7000
+    each give 23 of 23 outputs, with the same conceptions after day 920.
+  - The golden hashes match, the fast tests pass, and `tests/test_deprivation.py` adds the rule
+    and its ratchet.
+
+**The look** (`scripts/deprivation_look.py --set r2`; training seeds 7000–7011;
+`_output/deprivation_look_r2.json`). Seed medians; * marks the record outside.
+
+| measure | record | C0 off | C1 the rule | C2 no ratchet | C3 trigger earlier |
+|---|---|---|---|---|---|
+| the trigger fires (day) | ≈ 437 | — | 430 | 430 | 384 |
+| its highest chance | | — | 0.93 | 0.93 | 1.00 |
+| peak N | 2,200 | 2,551 * | 2,671 * | 2,664 * | 2,682 * |
+| N@736 | 2,056 | 1,944 | 2,329 * | 2,338 * | 2,457 * |
+| N@960 | 1,650 | 1,264 * | 1,816 * | 1,811 * | 1,910 * |
+| last surviving birth (day) | 600 | 692 * | 998 * | 948 * | 982 * |
+| last conception (day) | 920 | 1,092 * | 1,427 * | 1,428 * | 1,474 * |
+| N@1,444 | 122 | 74 | 310 * | 296 * | 352 * |
+| N@1,588 | 27 | 16 | 132 * | 130 * | 177 * |
+| the arc, of 12 | | 11 | 8 | 10 | 11 |
+| never fought as adults or mated @800 | 0.53 | 0.00 | 0.75 | 0.74 | 0.71 |
+| withdrawn @560 | 0.32 | 0.09 | 0.44 | 0.44 | 0.56 |
+| deprived, of the 131–320-day-olds @800 | | 0.00 | 0.87 | 0.87 | 0.85 |
+| conceptions after day 920 (per run) | 0 | 1,152 | 904 | 961 | 788 |
+
+**The structure question: no, in every arm.**
+- **The timing is right.** The trigger fires on day 430 [409, 443] (record: about day 437), and
+  rejection now reaches 82–90 % of the cohorts born in days 437–700.
+- **The categories overshoot.** Never fought or mated is 0.71–0.75 (range 0.38–0.68), and
+  withdrawn on day 560 is 0.44–0.56 (range 0.22–0.42).
+- **Reproduction still ends late** (last conception 1,427), though conceptions after day 920
+  fall by about a fifth.
+- **The colony stays too large.** Deprived adults are unstressed and unwounded, so the peak and
+  every count from day 736 on are above the record.
+
+**Why reproduction still runs late** (exploratory, arm C1, training seeds;
+`_output/hm_adults/diagnose_end_r2.json`, `escape_check.py`).
+- After day 1,100, nearly all conceptions (2,101 of 2,294 over 4 seeds) are by mothers born
+  after day 700. 93 % of them are undeprived.
+- **The rule has a hole.** It acts only on a box with a nursing-role mother.
+  - A mother whose maternal investment has fallen below 0.5 loses that role.
+  - Most near-weaned pups after day 700 are in such boxes: 850 of 883 pup-days on seed 7000.
+  - On seed 7000, of the 316 young weaned after day 700 (rejection chance 0.98), 177 were
+    deprived and 139 escaped. Every one of the 139 came from a box without a nursing-role
+    mother.
+  - Those escapees are the phase-D breeding generation.
+
+**What follows** (Jason's call).
+- **Revision 3** would close the hole: the rule acts on every box with pups of independence age,
+  whoever their mother is.
+- **The overshoot and the large late colony** are matters of the fitted parameters (maternal
+  erosion, mortality, imprinting), not of the mechanism. A record fit with the mechanism on
+  could reach them.
+- The switch stays off by default. Nothing in the app, the final replica or the frozen colony
+  changes.
+
 ## 2026-11-19 — The deprived generation, revision 1: still no; lower fertility gives N@960 = 1,652 but not an early end of reproduction, and rejection near weaning stalls growth, because stressed mothers exist already in phase B
 
 **What Jason asked.** "Yes, revise it": the two levers the first look pointed to, then the same

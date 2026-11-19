@@ -193,6 +193,11 @@ class Universe25Sim:
         self._care = np.zeros(cap, dtype=np.float64)
         # U-5: weaned early and deprived for life (biology.deprivation; stays False when off)
         self._deprived = np.zeros(cap, dtype=bool)
+        # U-5 revision 2: the colony's rejection chance (running maximum with the ratchet), the
+        # day it first fired and its highest value (bookkeeping when colony_rejection is off)
+        self._rejection_f = 0.0
+        self._rejection_onset: float | None = None
+        self._rejection_f_max = 0.0
         oc = cfg.geometry.open_cells
         self._open = np.zeros(nc, dtype=bool) if oc is not None else np.ones(nc, dtype=bool)
         if oc is not None:
@@ -355,6 +360,7 @@ class Universe25Sim:
                 self._daily_maternal_erosion(alive)
                 self._daily_courtship_erosion(alive)
                 self._daily_litter_abandonment(alive)
+                self._colony_rejection(alive)
                 self._independence(alive)
                 self._reproduce(alive)
                 self.body.update()
@@ -1595,6 +1601,39 @@ class Universe25Sim:
             & (a.age_days >= bio.independence_days)
             & np.isin(a.nest_id, np.unique(a.nest_id[moms])))
         if victims.size:
+            a.nest_id[victims] = -1
+            self._abandoned += int(victims.size)
+
+    def _colony_rejection(self, alive: np.ndarray) -> None:
+        """U-5 revision 2 (biology.colony_rejection), once per day: from the colony's breakdown
+        on, mothers reject their young near weaning. f is the frozen colony's breakdown factor
+        of the weaned density (its running maximum with biology.rejection_ratchet). In every
+        box with a nursing mother, the pups at least independence_days old are expelled with
+        chance f, one draw per box in box order; _independence weans them deprived. Calhoun,
+        mid-phase C: essentially all young were prematurely rejected by their mothers, days
+        before weaning. Off: no draw."""
+        bio = self.cfg.biology
+        if not bio.colony_rejection or (self.tick % self.cfg.ticks_per_day) != 0:
+            return
+        f = float(bio.breakdown_factor(self._breakdown_density(alive)))
+        if f > 0.0 and self._rejection_onset is None:
+            self._rejection_onset = float(self.day)
+        self._rejection_f_max = max(self._rejection_f_max, f)
+        if bio.rejection_ratchet:
+            self._rejection_f = max(self._rejection_f, f)
+            f = self._rejection_f
+        if f <= 0.0:
+            return
+        a = self.agents
+        moms = alive & (a.sex == SEX_F) & (a.role == ROLE_NURSING) & (a.nest_id >= 0)
+        ready = (alive & (a.role == ROLE_PUP) & (a.nest_id >= 0)
+                 & (a.age_days >= bio.independence_days))
+        boxes = np.intersect1d(np.unique(a.nest_id[moms]), np.unique(a.nest_id[ready]))
+        if boxes.size == 0:
+            return
+        hit = boxes[self.rng.random(boxes.size) < f]
+        if hit.size:
+            victims = np.flatnonzero(ready & np.isin(a.nest_id, hit))
             a.nest_id[victims] = -1
             self._abandoned += int(victims.size)
 

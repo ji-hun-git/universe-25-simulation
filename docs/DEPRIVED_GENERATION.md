@@ -299,3 +299,25 @@ not used. Every new field defaults to off, so version 1 and revision 1 reproduce
   - A rule keyed on colony density reverses M4's "individual breakdown" for this one behaviour.
   - Surviving young may still run past day 600: rejection near weaning keeps them alive, and only
     maternal erosion ends nursing.
+
+### Revision 2 looked at (2026-11-19; NOTES 2026-11-19)
+
+- **Checks.** Off, version 1 and revision 1 reproduce exactly (23 of 23 outputs each), and the
+  golden hashes match.
+- **The structure question: no, in every arm** (C0–C3).
+- **The timing is right.**
+  - The trigger fires on day 430 [409, 443], against Calhoun's mid-phase C near day 437.
+  - Rejection reaches 82–90 % of the cohorts born in days 437–700, and the arc holds (8–11 of
+    12).
+- **The categories overshoot.** Never fought or mated is 0.71–0.75, and withdrawn on day 560 is
+  0.44–0.56.
+- **Reproduction still ends late** (last conception 1,427). The colony stays too large: deprived
+  adults are neither stressed nor wounded.
+- **The hole.** The rule acts only on a box with a nursing-role mother. After day 700 most
+  near-weaned pups are in boxes without one, where the mother's investment has fallen below
+  0.5.
+  - On seed 7000, all 139 young who escaped deprivation after day 700 came from such boxes.
+  - They breed in phase D.
+- **Next, Jason's call:**
+  - revision 3: the rule acts on every box with pups of independence age;
+  - then a record fit, for the overshoot and the late counts.

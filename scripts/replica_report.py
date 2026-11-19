@@ -191,7 +191,9 @@ def run_one(job: tuple[str, str, dict, int, float]) -> tuple[str, int, dict]:
     return name, seed, {"landmarks": {k: float(v) for k, v in lm.items()}, "struct": struct,
                         "territory": terr, "n_series": [int(v) for v in hist["n"]],
                         "surv_births_by_day": [int(v) for v in sim._surv_births_by_day],
-                        "conceptions_after_920": int(np.sum(sim._conc_by_day[921:]))}
+                        "conceptions_after_920": int(np.sum(sim._conc_by_day[921:])),
+                        "rejection_onset": sim._rejection_onset,  # U-5 revision 2
+                        "rejection_f_max": float(sim._rejection_f_max)}
 
 
 def main() -> int:
