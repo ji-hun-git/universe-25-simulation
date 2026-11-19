@@ -1,5 +1,74 @@
 # Universe25 Play — NOTES
 
+## 2026-11-19 — The deprived generation, revision 1: still no; lower fertility gives N@960 = 1,652 but not an early end of reproduction, and rejection near weaning stalls growth, because stressed mothers exist already in phase B
+
+**What Jason asked.** "Yes, revise it": the two levers the first look pointed to, then the same
+48-run look.
+
+**The revision** (`docs/DEPRIVED_GENERATION.md`, "Revision 1", 130e5c9, fixed before code).
+- **Lever 1: `deprived_fertility`.** A deprived female's daily chance of conceiving is 0.01 of an
+  undeprived female's.
+  - Version 1 had used Marsden's 6 of 16, a 60-day share, as a daily multiplier: about 30 times
+    too fertile.
+  - 0.01 is the middle of two hazard ratios against the model's own rates (training seeds
+    7000–7003): Marsden's 0.0078 a day against phase B's 0.61, and the two-cell universe's
+    7.4 × 10⁻⁴ a day against phase D's 0.10.
+- **Lever 2: `expel_at_independence`.** A stressed nursing mother keeps nursing until her pups
+  are 17 days old, then expels them, instead of abandoning whole litters at random.
+- **Checks.** Off and version 1 reproduce exactly.
+  - Off: the final replica on seed 9112 gives 23 of 23 outputs.
+  - Version 1: arm A1 on seed 7000 gives 23 of 23, and the same conceptions after day 920.
+  - The golden hashes match, and the fast tests pass.
+
+**The look** (`scripts/deprivation_look.py --set r1`; training seeds 7000–7011;
+`_output/deprivation_look_r1.json`). Seed medians; * marks the record outside the 5–95 % range.
+
+| measure | record | B0 off | B1 fertility | B2 expulsion | B3 both |
+|---|---|---|---|---|---|
+| N@315 | 620 | 792 | 793 * | 1,062 * | 1,068 * |
+| peak N | 2,200 | 2,551 * | 2,606 * | 1,470 * | 1,848 * |
+| plateau onset (day) | 560 | 496 * | 510 * | 408 | 458 * |
+| N@736 | 2,056 | 1,944 | 2,222 * | 1,139 * | 1,626 * |
+| N@960 | 1,650 | 1,264 * | 1,652 | 824 * | 1,194 * |
+| last surviving birth (day) | 600 | 692 * | 1,001 * | 1,092 * | 984 * |
+| last conception (day) | 920 | 1,092 * | 1,296 * | 1,565 * | 1,413 * |
+| N@1,588 | 27 | 16 | 114 * | 122 * | 84 * |
+| the arc, of 12 | | 11 | 11 | 0 | 7 |
+| never fought as adults or mated @800 | 0.53 | 0.00 | 0.35 | 0.28 | 0.32 |
+| withdrawn @560 | 0.32 | 0.09 | 0.33 | 0.51 | 0.43 |
+| deprived, of the weaned @560 | | 0.00 | 0.24 | 0.50 | 0.39 |
+| conceptions after day 920 (per run) | 0 | 1,152 | 1,307 | 1,933 | 1,080 |
+
+**The structure question: no, in every arm.**
+- **Lever 1 does what it was for, and no more.**
+  - N on day 960 is 1,652, the record's value. The withdrawn share is 0.33. Never fought or mated
+    rises to 0.35, just short of 0.38.
+  - But the last conception is still late (1,296), with as many conceptions after day 920 as
+    with the switch off. They come from females who escaped deprivation, with the owners.
+- **Lever 2 repeats M8's failure.**
+  - Mothers above the neglect threshold exist already in phase B, so whole early cohorts are
+    expelled and deprived: 50 % of the weaned by day 560.
+  - Growth stops: the peak is 1,470, the plateau starts on day 408, and no seed shows the arc.
+
+**What the three looks share** (U-5 v1 and revision 1, and M8 before them).
+- In this replica, maternal breakdown is local: each mother's own stress, from her cell and box
+  (M4, `breakdown_scope: individual`).
+- So rejection either starts too early somewhere, which stalls growth, or never reaches every
+  mother, so undeprived young keep breeding into phase D.
+- Calhoun saw a colony-wide turn in mid-phase C: "essentially all young prematurely rejected".
+- **The frozen reference colony keeps a colony-wide breakdown term.** It is a stress boost once
+  weaned density passes 58 % of design capacity.
+  - On its predictive check it does end reproduction on time: last surviving birth 596
+    [533, 664], last conception 956 [859, 1,016], both inside.
+  - No replica variant since M4 has done that.
+
+**What follows.** The design leaves it to Jason.
+- **Revision 2** would trigger rejection near weaning colony-wide, as the frozen colony triggers
+  breakdown, and keep revision 1's fertility. That reverses M4's "individual breakdown" for
+  maternal behaviour only.
+- **Or stop the line here.** Either way the switch stays off by default; nothing in the app, the
+  final replica or the frozen colony changes.
+
 ## 2026-11-19 — The deprived generation (U-5) built; development look: the structure question is no — it gives Calhoun's withdrawn share and a slower decline, but reproduction ends later, not earlier
 
 **What Jason asked.** "Yes, build it": the design below (`docs/DEPRIVED_GENERATION.md`).

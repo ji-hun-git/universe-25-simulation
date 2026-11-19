@@ -238,3 +238,26 @@ so version 1 and its look reproduce exactly.
     immature at its end.
   - That may raise the peak, already too high at 2,551.
   - It may also keep surviving young past day 600, unless maternal erosion ends nursing in time.
+
+### Revision 1 looked at (2026-11-19; NOTES 2026-11-19)
+
+- **Checks.** Off and version 1 reproduce exactly:
+  - the final replica on seed 9112, and arm A1 on seed 7000, each give 23 of 23 outputs;
+  - the golden hashes match.
+- **The structure question: no, in every arm** (B0–B3).
+- **Lever 1 (B1) does what it was for.**
+  - N on day 960 is 1,652, the record's value. The withdrawn share is 0.33, and never fought or
+    mated is 0.35.
+  - But the last conception stays late (1,296). Females who escaped deprivation keep breeding.
+- **Lever 2 (B2) stalls growth, as M8 did.**
+  - Mothers above the neglect threshold exist already in phase B, so whole early cohorts are
+    deprived.
+  - The peak is 1,470, and no seed shows the arc.
+- **The common cause.** In this replica, maternal breakdown follows each mother's local stress
+  (M4). So it starts too early in places and never reaches every mother.
+  - Calhoun's rejection was colony-wide by mid-phase C.
+  - The frozen colony, whose breakdown is colony-wide, ends reproduction on time: last surviving
+    birth 596, last conception 956.
+- **Next, Jason's call:**
+  - a revision 2 that triggers rejection colony-wide;
+  - or stop. The switch stays off by default.

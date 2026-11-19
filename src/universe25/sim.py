@@ -1456,12 +1456,15 @@ class Universe25Sim:
         """
         a = self.agents
         bio = self.cfg.biology
+        calm = a.stress <= bio.maternal_neglect_stress
+        if bio.deprivation and bio.expel_at_independence:  # U-5 revision 1: a stressed mother
+            calm = np.ones_like(calm)  # nurses until her pups are old enough, then expels them
         moms = np.flatnonzero(
             alive
             & (a.sex == SEX_F)
             & (a.role == ROLE_NURSING)
             & (a.nest_id >= 0)
-            & (a.stress <= bio.maternal_neglect_stress)
+            & calm
         )
         pups = np.flatnonzero(alive & (a.role == ROLE_PUP) & (a.nest_id >= 0))
         if moms.size == 0 or pups.size == 0:
@@ -1548,6 +1551,9 @@ class Universe25Sim:
         if (self.tick % self.cfg.ticks_per_day) != 0:
             return
         bio = self.cfg.biology
+        if bio.deprivation and bio.expel_at_independence:
+            self._expel_at_independence(alive)
+            return
         if bio.litter_abandon_p <= 0.0:
             return
         a = self.agents
@@ -1568,6 +1574,26 @@ class Universe25Sim:
         if nests.size == 0:
             return
         victims = np.flatnonzero(pups_mask & np.isin(a.nest_id, nests))
+        if victims.size:
+            a.nest_id[victims] = -1
+            self._abandoned += int(victims.size)
+
+    def _expel_at_independence(self, alive: np.ndarray) -> None:
+        """U-5 revision 1 (biology.expel_at_independence), once per day in place of litter
+        abandonment: in every box with a nursing mother above maternal_neglect_stress, the pups
+        that are at least independence_days old are expelled (nest_id -1), and _independence
+        weans them deprived. Calhoun: nursing females expelled their young days before weaning.
+        Counted in `abandoned`. No draw."""
+        a = self.agents
+        bio = self.cfg.biology
+        moms = (alive & (a.sex == SEX_F) & (a.role == ROLE_NURSING) & (a.nest_id >= 0)
+                & (a.stress > bio.maternal_neglect_stress))
+        if not moms.any():
+            return
+        victims = np.flatnonzero(
+            alive & (a.role == ROLE_PUP) & (a.nest_id >= 0)
+            & (a.age_days >= bio.independence_days)
+            & np.isin(a.nest_id, np.unique(a.nest_id[moms])))
         if victims.size:
             a.nest_id[victims] = -1
             self._abandoned += int(victims.size)
@@ -1752,8 +1778,11 @@ class Universe25Sim:
                 continue
             c_f = float(a.competence[f])  # her investment below scales with it in any case
             p = p_base * (1.0 - float(bio.breeding_stress_coef) * float(a.stress[f]))
-            p *= (c_f if fert_comp or (dep and self._deprived[f]) else 1.0) * male_comp[
-                int(a.cell_id[f])]
+            if dep and self._deprived[f] and bio.deprived_fertility is not None:
+                fert = float(bio.deprived_fertility)  # U-5 revision 1: a hazard ratio
+            else:
+                fert = c_f if fert_comp or (dep and self._deprived[f]) else 1.0
+            p *= fert * male_comp[int(a.cell_id[f])]
             if floor < 1.0:  # fertility follows her own breakdown state
                 p *= floor + (1.0 - floor) * float(a.maternal_cap[f])
             if width > 0.0:

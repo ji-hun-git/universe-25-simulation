@@ -229,6 +229,13 @@ class BiologyConfig(_Strict):
     independence_days: float = Field(default=17.0, gt=0.0)
     independence_hunger: float = Field(default=1.0, gt=0.0)
     deprived_factor: float = Field(default=0.375, ge=0.0, le=1.0)
+    # U-5 revision 1 (both unset/false = version 1). deprived_fertility: a deprived female's
+    # daily chance of conceiving as a fraction of an undeprived female's in the same cell, in
+    # place of the competence scaling (a priori 0.01). expel_at_independence: a stressed nursing
+    # mother (stress above maternal_neglect_stress) keeps nursing her box's pups until they are
+    # independence_days old and then expels them, instead of abandoning whole litters at random.
+    deprived_fertility: float | None = Field(default=None, ge=0.0, le=1.0)
+    expel_at_independence: bool = False
 
     def breakdown_threshold(self) -> float:
         if self.breakdown_density_threshold is not None:
@@ -503,6 +510,8 @@ class SimConfig(_Strict):
                 raise ValueError("deprivation is NumPy-path only")
             if b.independence_days >= b.weaning_days:
                 raise ValueError("deprivation needs independence_days < weaning_days")
+        elif b.deprived_fertility is not None or b.expel_at_independence:
+            raise ValueError("deprived_fertility / expel_at_independence need deprivation")
         if g.disperse_at_maturity and not g.box_choice:
             raise ValueError("disperse_at_maturity needs geometry.box_choice")
         if g.open_cells is not None:

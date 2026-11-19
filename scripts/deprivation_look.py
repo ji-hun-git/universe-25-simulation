@@ -14,8 +14,11 @@ day 560, the deprived shares, conceptions after day 920, and the structure quest
   0.38-0.68 and withdrawn on day 560 0.22-0.42 (seed medians).
 This is development on training seeds, not validation.
 
-usage: python scripts/deprivation_look.py [--workers 10]
-Writes _output/deprivation_look.json.
+Revision 1 (--set r1): B0 off, B1 + deprived_fertility 0.01, B2 + expel_at_independence, B3 both;
+the same base, seeds and question.
+
+usage: python scripts/deprivation_look.py [--workers 10] [--set v1|r1]
+Writes _output/deprivation_look.json (v1) or _output/deprivation_look_r1.json (r1).
 """
 from __future__ import annotations
 
@@ -45,13 +48,23 @@ READ = {"adults_at_day_315": "adults_131_at_day_315"}  # Calhoun's adults (U-3)
 CONTESTED = {"first_litters_day": (50.0, 104.0), "doubling_c": (105.0, 145.0)}
 
 
+SET = "r1" if "--set" in sys.argv and sys.argv[sys.argv.index("--set") + 1] == "r1" else "v1"
+
+
 def arms() -> dict[str, dict]:
+    """v1: the first look (A0-A3). r1: revision 1's (B0-B3), docs/DEPRIVED_GENERATION.md."""
     params = json.loads(FINAL.read_text(encoding="utf-8"))["members"][0]["params"]
     bio = params["biology"]
 
     def with_bio(**kw):
         return {**params, "biology": {**bio, **kw}}
 
+    if SET == "r1":
+        return {"B0": params,
+                "B1": with_bio(deprivation=True, deprived_fertility=0.01),
+                "B2": with_bio(deprivation=True, expel_at_independence=True),
+                "B3": with_bio(deprivation=True, deprived_fertility=0.01,
+                               expel_at_independence=True)}
     return {"A0": params,
             "A1": with_bio(deprivation=True),
             "A2": with_bio(deprivation=True, litter_abandon_p=2.0 * bio["litter_abandon_p"]),
@@ -80,6 +93,8 @@ def q(v: list[float]) -> list[float]:
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--workers", type=int, default=10)
+    p.add_argument("--set", choices=("v1", "r1"), default="v1",
+                   help="v1: the first look (A0-A3); r1: revision 1 (B0-B3)")
     a = p.parse_args()
     jobs = [(arm, over, s) for arm, over in arms().items() for s in SEEDS]
     t0 = time.perf_counter()
@@ -146,10 +161,11 @@ def main() -> int:
     for arm in names:
         s = summary[arm]["structure"]
         print(f"  {arm}: " + ", ".join(f"{k} {'yes' if v else 'no'}" for k, v in s.items()))
-    (ROOT / "_output" / "deprivation_look.json").write_text(json.dumps(
-        {"seeds": list(SEEDS), "summary": summary, "rows": rows}, indent=1, default=float),
-        encoding="utf-8")
-    print("\nwritten _output/deprivation_look.json")
+    name = "deprivation_look.json" if SET == "v1" else "deprivation_look_r1.json"
+    (ROOT / "_output" / name).write_text(json.dumps(
+        {"set": SET, "seeds": list(SEEDS), "summary": summary, "rows": rows}, indent=1,
+        default=float), encoding="utf-8")
+    print(f"\nwritten _output/{name}")
     return 0
 
 

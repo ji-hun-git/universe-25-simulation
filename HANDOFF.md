@@ -33,7 +33,12 @@
 > bit-identical when off). Its development look answers **no**: it gives the record's withdrawn
 > share (0.32) and a slower decline. But reproduction ends later, not earlier: deprived females
 > still conceive, rejection reaches about a third of each late cohort, and a breeding
-> generation forms in phase D. Next is Jason's call.
+> generation forms in phase D.
+> **Revision 1 also answers no.** Lower deprived fertility gives N@960 = 1,652 (the record), but
+> the last conception stays late. Expulsion at 17 days stalls growth, because stressed mothers
+> exist already in phase B. The common cause: maternal breakdown in the replica is local (M4).
+> The frozen colony's colony-wide breakdown does end reproduction on time (596 and 956). Next is
+> Jason's call: a colony-wide trigger for rejection, or stop.
 >
 > **Status 2026-11-17:** the phase 3 viewer is built (`viewer/`, README "Viewer", TASKS P2-1 /
 > P2-2): the colony from above with a control panel, recordings and live runs (NumPy, or Warp

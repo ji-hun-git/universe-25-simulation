@@ -1273,7 +1273,14 @@ the last undeprived females, and the decline is slow.
 - **What goes the wrong way:** the last conception moves later (1,292–1,599). Deprived females
   still conceive (Marsden's 60-day rate over months), rejection reaches only about 38 % of the
   late cohorts, and a breeding generation forms in phase D.
-- **Next:** Jason's call.
+- **Revision 1 (Jason: "Yes, revise it"): also no.**
+  - **Lower deprived fertility (0.01 as a hazard ratio)** gives N on day 960 of 1,652, but the
+    last conception stays at about 1,296.
+  - **Expulsion at 17 days** stalls growth (peak 1,470, no arc): stressed mothers exist already
+    in phase B.
+  - **The common cause** is that maternal breakdown in the replica is local (M4). The frozen
+    colony's colony-wide breakdown ends reproduction on time (596 and 956).
+- **Next:** Jason's call: a colony-wide trigger for rejection (revision 2), or stop.
 
 ---
 

@@ -20,6 +20,7 @@ from universe25.agents.state import (  # noqa: E402
     ACT_NEST,
     ACT_REST,
     ROLE_JUVENILE,
+    ROLE_NURSING,
     ROLE_PUP,
     ROLE_SUBORDINATE_MALE,
     ROLE_WITHDRAWN,
@@ -59,7 +60,9 @@ def _make(on: bool, **bio):
 def test_guards() -> None:
     for over in ({"backend": "warp", "geometry": {"layout": "grid"},
                   "biology": {"deprivation": True}},
-                 {"biology": {"deprivation": True, "independence_days": 21.0}}):
+                 {"biology": {"deprivation": True, "independence_days": 21.0}},
+                 {"biology": {"deprived_fertility": 0.01}},
+                 {"biology": {"expel_at_independence": True}}):
         try:
             _cfg(**over)
         except ValueError:
@@ -170,9 +173,55 @@ def test_the_deprived_female_conceives_and_is_courted() -> None:
     assert got == {True: True, False: False}, got
 
 
+def test_revision_1_fertility() -> None:
+    """Revision 1, lever 1: with deprived_fertility her daily chance is that fraction of an
+    undeprived female's (here p_base x 0.01), not her competence (0.3)."""
+    for fert, draw, conceives in ((None, 0.02, True), (0.01, 0.02, False),
+                                  (0.01, 0.002, True)):
+        sim, cfg = _make(True, deprived_fertility=fert)
+        a, bio = sim.agents, cfg.biology
+        f = int(np.flatnonzero(a.alive & (a.sex == SEX_F))[0])
+        m = int(np.flatnonzero(a.alive & (a.sex == SEX_M))[0])
+        a.cell_id[[f, m]] = 2
+        a.stress[[f, m]] = 0.0
+        a.energy[f] = 0.9
+        a.competence[m] = a.courtship_cap[m] = a.maternal_cap[f] = 1.0
+        sim._deprived[f] = True
+        a.competence[f], a.role[f] = 0.3, ROLE_WITHDRAWN
+        sim._set_owner(2, m, set())
+        sim.rng, real = _FixedDraw(draw), sim.rng
+        sim._daily_breeding_pass(a.alive.copy())
+        sim.rng = real
+        assert bool(a.gestating[f] > 0) == conceives, (fert, draw, bio.breeding_p_base)
+
+
+def test_revision_1_expulsion() -> None:
+    """Revision 1, lever 2: a stressed nursing mother expels the pups of her box that are old
+    enough and keeps nursing the younger ones; without the lever she nurses none of them."""
+    for expel in (True, False):
+        sim, cfg = _make(True, expel_at_independence=expel, litter_abandon_p=0.0)
+        a, bio = sim.agents, cfg.biology
+        a.alive[:] = False
+        mom, old, young = (int(v) for v in a.free_slots(3))
+        sim._spawn(mom, sex=SEX_F, age=120.0, x=30.0, y=30.0, nest_id=0, cell_id=0, role=0)
+        for k, age in ((old, 18.0), (young, 10.0)):
+            sim._spawn(k, sex=SEX_M, age=age, x=30.0, y=30.0, nest_id=0, cell_id=0,
+                       role=ROLE_PUP)
+            a.hunger[k] = 0.9
+        a.role[mom], a.maternal[mom] = ROLE_NURSING, 0.9
+        a.stress[mom] = bio.maternal_neglect_stress + 0.1
+        sim.tick = 0
+        sim._daily_litter_abandonment(a.alive.copy())
+        assert (a.nest_id[old] < 0) == expel and a.nest_id[young] == 0
+        sim._passive_nurse(a.alive.copy())
+        assert (a.hunger[young] < 0.9) == expel, (expel, a.hunger[young])
+
+
 if __name__ == "__main__":
     test_guards()
     test_independence_and_the_deprived_juvenile()
     test_the_deprived_adult()
     test_the_deprived_female_conceives_and_is_courted()
+    test_revision_1_fertility()
+    test_revision_1_expulsion()
     print("test_deprivation: OK")
