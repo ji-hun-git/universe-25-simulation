@@ -140,6 +140,11 @@ def run_one(job: tuple[str, str, dict, int, float]) -> tuple[str, int, dict]:
                     else np.nan,
                 }
                 cat = al & (a.age_days >= 131.0) & (a.age_days <= 320.0)
+                # U-5 (docs/DEPRIVED_GENERATION.md): the deprived, weaned early (0 when off)
+                struct[str(d)]["deprived_share"] = (float(sim._deprived[weaned].mean())
+                                                    if weaned.any() else np.nan)
+                struct[str(d)]["deprived_131_320"] = (float(sim._deprived[cat].mean())
+                                                      if cat.any() else np.nan)
                 wad = wd & (a.age_days >= bio.maturity_days)
                 struct[str(d)]["beautiful_share"] = (
                     float(np.mean(~sim._fought[cat] & ~sim._mated[cat])) if cat.any() else np.nan)
@@ -185,7 +190,8 @@ def run_one(job: tuple[str, str, dict, int, float]) -> tuple[str, int, dict]:
             terr[f"brood_sizes_{lim}"] = sorted(groups.values(), reverse=True)
     return name, seed, {"landmarks": {k: float(v) for k, v in lm.items()}, "struct": struct,
                         "territory": terr, "n_series": [int(v) for v in hist["n"]],
-                        "surv_births_by_day": [int(v) for v in sim._surv_births_by_day]}
+                        "surv_births_by_day": [int(v) for v in sim._surv_births_by_day],
+                        "conceptions_after_920": int(np.sum(sim._conc_by_day[921:]))}
 
 
 def main() -> int:

@@ -219,6 +219,16 @@ class BiologyConfig(_Strict):
     # male courtship and maternal investment still scale with competence.
     withdrawn_disengage: bool = False
     fertility_from_competence: bool = True
+    # U-5, the deprived generation (docs/DEPRIVED_GENERATION.md). A pup at least
+    # independence_days old that is expelled (no box) or unfed (hunger above
+    # independence_hunger) is weaned at once and deprived for life: its competence is multiplied
+    # by deprived_factor. The deprived adult is withdrawn, neither fights nor is fought, is not
+    # stressed by crowding or its box, and a deprived female stays eligible to conceive, at a
+    # rate that scales with her competence. Off: today's model, bit-identical.
+    deprivation: bool = False
+    independence_days: float = Field(default=17.0, gt=0.0)
+    independence_hunger: float = Field(default=1.0, gt=0.0)
+    deprived_factor: float = Field(default=0.375, ge=0.0, le=1.0)
 
     def breakdown_threshold(self) -> float:
         if self.breakdown_density_threshold is not None:
@@ -488,6 +498,11 @@ class SimConfig(_Strict):
                 raise ValueError("maternal_transmission is NumPy-path only")
         if (b.withdrawn_disengage or not b.fertility_from_competence) and self.backend == "warp":
             raise ValueError("withdrawn_disengage / fertility_from_competence are NumPy-path only")
+        if b.deprivation:
+            if self.backend == "warp":
+                raise ValueError("deprivation is NumPy-path only")
+            if b.independence_days >= b.weaning_days:
+                raise ValueError("deprivation needs independence_days < weaning_days")
         if g.disperse_at_maturity and not g.box_choice:
             raise ValueError("disperse_at_maturity needs geometry.box_choice")
         if g.open_cells is not None:

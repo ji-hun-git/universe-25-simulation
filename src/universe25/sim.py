@@ -191,6 +191,8 @@ class Universe25Sim:
         # replica v2 M7: nursing weight received before weaning (bookkeeping; it sets daughters'
         # maternal capacity only when biology.maternal_transmission > 0)
         self._care = np.zeros(cap, dtype=np.float64)
+        # U-5: weaned early and deprived for life (biology.deprivation; stays False when off)
+        self._deprived = np.zeros(cap, dtype=bool)
         oc = cfg.geometry.open_cells
         self._open = np.zeros(nc, dtype=bool) if oc is not None else np.ones(nc, dtype=bool)
         if oc is not None:
@@ -267,6 +269,7 @@ class Universe25Sim:
         self._fought[slot] = self._mated[slot] = self._littered[slot] = False
         self._fought_adult[slot] = False
         self._care[slot] = 0.0
+        self._deprived[slot] = False
         if self._visit_t is not None:  # a new animal knows no place yet
             self._visit_t[slot] = -np.inf
         a.age_days[slot] = age
@@ -352,6 +355,7 @@ class Universe25Sim:
                 self._daily_maternal_erosion(alive)
                 self._daily_courtship_erosion(alive)
                 self._daily_litter_abandonment(alive)
+                self._independence(alive)
                 self._reproduce(alive)
                 self.body.update()
             if use_warp:
@@ -458,6 +462,8 @@ class Universe25Sim:
         role = np.empty(idx.size, dtype=np.int8)
         role[:] = ROLE_BREEDING_FEMALE
         pup = age < bio.weaning_days
+        if bio.deprivation:  # U-5: a pup weaned early is a juvenile
+            pup &= ~self._deprived[idx]
         juv = (~pup) & (age < bio.maturity_days)
         bio = self.cfg.biology
         withdrawn = (
@@ -470,6 +476,8 @@ class Universe25Sim:
         # "Beautiful ones": adults whose development under crowding left them socially
         # incompetent withdraw permanently (competence is frozen at maturity).
         withdrawn |= (~pup) & (~juv) & (a.competence[idx] < bio.withdrawn_competence_threshold)
+        if bio.deprivation:  # U-5: the deprived adult is withdrawn (Calhoun's beautiful ones)
+            withdrawn |= (~pup) & (~juv) & self._deprived[idx]
         female = a.sex[idx] == SEX_F
         nursing = female & ((a.maternal[idx] > 0.5) & ((a.gestating[idx] > 0) | (a.role[idx] == ROLE_NURSING)))
         male = ~female
@@ -519,6 +527,8 @@ class Universe25Sim:
         # Eligibility mask: ineligible actions get exactly zero probability. (Previously a
         # zero utility still carried softmax weight, so pups foraged, fought and conceived.)
         pup = age < bio.weaning_days
+        if bio.deprivation:  # U-5: weaned early, it forages and drinks as a juvenile
+            pup &= ~self._deprived[idx]
         adult = age >= bio.maturity_days
         allowed = np.ones((m, N_ACTIONS), dtype=bool)
         # Pre-weaning pups are milk-dependent and stay at the nest.
@@ -530,6 +540,8 @@ class Universe25Sim:
         if bio.withdrawn_disengage:  # replica v2 M8: the beautiful ones do not fight
             allowed[:, ACT_AGGRESS] &= ~(
                 adult & (a.competence[idx] < bio.withdrawn_competence_threshold))
+        if bio.deprivation:  # U-5: the deprived adult does not fight
+            allowed[:, ACT_AGGRESS] &= ~(adult & self._deprived[idx])
         if not self.world.playground_enabled:
             allowed[:, ACT_MANIPULATE] = False
         # Action space v2: the movement primitives are allowed wherever their family is (the
@@ -1189,6 +1201,11 @@ class Universe25Sim:
             if a.age_days[i] >= bio.maturity_days and a.competence[i] < thr:
                 return
             cand &= ~((a.age_days >= bio.maturity_days) & (a.competence < thr))
+        if bio.deprivation:  # U-5: the deprived adult neither fights nor is fought
+            dep = self._deprived & (a.age_days >= bio.maturity_days)
+            if dep[i]:
+                return
+            cand &= ~dep
         near = np.flatnonzero(cand)
         if len(near) == 0:
             return
@@ -1282,10 +1299,12 @@ class Universe25Sim:
             return
         partner_sex = SEX_M if a.sex[i] == SEX_F else SEX_F
         cand = a.alive & (a.sex == partner_sex) & (a.age_days >= bio.maturity_days)
+        ok = a.role != ROLE_WITHDRAWN
         if partner_sex == SEX_F and not bio.fertility_from_competence:  # replica v2 M8
-            cand &= (a.role != ROLE_WITHDRAWN) | (a.competence < bio.withdrawn_competence_threshold)
-        else:
-            cand &= a.role != ROLE_WITHDRAWN
+            ok = ok | (a.competence < bio.withdrawn_competence_threshold)
+        if partner_sex == SEX_F and bio.deprivation:  # U-5: a deprived female can conceive
+            ok = ok | self._deprived
+        cand &= ok
         cand &= a.gestating == 0
         if partner_sex == SEX_F:
             cand &= a.age_days <= bio.female_fertile_max_age_days
@@ -1311,6 +1330,9 @@ class Universe25Sim:
         gain = d.stress_density_gain * local
         # Weaned agents without a nest box (abandoned as pups) adopt the nearest box.
         homeless = (a.nest_id[idx] < 0) & (a.age_days[idx] >= self.cfg.biology.weaning_days)
+        deprivation = self.cfg.biology.deprivation
+        if deprivation:  # U-5: an expelled pup weaned early adopts a box as the weaned do
+            homeless |= (a.nest_id[idx] < 0) & self._deprived[idx]
         box_choice = self.cfg.geometry.box_choice
         if self.cfg.geometry.disperse_at_maturity:  # replica v2 M4 amendment: natal dispersal
             mat = float(self.cfg.biology.maturity_days)
@@ -1339,6 +1361,9 @@ class Universe25Sim:
                 else self.cfg.biology.breakdown_factor(self._breakdown_density(alive)))
         if f_bd > 0.0:
             gain = gain + float(self.cfg.biology.social_breakdown_stress_boost) * f_bd
+        if deprivation:  # U-5: crowding and its box do not stress the deprived adult (PNMT)
+            dep_adult = self._deprived[idx] & (a.age_days[idx] >= self.cfg.biology.maturity_days)
+            gain = np.where(dep_adult, 0.0, gain)
         decision = self._decision_tick()
         # random nest kick for low-rank overcrowded agents: one 10 % chance per decision
         if decision:
@@ -1373,6 +1398,8 @@ class Universe25Sim:
                 exposure = exposure + float(bio.imprint_breakdown_exposure) * f_bd
             if bio.care_imprint_gain > 0.0:  # replica v2 M4: the care a pup receives
                 pup = a.age_days[idx] < bio.weaning_days
+                if deprivation:  # U-5: weaned early, its deprivation is the step it took
+                    pup &= ~self._deprived[idx]
                 deficit = np.where(a.nest_id[idx] >= 0,
                                    np.maximum(0.0, a.hunger[idx] - 0.5), 1.0)
                 exposure = exposure + float(bio.care_imprint_gain) * np.where(pup, deficit, 0.0)
@@ -1545,6 +1572,29 @@ class Universe25Sim:
             a.nest_id[victims] = -1
             self._abandoned += int(victims.size)
 
+    def _independence(self, alive: np.ndarray) -> None:
+        """U-5 (biology.deprivation; docs/DEPRIVED_GENERATION.md), every tick: a pup at least
+        independence_days old that is expelled (no box) or unfed (hunger above
+        independence_hunger) is weaned now and deprived for life; its competence is multiplied
+        by deprived_factor. Calhoun, mid-phase C: mothers expelled their young days before
+        weaning, and those young survived without ever acquiring adult behaviour. A younger
+        expelled or unfed pup is unchanged: milk-dependent, it starves as before. No draw."""
+        bio = self.cfg.biology
+        if not bio.deprivation:
+            return
+        a = self.agents
+        new = np.flatnonzero(
+            alive
+            & (a.age_days < bio.weaning_days)
+            & (a.age_days >= bio.independence_days)
+            & ~self._deprived
+            & ((a.nest_id < 0) | (a.hunger > bio.independence_hunger))
+        )
+        if new.size:
+            self._deprived[new] = True
+            a.competence[new] *= np.float32(bio.deprived_factor)
+            a.role[new] = ROLE_JUVENILE
+
     def _daily_territories(self, alive: np.ndarray) -> None:
         """Once per day (biology.territories; replica v2 M2, docs/REPLICA_V2.md): cell ownership.
 
@@ -1655,6 +1705,9 @@ class Universe25Sim:
         not_wd = a.role != ROLE_WITHDRAWN
         if not fert_comp:  # replica v2 M8: withdrawn for low competence, she can still conceive
             not_wd = not_wd | (a.competence < bio.withdrawn_competence_threshold)
+        dep = bio.deprivation
+        if dep:  # U-5: a deprived female can conceive, at a rate scaled by her competence
+            not_wd = not_wd | self._deprived
         females = np.flatnonzero(
             alive
             & (a.sex == SEX_F)
@@ -1699,7 +1752,8 @@ class Universe25Sim:
                 continue
             c_f = float(a.competence[f])  # her investment below scales with it in any case
             p = p_base * (1.0 - float(bio.breeding_stress_coef) * float(a.stress[f]))
-            p *= (c_f if fert_comp else 1.0) * male_comp[int(a.cell_id[f])]
+            p *= (c_f if fert_comp or (dep and self._deprived[f]) else 1.0) * male_comp[
+                int(a.cell_id[f])]
             if floor < 1.0:  # fertility follows her own breakdown state
                 p *= floor + (1.0 - floor) * float(a.maternal_cap[f])
             if width > 0.0:

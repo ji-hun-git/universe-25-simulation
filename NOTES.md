@@ -1,5 +1,87 @@
 # Universe25 Play — NOTES
 
+## 2026-11-19 — The deprived generation (U-5) built; development look: the structure question is no — it gives Calhoun's withdrawn share and a slower decline, but reproduction ends later, not earlier
+
+**What Jason asked.** "Yes, build it": the design below (`docs/DEPRIVED_GENERATION.md`).
+
+**What was built.**
+- `biology.deprivation` and its three a priori values (`independence_days` 17,
+  `independence_hunger` 1.0, `deprived_factor` 0.375), NumPy path only.
+- `Universe25Sim._independence`, with the deprived flag kept off `AgentSoA`.
+- The deprived adult's exclusions, at each site:
+  - roles, the action mask and fights;
+  - density stress;
+  - the breeding pass and the courtship approach.
+- **Off, it is bit-identical.**
+  - The final replica on fresh-validation seed 9112 reproduces all 23 stored outputs exactly.
+  - The frozen colony's golden hashes match.
+- `tests/test_deprivation.py`:
+  - the guards;
+  - an expelled 18-day pup is weaned and deprived, while a 10-day one stays a pup;
+  - an unfed 19-day pup is weaned;
+  - the deprived juvenile forages;
+  - the deprived adult is withdrawn, neither fights nor is fought, and is not stressed by
+    crowding;
+  - a deprived female conceives and is courted.
+- `scripts/replica_report.py` records the deprived shares and the conceptions after day 920.
+
+**The development look** (`scripts/deprivation_look.py`; the final replica's parameters,
+training seeds 7000–7011, 1,600 days; `_output/deprivation_look.json`). Seed medians [5–95 %],
+with adults counted as Calhoun did; * marks the record outside.
+
+| measure | record | A0 off | A1 on | A2 more expulsion | A3 stronger deprivation |
+|---|---|---|---|---|---|
+| peak N | 2,200 | 2,551 * | 2,475 * | 2,515 * | 2,485 * |
+| N@736 | 2,056 | 1,944 | 1,983 | 2,140 | 2,042 |
+| N@960 | 1,650 | 1,264 * | 1,401 * | 1,620 | 1,461 * |
+| last surviving birth (day) | 600 | 692 * | 1,003 * | 1,227 * | 1,019 * |
+| last conception (day) | 920 | 1,092 * | 1,519 * | 1,599 * | 1,292 * |
+| N@1,444 | 122 | 74 | 194 * | 432 * | 208 * |
+| N@1,588 | 27 | 16 | 108 * | 270 * | 108 * |
+| the arc, of 12 | | 11 | 11 | 7 | 8 |
+| never fought as adults or mated @800 | 0.53 | 0.00 | 0.23 | 0.25 | 0.37 |
+| withdrawn @560 | 0.32 | 0.09 | 0.32 | 0.33 | 0.32 |
+| deprived, of the 131–320-day-olds @800 | | 0.00 | 0.40 | 0.44 | 0.42 |
+| conceptions after day 920 (per run) | 0 | 1,152 | 1,380 | 3,106 | 1,218 |
+
+**The structure question: no.**
+- No arm combines the arc with a last conception by day 1,000 and both categories in range.
+- **What works.**
+  - The withdrawn share on day 560 goes from 0.09 to 0.32, the record's value.
+  - The never-fought-or-mated share goes from 0.00 to 0.23–0.37 (range 0.38–0.68).
+  - The decline slows: N on day 960 goes from 1,264 to 1,401–1,620 (record 1,650).
+- **What goes the wrong way.** The last conception moves later (1,292–1,599 against 1,092), and
+  so does the last surviving birth (1,003–1,227 against 692). Mice still alive on days 1,444 and
+  1,588 are too many.
+
+**Why** (exploratory: A1 on training seeds 7000–7003, read-only;
+`_output/hm_adults/diagnose_end_u5.json`).
+- **Deprived females still conceive.**
+  - On day 800, 98 % of the 131–320-day-old females have mated, though 38 % are deprived.
+  - A third of the normal rate is Marsden's 60-day figure. Over many months it reaches almost
+    every deprived female; the two-cell universe has 18 % ever conceiving.
+- **Rejection reaches only part of each late cohort.**
+  - About 38 % of the cohort born in days 437–560 is deprived. Calhoun saw "essentially all"
+    young rejected.
+  - Deprived mothers make only 17–19 % of the conceptions in days 600–1,100. The rest come from
+    undeprived females born in phase C.
+- **A breeding generation forms in phase D.**
+  - Survivable expulsion keeps young surviving to about day 1,000.
+  - After day 1,100, mothers born after day 700 and owners born around day 930 conceive about
+    540 more times per run.
+- **Phase-D deaths.** Deprived adults are unstressed and unwounded, so they live to old age: the
+  slower decline, and the late counts too high.
+
+**What follows.** The design says to report what is missing, and that the next step is Jason's
+call.
+- **The pieces that fall short:**
+  - the deprived female's fertility (Marsden's 60-day rate, where the two-cell universe's 18 %
+    ever is the stricter measure);
+  - rejection that reaches only part of each late cohort;
+  - a breeding generation that forms in phase D.
+- **The switch stays off by default.** Nothing in the app, the final replica or the frozen colony
+  changes.
+
 ## 2026-11-19 — The deprived generation (U-5) designed: in the model deprivation kills, so no generation of beautiful ones forms; the design makes expulsion near weaning survivable
 
 **What Jason asked.** "Yes, design it", answering "Design a model change so reproduction ends

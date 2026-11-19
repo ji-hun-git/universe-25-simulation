@@ -1264,7 +1264,16 @@ the last undeprived females, and the decline is slow.
   withdrawn on day 560 0.22–0.42.
 - A record fit with it on follows only if Jason decides so.
 
-**Status 2026-11-19:** designed; not built.
+**Status 2026-11-19: built; the development look's structure question is no** (NOTES
+2026-11-19).
+- **Built:** `biology.deprivation`, off by default and bit-identical when off, with
+  `tests/test_deprivation.py`.
+- **What it gets right:** the withdrawn share on day 560 reaches the record's 0.32, never fought
+  or mated rises to 0.23–0.37, and N on day 960 rises toward 1,650.
+- **What goes the wrong way:** the last conception moves later (1,292–1,599). Deprived females
+  still conceive (Marsden's 60-day rate over months), rejection reaches only about 38 % of the
+  late cohorts, and a breeding generation forms in phase D.
+- **Next:** Jason's call.
 
 ---
 

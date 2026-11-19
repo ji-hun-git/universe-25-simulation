@@ -29,7 +29,11 @@
 > Jason asked for that design: **the deprived generation** (U-5, `docs/DEPRIVED_GENERATION.md`).
 > In the model an expelled or unfed pup starves, so no deprived generation forms. The design
 > makes expulsion near weaning survivable, as Calhoun's young survived it, and gives those young
-> the beautiful ones' adult life. It is designed, not built.
+> the beautiful ones' adult life. **Built** (`biology.deprivation`, off by default and
+> bit-identical when off). Its development look answers **no**: it gives the record's withdrawn
+> share (0.32) and a slower decline. But reproduction ends later, not earlier: deprived females
+> still conceive, rejection reaches about a third of each late cohort, and a breeding
+> generation forms in phase D. Next is Jason's call.
 >
 > **Status 2026-11-17:** the phase 3 viewer is built (`viewer/`, README "Viewer", TASKS P2-1 /
 > P2-2): the colony from above with a control panel, recordings and live runs (NumPy, or Warp

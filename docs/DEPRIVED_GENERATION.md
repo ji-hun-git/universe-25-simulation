@@ -176,3 +176,24 @@ a priori, not fitted.
   - on, an expelled 18-day pup lives and is deprived, and an expelled 10-day pup dies.
 - **The development look:** 48 runs, about 15 minutes.
 - **If it goes on:** a record fit of about 1,000 runs, plus its validation, about 3–4 hours.
+
+## Built and looked at (2026-11-19; NOTES 2026-11-19)
+
+- **Built as designed.** Off, it is bit-identical: the final replica on seed 9112 reproduces all
+  23 stored outputs, and the golden hashes match. `tests/test_deprivation.py` checks each rule.
+- **The structure question: no.**
+  - **The categories, partly.** The withdrawn share on day 560 reaches the record's 0.32 (from
+    0.09). The never-fought-or-mated share rises from 0.00 to 0.23–0.37 (range 0.38–0.68).
+  - **The decline slows.** N on day 960 goes from 1,264 to 1,401–1,620 (record 1,650).
+  - **Reproduction ends later, not earlier.** The last conception moves to days 1,292–1,599
+    (from 1,092), the last surviving birth to 1,003–1,227 (from 692). Too many mice are left on
+    days 1,444 and 1,588.
+- **Why, from a trace of A1:**
+  - **Deprived females still conceive.** 98 % of the young females have mated by day 800, though
+    38 % are deprived. Marsden's 60-day rate, applied for months, reaches nearly all of them;
+    the two-cell universe's 18 % ever is the stricter figure.
+  - **Rejection is partial.** It reaches about 38 % of the cohort born in days 437–560, not
+    "essentially all".
+  - **A phase-D generation forms.** Young that survive late become a breeding generation of
+    their own.
+- **Next, Jason's call.** The switch stays off by default.
