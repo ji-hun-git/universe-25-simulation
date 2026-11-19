@@ -24,6 +24,11 @@ docs/figures/src/ when they are newer, and otherwise uses the copies already the
 The runs are the predictive check's own: scripts/calib_reference.py builds them the same way.
 `collect` checks every landmark against _output/calib_reference/rows.json when that file exists.
 Nothing here changes the simulator or reads a seed for a new decision.
+
+Adults on day 315 are read as Calhoun counted them, from 131 days old (READ_AS; NOTES
+2026-11-19). The check as first run (scripts/calib_reference.py) counted them from sexual
+maturity; hero.json keeps that count too. `collect` adds the count to cached runs that lack it by
+replaying them to day 316, and checks the replay against the cached run.
 """
 from __future__ import annotations
 
@@ -52,6 +57,9 @@ LEDGER = FIG / "phase4_ledger.yaml"
 ROWS = ROOT / "_output" / "calib_reference" / "rows.json"
 SEEDS = tuple(range(9000, 9048))  # Tier 1 predictive-check seeds (docs/SEEDS.md)
 DAYS, TPD = 1600.0, 6
+ADULT_AGE = 131.0  # Calhoun's adult age categories begin here (docs/RESEARCH_DIGEST.md A6)
+# the record's "150 adults" on day 315 is read from the count of mice ADULT_AGE days or older
+READ_AS = {"adults_at_day_315": "adults_131_at_day_315"}
 # HANDOFF 8 tokens, as in viewer/viewer.css (light theme)
 PAL = {"paper": "#F4F0E6", "paper2": "#EEE8DB", "paper3": "#E3DCCB", "ink": "#1A1A1A",
        "ink2": "#46423B", "ink3": "#7B7569", "stress": "#8B1E1E", "nest": "#2F5D50",
@@ -68,14 +76,12 @@ VERDICT_STYLE = {
 
 
 # ------------------------------------------------------------------ collect
-def run_one(seed: int) -> tuple[int, dict[str, float]]:
-    """One frozen-colony run as scripts/calib_reference.py makes it (evaluate_params with the
-    need-driven arm config), recording the daily colony as well as the landmarks."""
+def frozen_config(seed: int):
+    """The frozen colony's config as scripts/calib_reference.py makes it (evaluate_params with
+    the need-driven arm config)."""
     from universe25.calib.policy_guard import arm_config
     from universe25.calib.priors import params_to_overrides
     from universe25.config import load_config
-    from universe25.metrics.calibration import landmarks_from_series
-    from universe25.sim import Universe25Sim
 
     base = arm_config("need_driven", None, None, None)
     ov = params_to_overrides({})
@@ -83,13 +89,26 @@ def run_one(seed: int) -> tuple[int, dict[str, float]]:
                "backend": "numpy", "device": "cpu", "log_every_ticks": 10**9,
                "snapshot_every_days": 0, "arm_label": "TRACK-E-U25-CALIB",
                "playground": {"enabled": True}, "use_cuda_graph": False})
-    cfg = load_config(base, ov)
+    try:
+        return load_config(base, ov)
+    finally:
+        shutil.rmtree(base.parent, ignore_errors=True)
+
+
+def run_one(seed: int) -> tuple[int, dict[str, float]]:
+    """One frozen-colony run (frozen_config), recording the daily colony as well as the
+    landmarks."""
+    from universe25.metrics.calibration import landmarks_from_series
+    from universe25.sim import Universe25Sim
+
+    cfg = frozen_config(seed)
     td = Path(tempfile.mkdtemp(prefix="u25hero_"))
     try:
         sim = Universe25Sim(cfg, td)
         nc = sim.world.n_cells
         mat = cfg.biology.maturity_days
-        day, n, births, last_young, adults, last_conc, roles, cells = ([] for _ in range(8))
+        day, n, births, last_young, adults, old, last_conc, roles, cells = (
+            [] for _ in range(9))
         for _ in range(int(DAYS * TPD)):
             sim.step()
             if sim.tick % TPD == 0:
@@ -100,6 +119,7 @@ def run_one(seed: int) -> tuple[int, dict[str, float]]:
                 births.append(sim._births)
                 last_young.append(sim._last_surviving_young_day)
                 adults.append(int(np.sum(alive & (a.age_days >= mat))))
+                old.append(int(np.sum(alive & (a.age_days >= ADULT_AGE))))
                 last_conc.append(sim._last_conception_day)
                 roles.append(np.bincount(a.role[alive].astype(np.int64), minlength=8)[:7])
                 c = a.cell_id[alive].astype(np.int64)
@@ -118,13 +138,64 @@ def run_one(seed: int) -> tuple[int, dict[str, float]]:
             surv_births_by_day=sim._surv_births_by_day, conceptions_by_day=sim._conc_by_day)
     finally:
         shutil.rmtree(td, ignore_errors=True)
-        shutil.rmtree(base.parent, ignore_errors=True)
     obs = {k: float(v) for k, v in obs.items()}
+    days_ = np.asarray(day, np.float64)
+    obs[READ_AS["adults_at_day_315"]] = (float(old[int(np.argmin(np.abs(days_ - 315.0)))])
+                                         if len(days_) else float("nan"))
     np.savez_compressed(CACHE / f"frozen_{seed}.npz", day=np.asarray(day, np.float32),
                         n=np.asarray(n, np.int32), roles=np.asarray(roles, np.int32),
                         cells=np.asarray(cells, np.int32))
     (CACHE / f"frozen_{seed}.json").write_text(json.dumps(obs, indent=1), encoding="utf-8")
     return seed, obs
+
+
+def adults_one(seed: int) -> tuple[int, dict[str, float]]:
+    """A cached run's first 316 days again (a run is deterministic for a fixed seed): N, the
+    count past sexual maturity and the count ADULT_AGE days or older on day 315."""
+    from universe25.sim import Universe25Sim
+
+    cfg = frozen_config(seed)
+    td = Path(tempfile.mkdtemp(prefix="u25hero_"))
+    out: dict[str, float] = {}
+    try:
+        sim = Universe25Sim(cfg, td)
+        a, mat = sim.agents, cfg.biology.maturity_days
+        for _ in range(316 * TPD):
+            sim.step()
+            if sim.tick % TPD == 0 and int(round(sim.day)) == 315:
+                al = a.alive
+                out = {"n": float(al.sum()), "mature": float(np.sum(al & (a.age_days >= mat))),
+                       "old": float(np.sum(al & (a.age_days >= ADULT_AGE)))}
+                break
+        try:
+            sim.logger.close()
+        except Exception:
+            pass
+    finally:
+        shutil.rmtree(td, ignore_errors=True)
+    return seed, out
+
+
+def add_adults(workers: int) -> str:
+    """Give cached runs without it the count of mice ADULT_AGE days or older on day 315. The
+    replay must give the cached N and count past sexual maturity on day 315 exactly."""
+    key = READ_AS["adults_at_day_315"]
+    todo = [s for s in SEEDS
+            if key not in json.loads((CACHE / f"frozen_{s}.json").read_text(encoding="utf-8"))]
+    if not todo:
+        return f"every cached run has {key}"
+    with ProcessPoolExecutor(max_workers=workers) as ex:
+        res = list(ex.map(adults_one, todo))
+    for seed, m in res:
+        path = CACHE / f"frozen_{seed}.json"
+        obs = json.loads(path.read_text(encoding="utf-8"))
+        if not m or m["n"] != obs["n_at_day_315"] or m["mature"] != obs["adults_at_day_315"]:
+            raise SystemExit(f"seed {seed}: the replay does not give the cached run's day 315 "
+                             f"({m} against N {obs['n_at_day_315']}, adults "
+                             f"{obs['adults_at_day_315']}); run collect afresh")
+        obs[key] = m["old"]
+        path.write_text(json.dumps(obs, indent=1), encoding="utf-8")
+    return f"{key} added to {len(res)} cached runs by replay (day 315 matched in every one)"
 
 
 def check_rows() -> str:
@@ -158,6 +229,7 @@ def collect(workers: int) -> int:
             for seed, obs in ex.map(run_one, todo):
                 print(f"seed {seed}: peak {obs.get('peak_n', float('nan')):.0f} on day "
                       f"{obs.get('peak_day', float('nan')):.0f}", flush=True)
+    print(f"{add_adults(workers)}", flush=True)
     print(f"done in {(datetime.now() - t0).total_seconds():.0f} s; {check_rows()}", flush=True)
     return 0
 
@@ -183,21 +255,27 @@ def load_runs():
     return np.arange(1, T + 1, dtype=float), N, W, C, obs
 
 
-def ppc(obs: list[dict]) -> list[dict]:
+def ppc(obs: list[dict], read_as: dict[str, str] | None = None) -> list[dict]:
     """scripts/calib_reference.py's predictive check: 5 / 50 / 95 % and a miss when the record
-    value falls outside the 90 % interval."""
+    value falls outside the 90 % interval. A landmark in read_as (default READ_AS) is read from
+    that key; read_as={} gives the check as first run."""
     from universe25.metrics.calibration import EXTRA_LANDMARKS, LANDMARKS, RECORD_LANDMARKS
 
+    read_as = READ_AS if read_as is None else read_as
     out = []
     for k, tgt in {**LANDMARKS, **EXTRA_LANDMARKS, **RECORD_LANDMARKS}.items():
-        v = np.array([o.get(k, np.nan) for o in obs], float)
+        key = read_as.get(k, k)
+        v = np.array([o.get(key, np.nan) for o in obs], float)
         v = v[np.isfinite(v)]
         if not v.size:
             continue
         lo, med, hi = np.quantile(v, [0.05, 0.5, 0.95])
-        out.append({"landmark": k, "record": tgt, "median": float(med),
-                    "pi90": [float(lo), float(hi)],
-                    "miss": bool(not lo <= tgt <= hi), "n": int(v.size)})
+        row = {"landmark": k, "record": tgt, "median": float(med),
+               "pi90": [float(lo), float(hi)],
+               "miss": bool(not lo <= tgt <= hi), "n": int(v.size)}
+        if key != k:
+            row["read_as"] = key
+        out.append(row)
     return out
 
 
@@ -261,7 +339,12 @@ def draw() -> int:
     from PIL import Image
 
     days, N, W, C, obs = load_runs()
+    lacking = [s for s, o in zip(SEEDS, obs) if READ_AS["adults_at_day_315"] not in o]
+    if lacking:
+        raise SystemExit(f"{len(lacking)} cached runs lack {READ_AS['adults_at_day_315']}: run "
+                         "scripts/hero_figure.py collect")
     checks = ppc(obs)
+    first = ppc(obs, read_as={})  # the check as first run: adults from sexual maturity
     inside = sum(not c["miss"] for c in checks)
     misses = [c for c in checks if c["miss"]]
     shot = renders()
@@ -362,12 +445,17 @@ def draw() -> int:
     bx.set_ylabel("mice", fontsize=7)
     clean(bx)
     names = {"n_at_day_736": "N on day 736", "doubling_time_phase_b_days": "doubling in phase B",
-             "doubling_time_phase_c_days": "doubling in phase C"}
+             "doubling_time_phase_c_days": "doubling in phase C",
+             "adults_at_day_315": f"adults on day 315 (≥ {ADULT_AGE:.0f} d)"}
+    out_names = [names.get(m["landmark"], m["landmark"]) for m in misses]
+    both = {"doubling in phase B", "doubling in phase C"}
+    if both <= set(out_names):
+        out_names = [x for x in out_names if x not in both] + ["doubling in phases B and C"]
     header(rx, row_top, "b", "Population against Calhoun's census",
            f"Frozen colony on {len(SEEDS)} seeds ({SEEDS[0]}-{SEEDS[-1]}): median and 90 % "
            "interval. + census: Calhoun 1973, Marsden 1972.\n"
-           f"{inside} of {len(checks)} record values fall inside the interval; outside: "
-           + ", ".join(names.get(m["landmark"], m["landmark"]) for m in misses) + ".")
+           f"{inside} of {len(checks)} record values inside; outside: " + ", ".join(out_names)
+           + ".")
 
     # ---- c: crowding and withdrawal
     c_top = row_top - bh - 0.66
@@ -454,7 +542,10 @@ def draw() -> int:
     encode(master, out)
     meta = {"generated": stamp, "commit": head, "uncommitted_changes": dirty,
             "seeds": [SEEDS[0], SEEDS[-1]], "runs_check": rows_check,
-            "ppc": {"inside": inside, "of": len(checks), "rows": checks},
+            "ppc": {"inside": inside, "of": len(checks), "rows": checks, "read_as": READ_AS,
+                    "first_run": {"inside": sum(not c["miss"] for c in first), "of": len(first),
+                                  "adults_at_day_315": "counted from sexual maturity "
+                                                       "(scripts/calib_reference.py)"}},
             "panel_a": {k: v for k, v in shot.items() if k != "fresh"},
             "ledger": LEDGER.relative_to(ROOT).as_posix(), "ledger_sha256": ledger_hash(),
             "file": out.relative_to(ROOT).as_posix(), "bytes": out.stat().st_size}

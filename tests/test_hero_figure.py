@@ -43,6 +43,16 @@ def test_ppc_marks_misses() -> None:
     assert rows["peak_n"]["n"] == 21
 
 
+def test_ppc_reads_calhouns_adults() -> None:
+    """Adults on day 315 are read from the count 131 days or older, as Calhoun counted them
+    (NOTES 2026-11-19); read_as={} gives the check as first run, from sexual maturity."""
+    obs = [{"adults_at_day_315": 140.0 + i, "adults_131_at_day_315": 40.0 + i} for i in range(21)]
+    row = {r["landmark"]: r for r in hf.ppc(obs)}["adults_at_day_315"]
+    assert row["miss"] and row["read_as"] == "adults_131_at_day_315"
+    first = {r["landmark"]: r for r in hf.ppc(obs, read_as={})}["adults_at_day_315"]
+    assert not first["miss"] and "read_as" not in first
+
+
 def test_committed_figure_matches_its_ledger() -> None:
     meta = json.loads((hf.FIG / "hero.json").read_text(encoding="utf-8"))
     assert (ROOT / meta["file"]).is_file()
@@ -55,5 +65,6 @@ def test_committed_figure_matches_its_ledger() -> None:
 if __name__ == "__main__":
     test_ledger_is_well_formed()
     test_ppc_marks_misses()
+    test_ppc_reads_calhouns_adults()
     test_committed_figure_matches_its_ledger()
     print("test_hero_figure: OK")
