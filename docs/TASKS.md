@@ -1221,6 +1221,26 @@ NOTES.
 
 ---
 
+## U-4 — Record fit 3: choose by the bar's own measure (Jason 2026-11-19)
+
+**Goal:** "KEEP GOING?" after U-3. U-1 and U-3 chose by I₂ on 12 training seeds and picked the
+same member twice; on those seeds it ties the final replica, whose arc holds on fresh seeds and
+its does not. Choose among the members already run instead, by the validation's measure on 48
+training seeds.
+
+**Files:** `docs/RECORD_FIT_3.md` (the preregistration), `scripts/record_fit3.py`,
+`scripts/record_fit3_chain.cmd`, `configs/record_fit3_candidate.json` (written only if a
+candidate qualifies), `docs/SEEDS.md`.
+
+**Acceptance criteria** (`docs/RECORD_FIT_3.md`): a candidate meets the bar on its 48 training
+seeds, then again on the fresh seeds 9160–9199 and 9464–9471: at least 12 of 14 inside, adults
+counted as Calhoun counted them, and the arc in at least 43 of 48 runs. If none meets it on
+training seeds, the fit fails and no fresh seed is used. Either way the result goes into NOTES.
+
+**Status 2026-11-19:** preregistered; the chain runs.
+
+---
+
 ## U-2 — Installable app (Jason 2026-11-18)
 
 **Goal:** anyone can run and watch Universe 25 without the research setup: an installable app

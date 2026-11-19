@@ -12,6 +12,7 @@
 usage: python scripts/replica_validate.py --ensemble configs/replica_v2_ensemble.json
        [--workers 6] [--part pen|siblings|all] [--label m6] [--pen-seeds 9200-9247]
        [--sib-seeds 9248-9295]
+--pen-seeds also takes ranges joined by commas (9160-9199,9464-9471); 48 seeds in all.
 The sibling seeds are split into four blocks of 12 (1, 2, 4, 8 cells, in that order).
 Writes _output/replica_validate[_<label>].json.
 """
@@ -88,8 +89,8 @@ def main() -> int:
     p.add_argument("--adults-131", action="store_true",
                    help="U-3: read adults on day 315 as Calhoun's adults, aged 131 days or more")
     a = p.parse_args()
-    lo, hi = (int(v) for v in a.pen_seeds.split("-"))
-    pen_seeds = tuple(range(lo, hi + 1))
+    pen_seeds = tuple(s for part in a.pen_seeds.split(",")  # "lo-hi" or "lo-hi,lo-hi"
+                      for s in range(int(part.split("-")[0]), int(part.split("-")[1]) + 1))
     lo, hi = (int(v) for v in a.sib_seeds.split("-"))
     sb = list(range(lo, hi + 1))
     assert len(pen_seeds) == 48 and len(sb) == 48, "48 pen seeds and 48 sibling seeds"
