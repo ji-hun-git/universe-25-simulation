@@ -261,3 +261,41 @@ so version 1 and its look reproduce exactly.
 - **Next, Jason's call:**
   - a revision 2 that triggers rejection colony-wide;
   - or stop. The switch stays off by default.
+
+## Revision 2 (Jason, 2026-11-19: "Try revision 2"; fixed before code)
+
+Rejection near weaning becomes colony-wide, triggered as the frozen colony triggers breakdown.
+Revision 1's fertility stays. Lever 2 of revision 1 (expulsion by each mother's own stress) is
+not used. Every new field defaults to off, so version 1 and revision 1 reproduce exactly.
+
+- **The trigger** is the frozen colony's breakdown factor, unchanged
+  (`biology.breakdown_factor` of the weaned density; the replica config's threshold 0.58 and
+  ramp 0.2). In the replica it is otherwise unused, since M4 made breakdown individual.
+  - Exploratory, training seeds 7000–7003, the switch off (`_output/hm_adults/trigger_timing.py`):
+    the factor first rises above 0 near **day 437, Calhoun's mid-phase C**, with no tuning.
+  - It reaches 0.4–0.6 on days 500–600, and falls to about 0.05 by day 800 as the colony thins.
+- **The rule** (`biology.colony_rejection`, default false). Once a day, f is the factor.
+  - In every box with a nursing mother, the pups at least `independence_days` old are expelled
+    with chance f: one draw per box, in box order. `_independence` weans them deprived.
+  - Version 1's maternal rules stand beside it: stressed mothers still abandon at random and
+    stop nursing.
+- **Irreversible** (`biology.rejection_ratchet`, default true when the rule is on). f is the
+  running maximum of the factor, so rejection does not relax as the colony thins.
+  - Calhoun's rejection did not relax, and the colony never recovered.
+  - The frozen colony makes its breakdown irreversible for the same reason: its developmental
+    exposure ensures "the collapse cannot rebound".
+- **Calhoun's account.** Mid-phase C, essentially all young were prematurely rejected by their
+  mothers, days before weaning.
+- **Arms**, the same base and seeds (4 × 12 = 48 runs):
+  - C0: off;
+  - C1: deprivation + `deprived_fertility` 0.01 + colony rejection, with the ratchet;
+  - C2: C1 without the ratchet;
+  - C3: C1 with the trigger 0.1 earlier (threshold 0.48).
+- **Reported beside revision 1's list:** the day the trigger first fires, and its highest
+  factor.
+- **The structure question and what follows are unchanged.**
+- **Risks.**
+  - The factor never reaches 1 in the replica, so some litters still escape.
+  - A rule keyed on colony density reverses M4's "individual breakdown" for this one behaviour.
+  - Surviving young may still run past day 600: rejection near weaning keeps them alive, and only
+    maternal erosion ends nursing.
