@@ -197,3 +197,44 @@ a priori, not fitted.
   - **A phase-D generation forms.** Young that survive late become a breeding generation of
     their own.
 - **Next, Jason's call.** The switch stays off by default.
+
+## Revision 1 (Jason, 2026-11-19: "Yes, revise it"; fixed before code)
+
+The first look missed for two reasons. Each gets a lever, set a priori. Both default to version 1,
+so version 1 and its look reproduce exactly.
+
+- **Lever 1: the deprived female's fertility** (`biology.deprived_fertility`, a priori 0.01;
+  unset = version 1).
+  - **The rule.** A deprived female's daily chance of conceiving is this fraction of an
+    undeprived female's in the same cell. It replaces the competence scaling for her.
+  - **Why version 1 was wrong.** It used Marsden's 6 of 16 as a daily multiplier. That figure is
+    a 60-day share, so version 1 was about 30 times too fertile. Two hazard ratios, with the
+    model's own daily rates (training seeds 7000–7003, the switch off;
+    `_output/hm_adults/conception_rate.py`):
+    - Marsden, 6 of 16 in 60 days with stock males (0.0078 a day), against the uncrowded
+      phase-B rate of 0.61 a day: 0.013.
+    - The two-cell universe, 18 % ever by 334 days of age (7.4 × 10⁻⁴ a day over about 270
+      fertile days), against the phase-D rate of 0.10 a day: 0.007.
+    - Their middle is 0.01.
+- **Lever 2: rejection near weaning** (`biology.expel_at_independence`, default false =
+  version 1).
+  - **The rule.** A nursing mother whose stress is above `maternal_neglect_stress` keeps nursing
+    the pups of her box until they are `independence_days` old, then expels them. She no longer
+    abandons whole litters at random (`litter_abandon_p` no longer applies).
+  - **Why.** Calhoun's mothers expelled their young "days before weaning", and in mid-phase C
+    essentially all young were rejected. In version 1 a stressed mother abandoned her litter
+    with chance 0.137 a day, so about 92 % of her litters were abandoned before day 17 and died.
+  - **What still ends surviving young.** A mother whose maternal investment is below 0.5 does
+    not nurse at all, so her litter dies. That happens when stress has eroded her maternal
+    capacity, or when she is deprived. The record has no surviving young after day 600.
+- **Arms**, the same base and seeds (4 × 12 = 48 runs):
+  - B0: off;
+  - B1: version 1 + lever 1;
+  - B2: version 1 + lever 2;
+  - B3: both.
+- **The structure question and what follows are unchanged.**
+- **Risks.**
+  - Lever 2 lets far more young survive in phase C; the record has 60 % of the population
+    immature at its end.
+  - That may raise the peak, already too high at 2,551.
+  - It may also keep surviving young past day 600, unless maternal erosion ends nursing in time.
