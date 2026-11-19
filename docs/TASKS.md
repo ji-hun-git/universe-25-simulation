@@ -1243,7 +1243,28 @@ training seeds, the fit fails and no fresh seed is used. Either way the result g
 - Every candidate's last conception comes late (medians from day 984 to day 1,578; record 920).
   More seeds did not raise any count, so the misses are bias, not noise.
 - Next, Jason's call: Calhoun's reproduction ended for behavioural reasons (withdrawal, the
-  beautiful ones) that this model does not produce. That is a model change, not a choice.
+  beautiful ones) that this model does not produce. That is a model change, not a choice
+  (next: U-5).
+
+---
+
+## U-5 — The deprived generation: reproduction ends the way Calhoun saw (Jason 2026-11-19)
+
+**Goal:** "Yes, design it". The young expelled by their mothers near weaning in mid-phase C
+survive deprived, as Calhoun's did, and grow into the beautiful ones. Then conceptions end with
+the last undeprived females, and the decline is slow.
+
+**Files:** `docs/DEPRIVED_GENERATION.md` (the design, fixed before code), `src/universe25/sim.py`,
+`src/universe25/config.py`, tests.
+
+**Acceptance criteria** (`docs/DEPRIVED_GENERATION.md`):
+- Off by default and bit-identical when off (golden hashes).
+- The development look on training seeds answers the structure question: the arc in at least 8
+  of 12 seeds together with a last conception by day 1,000, never fought or mated 0.38–0.68, and
+  withdrawn on day 560 0.22–0.42.
+- A record fit with it on follows only if Jason decides so.
+
+**Status 2026-11-19:** designed; not built.
 
 ---
 

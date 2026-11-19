@@ -1,5 +1,41 @@
 # Universe25 Play — NOTES
 
+## 2026-11-19 — The deprived generation (U-5) designed: in the model deprivation kills, so no generation of beautiful ones forms; the design makes expulsion near weaning survivable
+
+**What Jason asked.** "Yes, design it", answering "Design a model change so reproduction ends
+the way Calhoun saw?".
+
+**The diagnostic behind it.** Exploratory: the final replica on training seeds 7000–7003, read
+after each day; the runs are unchanged (`_output/hm_adults/diagnose_end.py`, `.json`).
+- **Reproduction does not end.**
+  - After day 600 there are about 9,200 conceptions per seed, and days 920–1,100 still have about
+    1,200 per seed.
+  - The mothers are mostly born in phase C, with competence 0.75–0.80. The sires are owners born
+    around days 200–280.
+- **No deprived cohort forms.** On day 900, no animal of any birth cohort has competence below
+  0.5.
+  - A pup cannot feed before weaning on day 21, so an expelled or unfed pup starves.
+  - The survivors are the young that were cared for.
+- **Day 800, the 131–320-day-olds.** Every male has fought as an adult, and 99 % of the females
+  have conceived. The record's 53 % never fought or mated.
+- **Phase D.** The expected deaths over days 736–960 come mostly from the age-independent base
+  hazard (about half). Old age gives about a quarter.
+
+**The design** (`docs/DEPRIVED_GENERATION.md`, fixed before code; TASKS U-5). One switch,
+`biology.deprivation`, off by default (bit-identical), with three a priori values.
+- **Early independence.** A pup at least 17 days old that is expelled or unfed is weaned from
+  that day.
+- **Deprivation.** Such a pup's competence is multiplied by 0.375, from Marsden's 6 of 16.
+- **The deprived adult**, Calhoun's beautiful ones:
+  - it is withdrawn, neither fights nor is fought, and is not stressed by crowding;
+  - a male never courts;
+  - a female conceives at her competence's reduced rate.
+- **Why this and not M8.** M8 made the beautiful ones through crowding. That reached the phase-B
+  litters and stopped growth. Here only the litters of stressed mothers, from mid-phase C, are
+  touched.
+- **Next.** A development look of 48 runs on training seeds with a fixed structure question.
+  Then a record fit, if Jason decides so. Nothing is built yet.
+
 ## 2026-11-19 — Record fit 3 (U-4) stops at its preregistered stop rule: no candidate meets the bar on 48 training seeds (at most 7 of 14 inside), so no fresh seed is used; every candidate's last conception comes late
 
 **What Jason asked.** "KEEP GOING?", after record fit 2 (U-3) failed.

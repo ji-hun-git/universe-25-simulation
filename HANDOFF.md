@@ -26,6 +26,10 @@
 > inside, and no fresh seed used. Every candidate's last conception comes late. Calhoun's
 > reproduction ended for behavioural reasons this model does not produce, so the next step would
 > be a model change. That is Jason's call.
+> Jason asked for that design: **the deprived generation** (U-5, `docs/DEPRIVED_GENERATION.md`).
+> In the model an expelled or unfed pup starves, so no deprived generation forms. The design
+> makes expulsion near weaning survivable, as Calhoun's young survived it, and gives those young
+> the beautiful ones' adult life. It is designed, not built.
 >
 > **Status 2026-11-17:** the phase 3 viewer is built (`viewer/`, README "Viewer", TASKS P2-1 /
 > P2-2): the colony from above with a control panel, recordings and live runs (NumPy, or Warp
