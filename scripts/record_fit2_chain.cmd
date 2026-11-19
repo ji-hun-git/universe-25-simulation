@@ -9,7 +9,7 @@ if not defined U25_PY set U25_PY=python
 set LOG=_output\hm_record2
 if not exist %LOG% mkdir %LOG%
 del /q %LOG%\chain.done 2>nul
-echo wave 5> %LOG%\chain.step
+(echo wave 5)> %LOG%\chain.step
 %U25_PY% -X utf8 -u scripts\record_fit2.py --wave 5 --n 120 --workers 10 > %LOG%\wave5.log 2>&1 || goto fail
 echo ensemble> %LOG%\chain.step
 %U25_PY% -X utf8 -u scripts\record_fit2.py --mix-ensemble --workers 10 > %LOG%\ensemble.log 2>&1 || goto fail

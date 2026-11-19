@@ -54,15 +54,16 @@ PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 PRESETS = {
     "universe25": {"label": "Universe 25: Calhoun's pen (final replica)",
                    "config": "configs/replica_v2.yaml", "member": "configs/replica_v2_final.json",
-                   # NOTES 2026-11-19: the record fit (U-1) failed, and this member stays
+                   # NOTES 2026-11-19: the record fits (U-1, U-3) failed; this member stays.
+                   # Seeds 9112-9159, adults counted as Calhoun did (131 days or older).
                    "about": "Calhoun's pen without the playground, as fitted in replica v2. On 48 "
-                            "fresh seeds it grows and collapses in 46 runs, and 8 of the record's "
-                            "14 population and timeline numbers fall inside its 5-95 % range. "
-                            "Misses: adults on day 315 (305; record 150), the peak (2,528; "
-                            "2,200), the plateau onset (day 509; 560), N on day 960 (1,319; "
-                            "1,650), the last surviving birth (day 687; 600) and the last "
-                            "conception (day 1,096; 920). Its behaviour is not Calhoun's: few "
-                            "withdrawn mice and no beautiful ones."},
+                            "fresh seeds it grows and collapses in 46 runs, and 11 of the "
+                            "record's 14 population and timeline numbers fall inside its 5-95 % "
+                            "range (9 on an earlier set of 48 seeds). Misses: the peak (2,490; "
+                            "record 2,200), N on day 960 (1,320; 1,650) and the last conception "
+                            "(day 1,096; 920). Adults are counted as Calhoun counted them, from "
+                            "131 days old. Its behaviour is not Calhoun's: few withdrawn mice "
+                            "and no beautiful ones."},
     "reference": {"label": "Reference colony (phase 2m, simplified pen)",
                   "config": "configs/default.yaml",
                   "about": "The research colony: Calhoun's sizes in a simplified pen (a 4 x 4 "

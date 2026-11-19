@@ -144,3 +144,21 @@ without a pause, so no choice is made after seeing the fresh seeds. Its logs go 
   - The frozen 2m colony stays the reference for the play research.
 
 Every result goes into NOTES, including the targets missed.
+
+## Outcome (2026-11-19; NOTES 2026-11-19)
+
+- **The fit fails.** Its rule picked U-1's member again: the wave-2 point with I₂ 1.91 and the
+  arc on 10 of 12 training seeds.
+  - Its I₂ is set by N on days 960 and 736, not by adults.
+  - On seeds 9112–9159 it has 9 of the 14 inside and the arc in 28 of 48 runs (12 and 43 needed).
+- **Adults are no longer the shared miss.** Counted from 131 days, they are inside for both
+  members: the candidate 110 [77, 150], the final replica 112 [69, 174].
+- **The final replica is the better of the two.** On the same seeds it has 11 of 14 and the arc
+  in 46 of 48.
+  - It misses the peak (2,490), N on day 960 (1,320) and the last conception (day 1,096).
+  - It stays the app's Universe 25, and its line in the app reports adults as Calhoun counted them.
+- **Exploratory, and reported:**
+  - U-1's validation sets re-measured: the final replica goes from 8 to 9 of 14 on those seeds.
+  - The frozen reference colony's predictive check has the same miscount: its adults on day 315
+    are 40 [22, 61] counted from 131 days. Its "12 of 15" would read 11 of 15. Whether to
+    restate it is Jason's call.

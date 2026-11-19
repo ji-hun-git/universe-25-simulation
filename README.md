@@ -17,7 +17,7 @@ Track E / exploratory. Agents are need-driven (hunger, thirst, fatigue, stress, 
 | **Substrate** (phase 1) | Need-driven mice in Calhoun's 101 × 101 in pen: 16 cells, 256 nest boxes, food and water, and a playground of balls, tunnels and ramps. |
 | **Calibration** (phase 2) | Frozen at phase 2m. On the 48 seeds of the Tier 1 predictive check, 12 of the record's 15 values fall inside the 90 % prediction interval. The misses are N on day 736 and the doubling times of phases B and C: the colony grows too fast. The collapse emerges from the mechanisms; its irreversibility is a model assumption fitted to one colony. |
 | **Replica v2** | Calhoun's own pen layout: triangular cells, tunnels and box levels. It ended on 2026-11-13. The final replica has 10 of 20 pen targets inside and the arc in 45 of 48 fresh-seed runs, but the arc comes late and the behavioural categories never appear. The frozen 2m colony stays the reference. |
-| **Record fit** (U-1) | Calhoun's pen fitted to the record's 14 population and timeline numbers alone (`docs/RECORD_FIT.md`). It failed its preregistered validation on 2026-11-19: the chosen member has 8 of 14 inside on 48 fresh seeds (12 needed) and the arc in 28 of 48 runs (43 needed). The final replica, with 8 of 14 and the arc in 46, stays the app's Universe 25. |
+| **Record fit** (U-1, U-3) | Calhoun's pen fitted to the record's 14 population and timeline numbers alone (`docs/RECORD_FIT.md`). It failed its preregistered validation on 2026-11-19: the chosen member has 8 of 14 inside on 48 fresh seeds (12 needed) and the arc in 28 of 48 runs (43 needed). U-1 had counted adults from sexual maturity; Calhoun's adults are 131 days or older. Refitted with his count (U-3, `docs/RECORD_FIT_2.md`), the rule chose the same member and failed again: 9 of 14, and the arc in 28 of 48. On the same seeds the final replica has 11 of 14 and the arc in 46, and it stays the app's Universe 25. |
 | **Viewer** (phase 3) | Plan and 3D views, recordings and live runs, and a dashboard (`viewer/`; section "Viewer" below). |
 | **Play emergence** (phase 4) | Learned and evolved agents, with no play reward and detectors used only for evaluation. H-d to H-l have been read, and none gives evidence of play either way (hero figure, panel d). The scarcity line stopped on 2026-11-16. |
 
@@ -203,7 +203,8 @@ universe25-app          # or: python -m universe25.app
   colony is simulated on this machine and streams to the viewer, at 20 days a second by
   default.
   - It is the final replica of replica v2. The record fit (`docs/RECORD_FIT.md`, TASKS U-1)
-    failed its validation on 2026-11-19, so it stays.
+    and its refit with Calhoun's adults (`docs/RECORD_FIT_2.md`, U-3) failed their validations
+    on 2026-11-19, so it stays.
   - Under the preset, the page says how close it comes to the record and what it misses.
 - The reference colony, the unfitted Calhoun pen and the scarce arm are still there.
 - From the repo, recordings and runs go to `_output/`.

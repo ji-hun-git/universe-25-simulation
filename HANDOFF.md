@@ -14,6 +14,12 @@
 > (`universe25-app`, U-2) keeps the final replica as its Universe 25 and says what it misses.
 > The Windows program is not built (Jason: only if the fit passed). The frozen 2m colony stays
 > the reference.
+> Then a refit aimed at adults on day 315 (U-3, `docs/RECORD_FIT_2.md`). U-1 had counted
+> adults from sexual maturity; Calhoun counted them from 131 days. With his count the rule chose
+> the same member, which **failed again**: 9 of 14 inside on fresh seeds 9112–9159, and the arc
+> in 28 of 48 runs. On the same seeds the final replica has 11 of 14 and the arc in 46. The
+> frozen reference colony's predictive check has the same miscount, so its "12 of 15" would read
+> 11 of 15. Whether to restate it is Jason's call (NOTES 2026-11-19).
 >
 > **Status 2026-11-17:** the phase 3 viewer is built (`viewer/`, README "Viewer", TASKS P2-1 /
 > P2-2): the colony from above with a control panel, recordings and live runs (NumPy, or Warp

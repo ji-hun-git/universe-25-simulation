@@ -1,5 +1,174 @@
 # Universe25 Play — NOTES
 
+## 2026-11-19 — Record fit 2 (U-3) fails its preregistered bar: its rule picks U-1's member again (9 of 14 inside, the arc in 28 of 48 fresh-seed runs); with adults counted as Calhoun counted them, the final replica has 11 of 14 and the arc in 46 of 48 on the same seeds, and stays the app's Universe 25
+
+**What Jason asked.** "try a new fit aimed at adults on day 315", the miss every U-1 member
+shared (the entry below).
+
+**What was found first: U-1 counted a different "adult".**
+- The model counted adults from sexual maturity: age at least `biology.maturity_days`, a fitted
+  parameter (42–70 days).
+- The record's "150 adults + 470 immature" on day 315 uses Calhoun's age categories, whose adult
+  categories begin at 131 days (`docs/RESEARCH_DIGEST.md` A6). The "beautiful ones" target
+  already used these categories.
+- Calhoun's own doubling arithmetic (620 mice on day 315, doubling every 55 days) puts about 120
+  mice past 131 days. It puts 270–330 past sexual maturity.
+- The fit had been pushing a reproductive parameter to match a count it misread: U-1's candidate
+  had `maturity_days` 69.5, near the top of its 42–70 range.
+- `docs/RECORD_FIT_2.md` preregistered the new fit with this one target redefined: adults on day
+  315 are the living mice aged 131 days or more. It was committed (d3fc4d4) before any new run.
+
+**Re-measured, not re-run.**
+- Day 315 of every training run was replayed: U-1's 1,920 runs (waves 1, 2 and 4) and M5c's 440.
+  A run is deterministic for a fixed seed.
+- All 2,360 replays gave the stored N and count past sexual maturity exactly, so each run got
+  its count of mice aged 131 days or more.
+- What they showed before any new run, U-1's reading against Calhoun's:
+  - The not-ruled-out space grows from 17 % to 33 % of the parameter box.
+  - Of the 143 runs with the arc, adults on day 315 come within 3 sd in 88 (U-1's reading: 5).
+  - 12 of those runs come within 3 sd on at least 12 of the 14 targets (U-1's reading: 7).
+
+**What ran.** `scripts/record_fit2_chain.cmd`, detached, from 11:40 to 14:06:
+- wave 5: 120 points × seeds 7000–7005, 720 runs, in 84 minutes. The points came from the 1.4 %
+  of the box where the emulated arc frequency is at least 0.3.
+- the ensemble: 6 observed and 18 emulated points × seeds 7000–7011, 252 new runs (36 cached);
+- the candidate rule, and both validations on seeds 9112–9159.
+
+**The candidate is U-1's member again.**
+- 4 of the 24 members qualify (the arc on at least 10 of 12 seeds, I₂ at most 3). Their I₂ and
+  arc counts: 1.91 (10 of 12), 2.19 (10), 2.73 (12) and 2.87 (11).
+- The lowest is the wave-2 point that U-1's rule chose.
+  - Calhoun's reading halves its adults implausibility, from 1.67 to 0.86.
+  - Its I₂ is set by N on day 960 (2.8) and day 736 (1.9), so it stays 1.91, and stays first.
+
+**Result on seeds 9112–9159, 48 runs each**, with adults counted as Calhoun counted them. The
+table gives the median [5–95 %]; * marks a target outside.
+
+| target | record | the candidate (U-1's member) | final replica |
+|---|---|---|---|
+| first litters (day) | 50–104 | 55 [55, 56] | 50 [50, 50] |
+| N@315 | 620 | 671 [500, 825] | 699 [439, 941] |
+| adults @315 (aged ≥ 131 d) | 150 | 110 [77, 150] | 112 [69, 174] |
+| peak N | 2,200 | 1,881 [1,808, 1,939] * | 2,490 [2,355, 2,607] * |
+| plateau onset (day) | 560 | 512 [453, 572] | 510 [475, 577] |
+| N@736 | 2,056 | 1,629 [1,556, 1,739] * | 1,958 [1,879, 2,084] |
+| N@811 | 1,871 | 1,536 [1,466, 1,666] * | 1,767 [1,676, 1,895] |
+| N@960 | 1,650 | 1,196 [1,118, 1,327] * | 1,320 [1,182, 1,489] * |
+| doubling, phase B (days) | 55 | 51 [46, 56] | 51 [45, 57] |
+| doubling, phase C (days) | 105–145 | 127 [108, 173] | 105 [89, 137] |
+| last surviving birth (day) | 600 | 875 [554, 1,578] | 698 [599, 907] |
+| last conception (day) | 920 | 1,060 [1,003, 1,599] * | 1,096 [1,042, 1,200] * |
+| N@1,444 | 122 | 90 [47, 197] | 85 [56, 162] |
+| N@1,588 | 27 | 34 [9, 429] | 24 [11, 95] |
+| **inside** | | **9 of 14** | **11 of 14** |
+| **the arc** | | **28 of 48** | **46 of 48** |
+
+Three cells sit at the edge of their ranges, all inside by the preregistered rule:
+- the candidate's adults: the 95 % point is exactly 150 (4 of 48 runs reach it);
+- the final replica's first litters: every run is on day 50, the record's lower bound;
+- the final replica's last surviving birth: the 5 % point is day 599.
+
+**Also reported.**
+
+| | record | the candidate | final replica |
+|---|---|---|---|
+| adults past sexual maturity @315 | — | 259 [161, 316] | 281 [174, 399] |
+| weaned N @315 | — | 423 [325, 521] | 478 [297, 666] |
+
+**Behaviour, reported, not fitted.**
+
+| target | record | the candidate | final replica |
+|---|---|---|---|
+| male share @315 | 0.40 | 0.51 [0.47, 0.54] * | 0.50 [0.46, 0.54] * |
+| male share @1,444 | 0.18 | 0.48 [0.39, 0.57] * | 0.45 [0.35, 0.52] * |
+| empty boxes @560 | 0.25 | 0.46 [0.44, 0.49] * | 0.29 [0.25, 0.38] |
+| withdrawn @560 | 0.32 | 0.22 [0.18, 0.28] * | 0.10 [0.05, 0.13] * |
+| never fought as adults or mated @800 | 0.53 | 0.00 [0.00, 0.01] * | 0.00 [0.00, 0.01] * |
+| brood groups @315 | 14 | 28 [23, 36] * | 29 [23, 37] * |
+| **inside** | | **0 of 6** | **1 of 6** |
+
+**The arc** (growth above 1,800, at least 150 days from the last surviving birth to the last
+conception, and fewer than 300 mice on day 1,588).
+- The candidate: growth in 46 runs, collapse in 44, the gap in 29; all three in 28. It had the
+  arc on 10 of its 12 training seeds, and on U-1's fresh seeds in 28 of 48.
+- The final replica: 48, 48 and 46; all three in 46.
+- Paired by seed: both on 27 seeds, only the candidate on 1, only the final replica on 19.
+
+**Seed by seed** (which of the two is closer to the record on the same seed).
+- The candidate is closer on first litters (48 of 48 seeds), doubling in phase C (37), the last
+  conception (30), N@315 (28) and doubling in phase B (28).
+- It is farther on N@736 (48 of 48), N@811 (47), N@960 (43), the peak (37) and the last
+  surviving birth (36). As in U-1, its colony peaks too low and stays too small.
+
+**U-1's validation re-measured** (exploratory; seeds 9416–9463 are spent, so this decides
+nothing; `_output/hm_adults/u1_validation_remeasured.json`). All 144 replays matched.
+
+| member | adults aged ≥ 131 d @315 | 14 targets inside, U-1's reading → Calhoun's |
+|---|---|---|
+| U-1's candidate (the rule's member) | 108 [68, 143] * | 8 → 8 |
+| final replica | 120 [86, 160] | 8 → 9 |
+| U-1's chain's member | 339 [202, 446] * | 9 → 9 |
+
+- The final replica has 9 of 14 on those seeds and 11 on 9112–9159. The difference is the
+  plateau onset and the last surviving birth, both near the edge on either set.
+
+**The reference colony has the same miscount** (exploratory;
+`_output/hm_adults/reference_ppc_remeasured.json`).
+- The frozen 2m colony's Tier 1 predictive check (seeds 9000–9047) counted adults from sexual
+  maturity too.
+  - Counted that way, its adults on day 315 are 150 [66, 282] (90 % interval), inside.
+  - Counted as Calhoun counted them, they are 40 [22, 61], far outside. All 48 replays matched.
+- The colony is young on day 315 (median N 434).
+  - A calendar gate holds conception to day 81 or later, so its first litters come on days
+    102–105.
+  - Few of its mice can be 131 days old by day 315.
+- So the check's "12 of 15 inside" would read 11 of 15 with Calhoun's adults.
+  - The preregistered result stands as it was run.
+  - The README, the hero figure and the booklet still say 12 of 15. Whether to restate them is
+    Jason's call.
+- The 2m calibration loss also used the sexual-maturity count. It is frozen and not changed.
+
+**Verdict.**
+- **Record fit 2 fails its preregistered validation.** The candidate has 9 of 14 inside (12
+  needed) and the arc in 28 of 48 runs (43 needed).
+- **Counting adults as Calhoun did removes the miss every member shared.** Adults on day 315 are
+  inside for both members here.
+- **The rule's choice did not change.** Its candidate's I₂ was never set by adults, so the same
+  member came first, and its arc again did not hold on fresh seeds.
+- **What remains is U-1's trade-off.**
+  - The candidate's colony peaks too low and stays too small (N on days 736–960).
+  - The final replica peaks too high (2,490), and reproduction ends late: last conception on
+    day 1,096 against 920.
+
+**What follows** (`docs/RECORD_FIT_2.md`, "What follows").
+- **The app.** The better of the two is the final replica, with 11 of 14 against 9, so it stays
+  the app's Universe 25.
+  - Its line in the app now gives these seeds, with adults counted as Calhoun counted them.
+  - It also gives the 9 of 14 on U-1's seeds.
+- **The Windows program is not built.**
+- **The frozen 2m colony stays the reference** for the play research.
+  - No preregistered headline number changed, so the hero figure and the booklet stand.
+  - The reference colony's restatement (11 of 15) is open.
+- **The chain's step marker was broken.** `echo wave 5> file` makes cmd redirect handle 5, so the
+  marker stayed empty. Only the marker was affected; `scripts/record_fit2_chain.cmd` now writes
+  `(echo wave 5)> file`.
+
+**Files.**
+- `docs/RECORD_FIT_2.md`: the preregistration (d3fc4d4), and its outcome.
+- `scripts/record_fit2.py`: the replay, the look, and U-1's fit with the new reading.
+  - `scripts/record_fit.py`: `BASE`, `OBS_WAVES` and `READ_AS`.
+  - `scripts/history_match.py` and `scripts/replica_report.py`: Calhoun's adults and the weaned
+    count on day 315.
+  - `scripts/replica_validate.py --adults-131`.
+- Written by the run:
+  - `configs/record_fit2_ensemble.json`: the 4 qualifying members;
+  - `configs/record_fit2_candidate.json`: the candidate, which is U-1's member.
+- Not committed:
+  - `_output/hm_record2/` (the chain's logs, `look.json`, `report.py` and `report.json`);
+  - `_output/hm_m7_a131/`;
+  - `_output/hm_adults/` (the replays and the two exploratory re-measures);
+  - `_output/replica_validate_record_fit2.json` and `..._record_fit2_final_replica.json`.
+
 ## 2026-11-19 — Record fit (U-1) fails its preregistered bar: the rule's member has 8 of 14 record values inside and the arc in 28 of 48 fresh-seed runs; the app keeps the final replica, and the Windows program is not built
 
 **What Jason asked.**

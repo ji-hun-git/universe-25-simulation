@@ -1209,7 +1209,14 @@ has at least 12 of the 14 record values inside its 5–95 % range, with adults r
 aged 131 days or more, and the arc in at least 43 of 48 runs. Either way the result goes into
 NOTES.
 
-**Status 2026-11-19:** preregistered; the chain runs.
+**Status 2026-11-19: failed** (NOTES 2026-11-19).
+- The rule picked U-1's member again (I₂ 1.91, set by N on days 960 and 736). On 9112–9159 it
+  has 9 of 14 inside and the arc in 28 of 48 runs.
+- Adults counted from 131 days are inside for both members, so the shared miss is gone.
+- The final replica has 11 of 14 and the arc in 46 of 48 on the same seeds. It stays the app's
+  Universe 25, and its line in the app counts adults as Calhoun did.
+- Open, Jason's call: the frozen reference colony's predictive check has the same miscount
+  (adults 40 [22, 61] counted from 131 days, so 11 of 15 rather than 12).
 
 ---
 
@@ -1227,7 +1234,7 @@ NOTES.
 
 **Status 2026-11-19:**
 - `universe25-app` (`src/universe25/app.py`) opens the viewer on the live-run panel. Its first
-  preset is Universe 25 in Calhoun's pen: the final replica, since U-1 failed.
+  preset is Universe 25 in Calhoun's pen: the final replica, since U-1 and U-3 failed.
 - Under the preset choice, the page says how close each preset comes to the record, misses
   included (`about` in `scripts/viewer_serve.py`).
 - `scripts/build_app.py` builds the Windows program. Not built: Jason asked for it only if the
