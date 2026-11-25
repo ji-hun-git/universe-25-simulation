@@ -434,3 +434,51 @@ cross a threshold. Everything else is revision 3's.
 - **Next, Jason's call:**
   - revision 5: from the trigger on, maternal erosion at the frozen colony's threshold (0.508);
   - or stop.
+
+## Revision 5 (Jason, 2026-11-25: "Yes, revision 5"; fixed before code)
+
+The frozen colony's maternal breakdown, taken whole: its colony-wide stress (revision 4) and the
+erosion threshold at which that stress wears maternal capacity away. Everything else is revision
+4's.
+
+- **The rule** (`biology.rejection_erosion_stress`, default unset = revision 4). From the day the
+  colony rejection trigger first fires, maternal erosion uses this threshold in place of
+  `maternal_erosion_stress`. Before that day the replica's own threshold stands, so phases A and B
+  are untouched.
+  - Erosion itself is unchanged: once a day, a weaned female above the threshold loses maternal
+    capacity at `maternal_erosion_rate` (0.169, the same in both colonies) × her excess stress,
+    and a mother below 0.5 does not nurse.
+  - It is irreversible from that day, like the ratchet, and makes no draw. So off and every
+    earlier version reproduce exactly.
+- **The value, a priori:** the frozen colony's threshold, 0.508. The final replica moved it to
+  0.792. An exploratory bracket on 2026-11-25 showed why: lowered for the whole run, erosion
+  follows local stress from phase B on and stops growth.
+- **Why.** In revision 4, mothers still raising pups sat at a median stress of 0.52 on day 450 and
+  0.62–0.65 on days 500–700 (E1, seed 7000), below 0.792. Their maternal capacity never eroded,
+  and the trickle of litters they raised kept surviving births going to about day 866. In the
+  frozen colony the same stress erodes capacity at 0.508 and ends surviving births on day 596.
+  Above 0.508 by about 0.1, capacity falls from 1 to 0.5 in about a month.
+- **Arms**, the same base and seeds (4 × 12 = 48 runs):
+  - F0: off;
+  - F1: revision 4's E1 (deprivation, `deprived_fertility` 0.01, colony rejection with the ratchet
+    in every box, `rejection_stress` at gain 0.248) + `rejection_erosion_stress` 0.508;
+  - F2: F1 with E2's gain 0.152, which makes both the stress level and the threshold the frozen
+    colony's;
+  - F3: F1 with the later trigger (threshold 0.68), which put withdrawn in range in revisions 3
+    and 4.
+- **Reported:** revision 4's list, unchanged.
+- **The structure question and what follows are unchanged.**
+- **What it should do, if this is the missing piece.**
+  - Mothers' capacity erodes in the month or two after the trigger, so surviving births end near
+    days 550–650.
+  - Conceptions go on to near day 920, since males are untouched, so the gap opens past 150 days.
+  - Fewer late cohorts reach independence, so fewer are deprived, and the categories, which
+    overshoot (0.88), should fall.
+- **Risks.**
+  - Erosion from day 430 slows the end of growth. E1's peak is 2,311, and a peak below 1,800
+    breaks the arc.
+  - Fewer surviving young lower N after the peak. E1's N@960 is already below the record (1,390
+    against 1,650).
+  - The deprived generation shrinks with the cohorts that reach independence. The categories
+    could fall below their ranges.
+  - Every weaned female erodes, including young ones who have not yet bred.
