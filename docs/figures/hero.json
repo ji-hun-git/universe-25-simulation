@@ -1,6 +1,6 @@
 {
- "generated": "2026-11-19",
- "commit": "bcbbb53",
+ "generated": "2026-11-25",
+ "commit": "013a71c",
  "uncommitted_changes": false,
  "seeds": [
   9000,
@@ -251,5 +251,5 @@
  "ledger": "docs/figures/phase4_ledger.yaml",
  "ledger_sha256": "96b11caa16d7d0aadce4feb8a16397376a0d01a372378ff93eacd266e83d2763",
  "file": "docs/figures/hero.png",
- "bytes": 410760
+ "bytes": 410762
 }
