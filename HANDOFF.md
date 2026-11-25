@@ -49,7 +49,11 @@
 > comes forward (922 → 866) and the peak falls toward the record (2,311), but the gap is still 70
 > days and the arc forms in 1 of 36 runs. Mothers who still raise litters stay below the replica's
 > neglect and erosion thresholds; the frozen colony's erosion threshold is 0.508. Next is Jason's
-> call: revision 5, erosion at that threshold from the trigger on; or stop.
+> **Revision 5** erodes at that threshold from the trigger on. The peak is now the record's
+> (2,190) and withdrawn is in range, but the last surviving birth moves later (914). The breakdown
+> limits itself: as the colony thins its stress falls below 0.508, erosion stops, and females
+> whose capacity remains go on raising litters. Next is Jason's call: revision 6, erosion on the
+> colony signal whatever each female's stress (close to writing the outcome in); or stop.
 >
 > **Status 2026-11-17:** the phase 3 viewer is built (`viewer/`, README "Viewer", TASKS P2-1 /
 > P2-2): the colony from above with a control panel, recordings and live runs (NumPy, or Warp

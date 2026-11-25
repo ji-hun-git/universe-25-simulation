@@ -67,7 +67,8 @@ def test_guards() -> None:
                  {"biology": {"expel_at_independence": True}},
                  {"biology": {"colony_rejection": True}},
                  {"biology": {"deprivation": True, "rejection_all_boxes": True}},
-                 {"biology": {"deprivation": True, "rejection_stress": True}}):
+                 {"biology": {"deprivation": True, "rejection_stress": True}},
+                 {"biology": {"deprivation": True, "rejection_erosion_stress": 0.5}}):
         try:
             _cfg(**over)
         except ValueError:
@@ -314,6 +315,28 @@ def test_revision_4_colony_stress() -> None:
     assert out[True][1] == out[False][1]
 
 
+
+def test_revision_5_erosion_from_the_trigger() -> None:
+    """Revision 5: from the day the rejection trigger first fires, maternal erosion uses
+    rejection_erosion_stress; before it, and with it unset, maternal_erosion_stress stands."""
+    for thr in (None, 0.5):
+        sim, cfg = _make(True, colony_rejection=True, rejection_erosion_stress=thr,
+                         maternal_erosion_rate=0.2, maternal_erosion_stress=0.8)
+        a = sim.agents
+        a.alive[:] = False
+        f = int(a.free_slots(1)[0])
+        sim._spawn(f, sex=SEX_F, age=120.0, x=30.0, y=30.0, nest_id=0, cell_id=0, role=0)
+        a.stress[f], a.maternal_cap[f], a.maternal[f] = 0.6, 1.0, 0.9
+        sim.tick = 0
+        sim._daily_maternal_erosion(a.alive.copy())  # before the trigger: 0.6 < 0.8
+        assert a.maternal_cap[f] == 1.0
+        sim._rejection_onset = 430.0
+        sim._daily_maternal_erosion(a.alive.copy())
+        want = 1.0 - 0.2 * (0.6 - 0.5) if thr is not None else 1.0
+        assert abs(float(a.maternal_cap[f]) - want) < 1e-5, (thr, a.maternal_cap[f])
+        assert float(a.maternal[f]) <= float(a.maternal_cap[f]) + 1e-7
+
+
 if __name__ == "__main__":
     test_guards()
     test_independence_and_the_deprived_juvenile()
@@ -324,4 +347,5 @@ if __name__ == "__main__":
     test_revision_2_colony_rejection()
     test_revision_3_every_box()
     test_revision_4_colony_stress()
+    test_revision_5_erosion_from_the_trigger()
     print("test_deprivation: OK")

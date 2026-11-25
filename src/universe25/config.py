@@ -250,6 +250,10 @@ class BiologyConfig(_Strict):
     # social_breakdown_stress_boost x f, the day's rejection chance (the deprived adult excepted).
     # Its developmental term (imprint_breakdown_exposure) does not return.
     rejection_stress: bool = False
+    # U-5 revision 5 (unset = revision 4): from the day the colony rejection trigger first fires,
+    # maternal erosion uses this threshold in place of maternal_erosion_stress (a priori 0.508,
+    # the frozen colony's).
+    rejection_erosion_stress: float | None = Field(default=None, ge=0.0)
 
     def breakdown_threshold(self) -> float:
         if self.breakdown_density_threshold is not None:
@@ -528,6 +532,8 @@ class SimConfig(_Strict):
             raise ValueError("rejection_all_boxes needs colony_rejection")
         if b.rejection_stress and not b.colony_rejection:
             raise ValueError("rejection_stress needs colony_rejection")
+        if b.rejection_erosion_stress is not None and not b.colony_rejection:
+            raise ValueError("rejection_erosion_stress needs colony_rejection")
         if not b.deprivation and (b.deprived_fertility is not None or b.expel_at_independence
                                   or b.colony_rejection):
             raise ValueError("deprived_fertility / expel_at_independence / colony_rejection "

@@ -482,3 +482,30 @@ erosion threshold at which that stress wears maternal capacity away. Everything 
   - The deprived generation shrinks with the cohorts that reach independence. The categories
     could fall below their ranges.
   - Every weaned female erodes, including young ones who have not yet bred.
+
+### Revision 5 looked at (2026-11-25; NOTES 2026-11-25)
+
+- **Checks.** Off and every earlier version reproduce exactly (23 of 23 outputs each, arms A1,
+  B3, C1, D1, D2, E1 and E2), and the golden hashes match.
+- **The structure question: no, in every arm** (F0–F3).
+- **What improved** (F1 against revision 4's E1):
+  - the peak falls to 2,190, the record's value;
+  - withdrawn on day 560 comes into range (0.41);
+  - F3 has both categories in range (0.60, 0.36) and 3 of 12 arcs.
+- **What did not.** The last surviving birth moved later (866 → 914), and the gap is 80 days.
+- **Why** (exploratory, F1 on seed 7000):
+  - The breakdown limits itself. Erosion keeps the colony smaller, so the rejection chance
+    ratchets only to 0.33, and the added stress is 0.15.
+  - As the colony thins, weaned females' median stress falls below 0.508 by about day 700, and
+    erosion stops.
+  - The late young are raised by females outside the nursing role whose investment is still
+    0.54–0.93. They nurse actively, and surviving births go on at about one a day to about day
+    850.
+- **A correction.** "A mother below 0.5 does not nurse" (revisions 1 and 5) holds only for passive
+  nursing. Active nursing is open to any female with an investment above 0. It is not the cause
+  here.
+- **Next, Jason's call:**
+  - revision 6: from the trigger on, every weaned female's maternal capacity erodes at
+    `maternal_erosion_rate` × f a day, whatever her own stress. This comes close to writing the
+    record's outcome into the rule, so only the record fit on fresh seeds would test it.
+  - or stop, with the deprived generation recorded as a partial account.

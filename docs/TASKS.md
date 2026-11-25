@@ -1299,8 +1299,16 @@ the last undeprived females, and the decline is slow.
   - The gap is still 70 days (150 needed); the arc forms in 1 of 36 runs.
   - The mothers who still raise litters sit at a stress of about 0.64, below the replica's neglect
     and erosion thresholds (0.785, 0.792). The frozen colony's erosion threshold is 0.508.
-- **Next:** Jason's call: revision 5, maternal erosion at the frozen colony's threshold from the
-  trigger on; or stop.
+- **Revision 5 (Jason: "Yes, revision 5"): no.**
+  - Maternal erosion at the frozen colony's threshold (0.508) from the trigger on
+    (`biology.rejection_erosion_stress`).
+  - The peak is 2,190 (the record) and withdrawn is in range. F3 has both categories in range
+    and 3 of 12 arcs.
+  - The last surviving birth moved later (914), and the gap is 80 days. The breakdown limits
+    itself: erosion keeps the colony smaller, its stress falls below 0.508 by about day 700, and
+    females with investment still 0.54–0.93 go on raising litters by active nursing.
+- **Next:** Jason's call: revision 6, colony-timed erosion whatever each female's stress (close
+  to writing the outcome into the rule); or stop.
 
 ---
 

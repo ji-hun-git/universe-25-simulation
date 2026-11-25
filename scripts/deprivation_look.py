@@ -24,8 +24,11 @@ Revision 4 (--set r4): E0 off; E1 D1 + rejection_stress (social_breakdown_stress
 config's); E2 E1 with the boost 0.152 (the frozen colony's stress level); E3 E1 with
 breakdown_density_threshold 0.68. Every set also reports the gap (last conception - last
 surviving birth).
+Revision 5 (--set r5): F0 off; F1 E1 + rejection_erosion_stress 0.508 (the frozen colony's
+threshold, from the trigger on); F2 F1 with the boost 0.152; F3 F1 with
+breakdown_density_threshold 0.68.
 
-usage: python scripts/deprivation_look.py [--workers 10] [--set v1|r1|r2|r3|r4]
+usage: python scripts/deprivation_look.py [--workers 10] [--set v1|r1|r2|r3|r4|r5]
 Writes _output/deprivation_look.json (v1) or _output/deprivation_look_<set>.json.
 """
 from __future__ import annotations
@@ -60,7 +63,7 @@ SET = sys.argv[sys.argv.index("--set") + 1] if "--set" in sys.argv else "v1"
 
 
 def arms() -> dict[str, dict]:
-    """v1: the first look (A0-A3); revisions 1-4: B0-B3, C0-C3, D0-D3, E0-E3
+    """v1: the first look (A0-A3); revisions 1-5: B0-B3, C0-C3, D0-D3, E0-E3, F0-F3
     (docs/DEPRIVED_GENERATION.md)."""
     params = json.loads(FINAL.read_text(encoding="utf-8"))["members"][0]["params"]
     bio = params["biology"]
@@ -68,6 +71,15 @@ def arms() -> dict[str, dict]:
     def with_bio(**kw):
         return {**params, "biology": {**bio, **kw}}
 
+    if SET == "r5":
+        rev5 = dict(deprivation=True, deprived_fertility=0.01, colony_rejection=True,
+                    rejection_all_boxes=True, rejection_stress=True,
+                    rejection_erosion_stress=0.5076751020956933)
+        frozen = 0.24829430244099573 * 0.5604105404723718 / 0.9135074926585873  # 0.152
+        return {"F0": params,
+                "F1": with_bio(**rev5),
+                "F2": with_bio(**rev5, social_breakdown_stress_boost=frozen),
+                "F3": with_bio(**rev5, breakdown_density_threshold=0.68)}
     if SET == "r4":
         rev4 = dict(deprivation=True, deprived_fertility=0.01, colony_rejection=True,
                     rejection_all_boxes=True, rejection_stress=True)
@@ -125,8 +137,8 @@ def q(v: list[float]) -> list[float]:
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--workers", type=int, default=10)
-    p.add_argument("--set", choices=("v1", "r1", "r2", "r3", "r4"), default="v1",
-                   help="v1: the first look (A0-A3); r1-r4: revisions 1-4 (B, C, D, E arms)")
+    p.add_argument("--set", choices=("v1", "r1", "r2", "r3", "r4", "r5"), default="v1",
+                   help="v1: the first look (A0-A3); r1-r5: revisions 1-5 (B-F arms)")
     a = p.parse_args()
     jobs = [(arm, over, s) for arm, over in arms().items() for s in SEEDS]
     t0 = time.perf_counter()

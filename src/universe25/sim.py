@@ -1494,15 +1494,19 @@ class Universe25Sim:
         if bio.maternal_erosion_rate <= 0.0:
             return
         a = self.agents
+        thr = float(bio.maternal_erosion_stress)
+        if (bio.deprivation and bio.rejection_erosion_stress is not None
+                and self._rejection_onset is not None):
+            thr = float(bio.rejection_erosion_stress)  # U-5 revision 5: from the trigger on
         af = np.flatnonzero(
             alive
             & (a.sex == SEX_F)
             & (a.age_days >= bio.weaning_days)
-            & (a.stress > bio.maternal_erosion_stress)
+            & (a.stress > thr)
         )
         if af.size == 0:
             return
-        excess = a.stress[af].astype(np.float64) - float(bio.maternal_erosion_stress)
+        excess = a.stress[af].astype(np.float64) - thr
         a.maternal_cap[af] = np.maximum(
             0.0, a.maternal_cap[af] - float(bio.maternal_erosion_rate) * excess
         )

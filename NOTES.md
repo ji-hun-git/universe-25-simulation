@@ -1,5 +1,84 @@
 # Universe25 Play — NOTES
 
+## 2026-11-25 — The deprived generation, revision 5: with the frozen colony's erosion threshold from the trigger on, the peak matches the record (2,190) and withdrawn is in range, but young still survive to about day 900, because the colony's stress falls below the threshold as it thins; still no
+
+**What Jason asked.** "Yes, revision 5": the frozen colony's maternal breakdown taken whole,
+then the same 48-run look.
+
+**The revision** (`docs/DEPRIVED_GENERATION.md`, "Revision 5", 9851198, fixed before code).
+- `biology.rejection_erosion_stress`: from the day the rejection trigger first fires, maternal
+  erosion uses this threshold, a priori the frozen colony's 0.508, in place of the replica's
+  0.792.
+- **Checks.** Off and every earlier version reproduce exactly. Seed 9112, and arms A1, B3, C1, D1,
+  D2, E1 and E2 on seed 7000, each give 23 of 23 outputs, with the same conceptions after day 920.
+  The golden hashes match, and the full test tier passes.
+
+**The look** (`scripts/deprivation_look.py --set r5`; training seeds 7000–7011;
+`_output/deprivation_look_r5.json`). Seed medians [5–95 %] where shown; * marks the record
+outside.
+
+| measure | record | F0 off | F1 gain 0.248 | F2 gain 0.152 | F3 trigger later |
+|---|---|---|---|---|---|
+| peak N | 2,200 | 2,551 * | **2,190** [2,148, 2,233] | **2,190** | 2,481 * |
+| N@736 | 2,056 | 1,944 | 1,724 * | 1,774 * | 1,969 |
+| N@960 | 1,650 | 1,264 * | 1,202 * | 1,244 * | 1,459 * |
+| last surviving birth (day) | 600 | 692 * | 914 [760, 969] * | 893 * | 978 * |
+| last conception (day) | 920 | 1,092 * | 988 [953, 1,020] * | 997 [943, 1,022] * | 1,052 * |
+| the gap (days) | ≈ 320 | 400 | 80 [23, 222] | 101 | 91 [37, 375] |
+| N@1,444 | 122 | 74 | 123 | 147 | 206 |
+| N@1,588 | 27 | 16 | 60 * | 63 | 92 * |
+| inside, of 14 | | 8 | 4 | 5 | 6 |
+| the arc, of 12 | | 11 | 1 | 1 | 3 |
+| never fought as adults or mated @800 | 0.53 | 0.00 | 0.73 | 0.79 | **0.60** |
+| withdrawn @560 | 0.32 | 0.09 | **0.41** | **0.39** | **0.36** |
+| the rejection chance at its highest | | — | 0.33 | 0.35 | 0.14 |
+| conceptions after day 920 (per run) | 0 | 1,152 | 212 | 232 | 686 |
+
+**The structure question: no, in every arm.**
+- **What improved** (F1 against revision 4's E1):
+  - the peak falls from 2,311 to 2,190, the record's value;
+  - withdrawn on day 560 comes into range (0.41);
+  - never fought or mated falls from 0.88 to 0.73.
+  - F3 has both categories in range (0.60 and 0.36), and 3 of 12 arcs.
+- **What did not.** The last surviving birth moved later, not earlier (866 → 914). The gap is
+  80 days, and the last conception is 988, just outside its record.
+  - Seed 7004 shows what was meant: surviving births end on day 658, and the gap is 314 days.
+
+**Why young still survive.** Exploratory, F1 on seed 7000 (`_output/hm_adults/diagnose_r5.py`,
+`diagnose_r5b.py`).
+- **The breakdown limits itself.**
+  - Erosion from day 430 keeps the colony smaller, so the rejection chance ratchets only to
+    0.33 (E1: 0.59). The added stress is 0.15.
+  - As the colony thins, weaned females' median stress falls: 0.67 on day 500, 0.50 by day 700,
+    0.36 by day 900.
+  - Below 0.508, erosion stops. Capacity that has not yet worn down stays.
+- **Who raises the late young.**
+  - Every 25 days from day 550 to 900, 2–21 pups aged 10–17 days sit in boxes with no
+    nursing-role mother.
+  - In those boxes are females whose maternal investment is still 0.54–0.93 (median per
+    sample). They are outside the nursing role (withdrawn, or not in it when their litter was
+    born), so they feed the pups by active nursing alone.
+  - Surviving births go on at about one a day (34–63 per 50 days) to about day 850.
+- **A correction.** Revisions 1 and 5 said that a mother below 0.5 does not nurse. That holds only
+  for passive nursing. Active nursing (`ACT_NURSE`) is open to any female with an investment above
+  0. It is not the cause here, since these females' investment is above 0.5.
+- Why the frozen colony ends surviving births with the same two pieces was not checked here. It
+  differs in other ways too: its developmental term is on, and its fertility falls with colony
+  density.
+
+**What follows** (Jason's call).
+- **Revision 6** would make the end of nursing colony-timed as well. From the trigger on, every
+  weaned female's maternal capacity erodes at `maternal_erosion_rate` × f a day, whatever her own
+  stress. Capacity would then reach 0 within weeks of the trigger.
+  - Caution: this comes close to writing the record's outcome into the rule. Passing the
+    structure question would show less than it did for the earlier revisions. The test would be
+    the record fit on fresh seeds that a yes leads to.
+- **Or stop** here, with the deprived generation recorded as a partial account. It gives the
+  trigger's timing, the categories (F3), the peak (F1) and a last conception near 920. It does
+  not give the end of surviving young, which needs a rule the model does not yet justify.
+- The switch stays off by default. Nothing in the app, the final replica or the frozen colony
+  changes.
+
 ## 2026-11-25 — The deprived generation, revision 4: the frozen colony's colony-wide stress brings the last surviving birth forward (922 → 866) and the peak toward the record, but mothers stay below the neglect threshold, so young keep surviving and the arc still does not form; still no
 
 **What Jason asked.** "Yes, revision 4": a colony-timed end of surviving young, then the same
