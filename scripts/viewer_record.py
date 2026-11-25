@@ -5,6 +5,7 @@ it (`<name>.json`) and the run's own files (metrics.parquet, config.json) in `<n
 
 usage:
   python scripts/viewer_record.py --name ref_7000
+  python scripts/viewer_record.py --name universe25_7001 --colony universe25 --seed 7001
   python scripts/viewer_record.py --name substrate_7000 --days 200 --free-substeps 12 \
       --ball-physics --fine 150:1
 
@@ -43,6 +44,8 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     p.add_argument("--name", required=True, help="recording name (file stem)")
     p.add_argument("--config", default=str(ROOT / "configs" / "default.yaml"))
+    p.add_argument("--colony", default=None, help="a named colony (universe25.colonies) in "
+                                                  "place of --config, with its fitted member")
     p.add_argument("--seed", type=int, default=7000)
     p.add_argument("--days", type=float, default=None, help="default: the config's")
     p.add_argument("--every", type=float, default=1.0, help="days between coarse frames")
@@ -75,6 +78,12 @@ def main(argv: list[str] | None = None) -> int:
         overrides["coat"] = {"founders": a.coat}
     if a.weight_effects:
         overrides["body"] = {"weight_effects": True}
+    if a.colony:
+        from universe25.colonies import colony_overrides, deep_merge
+
+        path, member = colony_overrides(a.colony)
+        a.config = str(ROOT / path)
+        overrides = deep_merge(member, overrides)
     cfg = load_config(a.config, overrides)
 
     OUT.mkdir(parents=True, exist_ok=True)

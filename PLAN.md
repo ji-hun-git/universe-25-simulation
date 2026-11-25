@@ -1,4 +1,4 @@
-# PLAN: universe25-play
+# PLAN: universe-25-simulation
 
 - version: 2026-10-30
 - Status: draft (phase-1 environment; freeze before learning-agent runs)

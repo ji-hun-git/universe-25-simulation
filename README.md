@@ -1,46 +1,133 @@
-# universe25-play
+# Universe 25 simulation
 
-![Universe 25, simulated. a: the frozen colony on its fullest day in 3D. b: population against Calhoun's census on 48 seeds. c: where the colony crowds, and who withdraws. d: the phase-4 play-emergence tests so far.](docs/figures/hero.png)
+![Calhoun's Universe 25 pen in 3D, simulated over 1,600 days: the mouse colony grows from eight mice to about 2,500, crowds into the centre of the pen and dies out. The strip below plots the population against Calhoun's census.](docs/media/universe25.webp)
 
-<sub>The hero figure is remade by `scripts/hero_figure.py`. What each panel shows, and what it does
-not claim: [docs/FIGURES.md](docs/FIGURES.md). An introduction for readers outside the
-repo: [docs/booklet/universe25_booklet.pdf](docs/booklet/universe25_booklet.pdf) (nine pages).</sub>
+<sub>One run (seed 7001), day 0 to day 1,600. [The full video, 720p (MP4)](docs/media/universe25.mp4).</sub>
 
-Research-grade **Universe 25** (Calhoun 1973) simulation with an optional **playground** zone.
+An agent-based simulation of **Universe 25**, John B. Calhoun's "mouse utopia" experiment
+(1968–1973).
+- **The experiment.** Eight mice were given unlimited food, water and nest boxes. Their colony
+  grew to 2,200, stopped raising young and died out. Calhoun called that kind of collapse a
+  **behavioral sink**.
+- **The model.** Every mouse is simulated, in a model of Calhoun's own pen: it eats, drinks,
+  nests, courts, fights, nurses and grows stressed.
+- **How it runs.** The colony is fitted to his published record and runs in Python on an
+  ordinary computer.
 
-Track E / exploratory. Agents are need-driven (hunger, thirst, fatigue, stress, social, aggression, maternal, curiosity, boredom, homeostasis). **There is no play reward.** The playground is geometry + manipulable objects only; any playground use is drive spillover.
+## What was Universe 25?
 
-## Use it
+**The setup.** In 1968, at the US National Institute of Mental Health, Calhoun put four pairs
+of BALB/c mice into a pen 101 inches square.
+- Its 256 nest boxes could shelter 3,840 mice.
+- Its food hoppers could feed 9,500, and its water 6,144.
+- Nothing ever ran out.
 
-A Universe 25 simulation anyone can run, for research or any other project. The full guide is
-[docs/USER_GUIDE.md](docs/USER_GUIDE.md); runnable examples are in [examples/](examples/).
+**The rise and fall.**
+- The population doubled every 55 days, then every 145, and levelled off near 2,200 by day 560.
+- Mothers abandoned and attacked their young. After about day 600 no young survived, although
+  conceptions went on to about day 920.
+- Calhoun described males that ate, slept and groomed but never fought or mated. He called them
+  "the beautiful ones".
+- The colony never recovered.
+
+**The record.** His paper *Death Squared* (1973) gives the numbers this model is fitted to.
+
+## Run it
 
 ```bash
-git clone https://github.com/ji-hun-git/universe25-play
-cd universe25-play
+git clone https://github.com/ji-hun-git/universe-25-simulation
+cd universe-25-simulation
 pip install -e .
 universe25 run --seed 7001 --out runs/first --plot
 ```
 
+The last command simulates the 1,600 days in about a minute on one CPU core. It then prints the
+run beside Calhoun's record, and saves the numbers, the daily population and a plot. From
+Python:
+
 ```python
 import universe25 as u25
 
-r = u25.run("universe25", seed=7001)   # 1,600 days in Calhoun's pen, about a minute
-print(r.table())                        # the run beside Calhoun's record
+r = u25.run("universe25", seed=7001)
+print(r.table())        # the run beside Calhoun's record
+r.population            # mice alive at the end of each day
+r.plot("population.png")
 ```
 
-**How good is it?**
-- **The population curve:** on 48 seeds never used to fit it, 11 of the record's 14 population
-  and timeline numbers fall inside the model's 5–95 % range. The colony rises and collapses as
-  Calhoun's did in 46 of the 48 runs.
-- **The misses:** it peaks too high (2,490 against 2,200), thins too fast (1,320 on day 960
-  against 1,650) and stops conceiving late (day 1,096 against 920).
-- **The behaviour is not Calhoun's:** few withdrawn mice and no "beautiful ones".
+[The user guide](docs/USER_GUIDE.md) covers the rest: the colonies, changing parameters,
+many seeds, every mouse's state, and the 3D viewer. [examples/](examples/) has four short
+scripts.
 
-It reproduces how many mice there were, not how they behaved. The guide's "What it is not"
-says what that means for the conclusions you can draw.
+## How close is it to Calhoun's record?
 
-## Status (2026-11-19)
+These are medians of 48 runs on seeds never used to fit the model.
+
+| | Calhoun | model |
+|---|---:|---:|
+| population on day 315 | 620 | 699 |
+| peak population | 2,200 | 2,490 |
+| population on day 960 | 1,650 | 1,320 |
+| last surviving birth | day 600 | day 698 |
+| last conception | day 920 | day 1,096 |
+| population on day 1,588 | 27 | 24 |
+| never fought or mated, day 800 (the "beautiful ones") | 53 % | 0 % |
+| withdrawn, day 560 | 32 % | 10 % |
+
+- **The numbers:** 11 of the record's 14 population and timeline numbers fall inside the model's
+  5–95 % range.
+- **The arc:** 46 of the 48 runs rise, stop raising young and collapse as the colony did.
+- **The behaviour does not match:** few withdrawn mice and no "beautiful ones".
+
+So the model reproduces how many mice there were, not how they behaved. Three refits and five
+revisions of a behavioural mechanism tried to close that gap; all are documented, none passed
+(`NOTES.md`). Run `universe25 check --seeds 9112-9159` to reproduce the 48-run check.
+
+## Watch it
+
+![The simulated pen on day 560, the colony's peak: over 2,000 albino mice drawn at real scale, crowded at the centre and in the nest boxes along the walls.](docs/media/universe25_day560.jpg)
+
+`universe25-app` opens the viewer in your browser. It has:
+- the pen from above or in 3D, with every mouse drawn at its real size and weight;
+- live runs and recordings;
+- one mouse followed through its life;
+- a dashboard of population, roles, births, deaths and stress against Calhoun's census.
+
+## What it is not
+
+- **Fitted, not predicted.** The parameters were tuned to the record. Holding on unseen seeds
+  shows the fit is robust to chance, not that the model explains Universe 25.
+- **One colony, one account.** The record is a single colony, described mostly by Calhoun. Other
+  rodent colonies levelled off or recovered (`docs/PRIOR_WORK.md`).
+- **The collapse is built in.** Young raised in a broken colony never recover, as Calhoun
+  reported. That is an assumption here, not a finding.
+- **Not a model of people.** Universe 25 is often quoted about human cities and societies.
+  Nothing here supports that.
+
+## The research inside
+
+The simulator was built for one question: **does play emerge in learning agents given
+abundance rather than scarcity?**
+- The agents have drives and no play reward.
+- Play is scored only after the fact, with Burghardt's criteria.
+- Nine preregistered hypotheses (H-d to H-l) have been tested so far. None gives evidence of
+  play either way (figure below, panel d).
+
+The rest of this page is the research record. [A nine-page booklet](docs/booklet/universe25_booklet.pdf)
+introduces it for readers outside the field.
+
+![Universe 25, simulated. a: the reference colony on its fullest day in 3D. b: population against Calhoun's census on 48 seeds. c: where the colony crowds, and who withdraws. d: the play-emergence tests so far.](docs/figures/hero.png)
+
+<sub>The figure is remade by `scripts/hero_figure.py`. What each panel shows, and what it does
+not claim: [docs/FIGURES.md](docs/FIGURES.md).</sub>
+
+## Citing
+
+GitHub's "Cite this repository" button gives the reference (`CITATION.cff`). Please cite
+Calhoun (1973) for the experiment as well:
+Calhoun, J. B. Death squared: the explosive growth and demise of a mouse population.
+*Proceedings of the Royal Society of Medicine* 66, 80–88 (1973).
+
+## Research status
 
 | part | state |
 |---|---|
@@ -54,7 +141,7 @@ says what that means for the conclusions you can draw.
 The full state is in `HANDOFF.md`, the dated results in `NOTES.md`, and the hypotheses in
 `PLAN.md` §15.
 
-## How close is it to the original?
+## How close is the reference colony to the original?
 
 Close in numbers, simplified in form. The reference model keeps Calhoun's sizes and capacities
 but not his layout, and its population curve matches the record because it was fitted to it.
@@ -220,8 +307,7 @@ python scripts\viewer_serve.py
 
 ## App
 
-The viewer and its live runs as one program, for people without the research setup (TASKS U-2,
-private for now).
+The viewer and its live runs as one program, for people without the research setup (TASKS U-2).
 
 ```powershell
 pip install -e .        # once, in the repo

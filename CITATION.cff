@@ -1,0 +1,40 @@
+cff-version: 1.2.0
+message: >-
+  If you use this software, please cite it as below, and cite Calhoun (1973) for the experiment
+  it simulates.
+title: "Universe 25 simulation: an agent-based model of Calhoun's mouse colony"
+type: software
+authors:
+  - alias: ji-hun-git
+repository-code: "https://github.com/ji-hun-git/universe-25-simulation"
+url: "https://github.com/ji-hun-git/universe-25-simulation"
+license: MIT
+version: 0.2.0
+date-released: "2026-11-25"
+abstract: >-
+  An agent-based simulation of Universe 25, John B. Calhoun's 1968-1973 mouse colony with
+  unlimited resources. Each mouse eats, drinks, nests, courts, fights, nurses and grows stressed
+  in a model of Calhoun's pen. The colony is fitted to the published record: on 48 unseen seeds,
+  11 of 14 population and timeline numbers fall inside the model's 5-95 % range, and 46 of 48
+  runs rise and collapse. The behavioural categories Calhoun reported are not reproduced.
+keywords:
+  - Universe 25
+  - mouse utopia
+  - behavioral sink
+  - John B. Calhoun
+  - agent-based model
+  - population dynamics
+  - population collapse
+  - animal behavior
+references:
+  - type: article
+    authors:
+      - family-names: Calhoun
+        given-names: John B.
+    title: "Death squared: the explosive growth and demise of a mouse population"
+    journal: "Proceedings of the Royal Society of Medicine"
+    volume: 66
+    issue: "1 Pt 2"
+    start: 80
+    end: 88
+    year: 1973

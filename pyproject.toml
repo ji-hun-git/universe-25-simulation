@@ -1,10 +1,12 @@
 [project]
 name = "universe25"
 version = "0.2.0"
-description = "Universe 25 (Calhoun 1973) mouse colony simulation, fitted to the record; for research or any project"
+description = "Agent-based simulation of Universe 25, Calhoun's mouse utopia (1968-1973), fitted to the historical record"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
+keywords = ["universe 25", "mouse utopia", "behavioral sink", "calhoun", "agent-based model",
+            "population dynamics", "population collapse", "animal behavior", "simulation"]
 authors = [{ name = "Jason" }]
 dependencies = [
   "numpy>=2,<3",  # trajectories depend on the NumPy major version (review 2026-11-09)
@@ -14,6 +16,10 @@ dependencies = [
   "scipy>=1.11",
   "matplotlib>=3.8",
 ]
+
+[project.urls]
+Homepage = "https://github.com/ji-hun-git/universe-25-simulation"
+Documentation = "https://github.com/ji-hun-git/universe-25-simulation/blob/master/docs/USER_GUIDE.md"
 
 [project.optional-dependencies]
 gpu = ["warp-lang>=1.0", "torch>=2.0"]

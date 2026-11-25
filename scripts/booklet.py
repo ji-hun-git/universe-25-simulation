@@ -201,7 +201,7 @@ def build(hero: dict, led: dict) -> str:
                      f"<span>{n} / @TOTAL@</span></div></section>")
 
     page(1, f"""
-<div class="kicker">universe25-play · a research booklet</div>
+<div class="kicker">universe-25-simulation · a research booklet</div>
 <h1>Universe 25, simulated</h1>
 <p class="lede">A mouse colony rebuilt from Calhoun's record, calibrated to it, and used to ask one
 question: does play-like behaviour appear without any play reward, under abundance and under
@@ -432,8 +432,8 @@ files the hero figure is drawn from, so the booklet is remade whenever the figur
 <pre>python scripts/hero_figure.py draw
 python scripts/booklet.py</pre>
 <p>A test fails if the booklet falls behind those files.</p>
-<div class="box"><p>The repository is private. Calhoun's record: Calhoun 1973, <i>Proc R Soc
-Med</i> 66: 80–88; Calhoun 1971, in <i>Behavior and Environment</i>; Marsden 1972. Play criteria:
+<div class="box"><p>Code: github.com/ji-hun-git/universe-25-simulation.
+Calhoun's record: Calhoun 1973, <i>Proc R Soc Med</i> 66: 80–88; Calhoun 1971, in <i>Behavior and Environment</i>; Marsden 1972. Play criteria:
 Burghardt 2005, <i>The Genesis of Animal Play</i>.</p></div>""")
 
     pages = [pg.replace("@TOTAL@", str(len(pages))) for pg in pages]

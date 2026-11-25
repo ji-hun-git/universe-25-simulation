@@ -1,5 +1,49 @@
 # Universe25 Play — NOTES
 
+## 2026-11-25 — Public as universe-25-simulation: a front page, a video of the colony, a contributor guide and a citation file
+
+**What Jason asked.**
+- Make the repository public, after a review for personal files and keys.
+- Care for its visuals, video included, without generic filler.
+- A keyword strategy so that people find it.
+
+**The review.**
+- No API key, token, password or private key in any file or commit.
+- No personal email address: every commit uses the GitHub noreply address.
+- No `.env` or credential file was ever committed.
+- The largest file is the booklet PDF, at 1.5 MB.
+- The names in the record (the owner and the research partner) stay, by Jason's choice.
+
+**The repository.**
+- It is a new public repository, `ji-hun-git/universe-25-simulation`. The name carries the words
+  people search for.
+- The description and 20 topics name the experiment ("Universe 25", "mouse utopia", "behavioral
+  sink", Calhoun), the method (agent-based model, population dynamics) and the tools (Python,
+  NumPy, three.js).
+
+**The front page** (README, top).
+- A moving picture of one run: Calhoun's pen in 3D, orbiting over 1,600 days, with the day, the
+  population and Calhoun's phase in a strip below, and the population curve drawn against his
+  census.
+- What Universe 25 was, in facts from the record (`docs/RESEARCH_DIGEST.md`).
+- How to run it, and how close it comes to the record, misses included.
+- A still of the peak, what the model is not, and the research inside.
+- The research record follows, unchanged.
+
+**The media** (`docs/media/`).
+- They come from the viewer's own renders. `?shot=video` saves 480 frames, and
+  `scripts/readme_media.py` composes them.
+- The README uses an animated WebP (3.5 MB). An orbiting camera changes every pixel, so a GIF of
+  the same length was 15 MB.
+- There is a 720p MP4 (7.3 MB), a still at day 560 and a 1280 × 640 social preview.
+- `scripts/viewer_record.py --colony universe25` records a named colony with its fitted member.
+
+**Also.**
+- `CONTRIBUTING.md` holds the project's hard rules and conventions.
+- `CITATION.cff` drives GitHub's "Cite this repository" and cites Calhoun (1973).
+- `pyproject.toml` has keywords and links.
+- The booklet names the public repository.
+
 ## 2026-11-25 — For everyone: a simple interface (`universe25.run`, `universe25 run | check | colonies`), a user guide and examples; the published validation reproduces through it exactly
 
 **What Jason asked.** "Update the repo and make it a Universe 25 simulation that anyone can use

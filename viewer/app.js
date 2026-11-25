@@ -451,6 +451,35 @@ async function heroShot() {
   note("viewNote", `Hero renders saved in _output/figures/ (day ${dayText(st.t[best])}, ${nf(st.meta[best].n)} mice). Next: python scripts/hero_figure.py draw`);
   return meta;
 }
+
+// ?shot=video: 480 frames orbiting the pen over the whole recording, and the population by day,
+// saved in _output/figures/ for scripts/readme_media.py (the README's video and GIF)
+async function videoShot(frames = 480) {
+  await setView("3d");
+  if (!pen3d || !S.store) return;
+  const st = S.store, days = [], ns = [];
+  for (let i = 0; i < st.length; i++) {
+    if (!st.meta[i].s && Math.abs(st.t[i] - Math.round(st.t[i])) < 1e-6) { days.push(Math.round(st.t[i])); ns.push(st.meta[i].n); }
+  }
+  await fetch("api/snapshot?name=video_series", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ days, ns }) });
+  const [p, t] = pen3d.presets().hero, dx = p[0] - t[0], dy = p[1] - t[1], dz = p[2] - t[2];
+  const dist = Math.hypot(dx, dy, dz), el0 = Math.asin(dy / dist), th0 = Math.atan2(dz, dx), last = days[days.length - 1];
+  pen3d.colorBy = "natural";
+  syncColor(); legend();
+  for (let k = 0; k < frames; k++) {
+    const f = k / (frames - 1), th = th0 - 0.95 * f, el = el0 - 0.12 * f, r = dist * (0.95 - 0.08 * f);
+    seek(Math.round(f * last));
+    pen3d.controls.target.set(0, 2, 0);
+    pen3d.camera.position.set(Math.cos(th) * r * Math.cos(el), r * Math.sin(el), Math.sin(th) * r * Math.cos(el));
+    pen3d.controls.update();
+    pen3d.dirty = true;
+    render();
+    await snapshot("v_" + String(k).padStart(4, "0"), 1280, 608);
+    if (k % 20 === 0) note("viewNote", `Video frames: ${k + 1} of ${frames}`);
+  }
+  $("viewNote").hidden = false;
+  note("viewNote", `${frames} video frames saved in _output/figures/. Next: python scripts/readme_media.py`);
+}
 for (const b of document.querySelectorAll("[data-cam]")) b.addEventListener("click", () => pen3d?.view(b.dataset.cam));
 
 function legend() {
@@ -679,7 +708,7 @@ window.addEventListener("drop", async (e) => {
 });
 window.addEventListener("resize", () => { S.lastUi = 0; });
 
-window.u25 = { S, pen, dash, seek, select, setTheme, setView, render, snapshot, heroShot, get pen3d() { return pen3d; } }; // for the console
+window.u25 = { S, pen, dash, seek, select, setTheme, setView, render, snapshot, heroShot, videoShot, get pen3d() { return pen3d; } }; // for the console
 
 async function init() {
   try {
@@ -714,6 +743,7 @@ async function init() {
   let view = params.get("view");
   try { view ||= localStorage.getItem("u25-view"); } catch (e) { /* storage off */ }
   if (params.get("shot") === "hero") await heroShot();
+  else if (params.get("shot") === "video") await videoShot();
   else if (view === "3d") setView("3d");
 }
 init();

@@ -15,8 +15,8 @@ models. Please read "What it is not" before you draw conclusions from it.
 Python 3.11 or newer.
 
 ```bash
-git clone https://github.com/ji-hun-git/universe25-play
-cd universe25-play
+git clone https://github.com/ji-hun-git/universe-25-simulation
+cd universe-25-simulation
 python -m venv .venv
 .venv\Scripts\activate          # Windows; on macOS / Linux: source .venv/bin/activate
 pip install -e .
@@ -187,7 +187,8 @@ Each 1,600-day run takes about a minute on one core. `universe25 check --seeds 7
 Please cite Calhoun's paper for the colony and this repository for the simulation:
 - Calhoun, J. B. (1973). Death squared: the explosive growth and demise of a mouse population.
   *Proceedings of the Royal Society of Medicine*, 66(1 Pt 2), 80–88.
-- universe25-play, https://github.com/ji-hun-git/universe25-play (give the commit you used).
+- this repository: GitHub's "Cite this repository" button gives the reference (from
+  `CITATION.cff`). Please give the commit you used.
 
 ## License
 
