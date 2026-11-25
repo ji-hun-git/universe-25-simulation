@@ -409,3 +409,28 @@ cross a threshold. Everything else is revision 3's.
   - More stress means more stress deaths and more withdrawal. Withdrawn on day 560 may rise.
   - The replica's stress becomes partly colony-wide again: a second step back from M4, after
     revision 2's trigger.
+
+### Revision 4 looked at (2026-11-25; NOTES 2026-11-25)
+
+- **Checks.** Off and every earlier version reproduce exactly (23 of 23 outputs each, arms A1,
+  B3, C1, C2, D1 and D2), and the golden hashes match.
+- **The structure question: no, in every arm** (E0–E3).
+- **It moves the right way** (E1 against revision 3's D1):
+  - the last surviving birth comes forward from 922 to 866;
+  - the peak falls from 2,668 to 2,311 (record 2,200);
+  - conceptions after day 920 fall from 147 to 54 per run, and the last conception is 956
+    [885, 987], with 920 inside.
+- **The gap is still short:** a median of 70 days, against the 150 the arc needs. The arc forms
+  in 1 of 36 runs with the stress (E3).
+- **The categories overshoot further** (0.88). The later trigger (E3) brings withdrawn into
+  range (0.41).
+- **Why** (exploratory, E1 on seed 7000):
+  - The added stress reaches 0.26 by day 600.
+  - Mothers still raising pups 10–17 days old sit at a median stress of 0.62–0.65. That is below
+    the neglect threshold (0.785) and the erosion threshold (0.792).
+  - So the trickle of litters they raise keeps the rate-based landmark near day 866.
+  - In the frozen colony the same stress erodes maternal capacity, because its erosion threshold
+    is 0.508.
+- **Next, Jason's call:**
+  - revision 5: from the trigger on, maternal erosion at the frozen colony's threshold (0.508);
+  - or stop.

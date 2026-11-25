@@ -1,5 +1,75 @@
 # Universe25 Play — NOTES
 
+## 2026-11-25 — The deprived generation, revision 4: the frozen colony's colony-wide stress brings the last surviving birth forward (922 → 866) and the peak toward the record, but mothers stay below the neglect threshold, so young keep surviving and the arc still does not form; still no
+
+**What Jason asked.** "Yes, revision 4": a colony-timed end of surviving young, then the same
+48-run look.
+
+**The revision** (`docs/DEPRIVED_GENERATION.md`, "Revision 4", 2af2c67, fixed before code).
+- `biology.rejection_stress`: with colony rejection on, every animal's stress gain rises by
+  `social_breakdown_stress_boost` × f, the day's rejection chance (the deprived adult excepted).
+  This is the frozen colony's colony-wide breakdown stress. Its developmental term does not
+  return.
+- The a priori gain is 0.248, the value the replica config still holds. E2 takes the frozen
+  colony's stress level instead (gain 0.152, since the replica's stress decays faster).
+- **Checks.** Off and every earlier version reproduce exactly: seed 9112, and arms A1, B3, C1, C2,
+  D1 and D2 on seed 7000, each give 23 of 23 outputs with the same conceptions after day 920. The
+  golden hashes match, and the full test tier passes.
+
+**The look** (`scripts/deprivation_look.py --set r4`; training seeds 7000–7011;
+`_output/deprivation_look_r4.json`). Seed medians [5–95 %] where shown; * marks the record
+outside.
+
+| measure | record | E0 off | E1 gain 0.248 | E2 gain 0.152 | E3 trigger later |
+|---|---|---|---|---|---|
+| peak N | 2,200 | 2,551 * | 2,311 * | 2,414 * | 2,561 * |
+| N@736 | 2,056 | 1,944 | 1,926 * | 2,058 | 2,132 |
+| N@960 | 1,650 | 1,264 * | 1,390 * | 1,546 | 1,653 |
+| last surviving birth (day) | 600 | 692 * | 866 [805, 937] * | 908 * | 967 * |
+| last conception (day) | 920 | 1,092 * | **956 [885, 987]** | 979 [907, 1,004] | 1,050 * |
+| the gap (days) | ≈ 320 | 400 | 70 [16, 126] | 72 | 68 |
+| N@1,444 | 122 | 74 | 158 * | 194 * | 246 * |
+| N@1,588 | 27 | 16 | 61 * | 79 * | 118 * |
+| inside, of 14 | | 8 | 4 | 7 | 5 |
+| the arc, of 12 | | 11 | 0 | 0 | 1 |
+| never fought as adults or mated @800 | 0.53 | 0.00 | 0.88 | 0.87 | 0.69 |
+| withdrawn @560 | 0.32 | 0.09 | 0.52 | 0.49 | 0.41 |
+| conceptions after day 920 (per run) | 0 | 1,152 | 54 | 104 | 482 |
+
+**The structure question: no, in every arm.**
+- **It moves the right way.** Against revision 3's D1:
+  - the last surviving birth comes forward from 922 to 866;
+  - the peak falls from 2,668 to 2,311, near the record's 2,200;
+  - conceptions after day 920 fall from 147 to 54 per run;
+  - the last conception, 956, has the record inside its range.
+- **The gap is still short:** a median of 70 days (the arc needs 150). The widest of the 36 runs
+  with the stress is 161 days, in E3, its one arc.
+- **The categories overshoot further** (never fought or mated 0.88). The later trigger (E3)
+  brings withdrawn into range (0.41) and never fought or mated near it (0.69).
+- **The colony stays too large after day 1,400.**
+
+**Why young still survive.** Exploratory, E1 on seed 7000 (`_output/hm_adults/diagnose_r4.py`).
+- The rejection chance ratchets to 0.59 by day 600. The stress it adds is then 0.26.
+- Nursing mothers whose box holds pups 10–17 days old have a median stress of 0.62–0.65 on days
+  500–700, with the added stress included.
+- That is below the neglect threshold (0.785), and none has its maternal capacity eroded (the
+  erosion threshold is 0.792). So the few mothers who still raise litters raise them.
+- The landmark is rate-based: the last day on which the 30-day count of surviving births is
+  still at least 5 % of its peak. That trickle of litters keeps it near day 866.
+- In the frozen colony the same added stress ends surviving births because its erosion threshold
+  is 0.508. The replica fitted its own to 0.79, and an exploratory bracket (2026-11-25) showed
+  that lowering it ends growth, because erosion follows local stress from phase B on.
+
+**What follows** (Jason's call).
+- **Revision 5** would take the frozen colony's maternal breakdown whole: from the trigger on,
+  maternal capacity erodes at the frozen colony's threshold (0.508), so the colony stress that
+  now lifts mothers to about 0.64 erodes their capacity, as it does in the frozen colony. Before
+  the trigger the replica's own threshold stands, so phase B is untouched.
+- **Or stop.** Each revision has closed one gap and shown the next. The overshooting categories
+  and the colony's size after day 1,400 would still need a record fit with fresh seeds.
+- The switch stays off by default. Nothing in the app, the final replica or the frozen colony
+  changes.
+
 ## 2026-11-25 — The deprived generation, revision 3: reproduction now ends near the record (last conception 969, record 920 inside), but young survive until then, so the arc's phase without surviving young never forms; still no
 
 **What Jason asked.** "Yes, revision 3": close revision 2's hole, then the same 48-run look.

@@ -20,8 +20,12 @@ the ratchet); C2 C1 without the ratchet; C3 C1 with breakdown_density_threshold 
 base, seeds and question in every set.
 Revision 3 (--set r3): D0 off; D1 C1 + rejection_all_boxes; D2 D1 without the ratchet; D3 D1 with
 breakdown_density_threshold 0.68.
+Revision 4 (--set r4): E0 off; E1 D1 + rejection_stress (social_breakdown_stress_boost 0.248, the
+config's); E2 E1 with the boost 0.152 (the frozen colony's stress level); E3 E1 with
+breakdown_density_threshold 0.68. Every set also reports the gap (last conception - last
+surviving birth).
 
-usage: python scripts/deprivation_look.py [--workers 10] [--set v1|r1|r2|r3]
+usage: python scripts/deprivation_look.py [--workers 10] [--set v1|r1|r2|r3|r4]
 Writes _output/deprivation_look.json (v1) or _output/deprivation_look_<set>.json.
 """
 from __future__ import annotations
@@ -56,7 +60,7 @@ SET = sys.argv[sys.argv.index("--set") + 1] if "--set" in sys.argv else "v1"
 
 
 def arms() -> dict[str, dict]:
-    """v1: the first look (A0-A3); revisions 1-3: B0-B3, C0-C3, D0-D3
+    """v1: the first look (A0-A3); revisions 1-4: B0-B3, C0-C3, D0-D3, E0-E3
     (docs/DEPRIVED_GENERATION.md)."""
     params = json.loads(FINAL.read_text(encoding="utf-8"))["members"][0]["params"]
     bio = params["biology"]
@@ -64,6 +68,14 @@ def arms() -> dict[str, dict]:
     def with_bio(**kw):
         return {**params, "biology": {**bio, **kw}}
 
+    if SET == "r4":
+        rev4 = dict(deprivation=True, deprived_fertility=0.01, colony_rejection=True,
+                    rejection_all_boxes=True, rejection_stress=True)
+        frozen = 0.24829430244099573 * 0.5604105404723718 / 0.9135074926585873  # 0.152
+        return {"E0": params,
+                "E1": with_bio(**rev4),
+                "E2": with_bio(**rev4, social_breakdown_stress_boost=frozen),
+                "E3": with_bio(**rev4, breakdown_density_threshold=0.68)}
     if SET == "r3":
         rev3 = dict(deprivation=True, deprived_fertility=0.01, colony_rejection=True,
                     rejection_all_boxes=True)
@@ -113,8 +125,8 @@ def q(v: list[float]) -> list[float]:
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--workers", type=int, default=10)
-    p.add_argument("--set", choices=("v1", "r1", "r2", "r3"), default="v1",
-                   help="v1: the first look (A0-A3); r1, r2, r3: revisions 1-3 (B, C, D arms)")
+    p.add_argument("--set", choices=("v1", "r1", "r2", "r3", "r4"), default="v1",
+                   help="v1: the first look (A0-A3); r1-r4: revisions 1-4 (B, C, D, E arms)")
     a = p.parse_args()
     jobs = [(arm, over, s) for arm, over in arms().items() for s in SEEDS]
     t0 = time.perf_counter()
@@ -144,6 +156,8 @@ def main() -> int:
             "rejection_onset": q([r["rejection_onset"] if r.get("rejection_onset") is not None
                                   else np.nan for r in rs]),
             "rejection_f_max": q([r.get("rejection_f_max", 0.0) for r in rs]),
+            "gap": q([o.get("last_conception_day", np.nan) - o.get("last_young_day", np.nan)
+                      for o in outs]),
         }
         lc = t["last_conception_day"]["q"][1]
         bf = extra["beautiful_800_adult"][1]
@@ -173,11 +187,11 @@ def main() -> int:
     for key, rec in (("beautiful_800_adult", "0.53"), ("withdrawn_560", "0.32"),
                      ("deprived_share_560", "-"), ("deprived_131_320_800", "-"),
                      ("conceptions_after_920", "0"), ("rejection_onset", "437"),
-                     ("rejection_f_max", "-")):
+                     ("rejection_f_max", "-"), ("gap", "320")):
         cells = []
         for arm in names:
             qq = summary[arm][key]
-            fmt = (f if key not in ("conceptions_after_920", "rejection_onset")
+            fmt = (f if key not in ("conceptions_after_920", "rejection_onset", "gap")
                    else (lambda x: f"{x:,.0f}"))
             cells.append(f"{fmt(qq[1])} [{fmt(qq[0])}, {fmt(qq[2])}]")
         print(f"| {key} | {rec} | " + " | ".join(cells) + " |")

@@ -1367,6 +1367,10 @@ class Universe25Sim:
                 else self.cfg.biology.breakdown_factor(self._breakdown_density(alive)))
         if f_bd > 0.0:
             gain = gain + float(self.cfg.biology.social_breakdown_stress_boost) * f_bd
+        if deprivation and self.cfg.biology.rejection_stress and self._rejection_f > 0.0:
+            # U-5 revision 4: the colony's breakdown stress, at the day's rejection chance
+            # (not the developmental term: f_bd above stays as it was)
+            gain = gain + float(self.cfg.biology.social_breakdown_stress_boost) * self._rejection_f
         if deprivation:  # U-5: crowding and its box do not stress the deprived adult (PNMT)
             dep_adult = self._deprived[idx] & (a.age_days[idx] >= self.cfg.biology.maturity_days)
             gain = np.where(dep_adult, 0.0, gain)
@@ -1623,6 +1627,8 @@ class Universe25Sim:
         if bio.rejection_ratchet:
             self._rejection_f = max(self._rejection_f, f)
             f = self._rejection_f
+        else:  # the day's chance, read by revision 4's stress term
+            self._rejection_f = f
         if f <= 0.0:
             return
         a = self.agents

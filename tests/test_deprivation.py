@@ -5,6 +5,7 @@ neither fights nor is fought, is not stressed by crowding, and as a female can s
 be courted. Off, none of this happens."""
 from __future__ import annotations
 
+import math
 import sys
 import tempfile
 from pathlib import Path
@@ -65,7 +66,8 @@ def test_guards() -> None:
                  {"biology": {"deprived_fertility": 0.01}},
                  {"biology": {"expel_at_independence": True}},
                  {"biology": {"colony_rejection": True}},
-                 {"biology": {"deprivation": True, "rejection_all_boxes": True}}):
+                 {"biology": {"deprivation": True, "rejection_all_boxes": True}},
+                 {"biology": {"deprivation": True, "rejection_stress": True}}):
         try:
             _cfg(**over)
         except ValueError:
@@ -285,6 +287,33 @@ def test_revision_3_every_box() -> None:
         assert (a.nest_id[old] < 0) == every, every
 
 
+def test_revision_4_colony_stress() -> None:
+    """Revision 4: with rejection_stress, an undeprived animal's stress gain rises by
+    social_breakdown_stress_boost x f, the day's rejection chance; the deprived adult's does not,
+    and a pup's competence (the developmental term) is untouched."""
+    out = {}
+    for on in (False, True):
+        sim, cfg = _make(True, colony_rejection=True, rejection_stress=on,
+                         social_breakdown_stress_boost=0.25)
+        a = sim.agents
+        a.alive[:] = False
+        adult, dep, pup = (int(v) for v in a.free_slots(3))
+        for k, sex, age, role in ((adult, SEX_F, 120.0, 0), (dep, SEX_M, 120.0, 0),
+                                  (pup, SEX_M, 10.0, ROLE_PUP)):
+            sim._spawn(k, sex=sex, age=age, x=30.0, y=30.0, nest_id=0, cell_id=0, role=role)
+        sim._deprived[dep] = True
+        a.stress[[adult, dep, pup]] = 0.0
+        a.competence[pup] = 0.8
+        sim._rejection_f = 0.5
+        sim._density_stress(a.alive.copy())
+        out[on] = (a.stress[[adult, dep, pup]].astype(float), float(a.competence[pup]))
+    relax = -math.expm1(-cfg.drives.stress_decay * sim.dt_days)
+    want = 0.25 * 0.5 / cfg.drives.stress_decay * relax
+    d = out[True][0] - out[False][0]
+    assert abs(d[0] - want) < 1e-5 and abs(d[2] - want) < 1e-5 and d[1] == 0.0, (d, want)
+    assert out[True][1] == out[False][1]
+
+
 if __name__ == "__main__":
     test_guards()
     test_independence_and_the_deprived_juvenile()
@@ -294,4 +323,5 @@ if __name__ == "__main__":
     test_revision_1_expulsion()
     test_revision_2_colony_rejection()
     test_revision_3_every_box()
+    test_revision_4_colony_stress()
     print("test_deprivation: OK")

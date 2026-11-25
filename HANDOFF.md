@@ -44,8 +44,12 @@
 > **Revision 3** (2026-11-25) closes that hole. Reproduction now ends near the record: last
 > conception 969, with 920 inside the range. But surviving young run to about day 950 (record
 > 600), so the phase without surviving young never forms, and no seed shows the arc. Lowering
-> maternal erosion opens that phase only by stopping growth. Next is Jason's call: revision 4, a
-> colony-timed end of surviving young; or stop.
+> maternal erosion opens that phase only by stopping growth.
+> **Revision 4** adds the frozen colony's colony-wide breakdown stress. The last surviving birth
+> comes forward (922 → 866) and the peak falls toward the record (2,311), but the gap is still 70
+> days and the arc forms in 1 of 36 runs. Mothers who still raise litters stay below the replica's
+> neglect and erosion thresholds; the frozen colony's erosion threshold is 0.508. Next is Jason's
+> call: revision 5, erosion at that threshold from the trigger on; or stop.
 >
 > **Status 2026-11-17:** the phase 3 viewer is built (`viewer/`, README "Viewer", TASKS P2-1 /
 > P2-2): the colony from above with a control panel, recordings and live runs (NumPy, or Warp

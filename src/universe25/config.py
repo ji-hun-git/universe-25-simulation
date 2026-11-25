@@ -245,6 +245,11 @@ class BiologyConfig(_Strict):
     # U-5 revision 3 (false = revision 2): colony rejection acts on every box holding pups of
     # independence age, not only on a box with a nursing-role mother.
     rejection_all_boxes: bool = False
+    # U-5 revision 4 (false = revision 3): with colony rejection on, the frozen colony's
+    # colony-wide breakdown stress returns: every animal's stress gain rises by
+    # social_breakdown_stress_boost x f, the day's rejection chance (the deprived adult excepted).
+    # Its developmental term (imprint_breakdown_exposure) does not return.
+    rejection_stress: bool = False
 
     def breakdown_threshold(self) -> float:
         if self.breakdown_density_threshold is not None:
@@ -521,6 +526,8 @@ class SimConfig(_Strict):
                 raise ValueError("deprivation needs independence_days < weaning_days")
         if b.rejection_all_boxes and not b.colony_rejection:
             raise ValueError("rejection_all_boxes needs colony_rejection")
+        if b.rejection_stress and not b.colony_rejection:
+            raise ValueError("rejection_stress needs colony_rejection")
         if not b.deprivation and (b.deprived_fertility is not None or b.expel_at_independence
                                   or b.colony_rejection):
             raise ValueError("deprived_fertility / expel_at_independence / colony_rejection "

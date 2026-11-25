@@ -1292,7 +1292,15 @@ the last undeprived females, and the decline is slow.
   - Surviving births run to about 950 (record 600), so there is no phase without surviving
     young, and no seed shows the arc.
   - Lowering maternal erosion opens that phase only by stopping growth (exploratory).
-- **Next:** Jason's call: revision 4, a colony-timed end of surviving young; or stop.
+- **Revision 4 (Jason: "Yes, revision 4"): no; it moves the right way, but not far enough.**
+  - The frozen colony's colony-wide breakdown stress (`biology.rejection_stress`) brings the last
+    surviving birth forward from 922 to 866, and the peak from 2,668 to 2,311. The last
+    conception is 956, with 920 inside.
+  - The gap is still 70 days (150 needed); the arc forms in 1 of 36 runs.
+  - The mothers who still raise litters sit at a stress of about 0.64, below the replica's neglect
+    and erosion thresholds (0.785, 0.792). The frozen colony's erosion threshold is 0.508.
+- **Next:** Jason's call: revision 5, maternal erosion at the frozen colony's threshold from the
+  trigger on; or stop.
 
 ---
 
