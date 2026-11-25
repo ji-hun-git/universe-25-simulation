@@ -321,3 +321,28 @@ not used. Every new field defaults to off, so version 1 and revision 1 reproduce
 - **Next, Jason's call:**
   - revision 3: the rule acts on every box with pups of independence age;
   - then a record fit, for the overshoot and the late counts.
+
+## Revision 3 (Jason, 2026-11-25: "Yes, revision 3"; fixed before code)
+
+It closes revision 2's hole. Everything else is revision 2's.
+
+- **The rule** (`biology.rejection_all_boxes`, default false = revision 2). Colony rejection acts
+  on every box holding pups at least `independence_days` old, whoever their mother is. Before,
+  it acted only on a box with a nursing-role mother. The chance f, one draw per box in box
+  order, and the ratchet are unchanged.
+- **Why.** In revision 2, a mother whose maternal investment fell below 0.5 lost the nursing
+  role, but her pups could still be fed and reach weaning. After day 700 most near-weaned pups
+  were in such boxes. On seed 7000, all 139 young who escaped deprivation came from them, and
+  they bred in phase D. Calhoun's "essentially all young" includes theirs.
+- **Arms**, the same base and seeds (4 × 12 = 48 runs):
+  - D0: off;
+  - D1: revision 2's C1 (deprivation + `deprived_fertility` 0.01 + colony rejection with the
+    ratchet) + every box;
+  - D2: D1 without the ratchet;
+  - D3: D1 with the trigger 0.1 later (threshold 0.68). Revision 2's categories overshot, and an
+    earlier trigger (C3) raised them, so this brackets the other side.
+- **Reported:** revision 2's list, unchanged.
+- **The structure question and what follows are unchanged.**
+- **Risk.** Closing the hole deprives even more of the late cohorts, so the categories, already
+  above range, may rise further. The look reports it, and a record fit would have to bring them
+  back.
