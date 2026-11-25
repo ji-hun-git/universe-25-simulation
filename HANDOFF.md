@@ -41,7 +41,11 @@
 > **Revision 2** (colony-wide rejection) fires on day 430 (record about 437) and deprives 82–90 %
 > of the late cohorts. But the categories overshoot (0.75), and the last conception stays late
 > (1,427): young in boxes without a nursing-role mother escape the rule and breed in phase D.
-> Next is Jason's call: revision 3, so the rule acts on every box; then a record fit.
+> **Revision 3** (2026-11-25) closes that hole. Reproduction now ends near the record: last
+> conception 969, with 920 inside the range. But surviving young run to about day 950 (record
+> 600), so the phase without surviving young never forms, and no seed shows the arc. Lowering
+> maternal erosion opens that phase only by stopping growth. Next is Jason's call: revision 4, a
+> colony-timed end of surviving young; or stop.
 >
 > **Status 2026-11-17:** the phase 3 viewer is built (`viewer/`, README "Viewer", TASKS P2-1 /
 > P2-2): the colony from above with a control panel, recordings and live runs (NumPy, or Warp

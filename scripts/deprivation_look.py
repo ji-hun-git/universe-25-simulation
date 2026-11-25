@@ -18,8 +18,10 @@ Revision 1 (--set r1): B0 off, B1 + deprived_fertility 0.01, B2 + expel_at_indep
 Revision 2 (--set r2): C0 off; C1 deprivation + deprived_fertility 0.01 + colony_rejection (with
 the ratchet); C2 C1 without the ratchet; C3 C1 with breakdown_density_threshold 0.48. The same
 base, seeds and question in every set.
+Revision 3 (--set r3): D0 off; D1 C1 + rejection_all_boxes; D2 D1 without the ratchet; D3 D1 with
+breakdown_density_threshold 0.68.
 
-usage: python scripts/deprivation_look.py [--workers 10] [--set v1|r1|r2]
+usage: python scripts/deprivation_look.py [--workers 10] [--set v1|r1|r2|r3]
 Writes _output/deprivation_look.json (v1) or _output/deprivation_look_<set>.json.
 """
 from __future__ import annotations
@@ -54,14 +56,21 @@ SET = sys.argv[sys.argv.index("--set") + 1] if "--set" in sys.argv else "v1"
 
 
 def arms() -> dict[str, dict]:
-    """v1: the first look (A0-A3); r1: revision 1's (B0-B3); r2: revision 2's (C0-C3),
-    docs/DEPRIVED_GENERATION.md."""
+    """v1: the first look (A0-A3); revisions 1-3: B0-B3, C0-C3, D0-D3
+    (docs/DEPRIVED_GENERATION.md)."""
     params = json.loads(FINAL.read_text(encoding="utf-8"))["members"][0]["params"]
     bio = params["biology"]
 
     def with_bio(**kw):
         return {**params, "biology": {**bio, **kw}}
 
+    if SET == "r3":
+        rev3 = dict(deprivation=True, deprived_fertility=0.01, colony_rejection=True,
+                    rejection_all_boxes=True)
+        return {"D0": params,
+                "D1": with_bio(**rev3),
+                "D2": with_bio(**rev3, rejection_ratchet=False),
+                "D3": with_bio(**rev3, breakdown_density_threshold=0.68)}
     if SET == "r2":
         rev2 = dict(deprivation=True, deprived_fertility=0.01, colony_rejection=True)
         return {"C0": params,
@@ -104,8 +113,8 @@ def q(v: list[float]) -> list[float]:
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--workers", type=int, default=10)
-    p.add_argument("--set", choices=("v1", "r1", "r2"), default="v1",
-                   help="v1: the first look (A0-A3); r1: revision 1 (B0-B3); r2: revision 2")
+    p.add_argument("--set", choices=("v1", "r1", "r2", "r3"), default="v1",
+                   help="v1: the first look (A0-A3); r1, r2, r3: revisions 1-3 (B, C, D arms)")
     a = p.parse_args()
     jobs = [(arm, over, s) for arm, over in arms().items() for s in SEEDS]
     t0 = time.perf_counter()

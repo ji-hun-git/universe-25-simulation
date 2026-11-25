@@ -346,3 +346,23 @@ It closes revision 2's hole. Everything else is revision 2's.
 - **Risk.** Closing the hole deprives even more of the late cohorts, so the categories, already
   above range, may rise further. The look reports it, and a record fit would have to bring them
   back.
+
+### Revision 3 looked at (2026-11-25; NOTES 2026-11-25)
+
+- **Checks.** Off and every earlier version reproduce exactly (23 of 23 outputs each), and the
+  golden hashes match.
+- **The structure question: no, in every arm** (D0–D3).
+- **Reproduction ends near the record for the first time.**
+  - The last conception is day 969 [911, 1,005] in D2, with 920 inside that range.
+  - Conceptions after day 920 fall from 1,152 to about 150 per run.
+- **No seed shows the arc.** Growth and collapse hold in all 48 runs. But surviving births run to
+  days 922–972 (record 600), so the phase without surviving young lasts 26–46 days (the arc needs
+  150; the record has about 320).
+- **The categories overshoot** with the trigger as specified (0.83). The later trigger (D3)
+  gives withdrawn 0.34, in range.
+- **Exploratory: lowering the erosion threshold opens the gap only by stopping growth** (peaks
+  1,155 and 468), because erosion is local.
+- **Next, Jason's call:**
+  - revision 4, a colony-timed end of surviving young (the frozen colony's colony-wide breakdown
+    stress is the candidate);
+  - or stop.

@@ -242,6 +242,9 @@ class BiologyConfig(_Strict):
     # rejection_ratchet: f is its running maximum, so rejection never relaxes.
     colony_rejection: bool = False
     rejection_ratchet: bool = True
+    # U-5 revision 3 (false = revision 2): colony rejection acts on every box holding pups of
+    # independence age, not only on a box with a nursing-role mother.
+    rejection_all_boxes: bool = False
 
     def breakdown_threshold(self) -> float:
         if self.breakdown_density_threshold is not None:
@@ -516,7 +519,10 @@ class SimConfig(_Strict):
                 raise ValueError("deprivation is NumPy-path only")
             if b.independence_days >= b.weaning_days:
                 raise ValueError("deprivation needs independence_days < weaning_days")
-        elif b.deprived_fertility is not None or b.expel_at_independence or b.colony_rejection:
+        if b.rejection_all_boxes and not b.colony_rejection:
+            raise ValueError("rejection_all_boxes needs colony_rejection")
+        if not b.deprivation and (b.deprived_fertility is not None or b.expel_at_independence
+                                  or b.colony_rejection):
             raise ValueError("deprived_fertility / expel_at_independence / colony_rejection "
                              "need deprivation")
         if g.disperse_at_maturity and not g.box_choice:

@@ -1608,8 +1608,9 @@ class Universe25Sim:
         """U-5 revision 2 (biology.colony_rejection), once per day: from the colony's breakdown
         on, mothers reject their young near weaning. f is the frozen colony's breakdown factor
         of the weaned density (its running maximum with biology.rejection_ratchet). In every
-        box with a nursing mother, the pups at least independence_days old are expelled with
-        chance f, one draw per box in box order; _independence weans them deprived. Calhoun,
+        box with a nursing mother (revision 3, biology.rejection_all_boxes: in every box), the
+        pups at least independence_days old are expelled with chance f, one draw per box in box
+        order; _independence weans them deprived. Calhoun,
         mid-phase C: essentially all young were prematurely rejected by their mothers, days
         before weaning. Off: no draw."""
         bio = self.cfg.biology
@@ -1625,10 +1626,13 @@ class Universe25Sim:
         if f <= 0.0:
             return
         a = self.agents
-        moms = alive & (a.sex == SEX_F) & (a.role == ROLE_NURSING) & (a.nest_id >= 0)
         ready = (alive & (a.role == ROLE_PUP) & (a.nest_id >= 0)
                  & (a.age_days >= bio.independence_days))
-        boxes = np.intersect1d(np.unique(a.nest_id[moms]), np.unique(a.nest_id[ready]))
+        if bio.rejection_all_boxes:  # U-5 revision 3: whoever the mother is
+            boxes = np.unique(a.nest_id[ready])
+        else:  # revision 2: a box with a nursing-role mother
+            moms = alive & (a.sex == SEX_F) & (a.role == ROLE_NURSING) & (a.nest_id >= 0)
+            boxes = np.intersect1d(np.unique(a.nest_id[moms]), np.unique(a.nest_id[ready]))
         if boxes.size == 0:
             return
         hit = boxes[self.rng.random(boxes.size) < f]

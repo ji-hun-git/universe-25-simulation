@@ -1,5 +1,70 @@
 # Universe25 Play — NOTES
 
+## 2026-11-25 — The deprived generation, revision 3: reproduction now ends near the record (last conception 969, record 920 inside), but young survive until then, so the arc's phase without surviving young never forms; still no
+
+**What Jason asked.** "Yes, revision 3": close revision 2's hole, then the same 48-run look.
+
+**The revision** (`docs/DEPRIVED_GENERATION.md`, "Revision 3", 2eccd62, fixed before code).
+- `biology.rejection_all_boxes`: colony rejection acts on every box holding pups of independence
+  age, whoever their mother is.
+- **Checks.** Off, version 1, revision 1 and revision 2 reproduce exactly. Seed 9112 and arms A1,
+  B3 and C1 on seed 7000 each give 23 of 23 outputs, with the same conceptions after day 920.
+  The golden hashes match, and the fast tests pass.
+
+**The look** (`scripts/deprivation_look.py --set r3`; training seeds 7000–7011;
+`_output/deprivation_look_r3.json`). Seed medians [5–95 %] where shown; * marks the record
+outside.
+
+| measure | record | D0 off | D1 every box | D2 no ratchet | D3 trigger later |
+|---|---|---|---|---|---|
+| the trigger fires (day) | ≈ 437 | — | 430 | 430 | 483 |
+| peak N | 2,200 | 2,551 * | 2,668 * | 2,655 * | 2,679 * |
+| N@736 | 2,056 | 1,944 | 2,366 * | 2,386 * | 2,302 * |
+| N@960 | 1,650 | 1,264 * | 1,818 * | 1,810 * | 1,722 |
+| last surviving birth (day) | 600 | 692 * | 922 * | 954 * | 972 * |
+| last conception (day) | 920 | 1,092 * | 982 [922, 1,013] * | **969 [911, 1,005]** | 1,018 * |
+| N@1,588 | 27 | 16 | 110 * | 114 * | 110 * |
+| the arc, of 12 | | 11 | 0 | 0 | 0 |
+| never fought as adults or mated @800 | 0.53 | 0.00 | 0.83 | 0.83 | 0.72 |
+| withdrawn @560 | 0.32 | 0.09 | 0.46 | 0.46 | 0.34 |
+| deprived, of the 131–320-day-olds @800 | | 0.00 | 1.00 | 1.00 | 0.84 |
+| conceptions after day 920 (per run) | 0 | 1,152 | 147 | 158 | 435 |
+
+**The structure question: no, in every arm.** Still, for the first time reproduction ends near
+the record.
+- **The hole is closed.** All of the late cohorts are deprived. Conceptions after day 920 fall
+  from 1,152 to about 150 per run.
+- **The last conception** is day 969 [911, 1,005] in D2, with the record's 920 inside that
+  range, and day 982 in D1.
+- **But no seed shows the arc.**
+  - Growth and collapse hold in all 48 runs. What fails is the phase without surviving young: the
+    gap from the last surviving birth to the last conception.
+  - That gap has a median of 26–46 days (record about 320; the arc needs 150), because surviving
+    births run to days 922–972 (record 600).
+  - The rule rescues any litter that a mother keeps alive to 17 days, and phase-D mothers still
+    do.
+- **The categories still overshoot** with the trigger as specified (never fought or mated 0.83).
+  The later trigger (D3) brings withdrawn into range (0.34), and never fought or mated to 0.72.
+- **The colony stays too large** after the peak, and on days 1,444 and 1,588.
+
+**Can the existing maternal erosion end surviving births sooner?** Exploratory and not
+preregistered: D2 on the same seeds with the erosion threshold lowered from 0.79
+(`_output/hm_adults/erosion_bracket.py`).
+- **Threshold 0.6:** the gap opens (median 184 days), but the peak falls to 1,155.
+- **Threshold 0.4:** the peak is 468.
+- **So it opens the gap only by stopping growth.** Erosion follows each mother's local stress, so
+  it starts in phase B, as rejection did in revision 1. A parameter fit is unlikely to reach the
+  arc with this mechanism alone.
+
+**What follows** (Jason's call).
+- **Revision 4** would give the end of surviving young colony timing as well, as Calhoun saw it:
+  rejection from mid-phase C, then no surviving young after day 600. The natural candidate is the
+  frozen colony's own colony-wide breakdown stress. It is the term that ends its surviving births
+  on time (day 596).
+- **Or stop.**
+- The switch stays off by default. Nothing in the app, the final replica or the frozen colony
+  changes.
+
 ## 2026-11-19 — The deprived generation, revision 2: colony-wide rejection fires on day 430 with no tuning and deprives 82–90 % of the late cohorts, but the answer is still no: the categories now overshoot, and young in boxes without a nursing-role mother escape and breed
 
 **What Jason asked.** "Try revision 2": rejection near weaning made colony-wide, keeping revision

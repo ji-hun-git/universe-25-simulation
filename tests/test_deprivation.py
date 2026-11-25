@@ -19,6 +19,7 @@ from universe25.agents.state import (  # noqa: E402
     ACT_FORAGE,
     ACT_NEST,
     ACT_REST,
+    ROLE_BREEDING_FEMALE,
     ROLE_JUVENILE,
     ROLE_NURSING,
     ROLE_PUP,
@@ -63,7 +64,8 @@ def test_guards() -> None:
                  {"biology": {"deprivation": True, "independence_days": 21.0}},
                  {"biology": {"deprived_fertility": 0.01}},
                  {"biology": {"expel_at_independence": True}},
-                 {"biology": {"colony_rejection": True}}):
+                 {"biology": {"colony_rejection": True}},
+                 {"biology": {"deprivation": True, "rejection_all_boxes": True}}):
         try:
             _cfg(**over)
         except ValueError:
@@ -263,6 +265,26 @@ def test_revision_2_colony_rejection() -> None:
         sim.rng = real
 
 
+def test_revision_3_every_box() -> None:
+    """Revision 3: colony rejection also reaches a box whose mother has lost the nursing role."""
+    for every in (True, False):
+        sim, cfg = _make(True, colony_rejection=True, rejection_all_boxes=every,
+                         litter_abandon_p=0.0)
+        a = sim.agents
+        a.alive[:] = False
+        mom, old = (int(v) for v in a.free_slots(2))
+        sim._spawn(mom, sex=SEX_F, age=120.0, x=30.0, y=30.0, nest_id=0, cell_id=0, role=0)
+        sim._spawn(old, sex=SEX_M, age=18.0, x=30.0, y=30.0, nest_id=0, cell_id=0,
+                   role=ROLE_PUP)
+        a.role[mom], a.maternal[mom] = ROLE_BREEDING_FEMALE, 0.3  # not the nursing role
+        sim.tick = 0
+        sim._breakdown_density = lambda alive: 10.0
+        sim.rng, real = _Draws(0.5 if every else None), sim.rng
+        sim._colony_rejection(a.alive.copy())
+        sim.rng = real
+        assert (a.nest_id[old] < 0) == every, every
+
+
 if __name__ == "__main__":
     test_guards()
     test_independence_and_the_deprived_juvenile()
@@ -271,4 +293,5 @@ if __name__ == "__main__":
     test_revision_1_fertility()
     test_revision_1_expulsion()
     test_revision_2_colony_rejection()
+    test_revision_3_every_box()
     print("test_deprivation: OK")

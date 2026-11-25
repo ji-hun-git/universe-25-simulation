@@ -1286,7 +1286,13 @@ the last undeprived females, and the decline is slow.
   - The categories now overshoot: never fought or mated 0.75, withdrawn 0.44.
   - The last conception stays late (1,427). The rule acts only on boxes with a nursing-role
     mother, so young in the other boxes escape and breed in phase D.
-- **Next:** Jason's call: revision 3, so the rule acts on every box; then a record fit.
+- **Revision 3 (Jason: "Yes, revision 3"): no, but reproduction now ends near the record.**
+  - The rule acts on every box. The last conception is 969 [911, 1,005], with the record's 920
+    inside that range.
+  - Surviving births run to about 950 (record 600), so there is no phase without surviving
+    young, and no seed shows the arc.
+  - Lowering maternal erosion opens that phase only by stopping growth (exploratory).
+- **Next:** Jason's call: revision 4, a colony-timed end of surviving young; or stop.
 
 ---
 
