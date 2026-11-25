@@ -79,6 +79,10 @@ outside.
 - The switch stays off by default. Nothing in the app, the final replica or the frozen colony
   changes.
 
+**Stopped.** Jason, 2026-11-25: "Stop here". The line ends at revision 5. All five revisions stay
+in the code, off by default; no record fit follows, and fresh seeds 9160–9199 and 9464–9471 stay
+unread.
+
 ## 2026-11-25 — The deprived generation, revision 4: the frozen colony's colony-wide stress brings the last surviving birth forward (922 → 866) and the peak toward the record, but mothers stay below the neglect threshold, so young keep surviving and the arc still does not form; still no
 
 **What Jason asked.** "Yes, revision 4": a colony-timed end of surviving young, then the same

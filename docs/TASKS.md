@@ -1250,6 +1250,9 @@ training seeds, the fit fails and no fresh seed is used. Either way the result g
 
 ## U-5 — The deprived generation: reproduction ends the way Calhoun saw (Jason 2026-11-19)
 
+**Status: STOPPED after revision 5** (Jason, 2026-11-25: "Stop here"). The structure question
+answered no in every look. The code stays, off by default; no record fit follows.
+
 **Goal:** "Yes, design it". The young expelled by their mothers near weaning in mid-phase C
 survive deprived, as Calhoun's did, and grow into the beautiful ones. Then conceptions end with
 the last undeprived females, and the decline is slow.
@@ -1307,8 +1310,9 @@ the last undeprived females, and the decline is slow.
   - The last surviving birth moved later (914), and the gap is 80 days. The breakdown limits
     itself: erosion keeps the colony smaller, its stress falls below 0.508 by about day 700, and
     females with investment still 0.54–0.93 go on raising litters by active nursing.
-- **Next:** Jason's call: revision 6, colony-timed erosion whatever each female's stress (close
-  to writing the outcome into the rule); or stop.
+- **Stopped** (Jason, 2026-11-25: "Stop here"). Revision 6 (colony-timed erosion whatever each
+  female's stress) was not built: it would come close to writing the record's outcome into the
+  rule.
 
 ---
 

@@ -509,3 +509,20 @@ erosion threshold at which that stress wears maternal capacity away. Everything 
     `maternal_erosion_rate` × f a day, whatever her own stress. This comes close to writing the
     record's outcome into the rule, so only the record fit on fresh seeds would test it.
   - or stop, with the deprived generation recorded as a partial account.
+
+## Stopped (Jason, 2026-11-25: "Stop here")
+
+The line ends at revision 5. The structure question answered no in all six looks.
+
+- **What the deprived generation gives:**
+  - the record's withdrawn share;
+  - rejection timed to mid-phase C with no tuning;
+  - a last conception near day 920;
+  - the record's peak (revision 5, F1);
+  - both behavioural categories in range (F3).
+- **What it does not give:** the end of surviving young near day 600. In every revision, some
+  mothers keep raising litters into phase D.
+- **Revision 6 was not built.** Colony-timed erosion, whatever each female's stress, would come
+  close to writing the record's outcome into the rule.
+- Every field stays in the code, off by default and bit-identical when off.
+- No record fit follows. The fresh seeds 9160–9199 and 9464–9471 stay unread.

@@ -52,8 +52,8 @@
 > **Revision 5** erodes at that threshold from the trigger on. The peak is now the record's
 > (2,190) and withdrawn is in range, but the last surviving birth moves later (914). The breakdown
 > limits itself: as the colony thins its stress falls below 0.508, erosion stops, and females
-> whose capacity remains go on raising litters. Next is Jason's call: revision 6, erosion on the
-> colony signal whatever each female's stress (close to writing the outcome in); or stop.
+> whose capacity remains go on raising litters. **Stopped** there (Jason, 2026-11-25: "Stop
+> here"): the deprived generation stays a partial account, in the code and off by default.
 >
 > **Status 2026-11-17:** the phase 3 viewer is built (`viewer/`, README "Viewer", TASKS P2-1 /
 > P2-2): the colony from above with a control panel, recordings and live runs (NumPy, or Warp
