@@ -10,6 +10,36 @@ Research-grade **Universe 25** (Calhoun 1973) simulation with an optional **play
 
 Track E / exploratory. Agents are need-driven (hunger, thirst, fatigue, stress, social, aggression, maternal, curiosity, boredom, homeostasis). **There is no play reward.** The playground is geometry + manipulable objects only; any playground use is drive spillover.
 
+## Use it
+
+A Universe 25 simulation anyone can run, for research or any other project. The full guide is
+[docs/USER_GUIDE.md](docs/USER_GUIDE.md); runnable examples are in [examples/](examples/).
+
+```bash
+git clone https://github.com/ji-hun-git/universe25-play
+cd universe25-play
+pip install -e .
+universe25 run --seed 7001 --out runs/first --plot
+```
+
+```python
+import universe25 as u25
+
+r = u25.run("universe25", seed=7001)   # 1,600 days in Calhoun's pen, about a minute
+print(r.table())                        # the run beside Calhoun's record
+```
+
+**How good is it?**
+- **The population curve:** on 48 seeds never used to fit it, 11 of the record's 14 population
+  and timeline numbers fall inside the model's 5–95 % range. The colony rises and collapses as
+  Calhoun's did in 46 of the 48 runs.
+- **The misses:** it peaks too high (2,490 against 2,200), thins too fast (1,320 on day 960
+  against 1,650) and stops conceiving late (day 1,096 against 920).
+- **The behaviour is not Calhoun's:** few withdrawn mice and no "beautiful ones".
+
+It reproduces how many mice there were, not how they behaved. The guide's "What it is not"
+says what that means for the conclusions you can draw.
+
 ## Status (2026-11-19)
 
 | part | state |
@@ -112,7 +142,7 @@ The closest models of Universe 25 reproduce the population curve's shape. They u
 | Metrics | Parquet (pyarrow, zstd) | Columnar, WebGPU-streamable snapshots alongside |
 | RNG | `numpy.random.Generator` seeded | Deterministic CPU trajectories |
 
-## Quick start
+## Quick start (research engine)
 
 ```powershell
 # from repo root; uses a Python with numpy/pydantic/pyyaml/pyarrow
@@ -336,7 +366,7 @@ docs/booklet/     universe25_booklet.pdf, printed from docs/booklet.html by scri
 
 ## License
 
-MIT. Not affiliated with Calhoun’s estate or NIMH.
+MIT (`LICENSE`). Not affiliated with Calhoun’s estate or NIMH.
 
 
 ## NVIDIA stack

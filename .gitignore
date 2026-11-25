@@ -11,3 +11,5 @@ dist/
 build/
 .DS_Store
 MUJOCO_LOG.TXT
+examples_out/
+runs/

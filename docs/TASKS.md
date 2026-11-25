@@ -1337,6 +1337,14 @@ the last undeprived females, and the decline is slow.
   record fit passed ("build it only if the current version is great"), and it did not.
 - Not done: Mac, offline copies of three.js and uPlot.
 
+**Status 2026-11-25** (Jason: "make it a Universe 25 simulation that anyone can use for research
+or any project"):
+- Done: `universe25.run` / `run_many` / `record_check` and `universe25 run | check | colonies`,
+  `docs/USER_GUIDE.md`, `examples/`, the README's "Use it", `LICENSE` (MIT). The published check
+  reproduces through them exactly (NOTES 2026-11-25).
+- Not done: making the repository public (Jason's call), a PyPI package (the package reads the
+  clone's configs).
+
 ---
 
 ## Quick checks

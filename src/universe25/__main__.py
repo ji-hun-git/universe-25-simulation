@@ -13,7 +13,14 @@ if str(_ROOT / "src") not in sys.path:
 
 
 def main(argv: list[str] | None = None) -> int:
-    p = argparse.ArgumentParser(description="Universe 25 simulation (no play reward)")
+    argv = sys.argv[1:] if argv is None else argv
+    if argv and argv[0] in ("colonies", "run", "check"):  # the command line for everyone
+        from universe25.cli import main as cli_main
+
+        return cli_main(argv)
+    p = argparse.ArgumentParser(description="Universe 25 simulation, research engine (no play "
+                                            "reward). For everyday use: universe25 run | check "
+                                            "| colonies (docs/USER_GUIDE.md)")
     p.add_argument("--seed", type=int, required=True)
     p.add_argument("--out", type=str, required=True)
     p.add_argument("--config", type=str, default=None)

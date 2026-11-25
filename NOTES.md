@@ -1,5 +1,49 @@
 # Universe25 Play — NOTES
 
+## 2026-11-25 — For everyone: a simple interface (`universe25.run`, `universe25 run | check | colonies`), a user guide and examples; the published validation reproduces through it exactly
+
+**What Jason asked.** "Update the repo and make it a Universe 25 simulation that anyone can use
+for research or any project."
+
+**What was added.** The simulation is unchanged: the golden hashes match, and every colony runs
+as before.
+- **`universe25.colonies`.** The colonies anyone can run, by name, each with how close it comes to
+  the record. The list moved here from the viewer server, which now reads it; the app's presets
+  are unchanged.
+- **`universe25.api`.**
+  - `run(colony, seed, days, overrides)` returns a run: the population by day, the record's 14
+    numbers, six behavioural numbers and the arc, with `table()` and `plot()`.
+  - `run_many` runs seeds in parallel. `record_check` gives the record against the runs' 5–95 %
+    ranges.
+  - It measures through the repo's own validation code (`scripts/replica_report.py`,
+    `scripts/history_match.py`), so the definitions cannot drift apart.
+- **Commands.**
+  - `universe25 colonies`, `universe25 run [--colony --seed --days --set k=v --out --plot]` and
+    `universe25 check [--seeds 7000-7047 --workers]`.
+  - The research form `universe25 --seed S --out DIR` is unchanged.
+- **Docs and files.** `docs/USER_GUIDE.md` (install, first run, the colonies, how close, changing
+  the model, many seeds, going deeper, what it is not, citing), `examples/` (four scripts), a
+  "Use it" section at the top of the README, the `LICENSE` file (MIT, as the README and
+  `pyproject.toml` already said) and version 0.2.0.
+- **Seeds.** 7000–9999, as the config requires; the defaults are 7000 and 7000–7011.
+
+**Checks.**
+- **The published validation reproduces through the interface exactly.**
+  - `record_check` on the 48 stored runs of seeds 9112–9159 gives 11 of 14 inside and the arc in
+    46 of 48, as published (NOTES 2026-11-19).
+  - A fresh `run("universe25", seed=9112)` gives all 23 stored outputs exactly, in 56 s.
+- **An install test.** An editable install into a throwaway environment (no download) gives the
+  `universe25` and `universe25-app` commands. They run from another folder, and the package finds
+  the repo's configs.
+- **Tests.** The four examples run. `tests/test_api.py` (fast tier) is new, and the full tier
+  passes.
+
+**Not done.**
+- The repository is still private. Anyone can use it only once Jason makes it public or shares
+  it.
+- There is no PyPI package: the package reads its configs and measurements from the clone.
+- The viewer needs an internet connection for three.js and uPlot.
+
 ## 2026-11-25 — The deprived generation, revision 5: with the frozen colony's erosion threshold from the trigger on, the peak matches the record (2,190) and withdrawn is in range, but young still survive to about day 900, because the colony's stress falls below the threshold as it thins; still no
 
 **What Jason asked.** "Yes, revision 5": the frozen colony's maternal breakdown taken whole,
