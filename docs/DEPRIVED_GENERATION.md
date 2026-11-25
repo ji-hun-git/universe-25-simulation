@@ -366,3 +366,46 @@ It closes revision 2's hole. Everything else is revision 2's.
   - revision 4, a colony-timed end of surviving young (the frozen colony's colony-wide breakdown
     stress is the candidate);
   - or stop.
+
+## Revision 4 (Jason, 2026-11-25: "Yes, revision 4"; fixed before code)
+
+Surviving young end when the colony breaks down, not when each mother's own stress happens to
+cross a threshold. Everything else is revision 3's.
+
+- **The rule** (`biology.rejection_stress`, default false = revision 3). With colony rejection on,
+  the frozen colony's colony-wide breakdown stress returns. Every animal's stress gain rises by
+  `social_breakdown_stress_boost` × f, where f is the day's rejection chance (with the ratchet,
+  its running maximum). The deprived adult is not stressed by it, as it is not by crowding.
+  - Only the stress term returns. The frozen colony's developmental term
+    (`imprint_breakdown_exposure`) does not: the rejected young already carry their deficit, and
+    the categories already overshoot.
+  - It makes no draw, so off and every earlier version reproduce exactly.
+- **Why.** In revision 3 a mother nurses her pups to 17 days unless her own stress, which follows
+  her box and cell, is above the neglect threshold (0.785). Many mothers stay below it, so young
+  survive to about day 950. In the frozen colony this colony-wide term ends surviving births on
+  day 596 (record 600). Raised from day 437 on, it should take mothers across the colony over the
+  neglect threshold and erode their maternal capacity (above 0.792). Their litters then die
+  before independence.
+- **The value, a priori.** The replica config still holds the frozen colony's
+  `social_breakdown_stress_boost`, 0.248, unused since M4.
+  - It is a gain, and the replica's stress decays faster (0.560 a day against 0.914). So the same
+    gain gives more stress: at f = 1, 0.44 against the frozen colony's 0.27.
+  - E1 takes the gain as it stands. E2 takes the frozen colony's stress: gain 0.152
+    (0.248 × 0.560 / 0.914).
+- **Arms**, the same base and seeds (4 × 12 = 48 runs):
+  - E0: off;
+  - E1: revision 3's D1 + `rejection_stress` (gain 0.248);
+  - E2: E1 with gain 0.152;
+  - E3: E1 with D3's later trigger (threshold 0.68), which put withdrawn in range.
+- **Reported:** revision 2's list, plus the gap (last conception − last surviving birth).
+- **The structure question and what follows are unchanged.**
+- **What it should do, if this is the missing piece.** Surviving births end near days 600–700
+  while conceptions go on to near day 920. The gap opens past 150 days, and the arc returns.
+- **Risks.**
+  - Males are stressed too. Above 0.732 their courtship erodes, so conceptions may end early and
+    close the gap from the other side.
+  - Stress from day 437 slows the last of growth. D1's peak is 2,668 against the record's 2,200,
+    so some fall is room, but a peak below 1,800 breaks the arc.
+  - More stress means more stress deaths and more withdrawal. Withdrawn on day 560 may rise.
+  - The replica's stress becomes partly colony-wide again: a second step back from M4, after
+    revision 2's trigger.
